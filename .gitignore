@@ -13,4 +13,5 @@ dist/
 *.iml
 
 # Code that I don't intend to commit.
-ml4tc/*.py
+*.py
+*.jpg

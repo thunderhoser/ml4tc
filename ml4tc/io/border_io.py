@@ -4,6 +4,7 @@ import os
 import sys
 import numpy
 import netCDF4
+from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -35,5 +36,9 @@ def read_file(netcdf_file_name=None):
         dataset_object.variables[LONGITUDES_KEY][:]
     )
     dataset_object.close()
+
+    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e
+    )
 
     return latitudes_deg_n, longitudes_deg_e

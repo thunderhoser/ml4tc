@@ -6,6 +6,7 @@ matplotlib.use('agg')
 import matplotlib.colors
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import grids
+from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import plotting_utils
 
@@ -167,8 +168,8 @@ def plot_2d_grid_regular(
     )
 
     error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
-    error_checking.assert_is_valid_lng_numpy_array(
-        longitudes_deg_e, positive_in_west_flag=True
+    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e
     )
     error_checking.assert_is_greater_numpy_array(
         numpy.diff(longitudes_deg_e), 0.
