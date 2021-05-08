@@ -241,16 +241,16 @@ def _decicelsius_to_kelvins(temperatures_decicelsius):
 
 
 def _pressure_from_1000mb_departure_to_pa(
-        pressures_1000mb_departures_decipascals):
+        pressures_1000mb_departures_decapascals):
     """Converts pressures from 1000-mb departures
 
-    :param pressures_1000mb_departures_decipascals: numpy array of pressure
-        departures from 1000 mb, in deci-Pascals.
+    :param pressures_1000mb_departures_decapascals: numpy array of pressure
+        departures from 1000 mb, in deca-Pascals.
     :return: pressures_pascals: numpy array of pressures in Pascals, with same
         shape as input.
     """
 
-    pressures_mb = 1000 + 0.1 * pressures_1000mb_departures_decipascals
+    pressures_mb = 1000 + 0.1 * pressures_1000mb_departures_decapascals
     return pressures_mb * MB_TO_PASCALS
 
 
@@ -452,7 +452,7 @@ def _forecast_hour_to_chars(forecast_hour_line, seven_day):
     hour_index_to_char_indices = dict()
 
     for i in range(len(forecast_hours)):
-        this_string = '{0:d}'.format(forecast_hours[i])
+        this_string = ' {0:d}'.format(forecast_hours[i])
         this_start_index = forecast_hour_line.find(this_string)
         if this_start_index == -1:
             raise ValueError
