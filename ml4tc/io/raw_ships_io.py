@@ -12,7 +12,7 @@ from ml4tc.io import ships_io
 SENTINEL_STRING = '9999'
 TIME_FORMAT_IN_FILES = '%Y%m%d%H'
 
-KT_TO_METRES_PER_SECOND = 1. / 1.852
+KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 MB_TO_PASCALS = 100.
 DAYS_TO_SECONDS = 86400.
 KM_TO_METRES = 1000.
@@ -713,10 +713,12 @@ def read_file(ascii_file_name, seven_day):
         ]
 
         if processed_field_name == ships_io.STORM_TYPE_KEY:
-            main_data_dict[processed_field_name] = (
-                these_dim,
-                numpy.round(forecast_field_matrix[..., k]).astype(int)
-            )
+            these_values = numpy.round(
+                forecast_field_matrix[..., k]
+            ).astype(int)
+
+            these_values = numpy.maximum(these_values, 0)
+            main_data_dict[processed_field_name] = (these_dim, these_values)
         else:
             main_data_dict[processed_field_name] = (
                 these_dim, forecast_field_matrix[..., k]
