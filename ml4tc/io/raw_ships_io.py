@@ -8,6 +8,7 @@ import xarray
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import ships_io
+from ml4tc.utils import satellite_utils
 
 SENTINEL_STRING = '9999'
 TIME_FORMAT_IN_FILES = '%Y%m%d%H'
@@ -467,6 +468,22 @@ def _forecast_hour_to_chars(forecast_hour_line, seven_day):
     return hour_index_to_char_indices
 
 
+def _reformat_cyclone_id(orig_cyclone_id_string):
+    """Reformats cyclone ID.
+
+    :param orig_cyclone_id_string: Original cyclone ID (from raw SHIPS file), in
+        format bbnnyyyy, where bb is the basin; nn is the cyclone number; and
+        yyyy is the year.
+    :return: cyclone_id_string: Proper cyclone ID, in format yyyybbnn.
+    """
+
+    return satellite_utils.get_cyclone_id(
+        year=int(orig_cyclone_id_string[-4:]),
+        basin_id_string=orig_cyclone_id_string[:2],
+        cyclone_number=int(orig_cyclone_id_string[2:4])
+    )
+
+
 def read_file(ascii_file_name, seven_day):
     """Reads SHIPS data from ASCII file.
 
@@ -531,7 +548,10 @@ def read_file(ascii_file_name, seven_day):
             print(current_line)
 
             words = current_line.split()
-            storm_id_strings.append(words[-2])
+
+            storm_id_strings.append(
+                _reformat_cyclone_id(words[-2])
+            )
             storm_longitudes_deg_e.append(float(words[-4]))
             storm_latitudes_deg_n.append(float(words[-5]))
 
@@ -742,7 +762,7 @@ def read_file(ascii_file_name, seven_day):
             these_dim, motion_field_matrix[:, k]
         )
 
-    main_data_dict[ships_io.STORM_ID_KEY] = (
+    main_data_dict[ships_io.CYCLONE_ID_KEY] = (
         these_dim, numpy.array(storm_id_strings)
     )
     main_data_dict[ships_io.STORM_LATITUDE_KEY] = (

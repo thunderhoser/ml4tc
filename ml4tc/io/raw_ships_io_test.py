@@ -78,6 +78,9 @@ FORECAST_HOUR_LINE_BAD = (
     '162  168 TIME'
 )
 
+ORIG_CYCLONE_ID_STRING = 'WP011990'
+CYCLONE_ID_STRING = '1990WP01'
+
 
 class RawShipsIoTests(unittest.TestCase):
     """Each method is a unit test for raw_ships_io.py."""
@@ -160,6 +163,14 @@ class RawShipsIoTests(unittest.TestCase):
             raw_ships_io._forecast_hour_to_chars(
                 forecast_hour_line=FORECAST_HOUR_LINE_BAD, seven_day=True
             )
+
+    def test_reformat_cyclone_id(self):
+        """Ensures correct output from _reformat_cyclone_id."""
+
+        this_cyclone_id_string = raw_ships_io._reformat_cyclone_id(
+            ORIG_CYCLONE_ID_STRING
+        )
+        self.assertTrue(this_cyclone_id_string == CYCLONE_ID_STRING)
 
 
 if __name__ == '__main__':

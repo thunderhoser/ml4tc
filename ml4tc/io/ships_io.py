@@ -3,11 +3,16 @@
 SHIPS = Statistical Hurricane-intensity-prediction Scheme
 """
 
+import os
+import glob
 import numpy
 import xarray
 from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import satellite_utils
 
 TOLERANCE = 1e-6
+CYCLONE_ID_REGEX = '[0-9][0-9][0-9][0-9][A-Z][A-Z][0-9][0-9]'
 
 FORECAST_HOUR_DIM = 'forecast_hour'
 THRESHOLD_DIM = 'intensity_threshold_m_s01'
@@ -15,7 +20,7 @@ LAG_TIME_DIM = 'lag_time_hours'
 STORM_OBJECT_DIM = 'storm_object_index'
 
 THRESHOLD_EXCEEDANCE_KEY = 'threshold_exceedance_num_6hour_periods'
-STORM_ID_KEY = 'storm_id_string'
+CYCLONE_ID_KEY = 'cyclone_id_string'
 STORM_LATITUDE_KEY = 'storm_latitude_deg_n'
 STORM_LONGITUDE_KEY = 'storm_longitude_deg_e'
 VALID_TIME_KEY = 'valid_time_unix_sec'
@@ -179,7 +184,7 @@ OHC_FROM_SST_AND_CLIMO_KEY = 'ohc_climo_and_sst_j_m02'
 
 FORECAST_FIELD_NAMES = [
     THRESHOLD_EXCEEDANCE_KEY,
-    STORM_ID_KEY,
+    CYCLONE_ID_KEY,
     STORM_LATITUDE_KEY,
     STORM_LONGITUDE_KEY,
     VALID_TIME_KEY,
@@ -382,6 +387,96 @@ MOTION_FIELD_NAMES_PROCESSED = [
     U_MOTION_OPTIMAL_KEY,
     V_MOTION_OPTIMAL_KEY
 ]
+
+
+def find_file(directory_name, cyclone_id_string, raise_error_if_missing=True):
+    """Finds NetCDF file with SHIPS data.
+
+    :param directory_name: Name of directory with SHIPS data.
+    :param cyclone_id_string: Cyclone ID (must be accepted by
+        `satellite_utils.parse_cyclone_id`).
+    :param raise_error_if_missing: Boolean flag.  If file is missing and
+        `raise_error_if_missing == True`, will throw error.  If file is missing
+        and `raise_error_if_missing == False`, will return *expected* file path.
+    :return: ships_file_name: File path.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(directory_name)
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_boolean(raise_error_if_missing)
+
+    ships_file_name = '{0:s}/ships_{1:s}.nc'.format(
+        directory_name, cyclone_id_string
+    )
+
+    if os.path.isfile(ships_file_name) or not raise_error_if_missing:
+        return ships_file_name
+
+    error_string = 'Cannot find file.  Expected at: "{0:s}"'.format(
+        ships_file_name
+    )
+    raise ValueError(error_string)
+
+
+def find_cyclones(directory_name, raise_error_if_all_missing=True):
+    """Finds all cyclones.
+
+    :param directory_name: Name of directory with SHIPS data.
+    :param raise_error_if_all_missing: Boolean flag.  If no cyclones are found
+        and `raise_error_if_all_missing == True`, will throw error.  If no
+        cyclones are found and `raise_error_if_all_missing == False`, will
+        return empty list.
+    :return: cyclone_id_strings: List of cyclone IDs.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(directory_name)
+    error_checking.assert_is_boolean(raise_error_if_all_missing)
+
+    file_pattern = '{0:s}/ships_{1:s}.nc'.format(
+        directory_name, CYCLONE_ID_REGEX
+    )
+    ships_file_names = glob.glob(file_pattern)
+    cyclone_id_strings = []
+
+    for this_file_name in ships_file_names:
+        try:
+            cyclone_id_strings.append(
+                file_name_to_cyclone_id(this_file_name)
+            )
+        except:
+            pass
+
+    cyclone_id_strings.sort()
+
+    if raise_error_if_all_missing and len(cyclone_id_strings) == 0:
+        error_string = (
+            'Could not find any cyclone IDs from files with pattern: "{0:s}"'
+        ).format(file_pattern)
+
+        raise ValueError(error_string)
+
+    return cyclone_id_strings
+
+
+def file_name_to_cyclone_id(ships_file_names):
+    """Parses cyclone ID from name of file with SHIPS data.
+
+    :param ships_file_names: File path.
+    :return: cyclone_id_string: Cyclone ID.
+    """
+
+    error_checking.assert_is_string(ships_file_names)
+    pathless_file_name = os.path.split(ships_file_names)[1]
+    extensionless_file_name = os.path.splitext(pathless_file_name)[0]
+
+    cyclone_id_string = extensionless_file_name.split('_')[-1]
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+
+    return cyclone_id_string
 
 
 def read_file(netcdf_file_name):
