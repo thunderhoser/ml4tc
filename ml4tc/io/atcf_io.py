@@ -4,10 +4,14 @@ ATCF = Automated Tropical-cyclone-forecasting System
 """
 
 import os
+import glob
 import numpy
 import xarray
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import satellite_utils
+
+CYCLONE_ID_REGEX = '[0-9][0-9][0-9][0-9][A-Z][A-Z][0-9][0-9]'
 
 STORM_OBJECT_DIM = 'storm_object_index'
 WIND_THRESHOLD_DIM = 'wind_threshold_index'
@@ -43,11 +47,12 @@ WAVE_HEIGHT_RADIUS_SW_QUADRANT_KEY = 'wave_height_radius_sw_quadrant_metres'
 WAVE_HEIGHT_RADIUS_SE_QUADRANT_KEY = 'wave_height_radius_se_quadrant_metres'
 
 
-def find_file(directory_name, year, raise_error_if_missing=True):
+def find_file(directory_name, cyclone_id_string, raise_error_if_missing=True):
     """Finds NetCDF file with ATCF data.
 
     :param directory_name: Name of directory with ATCF data.
-    :param year: Year (integer).
+    :param cyclone_id_string: Cyclone ID (must be accepted by
+        `satellite_utils.parse_cyclone_id`).
     :param raise_error_if_missing: Boolean flag.  If file is missing and
         `raise_error_if_missing == True`, will throw error.  If file is missing
         and `raise_error_if_missing == False`, will return *expected* file path.
@@ -57,10 +62,12 @@ def find_file(directory_name, year, raise_error_if_missing=True):
     """
 
     error_checking.assert_is_string(directory_name)
-    error_checking.assert_is_integer(year)
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_boolean(raise_error_if_missing)
 
-    atcf_file_name = '{0:s}/atcf_{1:s}.nc'.format(directory_name, year)
+    atcf_file_name = '{0:s}/atcf_{1:s}.nc'.format(
+        directory_name, cyclone_id_string
+    )
 
     if os.path.isfile(atcf_file_name) or not raise_error_if_missing:
         return atcf_file_name
@@ -69,6 +76,65 @@ def find_file(directory_name, year, raise_error_if_missing=True):
         atcf_file_name
     )
     raise ValueError(error_string)
+
+
+def find_cyclones(directory_name, raise_error_if_all_missing=True):
+    """Finds all cyclones.
+
+    :param directory_name: Name of directory with ATCF data.
+    :param raise_error_if_all_missing: Boolean flag.  If no cyclones are found
+        and `raise_error_if_all_missing == True`, will throw error.  If no
+        cyclones are found and `raise_error_if_all_missing == False`, will
+        return empty list.
+    :return: cyclone_id_strings: List of cyclone IDs.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(directory_name)
+    error_checking.assert_is_boolean(raise_error_if_all_missing)
+
+    file_pattern = '{0:s}/atcf_{1:s}.nc'.format(
+        directory_name, CYCLONE_ID_REGEX
+    )
+    atcf_file_names = glob.glob(file_pattern)
+    cyclone_id_strings = []
+
+    for this_file_name in atcf_file_names:
+        try:
+            cyclone_id_strings.append(
+                file_name_to_cyclone_id(this_file_name)
+            )
+        except:
+            pass
+
+    cyclone_id_strings.sort()
+
+    if raise_error_if_all_missing and len(cyclone_id_strings) == 0:
+        error_string = (
+            'Could not find any cyclone IDs from files with pattern: "{0:s}"'
+        ).format(file_pattern)
+
+        raise ValueError(error_string)
+
+    return cyclone_id_strings
+
+
+def file_name_to_cyclone_id(atcf_file_name):
+    """Parses cyclone ID from name of file with ATCF data.
+
+    :param atcf_file_name: File path.
+    :return: cyclone_id_string: Cyclone ID.
+    """
+
+    error_checking.assert_is_string(atcf_file_name)
+    pathless_file_name = os.path.split(atcf_file_name)[1]
+    extensionless_file_name = os.path.splitext(pathless_file_name)[0]
+
+    cyclone_id_string = extensionless_file_name.split('_')[-1]
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+
+    return cyclone_id_string
 
 
 def read_file(netcdf_file_name):
