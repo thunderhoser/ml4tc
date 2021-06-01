@@ -3,8 +3,11 @@
 SHIPS = Statistical Hurricane-intensity-prediction Scheme
 """
 
+import numpy
 import xarray
 from gewittergefahr.gg_utils import file_system_utils
+
+TOLERANCE = 1e-6
 
 FORECAST_HOUR_DIM = 'forecast_hour'
 THRESHOLD_DIM = 'intensity_threshold_m_s01'
@@ -405,3 +408,45 @@ def write_file(ships_table_xarray, netcdf_file_name):
     ships_table_xarray.to_netcdf(
         path=netcdf_file_name, mode='w', format='NETCDF3_64BIT'
     )
+
+
+def concat_tables_over_storm_object(ships_tables_xarray):
+    """Concatenates tables with SHIPS data over the storm-object dimension.
+
+    :param ships_tables_xarray: 1-D list of xarray tables in format returned by
+        `read_file`.
+    :return: ships_table_xarray: One xarray table, in format returned by
+        `read_file`, created by concatenating inputs.
+    """
+
+    num_storm_objects_found = 0
+
+    for i in range(len(ships_tables_xarray)):
+        assert numpy.array_equal(
+            ships_tables_xarray[0].coords[FORECAST_HOUR_DIM].values,
+            ships_tables_xarray[i].coords[FORECAST_HOUR_DIM].values
+        )
+        assert numpy.allclose(
+            ships_tables_xarray[0].coords[THRESHOLD_DIM].values,
+            ships_tables_xarray[i].coords[THRESHOLD_DIM].values,
+            atol=TOLERANCE
+        )
+        assert numpy.allclose(
+            ships_tables_xarray[0].coords[LAG_TIME_DIM].values,
+            ships_tables_xarray[i].coords[LAG_TIME_DIM].values,
+            atol=TOLERANCE
+        )
+
+        this_num_storm_objects = len(ships_tables_xarray[i].index)
+        these_indices = numpy.linspace(
+            num_storm_objects_found,
+            num_storm_objects_found + this_num_storm_objects - 1,
+            num=this_num_storm_objects, dtype=int
+        )
+        num_storm_objects_found += this_num_storm_objects
+
+        ships_tables_xarray[i].assign_coords({
+            STORM_OBJECT_DIM: these_indices
+        })
+
+    return xarray.concat(objs=ships_tables_xarray, dim=STORM_OBJECT_DIM)

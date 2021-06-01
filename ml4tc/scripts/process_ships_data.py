@@ -1,7 +1,6 @@
 """Processes SHIPS data (converts from raw format to my format)."""
 
 import argparse
-import xarray
 from ml4tc.io import ships_io
 from ml4tc.io import raw_ships_io
 
@@ -60,10 +59,8 @@ def _run(input_file_names, seven_day, output_file_name):
 
         print(SEPARATOR_STRING)
 
-    # TODO(thunderhoser): Need to fix this.  Storm-object indices will not be
-    # unique.
-    ships_table_xarray = xarray.concat(
-        objs=ships_tables_xarray, dim=ships_io.STORM_OBJECT_DIM
+    ships_table_xarray = ships_io.concat_tables_over_storm_object(
+        ships_tables_xarray
     )
 
     print('Writing data to: "{0:s}"...'.format(output_file_name))
