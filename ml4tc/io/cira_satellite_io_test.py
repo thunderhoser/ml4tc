@@ -3,6 +3,8 @@
 import unittest
 from ml4tc.io import cira_satellite_io
 
+TOLERANCE = 1e-6
+
 TOP_DIRECTORY_NAME = 'foo'
 CYCLONE_ID_STRING = '1998AL05'
 VALID_TIME_UNIX_SEC = 907411500

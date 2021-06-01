@@ -8,6 +8,7 @@ import xarray
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import ships_io
+from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 
 SENTINEL_STRING = '9999'
@@ -15,6 +16,7 @@ TIME_FORMAT_IN_FILES = '%Y%m%d%H'
 
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 MB_TO_PASCALS = 100.
+HOURS_TO_SECONDS = 3600.
 DAYS_TO_SECONDS = 86400.
 KM_TO_METRES = 1000.
 
@@ -96,17 +98,17 @@ FORECAST_FIELD_RENAMING_DICT = {
     'TGRD': ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY,
     'TADV': ships_io.TEMP_ADVECTION_850TO700MB_INNER_RING_KEY,
     'PENC': ships_io.SURFACE_PRESSURE_EDGE_KEY,
-    'SHDC': ships_io.SHEAR_850TO200MB_INNER_RING_KEY,
-    'SDDC': ships_io.SHEAR_850TO200MB_INNER_RING_HEADING_KEY,
+    # 'SHDC': ships_io.SHEAR_850TO200MB_INNER_RING_KEY,
+    # 'SDDC': ships_io.SHEAR_850TO200MB_INNER_RING_HEADING_KEY,
     'SHGC': ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY,
     'DIVC': ships_io.DIVERGENCE_200MB_CENTERED_BIG_RING_KEY,
     'T150': ships_io.TEMP_150MB_OUTER_RING_KEY,
     'T200': ships_io.TEMP_200MB_OUTER_RING_KEY,
     'T250': ships_io.TEMP_250MB_OUTER_RING_KEY,
-    'SHRD': ships_io.SHEAR_850TO200MB_OUTER_RING_KEY,
-    'SHTD': ships_io.SHEAR_850TO200MB_OUTER_RING_HEADING_KEY,
-    'SHRS': ships_io.SHEAR_850TO500MB_KEY,
-    'SHTS': ships_io.SHEAR_850TO500MB_HEADING_KEY,
+    # 'SHRD': ships_io.SHEAR_850TO200MB_OUTER_RING_KEY,
+    # 'SHTD': ships_io.SHEAR_850TO200MB_OUTER_RING_HEADING_KEY,
+    # 'SHRS': ships_io.SHEAR_850TO500MB_KEY,
+    # 'SHTS': ships_io.SHEAR_850TO500MB_HEADING_KEY,
     'SHRG': ships_io.SHEAR_850TO200MB_GENERALIZED_KEY,
     'PENV': ships_io.SURFACE_PRESSURE_OUTER_RING_KEY,
     'VMPI': ships_io.MAX_PTTL_INTENSITY_KEY,
@@ -268,8 +270,8 @@ FORECAST_FIELD_TO_CONV_FUNCTION = {
     'CD26': _get_multiply_function(1.),
     'COHC': _get_multiply_function(1e7),
     'DTL': _get_multiply_function(1000.),
-    'OAGE': _get_multiply_function(1. / 360),
-    'NAGE': _get_multiply_function(1. / 360),
+    'OAGE': _get_multiply_function(0.1 * HOURS_TO_SECONDS),
+    'NAGE': _get_multiply_function(0.1 * HOURS_TO_SECONDS),
     'RSST': _decicelsius_to_kelvins,
     'DSST': _decicelsius_to_kelvins,
     'DSTA': _decicelsius_to_kelvins,
@@ -345,7 +347,7 @@ FORECAST_FIELD_TO_CONV_FUNCTION = {
     'PW16': _get_multiply_function(0.1),
     'PW17': _get_multiply_function(0.1),
     'PW18': _get_multiply_function(0.1),
-    'PW19': _get_multiply_function(0.01),
+    'PW19': _get_multiply_function(0.001),
     'PW20': _get_multiply_function(0.1),
     'PW21': _get_multiply_function(0.1),
     'XDST': _decicelsius_to_kelvins,
@@ -391,9 +393,9 @@ FORECAST_FIELD_TO_CONV_FUNCTION = {
 SATELLITE_FIELD_CONV_FUNCTIONS = [
     _get_multiply_function(60.),
     _decicelsius_to_kelvins,
+    _get_multiply_function(1.),
     _decicelsius_to_kelvins,
-    _decicelsius_to_kelvins,
-    _decicelsius_to_kelvins,
+    _get_multiply_function(1.),
     _get_multiply_function(0.01),
     _get_multiply_function(0.01),
     _get_multiply_function(0.01),
@@ -727,7 +729,55 @@ def read_file(ascii_file_name, seven_day):
     main_data_dict = dict()
     these_dim = (ships_io.STORM_OBJECT_DIM, ships_io.FORECAST_HOUR_DIM)
 
+    speed_index = FORECAST_FIELD_NAMES_RAW.index('SHRS')
+    heading_index = FORECAST_FIELD_NAMES_RAW.index('SHTS')
+    u_components_m_s01, v_components_m_s01 = (
+        general_utils.speed_and_heading_to_uv(
+            storm_speeds_m_s01=forecast_field_matrix[..., speed_index],
+            storm_headings_deg=forecast_field_matrix[..., heading_index]
+        )
+    )
+    main_data_dict[ships_io.SHEAR_850TO500MB_U_KEY] = (
+        these_dim, u_components_m_s01
+    )
+    main_data_dict[ships_io.SHEAR_850TO500MB_V_KEY] = (
+        these_dim, v_components_m_s01
+    )
+
+    speed_index = FORECAST_FIELD_NAMES_RAW.index('SHDC')
+    heading_index = FORECAST_FIELD_NAMES_RAW.index('SDDC')
+    u_components_m_s01, v_components_m_s01 = (
+        general_utils.speed_and_heading_to_uv(
+            storm_speeds_m_s01=forecast_field_matrix[..., speed_index],
+            storm_headings_deg=forecast_field_matrix[..., heading_index]
+        )
+    )
+    main_data_dict[ships_io.SHEAR_850TO200MB_INNER_RING_U_KEY] = (
+        these_dim, u_components_m_s01
+    )
+    main_data_dict[ships_io.SHEAR_850TO200MB_INNER_RING_V_KEY] = (
+        these_dim, v_components_m_s01
+    )
+
+    speed_index = FORECAST_FIELD_NAMES_RAW.index('SHRD')
+    heading_index = FORECAST_FIELD_NAMES_RAW.index('SHTD')
+    u_components_m_s01, v_components_m_s01 = (
+        general_utils.speed_and_heading_to_uv(
+            storm_speeds_m_s01=forecast_field_matrix[..., speed_index],
+            storm_headings_deg=forecast_field_matrix[..., heading_index]
+        )
+    )
+    main_data_dict[ships_io.SHEAR_850TO200MB_OUTER_RING_U_KEY] = (
+        these_dim, u_components_m_s01
+    )
+    main_data_dict[ships_io.SHEAR_850TO200MB_OUTER_RING_V_KEY] = (
+        these_dim, v_components_m_s01
+    )
+
     for k in range(num_forecast_fields):
+        if FORECAST_FIELD_NAMES_RAW[k] not in FORECAST_FIELD_RENAMING_DICT:
+            continue
+
         processed_field_name = FORECAST_FIELD_RENAMING_DICT[
             FORECAST_FIELD_NAMES_RAW[k]
         ]

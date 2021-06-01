@@ -7,6 +7,7 @@ import xarray
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 
 # TODO(thunderhoser): Maybe add equidistant coords as well?
@@ -316,6 +317,13 @@ def read_file(netcdf_file_name):
         satellite_utils.GRID_COLUMN_DIM
     )
 
+    u_motions_m_s01, v_motions_m_s01 = general_utils.speed_and_heading_to_uv(
+        storm_speeds_m_s01=
+        _singleton_to_array(orig_table_xarray[STORM_SPEED_KEY].values),
+        storm_headings_deg=
+        _singleton_to_array(orig_table_xarray[STORM_HEADING_KEY].values)
+    )
+
     main_data_dict = {
         satellite_utils.SATELLITE_NUMBER_KEY: (these_dim, satellite_numbers),
         satellite_utils.BAND_NUMBER_KEY: (these_dim, band_numbers),
@@ -352,18 +360,8 @@ def read_file(netcdf_file_name):
                 orig_table_xarray[STORM_INTENSITY_NUM_KEY].values
             )
         ),
-        satellite_utils.STORM_SPEED_KEY: (
-            these_dim,
-            _singleton_to_array(
-                orig_table_xarray[STORM_SPEED_KEY].values
-            )
-        ),
-        satellite_utils.STORM_HEADING_KEY: (
-            these_dim,
-            _singleton_to_array(
-                orig_table_xarray[STORM_HEADING_KEY].values
-            )
-        ),
+        satellite_utils.STORM_MOTION_U_KEY: (these_dim, u_motions_m_s01),
+        satellite_utils.STORM_MOTION_V_KEY: (these_dim, v_motions_m_s01),
         satellite_utils.STORM_DISTANCE_TO_LAND_KEY: (
             these_dim, storm_distances_to_land_metres
         ),

@@ -52,6 +52,7 @@ def _run(input_file_name, seven_day, output_dir_name):
     ships_table_xarray = raw_ships_io.read_file(
         ascii_file_name=input_file_name, seven_day=seven_day
     )
+    print(SEPARATOR_STRING)
 
     cyclone_id_strings = ships_table_xarray[ships_io.CYCLONE_ID_KEY].values
     unique_cyclone_id_strings, orig_to_unique_indices = numpy.unique(
