@@ -28,11 +28,17 @@ def speed_and_heading_to_uv(storm_speeds_m_s01, storm_headings_deg):
         per second).
     """
 
-    error_checking.assert_is_geq_numpy_array(storm_speeds_m_s01, 0.)
+    error_checking.assert_is_geq_numpy_array(
+        storm_speeds_m_s01, 0., allow_nan=True
+    )
     error_checking.assert_is_numpy_array(storm_speeds_m_s01, num_dimensions=1)
 
-    error_checking.assert_is_geq_numpy_array(storm_headings_deg, 0.)
-    error_checking.assert_is_leq_numpy_array(storm_headings_deg, 360.)
+    error_checking.assert_is_geq_numpy_array(
+        storm_headings_deg, 0., allow_nan=True
+    )
+    error_checking.assert_is_leq_numpy_array(
+        storm_headings_deg, 360., allow_nan=True
+    )
     error_checking.assert_is_numpy_array(
         storm_headings_deg,
         exact_dimensions=numpy.array(storm_speeds_m_s01.shape, dtype=int)
