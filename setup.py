@@ -2,9 +2,7 @@
 
 from setuptools import setup
 
-PACKAGE_NAMES = [
-    'ml4tc', 'ml4tc.io', 'ml4tc.utils', 'ml4tc.plotting', 'ml4tc.scripts'
-]
+PACKAGE_NAMES = ['ml4tc']
 KEYWORDS = [
     'machine learning', 'deep learning', 'artificial intelligence',
     'data science', 'weather', 'meteorology', 'hurricane', 'cyclone',
