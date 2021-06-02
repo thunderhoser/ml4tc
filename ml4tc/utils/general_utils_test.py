@@ -7,21 +7,22 @@ from ml4tc.utils import general_utils
 TOLERANCE = 1e-6
 
 STORM_SPEEDS_M_S01 = numpy.array(
-    [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=float
+    [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, numpy.nan], dtype=float
 )
 STORM_HEADINGS_DEG = numpy.array(
-    [66, 77, 0, 45, 90, 135, 180, 225, 270, 315, 360], dtype=float
+    [66, 77, 0, 45, 90, 135, 180, 225, 270, 315, 360, numpy.nan, 360],
+    dtype=float
 )
 
 HALF_ROOT2 = numpy.sqrt(2) / 2
 
 U_MOTIONS_M_S01 = numpy.array([
     0, 0, 0, 2 * HALF_ROOT2, 3, 4 * HALF_ROOT2, 0,
-    -6 * HALF_ROOT2, -7, -8 * HALF_ROOT2, 0
+    -6 * HALF_ROOT2, -7, -8 * HALF_ROOT2, 0, numpy.nan, numpy.nan
 ])
 V_MOTIONS_M_S01 = numpy.array([
     0, 0, 1, 2 * HALF_ROOT2, 0, -4 * HALF_ROOT2, -5,
-    -6 * HALF_ROOT2, 0, 8 * HALF_ROOT2, 9
+    -6 * HALF_ROOT2, 0, 8 * HALF_ROOT2, 9, numpy.nan, numpy.nan
 ])
 
 
@@ -39,10 +40,12 @@ class GeneralUtilsTests(unittest.TestCase):
         )
 
         self.assertTrue(numpy.allclose(
-            these_u_motions_m_s01, U_MOTIONS_M_S01, atol=TOLERANCE
+            these_u_motions_m_s01, U_MOTIONS_M_S01, atol=TOLERANCE,
+            equal_nan=True
         ))
         self.assertTrue(numpy.allclose(
-            these_v_motions_m_s01, V_MOTIONS_M_S01, atol=TOLERANCE
+            these_v_motions_m_s01, V_MOTIONS_M_S01, atol=TOLERANCE,
+            equal_nan=True
         ))
 
 
