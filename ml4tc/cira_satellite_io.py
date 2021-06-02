@@ -307,7 +307,7 @@ def read_file(netcdf_file_name):
         longitudes_deg=_singleton_to_array(
             orig_table_xarray[STORM_LONGITUDE_KEY].values
         ),
-        allow_nan=False
+        allow_nan=True
     )
     storm_distances_to_land_metres = _singleton_to_array(
         orig_table_xarray[STORM_DISTANCE_TO_LAND_KEY].values * KM_TO_METRES
