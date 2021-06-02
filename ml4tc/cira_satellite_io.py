@@ -29,6 +29,7 @@ MINUTE_REGEX = '[0-5][0-9]'
 
 TOLERANCE = 1e-6
 KM_TO_METRES = 1000.
+KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
 LATITUDE_DIM = 'latitude'
 LONGITUDE_DIM = 'longitude'
@@ -355,7 +356,7 @@ def read_file(netcdf_file_name):
         ),
         satellite_utils.STORM_INTENSITY_KEY: (
             these_dim,
-            _singleton_to_array(
+            KT_TO_METRES_PER_SECOND * _singleton_to_array(
                 orig_table_xarray[STORM_INTENSITY_KEY].values
             )
         ),
