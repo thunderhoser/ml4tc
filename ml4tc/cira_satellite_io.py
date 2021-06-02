@@ -282,11 +282,12 @@ def read_file(netcdf_file_name):
         allow_nan=False
     )
 
-    try:
-        storm_id_strings = numpy.array([
-            s for s in orig_table_xarray[STORM_ID_KEY].values
-        ], dtype='S10')
+    cyclone_id_string = file_name_to_cyclone_id(netcdf_file_name)
+    cyclone_id_strings = numpy.array(
+        [cyclone_id_string] * num_times, dtype='S10'
+    )
 
+    try:
         storm_type_strings = numpy.array([
             s for s in orig_table_xarray[STORM_TYPE_KEY].values
         ], dtype='S10')
@@ -295,9 +296,6 @@ def read_file(netcdf_file_name):
             s for s in orig_table_xarray[STORM_NAME_KEY].values
         ], dtype='S10')
     except TypeError:
-        storm_id_strings = numpy.array(
-            [orig_table_xarray[STORM_ID_KEY].values], dtype='S10'
-        )
         storm_type_strings = numpy.array(
             [orig_table_xarray[STORM_TYPE_KEY].values], dtype='S10'
         )
@@ -343,7 +341,7 @@ def read_file(netcdf_file_name):
         satellite_utils.SATELLITE_LONGITUDE_KEY: (
             these_dim, satellite_longitudes_deg_e
         ),
-        satellite_utils.STORM_ID_KEY: (these_dim, storm_id_strings),
+        satellite_utils.CYCLONE_ID_KEY: (these_dim, cyclone_id_strings),
         satellite_utils.STORM_TYPE_KEY: (these_dim, storm_type_strings),
         satellite_utils.STORM_NAME_KEY: (these_dim, storm_names),
         satellite_utils.STORM_LATITUDE_KEY: (
