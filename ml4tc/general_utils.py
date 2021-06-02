@@ -17,21 +17,19 @@ DEGREES_TO_RADIANS = numpy.pi / 180
 def speed_and_heading_to_uv(storm_speeds_m_s01, storm_headings_deg):
     """Converts storm motion from speed-direction to u-v.
 
-    N = number of storm objects
-
-    :param storm_speeds_m_s01: length-N numpy array of storm speeds (metres per
+    :param storm_speeds_m_s01: numpy array of storm speeds (metres per
         second).
-    :param storm_headings_deg: length-N numpy array of storm headings (degrees).
-    :return: u_motions_m_s01: length-N numpy array of eastward motions (metres
+    :param storm_headings_deg: Same-shape numpy array of storm headings
+        (degrees).
+    :return: u_motions_m_s01: Same-shape numpy array of eastward motions (metres
         per second).
-    :return: v_motions_m_s01: length-N numpy array of northward motions (metres
-        per second).
+    :return: v_motions_m_s01: Same-shape numpy array of northward motions
+        (metres per second).
     """
 
     error_checking.assert_is_geq_numpy_array(
         storm_speeds_m_s01, 0., allow_nan=True
     )
-    error_checking.assert_is_numpy_array(storm_speeds_m_s01, num_dimensions=1)
 
     error_checking.assert_is_geq_numpy_array(
         storm_headings_deg, 0., allow_nan=True
