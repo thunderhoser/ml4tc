@@ -22,6 +22,7 @@ MINUTE_REGEX = '[0-5][0-9]'
 
 TOLERANCE = 1e-6
 KM_TO_METRES = 1000.
+KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
 LATITUDE_DIM = 'latitude'
 LONGITUDE_DIM = 'longitude'
@@ -300,7 +301,7 @@ def read_file(netcdf_file_name):
         longitudes_deg=_singleton_to_array(
             orig_table_xarray[STORM_LONGITUDE_KEY].values
         ),
-        allow_nan=False
+        allow_nan=True
     )
     storm_distances_to_land_metres = _singleton_to_array(
         orig_table_xarray[STORM_DISTANCE_TO_LAND_KEY].values * KM_TO_METRES
@@ -348,7 +349,7 @@ def read_file(netcdf_file_name):
         ),
         satellite_utils.STORM_INTENSITY_KEY: (
             these_dim,
-            _singleton_to_array(
+            KT_TO_METRES_PER_SECOND * _singleton_to_array(
                 orig_table_xarray[STORM_INTENSITY_KEY].values
             )
         ),
