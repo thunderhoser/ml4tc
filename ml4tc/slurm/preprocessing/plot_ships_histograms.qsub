@@ -1,0 +1,39 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="plot_ships_histograms"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=80G
+#SBATCH --time=12:00:00
+#SBATCH --array=1-156
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=plot_ships_histograms_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed"
+set OUTPUT_DIR_NAME="${INPUT_DIR_NAME}/histograms"
+
+set VARIABLE_NAMES=("ships_intensity_change_6hours_m_s01" "ships_goes_ch4_max_temp_radius_metres" "ships_v_motion_observed_m_s01" "ships_srh_1000to700mb_200to800km_j_kg01" "ships_relative_humidity_1000mb_200to800km" "ships_precipitable_water_600to800km_mm" "ships_precipitable_water_stdev_0to400km_mm" "ships_v_motion_optimal_flow_m_s01" "ships_mean_tangential_wind_850mb_0to600km_m_s01" "ships_relative_humidity_700to500mb_200to800km" "ships_depth_ncoda_bottom_metres" "ships_ocean_temp_ncoda_bottom_climo_kelvins" "ships_relative_humidity_850to700mb_200to800km" "ships_depth_26c_isotherm_climo_metres" "ships_goes_ch4_mean_temp_0to30km_kelvins" "ships_normalized_ocean_age_seconds" "ships_goes_ch4_fraction_temp_below_m50c_50to200km" "ships_planetary_eddy_momentum_flux_conv_100to600km_m_s02" "ships_depth_18c_isotherm_metres" "ships_temp_advection_850to700mb_0to500km_k_s01" "ships_precipitable_water_stdev_600to800km_mm" "ships_climo_depth_26c_isotherm_metres" "ships_climo_sst_kelvins" "ships_vortex_latitude_deg_n" "ships_divergence_200mb_0to1000km_s01" "ships_w_wind_700mb_0to1000km_pa_s01" "ships_goes_ch4_fraction_temp_below_m10c_50to200km" "ships_pw_fraction_under_45mm_0to500km_upshear_quadrant" "ships_w_wind_500mb_0to1000km_pa_s01" "ships_climo_ocean_heat_content_j_m02" "ships_climo_depth_20c_isotherm_metres" "ships_depth_16c_isotherm_metres" "ships_depth_28c_isotherm_metres" "ships_goes_ch4_temp_100to300km_kelvins" "ships_precipitable_water_stdev_0to600km_mm" "ships_precipitable_water_0to500km_mm" "ships_depth_24c_isotherm_metres" "ships_u_wind_200mb_0to500km_m_s01" "ships_theta_e_parcel_surplus_saturated_200to800km_kelvins" "ships_depth_ncoda_bottom_climo_metres" "ships_temp_150mb_200to800km_kelvins" "ships_depth_26c_isotherm_metres" "ships_ohc_climo_and_sst_j_m02" "ships_w_wind_0to15km_agl_m_s01" "ships_ocean_temp_column_max_ncoda_climo_kelvins" "ships_shear_850to200mb_200to800km_eastward_m_s01" "ships_minimum_slp_pascals" "ships_ocean_mixed_layer_depth_climo_metres" "ships_shear_850to200mb_0to500km_no_vortex_eastward_m_s01" "ships_ohc_ncoda_20c_isotherm_climo_j_kg01" "ships_depth_26c_isotherm_satellite_metres" "ships_goes_ch4_mean_temp_20to120km_kelvins" "ships_precipitable_water_800to1000km_mm" "ships_theta_e_parcel_deficit_saturated_200to800km_kelvins" "ships_depth_18c_isotherm_climo_metres" "ships_depth_20c_isotherm_satellite_metres" "ships_temp_perturb_150mb_200to800km_kelvins" "ships_precipitable_water_stdev_0to1000km_mm" "ships_ohc_ncoda_26c_isotherm_climo_j_kg01" "ships_ocean_mixed_layer_depth_metres" "ships_ohc_ncoda_26c_isotherm_j_kg01" "ships_goes_ch4_min_temp_20to120km_kelvins" "ships_w_wind_0to15km_agl_density_weighted_m_s01" "ships_depth_max_temp_metres" "ships_theta_e_1000mb_200to800km_kelvins" "ships_precipitable_water_0to400km_mm" "ships_threshold_exceedance_num_6hour_periods" "ships_max_pttl_intensity_m_s01" "ships_goes_time_lag_seconds" "ships_shear_850to200mb_0to500km_no_vortex_northward_m_s01" "ships_max_tangential_wind_850mb_m_s01" "ships_v_motion_1000to100mb_flow_m_s01" "ships_depth_max_temp_climo_metres" "ships_goes_ch4_min_temp_radius_metres" "ships_precipitable_water_stdev_0to200km_mm" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_northward_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_temp_perturb_250mb_200to800km_kelvins" "ships_reynolds_sst_daily_50km_diamond_kelvins" "ships_ocean_age_seconds" "ships_mean_tangential_wind_300mb_at500km_m_s01" "ships_goes_ch4_fraction_temp_below_m40c_50to200km" "ships_temp_250mb_200to800km_kelvins" "ships_forecast_latitude_deg_n" "ships_relative_humidity_500to300mb_200to800km" "ships_mean_tangential_wind_500mb_at500km_m_s01" "ships_storm_longitude_deg_e" "ships_precipitable_water_stdev_800to1000km_mm" "ships_reynolds_sst_kelvins" "ships_precipitable_water_0to1000km_mm" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_precipitable_water_stdev_0to800km_mm" "ships_mean_tangential_wind_1000mb_at500km_m_s01" "ships_goes_ch4_fraction_temp_below_m20c_50to200km" "ships_u_motion_1000to100mb_flow_m_s01" "ships_precipitable_water_400to600km_mm" "ships_depth_16c_isotherm_climo_metres" "ships_goes_ch4_fraction_temp_below_m30c_50to200km" "ships_sfc_pressure_200to800km_pascals" "ships_intensity_m_s01" "ships_sst_ncoda_daily_50km_diamond_kelvins" "ships_ohc_satellite_j_m02" "ships_theta_e_parcel_deficit_200to800km_kelvins" "ships_sst_ncoda_climo_kelvins" "ships_goes_ch4_temp_stdev_100to300km_kelvins" "ships_depth_30c_isotherm_metres" "ships_depth_22c_isotherm_climo_metres" "ships_distance_to_land_metres" "ships_precipitable_water_0to500km_upshear_quad_mm" "ships_precipitable_water_stdev_400to600km_mm" "ships_u_motion_observed_m_s01" "ships_sfc_pressure_vortex_edge_pascals" "ships_theta_e_parcel_surplus_200to800km_kelvins" "ships_depth_24c_isotherm_climo_metres" "ships_u_motion_optimal_flow_m_s01" "ships_mean_tangential_wind_850mb_at500km_m_s01" "ships_u_wind_200mb_200to800km_m_s01" "ships_storm_latitude_deg_n" "ships_precipitable_water_0to600km_mm" "ships_vortex_longitude_deg_e" "ships_goes_ch4_fraction_temp_below_m60c_50to200km" "ships_precipitable_water_stdev_200to400km_mm" "ships_precipitable_water_0to200km_mm" "ships_temp_perturb_200mb_200to800km_kelvins" "ships_precipitable_water_200to400km_mm" "ships_depth_20c_isotherm_metres" "ships_sst_ncoda_kelvins" "ships_dry_air_predictor" "ships_ocean_temp_ncoda_bottom_kelvins" "ships_ohc_ncoda_20c_isotherm_j_kg01" "ships_goes_ch4_temp_0to200km_kelvins" "ships_vorticity_850mb_0to1000km_s01" "ships_depth_20c_isotherm_climo_metres" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_depth_22c_isotherm_metres" "ships_v_wind_200mb_0to500km_m_s01" "ships_height_deviation_1000mb_200to800km_metres" "ships_reynolds_sst_daily_climo_kelvins" "ships_goes_ch4_temp_stdev_0to200km_kelvins" "ships_precipitable_water_0to800km_mm" "ships_divergence_200mb_0to1000km_vortex_centered_s01" "ships_ocean_temp_column_max_ncoda_kelvins" "ships_goes_ch4_max_temp_0to30km_kelvins" "ships_srh_1000to500mb_200to800km_j_kg01" "ships_relative_eddy_momentum_flux_conv_100to600km_m_s02" "ships_steering_level_pressure_pa" "ships_depth_30c_isotherm_climo_metres" "ships_reynolds_sst_daily_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_shear_850to200mb_200to800km_northward_m_s01" "ships_temperature_1000mb_200to800km_kelvins" "ships_depth_28c_isotherm_climo_metres" "ships_shear_850to200mb_gnrl_m_s01" "ships_intensity_change_since_init_minus_12hours_m_s01" "ships_forecast_longitude_deg_e")
+
+set variable_name=${VARIABLE_NAMES[$SLURM_ARRAY_TASK_ID]}
+set output_file_name="${OUTPUT_DIR_NAME}/${variable_name}.jpg"
+
+python3 -u "${CODE_DIR_NAME}/plot_ships_histograms.py" \
+--input_dir_name="${INPUT_DIR_NAME}" \
+--first_year=1993 \
+--last_year=2019 \
+--variable_name="${variable_name}" \
+--num_bins=100 \
+--output_file_name="${output_file_name}"
