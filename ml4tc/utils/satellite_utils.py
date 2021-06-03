@@ -142,8 +142,9 @@ def concat_tables_over_time(satellite_tables_xarray):
 
     for i in bad_indices:
         warning_string = (
-            'Table {0:d} of {1:d} has {2:d} grid rows and {3:d} grid columns '
-            '(expected {4:d} rows and {5:d} columns).  This is weird.'
+            'POTENTIAL ERROR: table {0:d} of {1:d} has {2:d} grid rows and '
+            '{3:d} grid columns (expected {4:d} rows and {5:d} columns).  This '
+            'is weird.'
         ).format(
             i + 1, len(satellite_tables_xarray),
             num_rows_by_table[i], num_columns_by_table[i],
