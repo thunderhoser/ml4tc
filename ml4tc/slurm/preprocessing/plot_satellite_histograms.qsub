@@ -1,0 +1,39 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="plot_satellite_histograms"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=80G
+#SBATCH --time=12:00:00
+#SBATCH --array=1-14
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=plot_satellite_histograms_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/cira_satellite_data/processed"
+set OUTPUT_DIR_NAME="${INPUT_DIR_NAME}/histograms"
+
+set VARIABLE_NAMES=("satellite_zenith_angle_deg" "satellite_azimuth_angle_deg" "satellite_storm_u_motion_m_s01" "satellite_storm_radius_fractional" "satellite_storm_radius_version1_metres" "satellite_storm_distance_to_land_metres" "satellite_storm_intensity_m_s01" "satellite_solar_zenith_angle_deg" "satellite_solar_hour_angle_deg" "satellite_solar_azimuth_angle_deg" "satellite_solar_elevation_angle_deg" "satellite_storm_radius_version2_metres" "satellite_storm_v_motion_m_s01" "satellite_brightness_temp_kelvins")
+
+set variable_name=${VARIABLE_NAMES[$SLURM_ARRAY_TASK_ID]}
+set output_file_name="${OUTPUT_DIR_NAME}/${variable_name}.jpg"
+
+python3 -u "${CODE_DIR_NAME}/plot_satellite_histogram.py" \
+--input_dir_name="${INPUT_DIR_NAME}" \
+--first_year=1993 \
+--last_year=2019 \
+--variable_name="${variable_name}" \
+--num_bins=100 \
+--output_file_name="${output_file_name}"

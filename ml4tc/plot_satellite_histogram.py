@@ -1,4 +1,4 @@
-"""Plots histogram for one SHIPS variable."""
+"""Plots histogram for one satellite variable."""
 
 import os
 import sys
@@ -15,7 +15,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import file_system_utils
 import error_checking
-import ships_io
+import satellite_io
 import satellite_utils
 
 DEFAULT_FONT_SIZE = 20
@@ -46,15 +46,15 @@ OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 INPUT_DIR_HELP_STRING = (
     'Name of input directory.  Files therein will be found by '
-    '`ships_io.find_file` and read by `ships_io.read_file`.'
+    '`satellite_io.find_file` and read by `satellite_io.read_file`.'
 )
 YEAR_HELP_STRING = (
-    'Will use SHIPS data for the period `{0:s}` to `{1:s}`.'
+    'Will use satellite data for the period `{0:s}` to `{1:s}`.'
 ).format(FIRST_YEAR_ARG_NAME, LAST_YEAR_ARG_NAME)
 
 VARIABLE_HELP_STRING = (
-    'Name of SHIPS variable for which to plot histogram.  This must be the name'
-    ' used in the files.'
+    'Name of satellite variable for which to plot histogram.  This must be the '
+    'name used in the files.'
 )
 NUM_BINS_HELP_STRING = 'Number of bins in histogram.'
 OUTPUT_FILE_HELP_STRING = (
@@ -133,7 +133,7 @@ def _get_histogram(input_values, num_bins):
 
 def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
          output_file_name):
-    """Plots histogram for one SHIPS variable.
+    """Plots histogram for one satellite variable.
 
     This is effectively the main method.
 
@@ -147,7 +147,7 @@ def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
 
     error_checking.assert_is_geq(last_year, first_year)
 
-    cyclone_id_strings = ships_io.find_cyclones(
+    cyclone_id_strings = satellite_io.find_cyclones(
         directory_name=input_dir_name, raise_error_if_all_missing=True
     )
     cyclone_years = numpy.array(
@@ -163,18 +163,18 @@ def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
     raw_values = numpy.array([], dtype=float)
 
     for this_cyclone_id_string in cyclone_id_strings:
-        ships_file_name = ships_io.find_file(
+        satellite_file_name = satellite_io.find_file(
             directory_name=input_dir_name,
             cyclone_id_string=this_cyclone_id_string,
             prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
 
-        print('Reading data from: "{0:s}"...'.format(ships_file_name))
-        ships_table_xarray = ships_io.read_file(ships_file_name)
+        print('Reading data from: "{0:s}"...'.format(satellite_file_name))
+        satellite_table_xarray = satellite_io.read_file(satellite_file_name)
         raw_values = numpy.concatenate((
             raw_values,
-            numpy.ravel(ships_table_xarray[variable_name].values)
+            numpy.ravel(satellite_table_xarray[variable_name].values)
         ))
 
     print(SEPARATOR_STRING)
