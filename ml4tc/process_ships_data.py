@@ -12,6 +12,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import ships_io
 import raw_ships_io
+import general_utils
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -80,6 +81,7 @@ def _run(input_file_name, seven_day, output_dir_name):
         this_output_file_name = ships_io.find_file(
             directory_name=output_dir_name,
             cyclone_id_string=unique_cyclone_id_strings[i],
+            prefer_zipped=False, allow_other_format=False,
             raise_error_if_missing=False
         )
 
@@ -88,6 +90,9 @@ def _run(input_file_name, seven_day, output_dir_name):
             ships_table_xarray=this_ships_table_xarray,
             netcdf_file_name=this_output_file_name
         )
+
+        general_utils.compress_file(this_output_file_name)
+        os.remove(this_output_file_name)
 
 
 if __name__ == '__main__':

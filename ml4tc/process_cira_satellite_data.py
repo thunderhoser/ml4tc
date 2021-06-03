@@ -12,6 +12,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import cira_satellite_io
 import satellite_io
 import satellite_utils
+import general_utils
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -82,6 +83,7 @@ def _run(top_input_dir_name, year, output_dir_name):
         )
         output_file_name = satellite_io.find_file(
             directory_name=output_dir_name, cyclone_id_string=this_id_string,
+            prefer_zipped=False, allow_other_format=False,
             raise_error_if_missing=False
         )
 
@@ -90,6 +92,9 @@ def _run(top_input_dir_name, year, output_dir_name):
             satellite_table_xarray=satellite_table_xarray,
             netcdf_file_name=output_file_name
         )
+
+        general_utils.compress_file(output_file_name)
+        os.remove(output_file_name)
 
         print(SEPARATOR_STRING)
 

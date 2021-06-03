@@ -13,6 +13,9 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import error_checking
 
+NUM_GRID_ROWS = 480
+NUM_GRID_COLUMNS = 640
+
 GRID_ROW_DIM = 'satellite_grid_row'
 GRID_COLUMN_DIM = 'satellite_grid_column'
 TIME_DIM = 'satellite_valid_time_unix_sec'
@@ -140,19 +143,20 @@ def concat_tables_over_time(satellite_tables_xarray):
     ], dtype=int)
 
     good_flags = numpy.logical_and(
-        num_rows_by_table == numpy.max(num_rows_by_table),
-        num_columns_by_table == numpy.max(num_columns_by_table)
+        num_rows_by_table == NUM_GRID_ROWS,
+        num_columns_by_table == NUM_GRID_COLUMNS
     )
     bad_indices = numpy.where(numpy.invert(good_flags))[0]
 
     for i in bad_indices:
         warning_string = (
-            'Table {0:d} of {1:d} has {2:d} grid rows and {3:d} grid columns '
-            '(expected {4:d} rows and {5:d} columns).  This is weird.'
+            'POTENTIAL ERROR: table {0:d} of {1:d} has {2:d} grid rows and '
+            '{3:d} grid columns (expected {4:d} rows and {5:d} columns).  This '
+            'is weird.'
         ).format(
             i + 1, len(satellite_tables_xarray),
             num_rows_by_table[i], num_columns_by_table[i],
-            numpy.max(num_rows_by_table), numpy.max(num_columns_by_table)
+            NUM_GRID_ROWS, NUM_GRID_COLUMNS
         )
 
         warnings.warn(warning_string)

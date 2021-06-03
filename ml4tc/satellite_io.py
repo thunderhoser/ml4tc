@@ -14,15 +14,21 @@ import file_system_utils
 import error_checking
 import satellite_utils
 
+GZIP_FILE_EXTENSION = '.gz'
 CYCLONE_ID_REGEX = '[0-9][0-9][0-9][0-9][A-Z][A-Z][0-9][0-9]'
 
 
-def find_file(directory_name, cyclone_id_string, raise_error_if_missing=True):
+def find_file(directory_name, cyclone_id_string, prefer_zipped=True,
+              allow_other_format=True, raise_error_if_missing=True):
     """Finds NetCDF file with satellite data.
 
     :param directory_name: Name of directory with satellite data.
     :param cyclone_id_string: Cyclone ID (must be accepted by
         `satellite_utils.parse_cyclone_id`).
+    :param prefer_zipped: Boolean flag.  If True, will look for zipped file
+        first.  If False, will look for unzipped file first.
+    :param allow_other_format: Boolean flag.  If True, will allow opposite of
+        preferred file format (zipped or unzipped).
     :param raise_error_if_missing: Boolean flag.  If file is missing and
         `raise_error_if_missing == True`, will throw error.  If file is missing
         and `raise_error_if_missing == False`, will return *expected* file path.
@@ -33,11 +39,25 @@ def find_file(directory_name, cyclone_id_string, raise_error_if_missing=True):
 
     error_checking.assert_is_string(directory_name)
     satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_boolean(prefer_zipped)
+    error_checking.assert_is_boolean(allow_other_format)
     error_checking.assert_is_boolean(raise_error_if_missing)
 
-    satellite_file_name = '{0:s}/cira_satellite_{1:s}.nc'.format(
-        directory_name, cyclone_id_string
+    satellite_file_name = '{0:s}/cira_satellite_{1:s}.nc{2:s}'.format(
+        directory_name, cyclone_id_string,
+        GZIP_FILE_EXTENSION if prefer_zipped else ''
     )
+
+    if os.path.isfile(satellite_file_name):
+        return satellite_file_name
+
+    if allow_other_format:
+        if prefer_zipped:
+            satellite_file_name = (
+                satellite_file_name[:-len(GZIP_FILE_EXTENSION)]
+            )
+        else:
+            satellite_file_name += GZIP_FILE_EXTENSION
 
     if os.path.isfile(satellite_file_name) or not raise_error_if_missing:
         return satellite_file_name
@@ -68,6 +88,9 @@ def find_cyclones(directory_name, raise_error_if_all_missing=True):
         directory_name, CYCLONE_ID_REGEX
     )
     satellite_file_names = glob.glob(file_pattern)
+    file_pattern = '{0:s}{1:s}'.format(file_pattern, GZIP_FILE_EXTENSION)
+    satellite_file_names += glob.glob(file_pattern)
+
     cyclone_id_strings = []
 
     for this_file_name in satellite_file_names:
@@ -78,6 +101,7 @@ def find_cyclones(directory_name, raise_error_if_all_missing=True):
         except:
             pass
 
+    cyclone_id_strings = list(set(cyclone_id_strings))
     cyclone_id_strings.sort()
 
     if raise_error_if_all_missing and len(cyclone_id_strings) == 0:
@@ -99,9 +123,8 @@ def file_name_to_cyclone_id(satellite_file_name):
 
     error_checking.assert_is_string(satellite_file_name)
     pathless_file_name = os.path.split(satellite_file_name)[1]
-    extensionless_file_name = os.path.splitext(pathless_file_name)[0]
 
-    cyclone_id_string = extensionless_file_name.split('_')[-1]
+    cyclone_id_string = pathless_file_name.split('.')[0].split('_')[-1]
     satellite_utils.parse_cyclone_id(cyclone_id_string)
 
     return cyclone_id_string
