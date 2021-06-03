@@ -1,11 +1,13 @@
 """Creates example files by merging satellite and SHIPS files."""
 
+import os
 import argparse
 from ml4tc.io import satellite_io
 from ml4tc.io import ships_io
 from ml4tc.io import example_io
 from ml4tc.utils import example_utils
 from ml4tc.utils import satellite_utils
+from ml4tc.utils import general_utils
 
 SATELLITE_DIR_ARG_NAME = 'input_satellite_dir_name'
 SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
@@ -80,16 +82,19 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year, top_output_dir_name):
         this_satellite_file_name = satellite_io.find_file(
             directory_name=top_satellite_dir_name,
             cyclone_id_string=this_cyclone_id_string,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
         this_ships_file_name = ships_io.find_file(
             directory_name=top_ships_dir_name,
             cyclone_id_string=this_cyclone_id_string,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
         this_example_file_name = example_io.find_file(
             directory_name=top_output_dir_name,
             cyclone_id_string=this_cyclone_id_string,
+            prefer_zipped=False, allow_other_format=False,
             raise_error_if_missing=False
         )
 
@@ -111,6 +116,9 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year, top_output_dir_name):
             example_table_xarray=this_example_table_xarray,
             netcdf_file_name=this_example_file_name
         )
+
+        general_utils.compress_file(this_example_file_name)
+        os.remove(this_example_file_name)
 
 
 if __name__ == '__main__':

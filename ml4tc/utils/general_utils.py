@@ -1,9 +1,30 @@
 """General utility methods."""
 
+import gzip
+import shutil
 import numpy
 from gewittergefahr.gg_utils import error_checking
 
+GZIP_FILE_EXTENSION = '.gz'
 DEGREES_TO_RADIANS = numpy.pi / 180
+
+
+def compress_file(netcdf_file_name):
+    """Compresses NetCDF file (turns it into a gzip file).
+
+    :param netcdf_file_name: Path to NetCDF file.
+    :raises: ValueError: if file is already gzipped.
+    """
+
+    error_checking.assert_is_string(netcdf_file_name)
+    if netcdf_file_name.endswith(GZIP_FILE_EXTENSION):
+        raise ValueError('File must not already be gzipped.')
+
+    gzip_file_name = '{0:s}{1:s}'.format(netcdf_file_name, GZIP_FILE_EXTENSION)
+
+    with open(netcdf_file_name, 'rb') as netcdf_handle:
+        with gzip.open(gzip_file_name, 'wb') as gzip_handle:
+            shutil.copyfileobj(netcdf_handle, gzip_handle)
 
 
 def speed_and_heading_to_uv(storm_speeds_m_s01, storm_headings_deg):
