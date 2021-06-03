@@ -14,175 +14,206 @@ from ml4tc.utils import satellite_utils
 TOLERANCE = 1e-6
 CYCLONE_ID_REGEX = '[0-9][0-9][0-9][0-9][A-Z][A-Z][0-9][0-9]'
 
-FORECAST_HOUR_DIM = 'forecast_hour'
-THRESHOLD_DIM = 'intensity_threshold_m_s01'
-LAG_TIME_DIM = 'lag_time_hours'
-STORM_OBJECT_DIM = 'storm_object_index'
+FORECAST_HOUR_DIM = 'ships_forecast_hour'
+THRESHOLD_DIM = 'ships_intensity_threshold_m_s01'
+LAG_TIME_DIM = 'ships_lag_time_hours'
+STORM_OBJECT_DIM = 'ships_storm_object_index'
+VALID_TIME_DIM = 'ships_valid_time_unix_sec'
 
-THRESHOLD_EXCEEDANCE_KEY = 'threshold_exceedance_num_6hour_periods'
-CYCLONE_ID_KEY = 'cyclone_id_string'
-STORM_LATITUDE_KEY = 'storm_latitude_deg_n'
-STORM_LONGITUDE_KEY = 'storm_longitude_deg_e'
-VALID_TIME_KEY = 'valid_time_unix_sec'
+THRESHOLD_EXCEEDANCE_KEY = 'ships_threshold_exceedance_num_6hour_periods'
+CYCLONE_ID_KEY = 'ships_cyclone_id_string'
+STORM_LATITUDE_KEY = 'ships_storm_latitude_deg_n'
+STORM_LONGITUDE_KEY = 'ships_storm_longitude_deg_e'
+VALID_TIME_KEY = 'ships_valid_time_unix_sec'
 
-INTENSITY_KEY = 'intensity_m_s01'
-MINIMUM_SLP_KEY = 'minimum_slp_pascals'
-STORM_TYPE_KEY = 'storm_type_enum'
+INTENSITY_KEY = 'ships_intensity_m_s01'
+MINIMUM_SLP_KEY = 'ships_minimum_slp_pascals'
+STORM_TYPE_KEY = 'ships_storm_type_enum'
 INTENSITY_CHANGE_M12HOURS_KEY = (
-    'intensity_change_since_init_minus_12hours_m_s01'
+    'ships_intensity_change_since_init_minus_12hours_m_s01'
 )
-INTENSITY_CHANGE_6HOURS_KEY = 'intensity_change_6hours_m_s01'
-FORECAST_LATITUDE_KEY = 'forecast_latitude_deg_n'
-FORECAST_LONGITUDE_KEY = 'forecast_longitude_deg_e'
-CLIMO_SST_KEY = 'climo_sst_kelvins'
-CLIMO_DEPTH_20C_KEY = 'climo_depth_20c_isotherm_metres'
-CLIMO_DEPTH_26C_KEY = 'climo_depth_26c_isotherm_metres'
-CLIMO_OHC_KEY = 'climo_ocean_heat_content_j_m02'
-DISTANCE_TO_LAND_KEY = 'distance_to_land_metres'
-OCEAN_AGE_KEY = 'ocean_age_seconds'
-NORMALIZED_OCEAN_AGE_KEY = 'normalized_ocean_age_seconds'
-REYNOLDS_SST_KEY = 'reynolds_sst_kelvins'
-REYNOLDS_SST_DAILY_KEY = 'reynolds_sst_daily_kelvins'
-REYNOLDS_SST_DAILY_AREAL_KEY = 'reynolds_sst_daily_50km_diamond_kelvins'
-U_WIND_200MB_OUTER_RING_KEY = 'u_wind_200mb_200to800km_m_s01'
-U_WIND_200MB_INNER_RING_KEY = 'u_wind_200mb_0to500km_m_s01'
-V_WIND_200MB_INNER_RING_KEY = 'v_wind_200mb_0to500km_m_s01'
-THETA_E_1000MB_OUTER_RING_KEY = 'theta_e_1000mb_200to800km_kelvins'
-THETA_E_SURPLUS_OUTER_RING_KEY = 'theta_e_parcel_surplus_200to800km_kelvins'
-THETA_E_DEFICIT_OUTER_RING_KEY = 'theta_e_parcel_deficit_200to800km_kelvins'
+INTENSITY_CHANGE_6HOURS_KEY = 'ships_intensity_change_6hours_m_s01'
+FORECAST_LATITUDE_KEY = 'ships_forecast_latitude_deg_n'
+FORECAST_LONGITUDE_KEY = 'ships_forecast_longitude_deg_e'
+CLIMO_SST_KEY = 'ships_climo_sst_kelvins'
+CLIMO_DEPTH_20C_KEY = 'ships_climo_depth_20c_isotherm_metres'
+CLIMO_DEPTH_26C_KEY = 'ships_climo_depth_26c_isotherm_metres'
+CLIMO_OHC_KEY = 'ships_climo_ocean_heat_content_j_m02'
+DISTANCE_TO_LAND_KEY = 'ships_distance_to_land_metres'
+OCEAN_AGE_KEY = 'ships_ocean_age_seconds'
+NORMALIZED_OCEAN_AGE_KEY = 'ships_normalized_ocean_age_seconds'
+REYNOLDS_SST_KEY = 'ships_reynolds_sst_kelvins'
+REYNOLDS_SST_DAILY_KEY = 'ships_reynolds_sst_daily_kelvins'
+REYNOLDS_SST_DAILY_AREAL_KEY = 'ships_reynolds_sst_daily_50km_diamond_kelvins'
+U_WIND_200MB_OUTER_RING_KEY = 'ships_u_wind_200mb_200to800km_m_s01'
+U_WIND_200MB_INNER_RING_KEY = 'ships_u_wind_200mb_0to500km_m_s01'
+V_WIND_200MB_INNER_RING_KEY = 'ships_v_wind_200mb_0to500km_m_s01'
+THETA_E_1000MB_OUTER_RING_KEY = 'ships_theta_e_1000mb_200to800km_kelvins'
+THETA_E_SURPLUS_OUTER_RING_KEY = (
+    'ships_theta_e_parcel_surplus_200to800km_kelvins'
+)
+THETA_E_DEFICIT_OUTER_RING_KEY = (
+    'ships_theta_e_parcel_deficit_200to800km_kelvins'
+)
 THETA_E_SURPLUS_SATURATED_OUTER_RING_KEY = (
-    'theta_e_parcel_surplus_saturated_200to800km_kelvins'
+    'ships_theta_e_parcel_surplus_saturated_200to800km_kelvins'
 )
 THETA_E_DEFICIT_SATURATED_OUTER_RING_KEY = (
-    'theta_e_parcel_deficit_saturated_200to800km_kelvins'
+    'ships_theta_e_parcel_deficit_saturated_200to800km_kelvins'
 )
-RH_850TO700MB_OUTER_RING_KEY = 'relative_humidity_850to700mb_200to800km'
-RH_700TO500MB_OUTER_RING_KEY = 'relative_humidity_700to500mb_200to800km'
-RH_500TO300MB_OUTER_RING_KEY = 'relative_humidity_500to300mb_200to800km'
-VORTICITY_850MB_BIG_RING_KEY = 'vorticity_850mb_0to1000km_s01'
-DIVERGENCE_200MB_BIG_RING_KEY = 'divergence_200mb_0to1000km_s01'
+RH_850TO700MB_OUTER_RING_KEY = 'ships_relative_humidity_850to700mb_200to800km'
+RH_700TO500MB_OUTER_RING_KEY = 'ships_relative_humidity_700to500mb_200to800km'
+RH_500TO300MB_OUTER_RING_KEY = 'ships_relative_humidity_500to300mb_200to800km'
+VORTICITY_850MB_BIG_RING_KEY = 'ships_vorticity_850mb_0to1000km_s01'
+DIVERGENCE_200MB_BIG_RING_KEY = 'ships_divergence_200mb_0to1000km_s01'
 RELATIVE_EMFC_100TO600KM_KEY = (
-    'relative_eddy_momentum_flux_conv_100to600km_m_s02'
+    'ships_relative_eddy_momentum_flux_conv_100to600km_m_s02'
 )
 PLANETARY_EMFC_100TO600KM_KEY = (
-    'planetary_eddy_momentum_flux_conv_100to600km_m_s02'
+    'ships_planetary_eddy_momentum_flux_conv_100to600km_m_s02'
 )
-TEMPERATURE_1000MB_OUTER_RING_KEY = 'temperature_1000mb_200to800km_kelvins'
-RH_1000MB_OUTER_RING_KEY = 'relative_humidity_1000mb_200to800km'
-HEIGHT_DEV_1000MB_OUTER_RING_KEY = 'height_deviation_1000mb_200to800km_metres'
-VORTEX_LATITUDE_KEY = 'vortex_latitude_deg_n'
-VORTEX_LONGITUDE_KEY = 'vortex_longitude_deg_e'
-MEAN_TAN_WIND_850MB_0TO600KM_KEY = 'mean_tangential_wind_850mb_0to600km_m_s01'
-MAX_TAN_WIND_850MB_KEY = 'max_tangential_wind_850mb_m_s01'
-TEMP_PERTURB_150MB_OUTER_RING_KEY = 'temp_perturb_150mb_200to800km_kelvins'
-TEMP_PERTURB_200MB_OUTER_RING_KEY = 'temp_perturb_200mb_200to800km_kelvins'
-TEMP_PERTURB_250MB_OUTER_RING_KEY = 'temp_perturb_250mb_200to800km_kelvins'
-MEAN_TAN_WIND_1000MB_500KM_KEY = 'mean_tangential_wind_1000mb_at500km_m_s01'
-MEAN_TAN_WIND_850MB_500KM_KEY = 'mean_tangential_wind_850mb_at500km_m_s01'
-MEAN_TAN_WIND_500MB_500KM_KEY = 'mean_tangential_wind_500mb_at500km_m_s01'
-MEAN_TAN_WIND_300MB_500KM_KEY = 'mean_tangential_wind_300mb_at500km_m_s01'
+TEMPERATURE_1000MB_OUTER_RING_KEY = (
+    'ships_temperature_1000mb_200to800km_kelvins'
+)
+RH_1000MB_OUTER_RING_KEY = 'ships_relative_humidity_1000mb_200to800km'
+HEIGHT_DEV_1000MB_OUTER_RING_KEY = (
+    'ships_height_deviation_1000mb_200to800km_metres'
+)
+VORTEX_LATITUDE_KEY = 'ships_vortex_latitude_deg_n'
+VORTEX_LONGITUDE_KEY = 'ships_vortex_longitude_deg_e'
+MEAN_TAN_WIND_850MB_0TO600KM_KEY = (
+    'ships_mean_tangential_wind_850mb_0to600km_m_s01'
+)
+MAX_TAN_WIND_850MB_KEY = 'ships_max_tangential_wind_850mb_m_s01'
+TEMP_PERTURB_150MB_OUTER_RING_KEY = (
+    'ships_temp_perturb_150mb_200to800km_kelvins'
+)
+TEMP_PERTURB_200MB_OUTER_RING_KEY = (
+    'ships_temp_perturb_200mb_200to800km_kelvins'
+)
+TEMP_PERTURB_250MB_OUTER_RING_KEY = (
+    'ships_temp_perturb_250mb_200to800km_kelvins'
+)
+MEAN_TAN_WIND_1000MB_500KM_KEY = (
+    'ships_mean_tangential_wind_1000mb_at500km_m_s01'
+)
+MEAN_TAN_WIND_850MB_500KM_KEY = 'ships_mean_tangential_wind_850mb_at500km_m_s01'
+MEAN_TAN_WIND_500MB_500KM_KEY = 'ships_mean_tangential_wind_500mb_at500km_m_s01'
+MEAN_TAN_WIND_300MB_500KM_KEY = 'ships_mean_tangential_wind_300mb_at500km_m_s01'
 TEMP_GRADIENT_850TO700MB_INNER_RING_KEY = (
-    'temp_gradient_850to700mb_0to500km_k_m01'
+    'ships_temp_gradient_850to700mb_0to500km_k_m01'
 )
 TEMP_ADVECTION_850TO700MB_INNER_RING_KEY = (
-    'temp_advection_850to700mb_0to500km_k_s01'
+    'ships_temp_advection_850to700mb_0to500km_k_s01'
 )
-SURFACE_PRESSURE_EDGE_KEY = 'sfc_pressure_vortex_edge_pascals'
+SURFACE_PRESSURE_EDGE_KEY = 'ships_sfc_pressure_vortex_edge_pascals'
 SHEAR_850TO200MB_INNER_RING_U_KEY = (
-    'shear_850to200mb_0to500km_no_vortex_eastward_m_s01'
+    'ships_shear_850to200mb_0to500km_no_vortex_eastward_m_s01'
 )
 SHEAR_850TO200MB_INNER_RING_V_KEY = (
-    'shear_850to200mb_0to500km_no_vortex_northward_m_s01'
+    'ships_shear_850to200mb_0to500km_no_vortex_northward_m_s01'
 )
 SHEAR_850TO200MB_INNER_RING_GNRL_KEY = (
-    'shear_850to200mb_gnrl_0to500km_no_vortex_m_s01'
+    'ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01'
 )
 DIVERGENCE_200MB_CENTERED_BIG_RING_KEY = (
-    'divergence_200mb_0to1000km_vortex_centered_s01'
+    'ships_divergence_200mb_0to1000km_vortex_centered_s01'
 )
-TEMP_150MB_OUTER_RING_KEY = 'temp_150mb_200to800km_kelvins'
-TEMP_200MB_OUTER_RING_KEY = 'temp_200mb_200to800km_kelvins'
-TEMP_250MB_OUTER_RING_KEY = 'temp_250mb_200to800km_kelvins'
-SHEAR_850TO200MB_OUTER_RING_U_KEY = 'shear_850to200mb_200to800km_eastward_m_s01'
+TEMP_150MB_OUTER_RING_KEY = 'ships_temp_150mb_200to800km_kelvins'
+TEMP_200MB_OUTER_RING_KEY = 'ships_temp_200mb_200to800km_kelvins'
+TEMP_250MB_OUTER_RING_KEY = 'ships_temp_250mb_200to800km_kelvins'
+SHEAR_850TO200MB_OUTER_RING_U_KEY = (
+    'ships_shear_850to200mb_200to800km_eastward_m_s01'
+)
 SHEAR_850TO200MB_OUTER_RING_V_KEY = (
-    'shear_850to200mb_200to800km_northward_m_s01'
+    'ships_shear_850to200mb_200to800km_northward_m_s01'
 )
-SHEAR_850TO500MB_U_KEY = 'shear_850to500mb_eastward_m_s01'
-SHEAR_850TO500MB_V_KEY = 'shear_850to500mb_northward_m_s01'
-SHEAR_850TO200MB_GENERALIZED_KEY = 'shear_850to200mb_gnrl_m_s01'
-SURFACE_PRESSURE_OUTER_RING_KEY = 'sfc_pressure_200to800km_pascals'
-MAX_PTTL_INTENSITY_KEY = 'max_pttl_intensity_m_s01'
-W_WIND_0TO15KM_KEY = 'w_wind_0to15km_agl_m_s01'
-W_WIND_0TO15KM_WEIGHTED_KEY = 'w_wind_0to15km_agl_density_weighted_m_s01'
-W_WIND_0TO15KM_INNER_RING_KEY = 'w_wind_0to15km_agl_0to500km_no_vortex_m_s01'
-SRH_1000TO700MB_OUTER_RING_KEY = 'srh_1000to700mb_200to800km_j_kg01'
-SRH_1000TO500MB_OUTER_RING_KEY = 'srh_1000to500mb_200to800km_j_kg01'
-W_WIND_500MB_BIG_RING_KEY = 'w_wind_500mb_0to1000km_pa_s01'
-W_WIND_700MB_BIG_RING_KEY = 'w_wind_700mb_0to1000km_pa_s01'
-DRY_AIR_PREDICTOR_KEY = 'dry_air_predictor'
-PRECIP_WATER_0TO200KM_KEY = 'precipitable_water_0to200km_mm'
-PRECIP_WATER_0TO200KM_STDEV_KEY = 'precipitable_water_stdev_0to200km_mm'
-PRECIP_WATER_200TO400KM_KEY = 'precipitable_water_200to400km_mm'
-PRECIP_WATER_200TO400KM_STDEV_KEY = 'precipitable_water_stdev_200to400km_mm'
-PRECIP_WATER_400TO600KM_KEY = 'precipitable_water_400to600km_mm'
-PRECIP_WATER_400TO600KM_STDEV_KEY = 'precipitable_water_stdev_400to600km_mm'
-PRECIP_WATER_600TO800KM_KEY = 'precipitable_water_600to800km_mm'
-PRECIP_WATER_600TO800KM_STDEV_KEY = 'precipitable_water_stdev_600to800km_mm'
-PRECIP_WATER_800TO1000KM_KEY = 'precipitable_water_800to1000km_mm'
-PRECIP_WATER_800TO1000KM_STDEV_KEY = 'precipitable_water_stdev_800to1000km_mm'
-PRECIP_WATER_0TO400KM_KEY = 'precipitable_water_0to400km_mm'
-PRECIP_WATER_0TO400KM_STDEV_KEY = 'precipitable_water_stdev_0to400km_mm'
-PRECIP_WATER_0TO600KM_KEY = 'precipitable_water_0to600km_mm'
-PRECIP_WATER_0TO600KM_STDEV_KEY = 'precipitable_water_stdev_0to600km_mm'
-PRECIP_WATER_0TO800KM_KEY = 'precipitable_water_0to800km_mm'
-PRECIP_WATER_0TO800KM_STDEV_KEY = 'precipitable_water_stdev_0to800km_mm'
-PRECIP_WATER_0TO1000KM_KEY = 'precipitable_water_0to1000km_mm'
-PRECIP_WATER_0TO1000KM_STDEV_KEY = 'precipitable_water_stdev_0to1000km_mm'
+SHEAR_850TO500MB_U_KEY = 'ships_shear_850to500mb_eastward_m_s01'
+SHEAR_850TO500MB_V_KEY = 'ships_shear_850to500mb_northward_m_s01'
+SHEAR_850TO200MB_GENERALIZED_KEY = 'ships_shear_850to200mb_gnrl_m_s01'
+SURFACE_PRESSURE_OUTER_RING_KEY = 'ships_sfc_pressure_200to800km_pascals'
+MAX_PTTL_INTENSITY_KEY = 'ships_max_pttl_intensity_m_s01'
+W_WIND_0TO15KM_KEY = 'ships_w_wind_0to15km_agl_m_s01'
+W_WIND_0TO15KM_WEIGHTED_KEY = 'ships_w_wind_0to15km_agl_density_weighted_m_s01'
+W_WIND_0TO15KM_INNER_RING_KEY = (
+    'ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01'
+)
+SRH_1000TO700MB_OUTER_RING_KEY = 'ships_srh_1000to700mb_200to800km_j_kg01'
+SRH_1000TO500MB_OUTER_RING_KEY = 'ships_srh_1000to500mb_200to800km_j_kg01'
+W_WIND_500MB_BIG_RING_KEY = 'ships_w_wind_500mb_0to1000km_pa_s01'
+W_WIND_700MB_BIG_RING_KEY = 'ships_w_wind_700mb_0to1000km_pa_s01'
+DRY_AIR_PREDICTOR_KEY = 'ships_dry_air_predictor'
+PRECIP_WATER_0TO200KM_KEY = 'ships_precipitable_water_0to200km_mm'
+PRECIP_WATER_0TO200KM_STDEV_KEY = 'ships_precipitable_water_stdev_0to200km_mm'
+PRECIP_WATER_200TO400KM_KEY = 'ships_precipitable_water_200to400km_mm'
+PRECIP_WATER_200TO400KM_STDEV_KEY = (
+    'ships_precipitable_water_stdev_200to400km_mm'
+)
+PRECIP_WATER_400TO600KM_KEY = 'ships_precipitable_water_400to600km_mm'
+PRECIP_WATER_400TO600KM_STDEV_KEY = (
+    'ships_precipitable_water_stdev_400to600km_mm'
+)
+PRECIP_WATER_600TO800KM_KEY = 'ships_precipitable_water_600to800km_mm'
+PRECIP_WATER_600TO800KM_STDEV_KEY = (
+    'ships_precipitable_water_stdev_600to800km_mm'
+)
+PRECIP_WATER_800TO1000KM_KEY = 'ships_precipitable_water_800to1000km_mm'
+PRECIP_WATER_800TO1000KM_STDEV_KEY = (
+    'ships_precipitable_water_stdev_800to1000km_mm'
+)
+PRECIP_WATER_0TO400KM_KEY = 'ships_precipitable_water_0to400km_mm'
+PRECIP_WATER_0TO400KM_STDEV_KEY = 'ships_precipitable_water_stdev_0to400km_mm'
+PRECIP_WATER_0TO600KM_KEY = 'ships_precipitable_water_0to600km_mm'
+PRECIP_WATER_0TO600KM_STDEV_KEY = 'ships_precipitable_water_stdev_0to600km_mm'
+PRECIP_WATER_0TO800KM_KEY = 'ships_precipitable_water_0to800km_mm'
+PRECIP_WATER_0TO800KM_STDEV_KEY = 'ships_precipitable_water_stdev_0to800km_mm'
+PRECIP_WATER_0TO1000KM_KEY = 'ships_precipitable_water_0to1000km_mm'
+PRECIP_WATER_0TO1000KM_STDEV_KEY = 'ships_precipitable_water_stdev_0to1000km_mm'
 PW_INNER_UPSHEAR_FRACTION_UNDER45MM_KEY = (
-    'pw_fraction_under_45mm_0to500km_upshear_quadrant'
+    'ships_pw_fraction_under_45mm_0to500km_upshear_quadrant'
 )
 PRECIP_WATER_INNER_RING_UPSHEAR_KEY = (
-    'precipitable_water_0to500km_upshear_quad_mm'
+    'ships_precipitable_water_0to500km_upshear_quad_mm'
 )
-PRECIP_WATER_INNER_RING_KEY = 'precipitable_water_0to500km_mm'
-REYNOLDS_SST_DAILY_CLIMO_KEY = 'reynolds_sst_daily_climo_kelvins'
-NCODA_SST_CLIMO_KEY = 'sst_ncoda_climo_kelvins'
-NCODA_OHC_26C_CLIMO_KEY = 'ohc_ncoda_26c_isotherm_climo_j_kg01'
-NCODA_BOTTOM_CLIMO_KEY = 'depth_ncoda_bottom_climo_metres'
-NCODA_MAX_TEMP_CLIMO_KEY = 'ocean_temp_column_max_ncoda_climo_kelvins'
-DEPTH_MAX_TEMP_CLIMO_KEY = 'depth_max_temp_climo_metres'
-MIXED_LAYER_DEPTH_CLIMO_KEY = 'ocean_mixed_layer_depth_climo_metres'
-DEPTH_30C_CLIMO_KEY = 'depth_30c_isotherm_climo_metres'
-DEPTH_28C_CLIMO_KEY = 'depth_28c_isotherm_climo_metres'
-DEPTH_26C_CLIMO_KEY = 'depth_26c_isotherm_climo_metres'
-DEPTH_24C_CLIMO_KEY = 'depth_24c_isotherm_climo_metres'
-DEPTH_22C_CLIMO_KEY = 'depth_22c_isotherm_climo_metres'
-DEPTH_20C_CLIMO_KEY = 'depth_20c_isotherm_climo_metres'
-DEPTH_18C_CLIMO_KEY = 'depth_18c_isotherm_climo_metres'
-DEPTH_16C_CLIMO_KEY = 'depth_16c_isotherm_climo_metres'
-NCODA_BOTTOM_TEMP_CLIMO_KEY = 'ocean_temp_ncoda_bottom_climo_kelvins'
-NCODA_OHC_20C_CLIMO_KEY = 'ohc_ncoda_20c_isotherm_climo_j_kg01'
-NCODA_SST_KEY = 'sst_ncoda_kelvins'
-NCODA_SST_AREAL_KEY = 'sst_ncoda_daily_50km_diamond_kelvins'
-NCODA_MAX_TEMP_KEY = 'ocean_temp_column_max_ncoda_kelvins'
-DEPTH_MAX_TEMP_KEY = 'depth_max_temp_metres'
-MIXED_LAYER_DEPTH_KEY = 'ocean_mixed_layer_depth_metres'
-DEPTH_30C_KEY = 'depth_30c_isotherm_metres'
-DEPTH_28C_KEY = 'depth_28c_isotherm_metres'
-DEPTH_26C_KEY = 'depth_26c_isotherm_metres'
-DEPTH_24C_KEY = 'depth_24c_isotherm_metres'
-DEPTH_22C_KEY = 'depth_22c_isotherm_metres'
-DEPTH_20C_KEY = 'depth_20c_isotherm_metres'
-DEPTH_18C_KEY = 'depth_18c_isotherm_metres'
-DEPTH_16C_KEY = 'depth_16c_isotherm_metres'
-NCODA_BOTTOM_KEY = 'depth_ncoda_bottom_metres'
-NCODA_BOTTOM_TEMP_KEY = 'ocean_temp_ncoda_bottom_kelvins'
-NCODA_OHC_26C_KEY = 'ohc_ncoda_26c_isotherm_j_kg01'
-NCODA_OHC_20C_KEY = 'ohc_ncoda_20c_isotherm_j_kg01'
-SATELLITE_OHC_KEY = 'ohc_satellite_j_m02'
-DEPTH_20C_SATELLITE_KEY = 'depth_20c_isotherm_satellite_metres'
-DEPTH_26C_SATELLITE_KEY = 'depth_26c_isotherm_satellite_metres'
-OHC_FROM_SST_AND_CLIMO_KEY = 'ohc_climo_and_sst_j_m02'
+PRECIP_WATER_INNER_RING_KEY = 'ships_precipitable_water_0to500km_mm'
+REYNOLDS_SST_DAILY_CLIMO_KEY = 'ships_reynolds_sst_daily_climo_kelvins'
+NCODA_SST_CLIMO_KEY = 'ships_sst_ncoda_climo_kelvins'
+NCODA_OHC_26C_CLIMO_KEY = 'ships_ohc_ncoda_26c_isotherm_climo_j_kg01'
+NCODA_BOTTOM_CLIMO_KEY = 'ships_depth_ncoda_bottom_climo_metres'
+NCODA_MAX_TEMP_CLIMO_KEY = 'ships_ocean_temp_column_max_ncoda_climo_kelvins'
+DEPTH_MAX_TEMP_CLIMO_KEY = 'ships_depth_max_temp_climo_metres'
+MIXED_LAYER_DEPTH_CLIMO_KEY = 'ships_ocean_mixed_layer_depth_climo_metres'
+DEPTH_30C_CLIMO_KEY = 'ships_depth_30c_isotherm_climo_metres'
+DEPTH_28C_CLIMO_KEY = 'ships_depth_28c_isotherm_climo_metres'
+DEPTH_26C_CLIMO_KEY = 'ships_depth_26c_isotherm_climo_metres'
+DEPTH_24C_CLIMO_KEY = 'ships_depth_24c_isotherm_climo_metres'
+DEPTH_22C_CLIMO_KEY = 'ships_depth_22c_isotherm_climo_metres'
+DEPTH_20C_CLIMO_KEY = 'ships_depth_20c_isotherm_climo_metres'
+DEPTH_18C_CLIMO_KEY = 'ships_depth_18c_isotherm_climo_metres'
+DEPTH_16C_CLIMO_KEY = 'ships_depth_16c_isotherm_climo_metres'
+NCODA_BOTTOM_TEMP_CLIMO_KEY = 'ships_ocean_temp_ncoda_bottom_climo_kelvins'
+NCODA_OHC_20C_CLIMO_KEY = 'ships_ohc_ncoda_20c_isotherm_climo_j_kg01'
+NCODA_SST_KEY = 'ships_sst_ncoda_kelvins'
+NCODA_SST_AREAL_KEY = 'ships_sst_ncoda_daily_50km_diamond_kelvins'
+NCODA_MAX_TEMP_KEY = 'ships_ocean_temp_column_max_ncoda_kelvins'
+DEPTH_MAX_TEMP_KEY = 'ships_depth_max_temp_metres'
+MIXED_LAYER_DEPTH_KEY = 'ships_ocean_mixed_layer_depth_metres'
+DEPTH_30C_KEY = 'ships_depth_30c_isotherm_metres'
+DEPTH_28C_KEY = 'ships_depth_28c_isotherm_metres'
+DEPTH_26C_KEY = 'ships_depth_26c_isotherm_metres'
+DEPTH_24C_KEY = 'ships_depth_24c_isotherm_metres'
+DEPTH_22C_KEY = 'ships_depth_22c_isotherm_metres'
+DEPTH_20C_KEY = 'ships_depth_20c_isotherm_metres'
+DEPTH_18C_KEY = 'ships_depth_18c_isotherm_metres'
+DEPTH_16C_KEY = 'ships_depth_16c_isotherm_metres'
+NCODA_BOTTOM_KEY = 'ships_depth_ncoda_bottom_metres'
+NCODA_BOTTOM_TEMP_KEY = 'ships_ocean_temp_ncoda_bottom_kelvins'
+NCODA_OHC_26C_KEY = 'ships_ohc_ncoda_26c_isotherm_j_kg01'
+NCODA_OHC_20C_KEY = 'ships_ohc_ncoda_20c_isotherm_j_kg01'
+SATELLITE_OHC_KEY = 'ships_ohc_satellite_j_m02'
+DEPTH_20C_SATELLITE_KEY = 'ships_depth_20c_isotherm_satellite_metres'
+DEPTH_26C_SATELLITE_KEY = 'ships_depth_26c_isotherm_satellite_metres'
+OHC_FROM_SST_AND_CLIMO_KEY = 'ships_ohc_climo_and_sst_j_m02'
 
 FORECAST_FIELD_NAMES = [
     THRESHOLD_EXCEEDANCE_KEY,
@@ -322,35 +353,37 @@ FORECAST_FIELD_NAMES = [
     OHC_FROM_SST_AND_CLIMO_KEY
 ]
 
-SATELLITE_LAG_TIME_KEY = 'goes_time_lag_seconds'
-SATELLITE_TEMP_0TO200KM_KEY = 'goes_ch4_temp_0to200km_kelvins'
-SATELLITE_TEMP_0TO200KM_STDEV_KEY = 'goes_ch4_temp_stdev_0to200km_kelvins'
-SATELLITE_TEMP_100TO300KM_KEY = 'goes_ch4_temp_100to300km_kelvins'
-SATELLITE_TEMP_100TO300KM_STDEV_KEY = 'goes_ch4_temp_stdev_100to300km_kelvins'
+SATELLITE_LAG_TIME_KEY = 'ships_goes_time_lag_seconds'
+SATELLITE_TEMP_0TO200KM_KEY = 'ships_goes_ch4_temp_0to200km_kelvins'
+SATELLITE_TEMP_0TO200KM_STDEV_KEY = 'ships_goes_ch4_temp_stdev_0to200km_kelvins'
+SATELLITE_TEMP_100TO300KM_KEY = 'ships_goes_ch4_temp_100to300km_kelvins'
+SATELLITE_TEMP_100TO300KM_STDEV_KEY = (
+    'ships_goes_ch4_temp_stdev_100to300km_kelvins'
+)
 SATELLITE_TEMP_FRACTION_BELOW_M10C_KEY = (
-    'goes_ch4_fraction_temp_below_m10c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m10c_50to200km'
 )
 SATELLITE_TEMP_FRACTION_BELOW_M20C_KEY = (
-    'goes_ch4_fraction_temp_below_m20c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m20c_50to200km'
 )
 SATELLITE_TEMP_FRACTION_BELOW_M30C_KEY = (
-    'goes_ch4_fraction_temp_below_m30c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m30c_50to200km'
 )
 SATELLITE_TEMP_FRACTION_BELOW_M40C_KEY = (
-    'goes_ch4_fraction_temp_below_m40c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m40c_50to200km'
 )
 SATELLITE_TEMP_FRACTION_BELOW_M50C_KEY = (
-    'goes_ch4_fraction_temp_below_m50c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m50c_50to200km'
 )
 SATELLITE_TEMP_FRACTION_BELOW_M60C_KEY = (
-    'goes_ch4_fraction_temp_below_m60c_50to200km'
+    'ships_goes_ch4_fraction_temp_below_m60c_50to200km'
 )
-SATELLITE_MAX_TEMP_0TO30KM_KEY = 'goes_ch4_max_temp_0to30km_kelvins'
-SATELLITE_MEAN_TEMP_0TO30KM_KEY = 'goes_ch4_mean_temp_0to30km_kelvins'
-SATELLITE_MAX_TEMP_RADIUS_KEY = 'goes_ch4_max_temp_radius_metres'
-SATELLITE_MIN_TEMP_20TO120KM_KEY = 'goes_ch4_min_temp_20to120km_kelvins'
-SATELLITE_MEAN_TEMP_20TO120KM_KEY = 'goes_ch4_mean_temp_20to120km_kelvins'
-SATELLITE_MIN_TEMP_RADIUS_KEY = 'goes_ch4_min_temp_radius_metres'
+SATELLITE_MAX_TEMP_0TO30KM_KEY = 'ships_goes_ch4_max_temp_0to30km_kelvins'
+SATELLITE_MEAN_TEMP_0TO30KM_KEY = 'ships_goes_ch4_mean_temp_0to30km_kelvins'
+SATELLITE_MAX_TEMP_RADIUS_KEY = 'ships_goes_ch4_max_temp_radius_metres'
+SATELLITE_MIN_TEMP_20TO120KM_KEY = 'ships_goes_ch4_min_temp_20to120km_kelvins'
+SATELLITE_MEAN_TEMP_20TO120KM_KEY = 'ships_goes_ch4_mean_temp_20to120km_kelvins'
+SATELLITE_MIN_TEMP_RADIUS_KEY = 'ships_goes_ch4_min_temp_radius_metres'
 
 SATELLITE_FIELD_NAMES = [
     SATELLITE_LAG_TIME_KEY,
@@ -372,13 +405,13 @@ SATELLITE_FIELD_NAMES = [
     SATELLITE_MIN_TEMP_RADIUS_KEY
 ]
 
-STEERING_LEVEL_PRESSURE_KEY = 'steering_level_pressure_pa'
-U_MOTION_KEY = 'u_motion_observed_m_s01'
-V_MOTION_KEY = 'v_motion_observed_m_s01'
-U_MOTION_1000TO100MB_KEY = 'u_motion_1000to100mb_flow_m_s01'
-V_MOTION_1000TO100MB_KEY = 'v_motion_1000to100mb_flow_m_s01'
-U_MOTION_OPTIMAL_KEY = 'u_motion_optimal_flow_m_s01'
-V_MOTION_OPTIMAL_KEY = 'v_motion_optimal_flow_m_s01'
+STEERING_LEVEL_PRESSURE_KEY = 'ships_steering_level_pressure_pa'
+U_MOTION_KEY = 'ships_u_motion_observed_m_s01'
+V_MOTION_KEY = 'ships_v_motion_observed_m_s01'
+U_MOTION_1000TO100MB_KEY = 'ships_u_motion_1000to100mb_flow_m_s01'
+V_MOTION_1000TO100MB_KEY = 'ships_v_motion_1000to100mb_flow_m_s01'
+U_MOTION_OPTIMAL_KEY = 'ships_u_motion_optimal_flow_m_s01'
+V_MOTION_OPTIMAL_KEY = 'ships_v_motion_optimal_flow_m_s01'
 
 MOTION_FIELD_NAMES_PROCESSED = [
     STEERING_LEVEL_PRESSURE_KEY,
