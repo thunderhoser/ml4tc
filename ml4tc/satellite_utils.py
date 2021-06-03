@@ -2,6 +2,7 @@
 
 import os
 import sys
+import warnings
 import numpy
 import xarray
 
@@ -130,22 +131,43 @@ def concat_tables_over_time(satellite_tables_xarray):
         `satellite_io.read_file`, created by concatenating inputs.
     """
 
-    for this_table_xarray in satellite_tables_xarray[1:]:
-        if not numpy.array_equal(
-                satellite_tables_xarray[0].coords[GRID_ROW_DIM].values,
-                this_table_xarray.coords[GRID_ROW_DIM].values
-        ):
-            print(satellite_tables_xarray[0].coords[GRID_ROW_DIM].values)
-            print('\n\n')
-            print(this_table_xarray.coords[GRID_ROW_DIM].values)
+    num_rows_by_table = numpy.array([
+        len(t.coords[GRID_ROW_DIM].values) for t in satellite_tables_xarray
+    ], dtype=int)
 
+    num_columns_by_table = numpy.array([
+        len(t.coords[GRID_COLUMN_DIM].values) for t in satellite_tables_xarray
+    ], dtype=int)
+
+    good_flags = numpy.logical_and(
+        num_rows_by_table == numpy.max(num_rows_by_table),
+        num_columns_by_table == numpy.max(num_columns_by_table)
+    )
+    bad_indices = numpy.where(numpy.invert(good_flags))[0]
+
+    for i in bad_indices:
+        warning_string = (
+            'Table {0:d} of {1:d} has {2:d} grid rows and {3:d} grid columns '
+            '(expected {4:d} rows and {5:d} columns).  This is weird.'
+        ).format(
+            i + 1, len(satellite_tables_xarray),
+            num_rows_by_table[i], num_columns_by_table[i],
+            numpy.max(num_rows_by_table), numpy.max(num_columns_by_table)
+        )
+
+        warnings.warn(warning_string)
+
+    good_indices = numpy.where(good_flags)[0]
+    tables_to_concat = [satellite_tables_xarray[k] for k in good_indices]
+
+    for this_table_xarray in tables_to_concat[1:]:
         assert numpy.array_equal(
-            satellite_tables_xarray[0].coords[GRID_ROW_DIM].values,
+            tables_to_concat[0].coords[GRID_ROW_DIM].values,
             this_table_xarray.coords[GRID_ROW_DIM].values
         )
         assert numpy.array_equal(
-            satellite_tables_xarray[0].coords[GRID_COLUMN_DIM].values,
+            tables_to_concat[0].coords[GRID_COLUMN_DIM].values,
             this_table_xarray.coords[GRID_COLUMN_DIM].values
         )
 
-    return xarray.concat(objs=satellite_tables_xarray, dim=TIME_DIM)
+    return xarray.concat(objs=tables_to_concat, dim=TIME_DIM)
