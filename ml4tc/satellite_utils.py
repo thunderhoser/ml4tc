@@ -131,6 +131,14 @@ def concat_tables_over_time(satellite_tables_xarray):
     """
 
     for this_table_xarray in satellite_tables_xarray[1:]:
+        if not numpy.array_equal(
+                satellite_tables_xarray[0].coords[GRID_ROW_DIM].values,
+                this_table_xarray.coords[GRID_ROW_DIM].values
+        ):
+            print(satellite_tables_xarray[0].coords[GRID_ROW_DIM].values)
+            print('\n\n')
+            print(this_table_xarray.coords[GRID_ROW_DIM].values)
+
         assert numpy.array_equal(
             satellite_tables_xarray[0].coords[GRID_ROW_DIM].values,
             this_table_xarray.coords[GRID_ROW_DIM].values
