@@ -23,15 +23,17 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/raw"
-set OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed"
+set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed"
 
 set INPUT_FILE_NAMES=("${INPUT_DIR_NAME}/lsdiaga_1982_2019_sat_ts_7_day.dat" "${INPUT_DIR_NAME}/lsdiagc_1982_2019_sat_ts_7_day.dat" "${INPUT_DIR_NAME}/lsdiage_1982_2019_sat_ts_7_day.dat" "${INPUT_DIR_NAME}/lsdiagi_1990_2019.dat" "${INPUT_DIR_NAME}/lsdiagw_1990_2019.dat" "${INPUT_DIR_NAME}/lsdiaga_1982_2019_sat_ts.dat" "${INPUT_DIR_NAME}/lsdiagc_1982_2019_sat_ts.dat" "${INPUT_DIR_NAME}/lsdiage_1982_2019_sat_ts.dat" "${INPUT_DIR_NAME}/lsdiags_1998_2019.dat")
 set SEVEN_DAY_FLAGS=(1 1 1 0 0 0 0 0 0)
+set OUTPUT_DIR_NAMES=("${TOP_OUTPUT_DIR_NAME}/7day" "${TOP_OUTPUT_DIR_NAME}/7day" "${TOP_OUTPUT_DIR_NAME}/7day" "${TOP_OUTPUT_DIR_NAME}/5day" "${TOP_OUTPUT_DIR_NAME}/5day" "${TOP_OUTPUT_DIR_NAME}/5day" "${TOP_OUTPUT_DIR_NAME}/5day" "${TOP_OUTPUT_DIR_NAME}/5day" "${TOP_OUTPUT_DIR_NAME}/5day")
 
 set input_file_name=${INPUT_FILE_NAMES[$SLURM_ARRAY_TASK_ID]}
 set seven_day_flag=${SEVEN_DAY_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set output_dir_name=${OUTPUT_DIR_NAMES[$SLURM_ARRAY_TASK_ID]}
 
 python3 -u "${CODE_DIR_NAME}/process_ships_data.py" \
 --input_file_name="${input_file_name}" \
 --seven_day=${seven_day_flag} \
---output_dir_name="${OUTPUT_DIR_NAME}"
+--output_dir_name="${output_dir_name}"
