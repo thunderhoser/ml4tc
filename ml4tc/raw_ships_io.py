@@ -13,6 +13,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import longitude_conversion as lng_conversion
 import time_conversion
 import error_checking
 import ships_io
@@ -27,6 +28,16 @@ MB_TO_PASCALS = 100.
 HOURS_TO_SECONDS = 3600.
 DAYS_TO_SECONDS = 86400.
 KM_TO_METRES = 1000.
+
+BASIN_ID_TO_LNG_MULTIPLIER = {
+    satellite_utils.NORTH_ATLANTIC_ID_STRING: -1.,
+    satellite_utils.SOUTH_ATLANTIC_ID_STRING: -1.,
+    satellite_utils.NORTHEAST_PACIFIC_ID_STRING: -1.,
+    satellite_utils.NORTH_CENTRAL_PACIFIC_ID_STRING: -1.,
+    satellite_utils.NORTHWEST_PACIFIC_ID_STRING: 1.,
+    satellite_utils.NORTH_INDIAN_ID_STRING: 1.,
+    satellite_utils.SOUTHERN_HEMISPHERE_ID_STRING: 1.
+}
 
 FORECAST_FIELD_NAMES_RAW = [
     'VMAX', 'MSLP', 'TYPE', 'DELV', 'INCV', 'LAT', 'LON', 'CSST', 'CD20',
@@ -401,9 +412,9 @@ FORECAST_FIELD_TO_CONV_FUNCTION = {
 SATELLITE_FIELD_CONV_FUNCTIONS = [
     _get_multiply_function(60.),
     _decicelsius_to_kelvins,
-    _get_multiply_function(1.),
+    _get_multiply_function(0.1),
     _decicelsius_to_kelvins,
-    _get_multiply_function(1.),
+    _get_multiply_function(0.1),
     _get_multiply_function(0.01),
     _get_multiply_function(0.01),
     _get_multiply_function(0.01),
@@ -833,6 +844,39 @@ def read_file(ascii_file_name, seven_day):
 
     ships_table_xarray = xarray.Dataset(
         data_vars=main_data_dict, coords=metadata_dict
+    )
+
+    basin_id_strings = [
+        satellite_utils.parse_cyclone_id(c)[1] for c in cyclone_id_strings
+    ]
+    multipliers = numpy.array([
+        BASIN_ID_TO_LNG_MULTIPLIER[b] for b in basin_id_strings
+    ])
+    ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values = (
+        lng_conversion.convert_lng_positive_in_west(
+            multipliers *
+            ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values,
+            allow_nan=True
+        )
+    )
+
+    multiplier_matrix = numpy.expand_dims(multipliers, axis=-1)
+    multiplier_matrix = numpy.repeat(
+        multiplier_matrix, repeats=num_forecast_hours, axis=1
+    )
+    ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values = (
+        lng_conversion.convert_lng_positive_in_west(
+            multiplier_matrix *
+            ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values,
+            allow_nan=True
+        )
+    )
+    ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values = (
+        lng_conversion.convert_lng_positive_in_west(
+            multiplier_matrix *
+            ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values,
+            allow_nan=True
+        )
     )
 
     return ships_table_xarray
