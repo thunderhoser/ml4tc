@@ -67,9 +67,14 @@ def _run(top_input_dir_name, year, output_dir_name):
 
         for this_input_file_name in input_file_names:
             print('Reading data from: "{0:s}"...'.format(this_input_file_name))
-            satellite_tables_xarray.append(
-                cira_satellite_io.read_file(this_input_file_name)
+            this_table_xarray = cira_satellite_io.read_file(
+                netcdf_file_name=this_input_file_name, raise_error_if_fail=False
             )
+
+            if this_table_xarray is None:
+                continue
+
+            satellite_tables_xarray.append(this_table_xarray)
 
         satellite_table_xarray = satellite_utils.concat_tables_over_time(
             satellite_tables_xarray

@@ -2,6 +2,7 @@
 
 import os
 import glob
+import warnings
 import numpy
 import xarray
 from gewittergefahr.gg_utils import time_conversion
@@ -21,6 +22,7 @@ HOUR_REGEX = '[0-2][0-9]'
 MINUTE_REGEX = '[0-5][0-9]'
 
 TOLERANCE = 1e-6
+DEGREES_TO_RADIANS = numpy.pi / 180
 KM_TO_METRES = 1000.
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
@@ -51,6 +53,18 @@ SOLAR_ZENITH_ANGLE_KEY = 'solar_zenith_angle'
 SOLAR_ELEVATION_ANGLE_KEY = 'solar_elevation_angle'
 SOLAR_HOUR_ANGLE_KEY = 'solar_hour_angle'
 BRIGHTNESS_TEMPERATURE_KEY = 'brightness_temperature'
+
+EXPECTED_KEYS = [
+    SATELLITE_NUMBER_KEY, BAND_NUMBER_KEY, BAND_WAVELENGTH_KEY,
+    SATELLITE_LONGITUDE_KEY, STORM_ID_KEY, STORM_TYPE_KEY,
+    STORM_NAME_KEY, STORM_LATITUDE_KEY, STORM_LONGITUDE_KEY,
+    STORM_INTENSITY_KEY, STORM_INTENSITY_NUM_KEY, STORM_SPEED_KEY,
+    STORM_HEADING_KEY, STORM_DISTANCE_TO_LAND_KEY, STORM_RADIUS_KEY,
+    STORM_RADIUS_FRACTIONAL_KEY, SATELLITE_AZIMUTH_ANGLE_KEY,
+    SATELLITE_ZENITH_ANGLE_KEY,
+    SOLAR_AZIMUTH_ANGLE_KEY, SOLAR_ZENITH_ANGLE_KEY, SOLAR_ELEVATION_ANGLE_KEY,
+    SOLAR_HOUR_ANGLE_KEY, BRIGHTNESS_TEMPERATURE_KEY
+]
 
 
 def _singleton_to_array(input_var):
@@ -205,15 +219,51 @@ def file_name_to_cyclone_id(satellite_file_name):
     return cyclone_id_string
 
 
-def read_file(netcdf_file_name):
+def read_file(netcdf_file_name, raise_error_if_fail=True):
     """Reads satellite data from NetCDF file.
 
     :param netcdf_file_name: Path to input file.
+    :param raise_error_if_fail: Boolean flag.  If True, will raise error if the
+        file cannot be read.
     :return: satellite_table_xarray: xarray table.  Documentation in the xarray
-        table should make values self-explanatory.
+        table should make values self-explanatory.  If the file cannot be read
+        and `raise_error_if_fail == False`, this will be None.
+    :raises: ValueError: if any key is missing and
+        `raise_error_if_fail == True`.
     """
 
-    orig_table_xarray = xarray.open_dataset(netcdf_file_name)
+    error_checking.assert_is_boolean(raise_error_if_fail)
+
+    try:
+        orig_table_xarray = xarray.open_dataset(netcdf_file_name)
+    except OSError:
+        if raise_error_if_fail:
+            raise
+
+        warning_string = 'POTENTIAL ERROR: cannot read file: {0:s}'.format(
+            netcdf_file_name
+        )
+        warnings.warn(warning_string)
+        return None
+
+    found_key_flags = numpy.array(
+        [k in orig_table_xarray for k in EXPECTED_KEYS], dtype=bool
+    )
+
+    if not numpy.all(found_key_flags):
+        error_string = (
+            'Cannot find the following keys in file "{0:s}":\n{1:s}'
+        ).format(
+            netcdf_file_name,
+            str(EXPECTED_KEYS[found_key_flags == False])
+        )
+
+        if raise_error_if_fail:
+            raise ValueError(error_string)
+
+        warning_string = 'POTENTIAL ERROR: {0:s}'.format(error_string)
+        warnings.warn(warning_string)
+        return None
 
     valid_times_unix_sec = numpy.array([
         time_conversion.string_to_unix_sec(
@@ -323,6 +373,24 @@ def read_file(netcdf_file_name):
         _singleton_to_array(orig_table_xarray[STORM_HEADING_KEY].values)
     )
 
+    solar_hour_angles_rad = DEGREES_TO_RADIANS * _singleton_to_array(
+        orig_table_xarray[SOLAR_HOUR_ANGLE_KEY].values
+    )
+    solar_hour_angles_sin = numpy.sin(solar_hour_angles_rad)
+    solar_hour_angles_cos = numpy.cos(solar_hour_angles_rad)
+
+    solar_azimuth_angles_rad = DEGREES_TO_RADIANS * _singleton_to_array(
+        orig_table_xarray[SOLAR_AZIMUTH_ANGLE_KEY].values
+    )
+    solar_azimuth_angles_sin = numpy.sin(solar_azimuth_angles_rad)
+    solar_azimuth_angles_cos = numpy.cos(solar_azimuth_angles_rad)
+
+    satellite_azimuth_angles_rad = DEGREES_TO_RADIANS * _singleton_to_array(
+        orig_table_xarray[SATELLITE_AZIMUTH_ANGLE_KEY].values
+    )
+    satellite_azimuth_angles_sin = numpy.sin(satellite_azimuth_angles_rad)
+    satellite_azimuth_angles_cos = numpy.cos(satellite_azimuth_angles_rad)
+
     main_data_dict = {
         satellite_utils.SATELLITE_NUMBER_KEY: (these_dim, satellite_numbers),
         satellite_utils.BAND_NUMBER_KEY: (these_dim, band_numbers),
@@ -376,11 +444,11 @@ def read_file(netcdf_file_name):
                 orig_table_xarray[STORM_RADIUS_FRACTIONAL_KEY].values
             )
         ),
-        satellite_utils.SATELLITE_AZIMUTH_ANGLE_KEY: (
-            these_dim,
-            _singleton_to_array(
-                orig_table_xarray[SATELLITE_AZIMUTH_ANGLE_KEY].values
-            )
+        satellite_utils.SATELLITE_AZIMUTH_ANGLE_SIN_KEY: (
+            these_dim, satellite_azimuth_angles_sin
+        ),
+        satellite_utils.SATELLITE_AZIMUTH_ANGLE_COS_KEY: (
+            these_dim, satellite_azimuth_angles_cos
         ),
         satellite_utils.SATELLITE_ZENITH_ANGLE_KEY: (
             these_dim,
@@ -388,11 +456,11 @@ def read_file(netcdf_file_name):
                 orig_table_xarray[SATELLITE_ZENITH_ANGLE_KEY].values
             )
         ),
-        satellite_utils.SOLAR_AZIMUTH_ANGLE_KEY: (
-            these_dim,
-            _singleton_to_array(
-                orig_table_xarray[SOLAR_AZIMUTH_ANGLE_KEY].values
-            )
+        satellite_utils.SOLAR_AZIMUTH_ANGLE_SIN_KEY: (
+            these_dim, solar_azimuth_angles_sin
+        ),
+        satellite_utils.SOLAR_AZIMUTH_ANGLE_COS_KEY: (
+            these_dim, solar_azimuth_angles_cos
         ),
         satellite_utils.SOLAR_ZENITH_ANGLE_KEY: (
             these_dim,
@@ -406,11 +474,11 @@ def read_file(netcdf_file_name):
                 orig_table_xarray[SOLAR_ELEVATION_ANGLE_KEY].values
             )
         ),
-        satellite_utils.SOLAR_HOUR_ANGLE_KEY: (
-            these_dim,
-            _singleton_to_array(
-                orig_table_xarray[SOLAR_HOUR_ANGLE_KEY].values
-            )
+        satellite_utils.SOLAR_HOUR_ANGLE_SIN_KEY: (
+            these_dim, solar_hour_angles_sin
+        ),
+        satellite_utils.SOLAR_HOUR_ANGLE_COS_KEY: (
+            these_dim, solar_hour_angles_cos
         ),
         satellite_utils.BRIGHTNESS_TEMPERATURE_KEY: (
             these_dim_3d,
