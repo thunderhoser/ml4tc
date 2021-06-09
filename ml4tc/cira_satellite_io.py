@@ -258,12 +258,12 @@ def read_file(netcdf_file_name, raise_error_if_fail=True):
     )
 
     if not numpy.all(found_key_flags):
+        bad_indices = numpy.where(numpy.invert(found_key_flags))[0]
+        bad_keys = [EXPECTED_KEYS[k] for k in bad_indices]
+
         error_string = (
             'Cannot find the following keys in file "{0:s}":\n{1:s}'
-        ).format(
-            netcdf_file_name,
-            str(numpy.array(EXPECTED_KEYS)[found_key_flags == False])
-        )
+        ).format(netcdf_file_name, str(bad_keys))
 
         if raise_error_if_fail:
             raise ValueError(error_string)
