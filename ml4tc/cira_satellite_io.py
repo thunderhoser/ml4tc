@@ -262,7 +262,7 @@ def read_file(netcdf_file_name, raise_error_if_fail=True):
             'Cannot find the following keys in file "{0:s}":\n{1:s}'
         ).format(
             netcdf_file_name,
-            str(EXPECTED_KEYS[found_key_flags == False])
+            str(numpy.array(EXPECTED_KEYS)[found_key_flags == False])
         )
 
         if raise_error_if_fail:
