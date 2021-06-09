@@ -33,6 +33,7 @@ INPUT_DIR_ARG_NAME = 'input_dir_name'
 FIRST_YEAR_ARG_NAME = 'first_year'
 LAST_YEAR_ARG_NAME = 'last_year'
 VARIABLE_ARG_NAME = 'variable_name'
+NUM_PIXELS_PER_TIME_ARG_NAME = 'num_pixels_per_time'
 NUM_BINS_ARG_NAME = 'num_bins'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
@@ -47,6 +48,10 @@ YEAR_HELP_STRING = (
 VARIABLE_HELP_STRING = (
     'Name of satellite variable for which to plot histogram.  This must be the '
     'name used in the files.'
+)
+NUM_PIXELS_PER_TIME_HELP_STRING = (
+    '[used only if variable is brightness temperature] Number of pixels to '
+    'randomly sample at each time step.'
 )
 NUM_BINS_HELP_STRING = 'Number of bins in histogram.'
 OUTPUT_FILE_HELP_STRING = (
@@ -69,6 +74,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + VARIABLE_ARG_NAME, type=str, required=True,
     help=VARIABLE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + NUM_PIXELS_PER_TIME_ARG_NAME, type=int, required=False, default=10,
+    help=NUM_PIXELS_PER_TIME_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + NUM_BINS_ARG_NAME, type=int, required=False, default=100,
@@ -128,8 +137,8 @@ def _get_histogram(input_values, num_bins):
     return lower_bin_edges, upper_bin_edges, frequencies
 
 
-def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
-         output_file_name):
+def _run(input_dir_name, first_year, last_year, variable_name,
+         num_pixels_per_time, num_bins, output_file_name):
     """Plots histogram for one satellite variable.
 
     This is effectively the main method.
@@ -138,9 +147,16 @@ def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
     :param first_year: Same.
     :param last_year: Same.
     :param variable_name: Same.
+    :param num_pixels_per_time: Same.
     :param num_bins: Same.
     :param output_file_name: Same.
     """
+
+    if variable_name == satellite_utils.BRIGHTNESS_TEMPERATURE_KEY:
+        error_checking.assert_is_greater(num_pixels_per_time, 0)
+        error_checking.assert_is_leq(num_pixels_per_time, 100)
+    else:
+        num_pixels_per_time = None
 
     error_checking.assert_is_geq(last_year, first_year)
 
@@ -169,10 +185,22 @@ def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
 
         print('Reading data from: "{0:s}"...'.format(satellite_file_name))
         satellite_table_xarray = satellite_io.read_file(satellite_file_name)
-        raw_values = numpy.concatenate((
-            raw_values,
-            numpy.ravel(satellite_table_xarray[variable_name].values)
-        ))
+
+        if variable_name == satellite_utils.BRIGHTNESS_TEMPERATURE_KEY:
+            brightness_temp_matrix_kelvins = (
+                satellite_table_xarray[variable_name].values
+            )
+            num_times = brightness_temp_matrix_kelvins.shape[0]
+            new_raw_values = numpy.random.choice(
+                numpy.ravel(brightness_temp_matrix_kelvins),
+                size=num_pixels_per_time * num_times, replace=False
+            )
+        else:
+            new_raw_values = numpy.ravel(
+                satellite_table_xarray[variable_name].values
+            )
+
+        raw_values = numpy.concatenate((raw_values, new_raw_values))
 
     print(SEPARATOR_STRING)
 
@@ -236,6 +264,9 @@ if __name__ == '__main__':
         first_year=getattr(INPUT_ARG_OBJECT, FIRST_YEAR_ARG_NAME),
         last_year=getattr(INPUT_ARG_OBJECT, LAST_YEAR_ARG_NAME),
         variable_name=getattr(INPUT_ARG_OBJECT, VARIABLE_ARG_NAME),
+        num_pixels_per_time=getattr(
+            INPUT_ARG_OBJECT, NUM_PIXELS_PER_TIME_ARG_NAME
+        ),
         num_bins=getattr(INPUT_ARG_OBJECT, NUM_BINS_ARG_NAME),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )
