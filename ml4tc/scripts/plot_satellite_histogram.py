@@ -99,8 +99,13 @@ def _get_histogram(input_values, num_bins):
             numpy.full(num_bins, numpy.nan)
         )
 
-    percentile_levels = numpy.linspace(0, 100, num=num_bins + 1, dtype=float)
-    bin_edges = numpy.nanpercentile(input_values, percentile_levels)
+    bin_edges = numpy.linspace(
+        numpy.nanpercentile(input_values, 0.5),
+        numpy.nanpercentile(input_values, 99.5),
+        num=num_bins + 1, dtype=float
+    )
+    bin_edges[0] = numpy.nanmin(input_values)
+    bin_edges[-1] = numpy.nanmax(input_values)
     lower_bin_edges = bin_edges[:-1]
     upper_bin_edges = bin_edges[1:]
 
@@ -196,7 +201,7 @@ def _run(input_dir_name, first_year, last_year, variable_name, num_bins,
     axes_object.set_title(title_string)
 
     x_tick_labels = [
-        '[{0:.4g}, {1:.4g}]'.format(l, u)
+        '[{0:.3e}, {1:.3e}]'.format(l, u)
         for l, u in zip(lower_bin_edges, upper_bin_edges)
     ]
     x_tick_labels[-1] = x_tick_labels[-1][:-1] + ')'
