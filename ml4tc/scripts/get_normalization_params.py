@@ -10,8 +10,7 @@ from ml4tc.utils import normalization
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
-FIRST_YEAR_ARG_NAME = 'first_year'
-LAST_YEAR_ARG_NAME = 'last_year'
+YEARS_ARG_NAME = 'years'
 NUM_FILES_ARG_NAME = 'num_example_files'
 NUM_VALUES_PER_GRIDDED_ARG_NAME = 'num_values_per_gridded'
 NUM_VALUES_PER_UNGRIDDED_ARG_NAME = 'num_values_per_ungridded'
@@ -21,14 +20,10 @@ INPUT_DIR_HELP_STRING = (
     'Name of input directory.  Files therein will be found by '
     '`example_io.find_file` and read by `example_io.read_file`.'
 )
-YEAR_HELP_STRING = (
-    'Will use learning examples for the period `{0:s}` to `{1:s}`.'
-).format(FIRST_YEAR_ARG_NAME, LAST_YEAR_ARG_NAME)
-
+YEARS_HELP_STRING = 'Will use learning examples for these years (list).'
 NUM_FILES_HELP_STRING = (
-    'Will randomly select this many example files from the period `{0:s}` to '
-    '`{1:s}`.'
-).format(FIRST_YEAR_ARG_NAME, LAST_YEAR_ARG_NAME)
+    'Will randomly select this many example files from the years in `{0:s}`.'
+).format(YEARS_ARG_NAME)
 
 NUM_VALUES_PER_GRIDDED_HELP_STRING = (
     'Number of reference values to save for each gridded predictor.'
@@ -47,12 +42,8 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + FIRST_YEAR_ARG_NAME, type=int, required=True,
-    help=YEAR_HELP_STRING
-)
-INPUT_ARG_PARSER.add_argument(
-    '--' + LAST_YEAR_ARG_NAME, type=int, required=True,
-    help=YEAR_HELP_STRING
+    '--' + YEARS_ARG_NAME, type=int, nargs='+', required=True,
+    help=YEARS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + NUM_FILES_ARG_NAME, type=int, required=True,
@@ -72,22 +63,20 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(example_dir_name, first_year, last_year, num_example_files,
-         num_values_per_gridded, num_values_per_ungridded, output_file_name):
+def _run(example_dir_name, years, num_example_files, num_values_per_gridded,
+         num_values_per_ungridded, output_file_name):
     """Computes normalization parameters.
 
     This is effectively the main method.
 
     :param example_dir_name: See documentation at top of file.
-    :param first_year: Same.
-    :param last_year: Same.
+    :param years: Same.
     :param num_example_files: Same.
     :param num_values_per_gridded: Same.
     :param num_values_per_ungridded: Same.
     :param output_file_name: Same.
     """
 
-    error_checking.assert_is_geq(last_year, first_year)
     error_checking.assert_is_geq(num_example_files, 10)
 
     cyclone_id_strings = example_io.find_cyclones(
@@ -98,9 +87,8 @@ def _run(example_dir_name, first_year, last_year, num_example_files,
         dtype=int
     )
 
-    good_indices = numpy.where(numpy.logical_and(
-        cyclone_years >= first_year, cyclone_years <= last_year
-    ))[0]
+    good_flags = numpy.array([c in years for c in cyclone_years], dtype=float)
+    good_indices = numpy.where(good_flags)[0]
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
 
     example_file_names = [
@@ -144,8 +132,7 @@ if __name__ == '__main__':
 
     _run(
         example_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
-        first_year=getattr(INPUT_ARG_OBJECT, FIRST_YEAR_ARG_NAME),
-        last_year=getattr(INPUT_ARG_OBJECT, LAST_YEAR_ARG_NAME),
+        years=numpy.array(getattr(INPUT_ARG_OBJECT, YEARS_ARG_NAME), dtype=int),
         num_example_files=getattr(INPUT_ARG_OBJECT, NUM_FILES_ARG_NAME),
         num_values_per_gridded=getattr(
             INPUT_ARG_OBJECT, NUM_VALUES_PER_GRIDDED_ARG_NAME
