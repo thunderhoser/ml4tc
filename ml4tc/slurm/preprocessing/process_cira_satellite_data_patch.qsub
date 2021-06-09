@@ -30,6 +30,6 @@ set cyclone_index=${CYCLONE_INDICES[$SLURM_ARRAY_TASK_ID]}
 
 python3 -u "${CODE_DIR_NAME}/process_cira_satellite_data_patch.py" \
 --input_dir_name="${INPUT_DIR_NAME}" \
---year=${year} \
+--year=2019 \
 --cyclone_index=${cyclone_index} \
 --output_dir_name="${OUTPUT_DIR_NAME}"
