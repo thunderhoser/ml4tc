@@ -854,7 +854,7 @@ def read_file(ascii_file_name, seven_day):
     ])
 
     storm_longitudes_deg_e = (
-            multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
+        multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
     )
     storm_longitudes_deg_e[storm_longitudes_deg_e < -180.] += 360.
     storm_longitudes_deg_e[storm_longitudes_deg_e > 360.] -= 360.
@@ -870,8 +870,8 @@ def read_file(ascii_file_name, seven_day):
     )
 
     forecast_lng_matrix_deg_e = (
-            multiplier_matrix *
-            ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values
+        multiplier_matrix *
+        ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values
     )
     forecast_lng_matrix_deg_e[forecast_lng_matrix_deg_e < -180.] += 360.
     forecast_lng_matrix_deg_e[forecast_lng_matrix_deg_e > 360.] -= 360.
@@ -882,8 +882,8 @@ def read_file(ascii_file_name, seven_day):
     )
 
     vortex_lng_matrix_deg_e = (
-            multiplier_matrix *
-            ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values
+        multiplier_matrix *
+        ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values
     )
     vortex_lng_matrix_deg_e[vortex_lng_matrix_deg_e < -180.] += 360.
     vortex_lng_matrix_deg_e[vortex_lng_matrix_deg_e > 360.] -= 360.
