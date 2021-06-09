@@ -853,19 +853,14 @@ def read_file(ascii_file_name, seven_day):
         BASIN_ID_TO_LNG_MULTIPLIER[b] for b in basin_id_strings
     ])
 
-    print('STORM LONGITUDES')
-    print(numpy.nanmin(
-        multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
-    ))
-    print(numpy.nanmax(
-        multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
-    ))
-
+    storm_longitudes_deg_e = (
+            multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
+    )
+    storm_longitudes_deg_e[storm_longitudes_deg_e < -180.] += 360.
+    storm_longitudes_deg_e[storm_longitudes_deg_e > 360.] -= 360.
     ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values = (
         lng_conversion.convert_lng_positive_in_west(
-            multipliers *
-            ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values,
-            allow_nan=True
+            storm_longitudes_deg_e, allow_nan=True
         )
     )
 
@@ -874,39 +869,27 @@ def read_file(ascii_file_name, seven_day):
         multiplier_matrix, repeats=num_forecast_hours, axis=1
     )
 
-    print('FORECAST STORM LONGITUDES')
-    print(numpy.nanmin(
-        multiplier_matrix *
-        ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values
-    ))
-    print(numpy.nanmax(
-        multiplier_matrix *
-        ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values
-    ))
-
+    forecast_lng_matrix_deg_e = (
+            multiplier_matrix *
+            ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values
+    )
+    forecast_lng_matrix_deg_e[forecast_lng_matrix_deg_e < -180.] += 360.
+    forecast_lng_matrix_deg_e[forecast_lng_matrix_deg_e > 360.] -= 360.
     ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values = (
         lng_conversion.convert_lng_positive_in_west(
-            multiplier_matrix *
-            ships_table_xarray[ships_io.FORECAST_LONGITUDE_KEY].values,
-            allow_nan=True
+            forecast_lng_matrix_deg_e, allow_nan=True
         )
     )
 
-    print('VORTEX LONGITUDES')
-    print(numpy.nanmin(
-        multiplier_matrix *
-        ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values
-    ))
-    print(numpy.nanmax(
-        multiplier_matrix *
-        ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values
-    ))
-
+    vortex_lng_matrix_deg_e = (
+            multiplier_matrix *
+            ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values
+    )
+    vortex_lng_matrix_deg_e[vortex_lng_matrix_deg_e < -180.] += 360.
+    vortex_lng_matrix_deg_e[vortex_lng_matrix_deg_e > 360.] -= 360.
     ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values = (
         lng_conversion.convert_lng_positive_in_west(
-            multiplier_matrix *
-            ships_table_xarray[ships_io.VORTEX_LONGITUDE_KEY].values,
-            allow_nan=True
+            vortex_lng_matrix_deg_e, allow_nan=True
         )
     )
 
