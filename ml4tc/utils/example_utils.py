@@ -7,6 +7,8 @@ from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import ships_io
 from ml4tc.utils import satellite_utils
 
+STORM_INTENSITY_KEY = ships_io.STORM_INTENSITY_KEY
+
 SATELLITE_GRID_ROW_DIM = satellite_utils.GRID_ROW_DIM
 SATELLITE_GRID_COLUMN_DIM = satellite_utils.GRID_COLUMN_DIM
 SATELLITE_TIME_DIM = satellite_utils.TIME_DIM
@@ -162,6 +164,11 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
         ships_dict[ships_io.VALID_TIME_KEY]['data']
     )
     del ships_dict[ships_io.VALID_TIME_KEY]
+
+    example_dict[STORM_INTENSITY_KEY] = (
+        (SHIPS_VALID_TIME_DIM,),
+        ships_table_xarray[ships_io.STORM_INTENSITY_KEY].values
+    )
 
     ships_predictor_names_forecast = []
     ships_predictor_names_lagged = []

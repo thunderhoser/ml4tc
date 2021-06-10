@@ -22,6 +22,7 @@ VALID_TIME_DIM = 'ships_valid_time_unix_sec'
 
 THRESHOLD_EXCEEDANCE_KEY = 'ships_threshold_exceedance_num_6hour_periods'
 CYCLONE_ID_KEY = 'ships_cyclone_id_string'
+STORM_INTENSITY_KEY = 'ships_storm_intensity_m_s01'
 STORM_LATITUDE_KEY = 'ships_storm_latitude_deg_n'
 STORM_LONGITUDE_KEY = 'ships_storm_longitude_deg_e'
 VALID_TIME_KEY = 'ships_valid_time_unix_sec'

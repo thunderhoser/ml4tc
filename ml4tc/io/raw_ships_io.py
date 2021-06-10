@@ -526,6 +526,7 @@ def read_file(ascii_file_name, seven_day):
     num_intensity_thresholds = len(intensity_thresholds_m_s01)
 
     cyclone_id_strings = []
+    storm_intensities_m_s01 = []
     storm_latitudes_deg_n = []
     storm_longitudes_deg_e = []
     storm_times_unix_sec = []
@@ -565,6 +566,7 @@ def read_file(ascii_file_name, seven_day):
             cyclone_id_strings.append(
                 _reformat_cyclone_id(words[-2])
             )
+            storm_intensities_m_s01.append(float(words[-3]))
             storm_longitudes_deg_e.append(float(words[-4]))
             storm_latitudes_deg_n.append(float(words[-5]))
 
@@ -823,8 +825,16 @@ def read_file(ascii_file_name, seven_day):
             these_dim, motion_field_matrix[:, k]
         )
 
+    storm_intensities_m_s01 = (
+        KT_TO_METRES_PER_SECOND * numpy.array(storm_intensities_m_s01)
+    )
+    error_checking.assert_is_greater(storm_intensities_m_s01, 0.)
+
     main_data_dict[ships_io.CYCLONE_ID_KEY] = (
         these_dim, numpy.array(cyclone_id_strings)
+    )
+    main_data_dict[ships_io.STORM_INTENSITY_KEY] = (
+        these_dim, storm_intensities_m_s01
     )
     main_data_dict[ships_io.STORM_LATITUDE_KEY] = (
         these_dim, storm_latitudes_deg_n
