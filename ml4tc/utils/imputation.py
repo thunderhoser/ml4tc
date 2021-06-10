@@ -1,8 +1,8 @@
 """Imputation of missing data."""
 
 import numpy
-from gewittergefahr.gg_utils import error_checking
 from scipy.interpolate import interp1d
+from gewittergefahr.gg_utils import error_checking
 from ml4tc.utils import general_utils
 from ml4tc.utils import example_utils
 from ml4tc.utils import normalization

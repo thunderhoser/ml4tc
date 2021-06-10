@@ -2,6 +2,8 @@
 
 import numpy
 import xarray
+from gewittergefahr.gg_utils import time_periods
+from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import ships_io
 from ml4tc.utils import satellite_utils
 
@@ -223,3 +225,40 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
     )
 
     return xarray.Dataset(data_vars=example_dict, coords=example_metadata_dict)
+
+
+def subset_satellite_times(example_table_xarray, time_interval_sec):
+    """Subsets valid times for satellite data.
+
+    :param example_table_xarray: Table in format created by `merge_data`.
+        Metadata in table should make fields self-explanatory.
+    :param time_interval_sec: Desired time interval for satellite data
+        (seconds).
+    :return: example_table_xarray: Same as input but maybe with fewer satellite
+        times.
+    """
+
+    error_checking.assert_is_integer(time_interval_sec)
+    error_checking.assert_is_geq(time_interval_sec, 600)
+    error_checking.assert_is_leq(time_interval_sec, 3600)
+
+    all_times_unix_sec = example_table_xarray.coords[SATELLITE_TIME_DIM].values
+    desired_times_unix_sec = time_periods.range_and_interval_to_list(
+        start_time_unix_sec=numpy.min(all_times_unix_sec),
+        end_time_unix_sec=numpy.max(all_times_unix_sec),
+        time_interval_sec=time_interval_sec, include_endpoint=True
+    )
+
+    good_times_unix_sec = []
+
+    for t in desired_times_unix_sec:
+        this_index = numpy.argmin(numpy.absolute(all_times_unix_sec - t))
+        good_times_unix_sec.append(all_times_unix_sec[this_index])
+
+    good_times_unix_sec = numpy.unique(
+        numpy.array(good_times_unix_sec, dtype=int)
+    )
+
+    return example_table_xarray.sel(
+        indexers={SATELLITE_TIME_DIM: good_times_unix_sec}
+    )
