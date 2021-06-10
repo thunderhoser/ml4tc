@@ -33,4 +33,6 @@ python3 -u "${CODE_DIR_NAME}/create_example_files.py" \
 --input_satellite_dir_name="${SATELLITE_DIR_NAME}" \
 --input_ships_dir_name="${SHIPS_DIR_NAME}" \
 --year=${year} \
+--satellite_time_interval_sec=1800 \
+--compress_output_files=0 \
 --output_dir_name="${EXAMPLE_DIR_NAME}"
