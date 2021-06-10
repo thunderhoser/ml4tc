@@ -1,7 +1,9 @@
 """Normalizes learning examples."""
 
+import os
 import argparse
 from ml4tc.io import example_io
+from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 from ml4tc.utils import normalization
 
@@ -10,6 +12,7 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
 YEAR_ARG_NAME = 'year'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+COMPRESS_ARG_NAME = 'compress_output_files'
 OUTPUT_DIR_ARG_NAME = 'output_example_dir_name'
 
 INPUT_DIR_HELP_STRING = (
@@ -22,6 +25,7 @@ NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be read by '
     '`normalization.read_file`).'
 )
+COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Normalized examples will be written here by '
     '`example_io.write_file`, to exact locations determined by '
@@ -41,13 +45,17 @@ INPUT_ARG_PARSER.add_argument(
     help=NORMALIZATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + COMPRESS_ARG_NAME, type=int, required=True,
+    help=COMPRESS_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
 
 
 def _run(input_example_dir_name, year, normalization_file_name,
-         output_example_dir_name):
+         compress_output_files, output_example_dir_name):
     """Normalizes learning examples.
 
     This is effectively the main method.
@@ -55,6 +63,7 @@ def _run(input_example_dir_name, year, normalization_file_name,
     :param input_example_dir_name: See documentation at top of file.
     :param year: Same.
     :param normalization_file_name: Same.
+    :param compress_output_files: Same.
     :param output_example_dir_name: Same.
     """
 
@@ -103,6 +112,10 @@ def _run(input_example_dir_name, year, normalization_file_name,
             netcdf_file_name=output_example_file_name
         )
 
+        if compress_output_files:
+            general_utils.compress_file(output_example_file_name)
+            os.remove(output_example_file_name)
+
 
 if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
@@ -112,6 +125,9 @@ if __name__ == '__main__':
         year=getattr(INPUT_ARG_OBJECT, YEAR_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        compress_output_files=bool(
+            getattr(INPUT_ARG_OBJECT, COMPRESS_ARG_NAME)
         ),
         output_example_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )

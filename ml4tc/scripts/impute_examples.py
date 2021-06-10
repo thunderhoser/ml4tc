@@ -1,7 +1,9 @@
 """Imputes missing data in learning examples."""
 
+import os
 import argparse
 from ml4tc.io import example_io
+from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 from ml4tc.utils import normalization
 from ml4tc.utils import imputation
@@ -16,6 +18,7 @@ MIN_NUM_TIMES_ARG_NAME = 'min_num_times'
 MIN_SPATIAL_FRACTION_ARG_NAME = 'min_spatial_coverage_fraction'
 MIN_NUM_PIXELS_ARG_NAME = 'min_num_pixels'
 FILL_VALUE_ARG_NAME = 'fill_value_for_isotherm_stuff'
+COMPRESS_ARG_NAME = 'compress_output_files'
 OUTPUT_DIR_ARG_NAME = 'output_example_dir_name'
 
 INPUT_DIR_HELP_STRING = (
@@ -51,6 +54,7 @@ FILL_VALUE_HELP_STRING = (
     'isotherm does not exist in the ocean column -- not that the value is just '
     'unknown.'
 )
+COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Unnormalized examples without missing values '
     'will be written here by `example_io.write_file`, to exact locations '
@@ -90,6 +94,10 @@ INPUT_ARG_PARSER.add_argument(
     default=imputation.LARGE_NEGATIVE_NUMBER, help=FILL_VALUE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + COMPRESS_ARG_NAME, type=int, required=True,
+    help=COMPRESS_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
@@ -98,7 +106,8 @@ INPUT_ARG_PARSER.add_argument(
 def _run(input_example_dir_name, year, normalization_file_name,
          min_temporal_coverage_fraction, min_num_times,
          min_spatial_coverage_fraction, min_num_pixels,
-         fill_value_for_isotherm_stuff, output_example_dir_name):
+         fill_value_for_isotherm_stuff, compress_output_files,
+         output_example_dir_name):
     """Imputes missing data in learning examples.
 
     This is effectively the main method.
@@ -111,6 +120,7 @@ def _run(input_example_dir_name, year, normalization_file_name,
     :param min_spatial_coverage_fraction: Same.
     :param min_num_pixels: Same.
     :param fill_value_for_isotherm_stuff: Same.
+    :param compress_output_files: Same.
     :param output_example_dir_name: Same.
     """
 
@@ -166,6 +176,10 @@ def _run(input_example_dir_name, year, normalization_file_name,
 
         print(SEPARATOR_STRING)
 
+        if compress_output_files:
+            general_utils.compress_file(output_example_file_name)
+            os.remove(output_example_file_name)
+
 
 if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
@@ -186,6 +200,9 @@ if __name__ == '__main__':
         min_num_pixels=getattr(INPUT_ARG_OBJECT, MIN_NUM_PIXELS_ARG_NAME),
         fill_value_for_isotherm_stuff=getattr(
             INPUT_ARG_OBJECT, FILL_VALUE_ARG_NAME
+        ),
+        compress_output_files=bool(
+            getattr(INPUT_ARG_OBJECT, COMPRESS_ARG_NAME)
         ),
         output_example_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
