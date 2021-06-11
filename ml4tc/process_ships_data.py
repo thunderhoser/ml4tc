@@ -77,6 +77,7 @@ def _run(input_file_name, seven_day, output_dir_name):
         this_ships_table_xarray = ships_table_xarray.isel(
             indexers=this_index_dict, drop=False
         )
+        print(this_ships_table_xarray[ships_io.STORM_INTENSITY_KEY])
 
         this_output_file_name = ships_io.find_file(
             directory_name=output_dir_name,
