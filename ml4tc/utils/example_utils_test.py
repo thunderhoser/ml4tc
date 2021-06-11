@@ -9,7 +9,7 @@ from ml4tc.utils import example_utils
 TOLERANCE = 1e-6
 
 VALID_TIMES_UNIX_SEC = numpy.array(
-    [100, 500, 1000, 1800, 2400, 2700, 3000, 3200, 4000, 4800, 5500], dtype=int
+    [100, 100, 500, 1000, 1800, 2400, 2700, 3000, 3200, 4000, 4800, 5500], dtype=int
 )
 GRID_ROW_INDICES = numpy.array([0, 1, 2, 3, 4, 5], dtype=int)
 GRID_COLUMN_INDICES = numpy.array([0, 1, 2, 3, 4, 5, 6, 7], dtype=int)
@@ -62,7 +62,7 @@ EXAMPLE_TABLE_XARRAY_ALL = xarray.Dataset(
 )
 
 FIRST_TIME_INTERVAL_SEC = 1200
-THESE_INDICES = numpy.array([0, 2, 4, 7, 9, 10], dtype=int)
+THESE_INDICES = numpy.array([0, 3, 5, 8, 10, 11], dtype=int)
 
 THIS_METADATA_DICT = {
     example_utils.SATELLITE_TIME_DIM: VALID_TIMES_UNIX_SEC[THESE_INDICES],
@@ -101,7 +101,7 @@ FIRST_EXAMPLE_TABLE_XARRAY = xarray.Dataset(
 )
 
 SECOND_TIME_INTERVAL_SEC = 600
-THESE_INDICES = numpy.array([0, 1, 2, 3, 4, 6, 7, 8, 9, 10], dtype=int)
+THESE_INDICES = numpy.array([0, 2, 3, 4, 5, 7, 8, 9, 10, 11], dtype=int)
 
 THIS_METADATA_DICT = {
     example_utils.SATELLITE_TIME_DIM: VALID_TIMES_UNIX_SEC[THESE_INDICES],
@@ -140,7 +140,7 @@ SECOND_EXAMPLE_TABLE_XARRAY = xarray.Dataset(
 )
 
 THIRD_TIME_INTERVAL_SEC = 1800
-THESE_INDICES = numpy.array([0, 3, 7, 10], dtype=int)
+THESE_INDICES = numpy.array([0, 4, 8, 11], dtype=int)
 
 THIS_METADATA_DICT = {
     example_utils.SATELLITE_TIME_DIM: VALID_TIMES_UNIX_SEC[THESE_INDICES],
