@@ -574,7 +574,7 @@ def read_file(ascii_file_name, seven_day):
             cyclone_id_strings.append(
                 _reformat_cyclone_id(words[-2])
             )
-            storm_intensities_m_s01.append(float(words[-3]))
+            storm_intensities_m_s01.append(float(words[-6]))
             storm_longitudes_deg_e.append(float(words[-4]))
             storm_latitudes_deg_n.append(float(words[-5]))
 
