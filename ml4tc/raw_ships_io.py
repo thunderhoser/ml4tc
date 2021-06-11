@@ -836,7 +836,7 @@ def read_file(ascii_file_name, seven_day):
     storm_intensities_m_s01 = (
         KT_TO_METRES_PER_SECOND * numpy.array(storm_intensities_m_s01)
     )
-    error_checking.assert_is_greater(storm_intensities_m_s01, 0.)
+    error_checking.assert_is_greater_numpy_array(storm_intensities_m_s01, 0.)
 
     main_data_dict[ships_io.CYCLONE_ID_KEY] = (
         these_dim, numpy.array(cyclone_id_strings)
