@@ -55,6 +55,7 @@ def _run(top_input_dir_name, year, output_dir_name):
         top_directory_name=top_input_dir_name, year=year,
         raise_error_if_all_missing=True
     )
+    cyclone_id_strings.sort()
 
     for this_id_string in cyclone_id_strings:
         input_file_names = cira_satellite_io.find_files_one_cyclone(

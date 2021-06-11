@@ -3,7 +3,8 @@
 from setuptools import setup
 
 PACKAGE_NAMES = [
-    'ml4tc', 'ml4tc.io', 'ml4tc.utils', 'ml4tc.plotting', 'ml4tc.scripts'
+    'ml4tc', 'ml4tc.io', 'ml4tc.utils', 'ml4tc.machine_learning',
+    'ml4tc.plotting', 'ml4tc.scripts'
 ]
 KEYWORDS = [
     'machine learning', 'deep learning', 'artificial intelligence',
