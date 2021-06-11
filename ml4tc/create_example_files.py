@@ -101,8 +101,6 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year,
         satellite_cyclone_id_strings.intersection(ships_cyclone_id_strings)
     )
     cyclone_id_strings.sort()
-    print(len(cyclone_id_strings))
-    return
 
     for this_cyclone_id_string in cyclone_id_strings:
         this_satellite_file_name = satellite_io.find_file(
