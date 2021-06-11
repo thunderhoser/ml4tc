@@ -172,6 +172,7 @@ def _run(input_dir_name, first_year, last_year, variable_name,
         cyclone_years >= first_year, cyclone_years <= last_year
     ))[0]
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
+    cyclone_id_strings.sort()
 
     raw_values = numpy.array([], dtype=float)
 

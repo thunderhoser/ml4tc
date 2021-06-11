@@ -90,6 +90,7 @@ def _run(example_dir_name, years, num_example_files, num_values_per_gridded,
     good_flags = numpy.array([c in years for c in cyclone_years], dtype=float)
     good_indices = numpy.where(good_flags)[0]
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
+    cyclone_id_strings.sort()
 
     example_file_names = [
         example_io.find_file(
