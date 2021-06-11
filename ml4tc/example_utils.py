@@ -264,16 +264,14 @@ def subset_satellite_times(example_table_xarray, time_interval_sec):
         time_interval_sec=time_interval_sec, include_endpoint=True
     )
 
-    good_times_unix_sec = []
+    good_indices = []
 
     for t in desired_times_unix_sec:
         this_index = numpy.argmin(numpy.absolute(all_times_unix_sec - t))
-        good_times_unix_sec.append(all_times_unix_sec[this_index])
+        good_indices.append(this_index)
 
-    good_times_unix_sec = numpy.unique(
-        numpy.array(good_times_unix_sec, dtype=int)
-    )
+    good_indices = numpy.unique(numpy.array(good_indices, dtype=int))
 
-    return example_table_xarray.sel(
-        indexers={SATELLITE_TIME_DIM: good_times_unix_sec}
+    return example_table_xarray.isel(
+        indexers={SATELLITE_TIME_DIM: good_indices}
     )

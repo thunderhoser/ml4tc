@@ -21,6 +21,7 @@ SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
 YEAR_ARG_NAME = 'year'
 TIME_INTERVAL_ARG_NAME = 'satellite_time_interval_sec'
 COMPRESS_ARG_NAME = 'compress_output_files'
+CYCLONE_INDEX_ARG_NAME = 'cyclone_index'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 SATELLITE_DIR_HELP_STRING = (
@@ -34,6 +35,7 @@ SHIPS_DIR_HELP_STRING = (
 YEAR_HELP_STRING = 'Example files will be created only for this year.'
 TIME_INTERVAL_HELP_STRING = 'Time interval for satellite data (seconds).'
 COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
+CYCLONE_INDEX_HELP_STRING = 'Will process data for this cyclone only.'
 OUTPUT_DIR_HELP_STRING = (
     'Name of top-level directory for learning examples.  Files will be written '
     'here by `example_io.write_file`, with exact names determined by '
@@ -61,13 +63,17 @@ INPUT_ARG_PARSER.add_argument(
     help=COMPRESS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + CYCLONE_INDEX_ARG_NAME, type=int, required=True,
+    help=CYCLONE_INDEX_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
 
 
 def _run(top_satellite_dir_name, top_ships_dir_name, year,
-         satellite_time_interval_sec, compress_output_files,
+         satellite_time_interval_sec, compress_output_files, cyclone_index,
          top_output_dir_name):
     """Creates example files by merging satellite and SHIPS files.
 
@@ -78,6 +84,7 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year,
     :param year: Same.
     :param satellite_time_interval_sec: Same.
     :param compress_output_files: Same.
+    :param cyclone_index: Same.
     :param top_output_dir_name: Same.
     """
 
@@ -101,8 +108,7 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year,
         satellite_cyclone_id_strings.intersection(ships_cyclone_id_strings)
     )
     cyclone_id_strings.sort()
-    print(len(cyclone_id_strings))
-    return
+    cyclone_id_strings = [cyclone_id_strings[cyclone_index]]
 
     for this_cyclone_id_string in cyclone_id_strings:
         this_satellite_file_name = satellite_io.find_file(
@@ -167,5 +173,6 @@ if __name__ == '__main__':
         compress_output_files=bool(
             getattr(INPUT_ARG_OBJECT, COMPRESS_ARG_NAME)
         ),
+        cyclone_index=getattr(INPUT_ARG_OBJECT, CYCLONE_INDEX_ARG_NAME),
         top_output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )

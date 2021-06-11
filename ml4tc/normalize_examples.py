@@ -86,6 +86,8 @@ def _run(input_example_dir_name, year, normalization_file_name,
         c for c in cyclone_id_strings
         if satellite_utils.parse_cyclone_id(c)[0] == year
     ])
+    cyclone_id_strings = list(cyclone_id_strings)
+    cyclone_id_strings.sort()
 
     for this_cyclone_id_string in cyclone_id_strings:
         input_example_file_name = example_io.find_file(
