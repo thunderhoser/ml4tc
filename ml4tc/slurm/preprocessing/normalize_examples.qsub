@@ -33,4 +33,5 @@ python3 -u "${CODE_DIR_NAME}/normalize_examples.py" \
 --input_example_dir_name="${INPUT_EXAMPLE_DIR_NAME}" \
 --year=${year} \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--compress_output_files=0 \
 --output_example_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}"
