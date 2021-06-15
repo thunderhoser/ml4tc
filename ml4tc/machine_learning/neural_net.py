@@ -48,9 +48,7 @@ def _find_desired_times(
     return numpy.array(desired_indices, dtype=int)
 
 
-def _discretize_intensity_change(
-        intensity_change_m_s01,
-        class_cutoffs_m_s01=DEFAULT_CLASS_CUTOFFS_M_S01):
+def _discretize_intensity_change(intensity_change_m_s01, class_cutoffs_m_s01):
     """Discretizes intensity change into class.
 
     K = number of classes
@@ -60,12 +58,6 @@ def _discretize_intensity_change(
     :return: class_flags: length-K numpy array of flags.  One value will be 1,
         and the others will be 0.
     """
-
-    error_checking.assert_is_numpy_array(class_cutoffs_m_s01, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(class_cutoffs_m_s01), 0.
-    )
-    assert numpy.all(numpy.isfinite(class_cutoffs_m_s01))
 
     class_index = numpy.searchsorted(
         class_cutoffs_m_s01, intensity_change_m_s01, side='right'
@@ -80,7 +72,7 @@ def _read_one_example_file(
         example_file_name, num_examples_desired, lead_time_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
-        ships_predictor_names_forecast):
+        ships_predictor_names_forecast, class_cutoffs_m_s01):
     """Reads one example file for generator.
 
     :param example_file_name: Path to input file.  Will be read by
@@ -92,8 +84,9 @@ def _read_one_example_file(
     :param satellite_predictor_names: Same.
     :param ships_predictor_names_lagged: Same.
     :param ships_predictor_names_forecast: Same.
+    :param class_cutoffs_m_s01: Same.
     :return: predictor_matrices: Same.
-    :return: target_matrix: Same.
+    :return: target_array: Same.
     """
 
     print('Reading data from: "{0:s}"...'.format(example_file_name))
@@ -183,9 +176,12 @@ def _read_one_example_file(
 
     these_dim = (num_examples, len(ships_lag_times_sec), num_ships_channels)
     ships_predictor_matrix = numpy.full(these_dim, numpy.nan)
-    target_matrix = numpy.full(
-        (num_examples, len(DEFAULT_CLASS_CUTOFFS_M_S01)), -1, dtype=int
-    )
+
+    num_classes = len(class_cutoffs_m_s01) + 1
+    if num_classes > 2:
+        target_array = numpy.full((num_examples, num_classes), -1, dtype=int)
+    else:
+        target_array = numpy.full(num_examples, -1, dtype=int)
 
     all_satellite_predictor_names = (
         xt.coords[
@@ -242,29 +238,45 @@ def _read_one_example_file(
             )
             ships_predictor_matrix[i, j, len(lagged_values):] = forecast_values
 
-        intensity_change_m_s01 = numpy.diff(
-            xt[example_utils.STORM_INTENSITY_KEY].values[
-                target_time_indices_by_example[i]
-            ]
-        )[0]
+        # intensity_change_m_s01 = numpy.diff(
+        #     xt[example_utils.STORM_INTENSITY_KEY].values[
+        #         target_time_indices_by_example[i]
+        #     ]
+        # )[0]
 
-        target_matrix[i, :] = _discretize_intensity_change(
-            intensity_change_m_s01
+        first_index = target_time_indices_by_example[i][0]
+        last_index = target_time_indices_by_example[i][-1] + 1
+        intensities_m_s01 = (
+            xt[example_utils.STORM_INTENSITY_KEY].values[first_index:last_index]
         )
+        intensity_change_m_s01 = numpy.max(
+            intensities_m_s01 - intensities_m_s01[0]
+        )
+
+        these_flags = _discretize_intensity_change(
+            intensity_change_m_s01=intensity_change_m_s01,
+            class_cutoffs_m_s01=class_cutoffs_m_s01
+        )
+
+        if num_classes > 2:
+            target_array[i, :] = these_flags
+        else:
+            target_array[i] = numpy.argmax(these_flags)
 
     predictor_matrices = [
         brightness_temp_matrix, satellite_predictor_matrix,
         ships_predictor_matrix
     ]
 
-    return predictor_matrices, target_matrix
+    return predictor_matrices, target_array
 
 
 def input_generator(
         example_dir_name, years, lead_time_hours, satellite_lag_times_minutes,
         ships_lag_times_hours, satellite_predictor_names,
         ships_predictor_names_lagged, ships_predictor_names_forecast,
-        num_examples_per_batch, max_examples_per_cyclone_in_batch):
+        num_examples_per_batch, max_examples_per_cyclone_in_batch,
+        class_cutoffs_m_s01):
     """Generates training data for neural net.
 
     E = number of examples per batch
@@ -294,6 +306,7 @@ def input_generator(
     :param num_examples_per_batch: Number of examples per batch.
     :param max_examples_per_cyclone_in_batch: Max number of examples (time
         steps) from one cyclone in a batch.
+    :param class_cutoffs_m_s01: numpy array (length K - 1) of class cutoffs.
     :return: predictor_matrices: 1-D list with the following elements.
 
         brightness_temp_matrix: numpy array (E x M x N x T_sat x 1) of
@@ -305,8 +318,9 @@ def input_generator(
         ships_predictor_matrix: numpy array (E x T_ships x C_ships) of
         SHIPS predictors.
 
-    :return: target_matrix: E-by-K numpy array of integers (0 or 1), indicating
-        true classes.
+    :return: target_array: If K > 2, this is an E-by-K numpy array of integers
+        (0 or 1), indicating true classes.  If K = 2, this is a length-E numpy
+        array of integers (0 or 1).
     """
 
     # TODO(thunderhoser): For SHIPS predictors, all lag times and forecast times
@@ -345,6 +359,12 @@ def input_generator(
         num_examples_per_batch, max_examples_per_cyclone_in_batch
     )
 
+    error_checking.assert_is_numpy_array(class_cutoffs_m_s01, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(class_cutoffs_m_s01), 0.
+    )
+    assert numpy.all(numpy.isfinite(class_cutoffs_m_s01))
+
     # Do actual stuff.
     cyclone_id_strings = example_io.find_cyclones(
         directory_name=example_dir_name, raise_error_if_all_missing=True
@@ -371,7 +391,7 @@ def input_generator(
 
     while True:
         predictor_matrices = None
-        target_matrix = None
+        target_array = None
         num_examples_in_memory = 0
 
         while num_examples_in_memory < num_examples_per_batch:
@@ -383,7 +403,7 @@ def input_generator(
                 num_examples_per_batch - num_examples_in_memory
             ])
 
-            these_predictor_matrices, this_target_matrix = (
+            these_predictor_matrices, this_target_array = (
                 _read_one_example_file(
                     example_file_name=example_file_names[file_index],
                     num_examples_desired=num_examples_to_read,
@@ -393,13 +413,14 @@ def input_generator(
                     satellite_predictor_names=satellite_predictor_names,
                     ships_predictor_names_lagged=ships_predictor_names_lagged,
                     ships_predictor_names_forecast=
-                    ships_predictor_names_forecast
+                    ships_predictor_names_forecast,
+                    class_cutoffs_m_s01=class_cutoffs_m_s01
                 )
             )
 
             if predictor_matrices is None:
                 predictor_matrices = copy.deepcopy(these_predictor_matrices)
-                target_matrix = this_target_matrix + 0
+                target_array = this_target_array + 0
             else:
                 for j in range(len(predictor_matrices)):
                     predictor_matrices[j] = numpy.concatenate(
@@ -407,13 +428,13 @@ def input_generator(
                         axis=0
                     )
 
-                target_matrix = numpy.concatenate(
-                    (target_matrix, this_target_matrix), axis=0
+                target_array = numpy.concatenate(
+                    (target_array, this_target_array), axis=0
                 )
 
-            num_examples_in_memory = target_matrix.shape[0]
+            num_examples_in_memory = target_array.shape[0]
 
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
-        target_matrix = target_matrix.astype('float16')
+        target_array = target_array.astype('float16')
 
-        yield predictor_matrices, target_matrix
+        yield predictor_matrices, target_array
