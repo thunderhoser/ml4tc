@@ -554,7 +554,7 @@ def input_generator(option_dict):
             print((
                 'Yielding {0:d} examples with {1:d} positive examples!'
             ).format(
-                len(target_array), numpy.sum(target_array)
+                len(target_array), int(numpy.sum(target_array))
             ))
         else:
             print((
