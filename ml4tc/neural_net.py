@@ -529,6 +529,8 @@ def input_generator(option_dict):
                 )
             )
 
+            file_index += 1
+
             if predictor_matrices is None:
                 predictor_matrices = copy.deepcopy(these_predictor_matrices)
                 target_array = this_target_array + 0
@@ -547,6 +549,20 @@ def input_generator(option_dict):
 
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
         target_array = target_array.astype('float16')
+
+        if len(target_array.shape) == 1:
+            print((
+                'Yielding {0:d} examples with {1:d} positive examples!'
+            ).format(
+                len(target_array), numpy.sum(target_array)
+            ))
+        else:
+            print((
+                'Yielding {0:d} examples with the following class distribution:'
+                '\n{1:s}'
+            ).format(
+                target_array.shape[0], str(numpy.sum(target_array, axis=0))
+            ))
 
         yield predictor_matrices, target_array
 
