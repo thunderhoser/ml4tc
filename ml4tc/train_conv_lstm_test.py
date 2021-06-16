@@ -36,7 +36,7 @@ TRAINING_OPTION_DICT = {
     neural_net.SATELLITE_LAG_TIMES_KEY:
         numpy.array([0, 60, 120, 180], dtype=int),
     neural_net.SHIPS_LAG_TIMES_KEY: numpy.array([0, 6, 12, 18], dtype=int),
-    neural_net.NUM_EXAMPLES_PER_BATCH_KEY: 16,
+    neural_net.NUM_EXAMPLES_PER_BATCH_KEY: 32,
     neural_net.MAX_EXAMPLES_PER_CYCLONE_KEY: 4,
     neural_net.CLASS_CUTOFFS_KEY: numpy.array([25 * KT_TO_METRES_PER_SECOND])
 }
