@@ -387,7 +387,7 @@ def _check_generator_args(option_dict):
     error_checking.assert_is_integer(option_dict[NUM_EXAMPLES_PER_BATCH_KEY])
     error_checking.assert_is_geq(option_dict[NUM_EXAMPLES_PER_BATCH_KEY], 10)
     error_checking.assert_is_integer(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY])
-    error_checking.assert_is_geq(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY], 5)
+    error_checking.assert_is_geq(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY], 1)
     error_checking.assert_is_greater(
         option_dict[NUM_EXAMPLES_PER_BATCH_KEY],
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
