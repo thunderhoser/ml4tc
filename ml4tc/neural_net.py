@@ -474,44 +474,6 @@ def input_generator(option_dict):
     # are currently flattened along the channel axis.  I might change this in
     # the future to make better use of time series.
 
-    # Check input args.
-    error_checking.assert_is_integer_numpy_array(years)
-    error_checking.assert_is_numpy_array(years, num_dimensions=1)
-    error_checking.assert_is_integer(lead_time_hours)
-    assert numpy.mod(lead_time_hours, 6) == 0
-
-    error_checking.assert_is_integer_numpy_array(satellite_lag_times_minutes)
-    error_checking.assert_is_geq_numpy_array(satellite_lag_times_minutes, 0)
-    error_checking.assert_is_numpy_array(
-        satellite_lag_times_minutes, num_dimensions=1
-    )
-
-    error_checking.assert_is_integer_numpy_array(ships_lag_times_hours)
-    error_checking.assert_is_geq_numpy_array(ships_lag_times_hours, 0)
-    assert numpy.all(numpy.mod(ships_lag_times_hours, 6) == 0)
-    error_checking.assert_is_numpy_array(
-        ships_lag_times_hours, num_dimensions=1
-    )
-
-    # TODO(thunderhoser): Allow either list to be empty.
-    error_checking.assert_is_string_list(satellite_predictor_names)
-    error_checking.assert_is_string_list(ships_predictor_names_lagged)
-    error_checking.assert_is_string_list(ships_predictor_names_forecast)
-
-    error_checking.assert_is_integer(num_examples_per_batch)
-    error_checking.assert_is_geq(num_examples_per_batch, 10)
-    error_checking.assert_is_integer(max_examples_per_cyclone_in_batch)
-    error_checking.assert_is_geq(max_examples_per_cyclone_in_batch, 5)
-    error_checking.assert_is_greater(
-        num_examples_per_batch, max_examples_per_cyclone_in_batch
-    )
-
-    error_checking.assert_is_numpy_array(class_cutoffs_m_s01, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(class_cutoffs_m_s01), 0.
-    )
-    assert numpy.all(numpy.isfinite(class_cutoffs_m_s01))
-
     # Do actual stuff.
     cyclone_id_strings = example_io.find_cyclones(
         directory_name=example_dir_name, raise_error_if_all_missing=True
