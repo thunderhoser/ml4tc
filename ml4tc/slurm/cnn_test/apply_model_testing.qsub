@@ -1,0 +1,35 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="apply_model_testing"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --nodes=1
+#SBATCH --ntasks=8           # 8 tasks per node
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks-per-node=8  # 8 GPUs per node
+#SBATCH --exclusive
+#SBATCH --time=30:00:00
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=apply_model_testing_%A.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
+set MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/ml4tc_models/cnn_test"
+
+set model_file_name="${MODEL_DIR_NAME}/model.h5"
+set output_file_name="${MODEL_DIR_NAME}/testing_predictions_2010-2014.p"
+
+python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
+--input_model_file_name="${model_file_name}" \
+--input_example_dir_name="${EXAMPLE_DIR_NAME}" \
+--years 2010 2011 2012 2013 2014 \
+--output_file_name="${output_file_name}"
