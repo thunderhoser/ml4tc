@@ -6,6 +6,7 @@ import copy
 import random
 import numpy
 import keras
+import tensorflow.keras as tf_keras
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -34,6 +35,7 @@ PLATEAU_COOLDOWN_EPOCHS = 0
 EARLY_STOPPING_PATIENCE_EPOCHS = 30
 LOSS_PATIENCE = 0.
 
+EXAMPLE_FILE_KEY = 'example_file_name'
 EXAMPLE_DIRECTORY_KEY = 'example_dir_name'
 YEARS_KEY = 'years'
 LEAD_TIME_KEY = 'lead_time_hours'
@@ -406,8 +408,62 @@ def _check_generator_args(option_dict):
     return option_dict
 
 
+def create_inputs(option_dict):
+    """Creates input data for neural net.
+
+    This method is the same as `input_generator`, except that it returns all the
+    data at once, rather than generating batches on the fly.
+
+    :param option_dict: Dictionary with the following keys.
+    option_dict['example_file_name']: Path to example file (will be read by
+        `example_io.read_file`).
+    option_dict['lead_time_hours']: See doc for `input_generator`.
+    option_dict['satellite_lag_times_minutes']: Same.
+    option_dict['ships_lag_times_hours']: Same.
+    option_dict['satellite_predictor_names']: Same.
+    option_dict['ships_predictor_names_lagged']: Same.
+    option_dict['ships_predictor_names_forecast']: Same.
+    option_dict['class_cutoffs_m_s01']: Same.
+
+    :return: predictor_matrices: Same.
+    :return: target_array: Same.
+    """
+
+    option_dict[EXAMPLE_DIRECTORY_KEY] = 'foo'
+    option_dict[YEARS_KEY] = numpy.array([1900], dtype=int)
+    option_dict[NUM_EXAMPLES_PER_BATCH_KEY] = 16
+    option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY] = 4
+
+    option_dict = _check_generator_args(option_dict)
+
+    example_file_name = option_dict[EXAMPLE_FILE_KEY]
+    lead_time_hours = option_dict[LEAD_TIME_KEY]
+    satellite_lag_times_minutes = option_dict[SATELLITE_LAG_TIMES_KEY]
+    ships_lag_times_hours = option_dict[SHIPS_LAG_TIMES_KEY]
+    satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
+    ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
+    ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
+    class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+
+    predictor_matrices, target_array = _read_one_example_file(
+        example_file_name=example_file_name,
+        num_examples_desired=int(1e10),
+        lead_time_hours=lead_time_hours,
+        satellite_lag_times_minutes=satellite_lag_times_minutes,
+        ships_lag_times_hours=ships_lag_times_hours,
+        satellite_predictor_names=satellite_predictor_names,
+        ships_predictor_names_lagged=ships_predictor_names_lagged,
+        ships_predictor_names_forecast=ships_predictor_names_forecast,
+        class_cutoffs_m_s01=class_cutoffs_m_s01
+    )
+
+    predictor_matrices = [p.astype('float16') for p in predictor_matrices]
+
+    return predictor_matrices, target_array
+
+
 def input_generator(option_dict):
-    """Generates training data for neural net.
+    """Generates input data for neural net.
 
     E = number of examples per batch
     M = number of rows in satellite grid
@@ -663,3 +719,75 @@ def train_model(
         validation_data=validation_generator,
         validation_steps=num_validation_batches_per_epoch
     )
+
+
+def read_model(hdf5_file_name):
+    """Reads model from HDF5 file.
+
+    :param hdf5_file_name: Path to input file.
+    :return: model_object: Instance of `keras.models.Model` or
+        `keras.models.Sequential`.
+    """
+
+    error_checking.assert_file_exists(hdf5_file_name)
+    return tf_keras.models.load_model(hdf5_file_name)
+
+
+def apply_model(model_object, predictor_matrices, num_examples_per_batch,
+                verbose=False):
+    """Applies trained neural net.
+
+    K = number of classes
+
+    :param model_object: Trained neural net (instance of `keras.models.Model` or
+        `keras.models.Sequential`).
+    :param predictor_matrices: See output doc for `input_generator`.
+    :param num_examples_per_batch: Batch size.
+    :param verbose: Boolean flag.  If True, will print progress messages.
+    :return: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
+        class probabilities.  If K = 2, this is a length-E numpy array of
+        positive-class probabilities.
+    """
+
+    for this_matrix in predictor_matrices:
+        error_checking.assert_is_numpy_array_without_nan(this_matrix)
+
+    error_checking.assert_is_integer(num_examples_per_batch)
+    error_checking.assert_is_geq(num_examples_per_batch, 1)
+    num_examples = predictor_matrices[0].shape[0]
+    num_examples_per_batch = min([num_examples_per_batch, num_examples])
+
+    error_checking.assert_is_boolean(verbose)
+
+    forecast_prob_array = None
+
+    for i in range(0, num_examples, num_examples_per_batch):
+        first_index = i
+        last_index = min([
+            i + num_examples_per_batch - 1, num_examples - 1
+        ])
+        these_indices = numpy.linspace(
+            first_index, last_index,
+            num=last_index - first_index + 1, dtype=int
+        )
+
+        if verbose:
+            print('Applying model to examples {0:d}-{1:d} of {2:d}...'.format(
+                first_index + 1, last_index + 1, num_examples
+            ))
+
+        this_prob_array = model_object.predict(
+            [a[these_indices, ...] for a in predictor_matrices],
+            batch_size=len(these_indices)
+        )
+
+        if forecast_prob_array is None:
+            dimensions = (num_examples,) + this_prob_array.shape[1:]
+            forecast_prob_array = numpy.full(dimensions, numpy.nan)
+
+        forecast_prob_array[these_indices, ...] = this_prob_array
+
+    if verbose:
+        print('Have applied model to all {0:d} examples!'.format(num_examples))
+
+    return forecast_prob_array
