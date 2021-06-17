@@ -117,6 +117,9 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
         these_predictor_matrices, this_target_array = (
             neural_net.create_inputs(this_option_dict)
         )
+        if this_target_array.size == 0:
+            continue
+
         this_prob_array = neural_net.apply_model(
             model_object=model_object,
             predictor_matrices=these_predictor_matrices,
