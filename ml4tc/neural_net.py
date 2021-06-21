@@ -4,6 +4,7 @@ import os
 import sys
 import copy
 import random
+import warnings
 import numpy
 import keras
 import tensorflow.keras as tf_keras
@@ -13,12 +14,15 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import time_conversion
 import file_system_utils
 import error_checking
 import example_io
 import ships_io
 import example_utils
 import satellite_utils
+
+TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M'
 
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
@@ -109,6 +113,20 @@ def _find_desired_times(
         min_index = numpy.argmin(differences_sec)
 
         if differences_sec[min_index] > tolerance_sec:
+            desired_time_string = time_conversion.unix_sec_to_string(
+                t, TIME_FORMAT_FOR_LOG
+            )
+            found_time_string = time_conversion.unix_sec_to_string(
+                all_times_unix_sec[min_index], TIME_FORMAT_FOR_LOG
+            )
+
+            warning_string = (
+                'POTENTIAL ERROR: Could not find time within {0:d} seconds of '
+                '{1:s}.  Nearest found time is {2:s}.'
+            ).format(tolerance_sec, desired_time_string, found_time_string)
+
+            warnings.warn(warning_string)
+
             return None
 
         desired_indices.append(min_index)
