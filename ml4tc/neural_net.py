@@ -194,7 +194,7 @@ def _read_one_example_file(
             all_times_unix_sec=
             xt.coords[example_utils.SATELLITE_TIME_DIM].values,
             desired_times_unix_sec=t - satellite_lag_times_sec,
-            tolerance_sec=600
+            tolerance_sec=930
         )
         if these_satellite_indices is None:
             continue
