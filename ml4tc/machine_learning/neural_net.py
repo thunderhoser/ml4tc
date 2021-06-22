@@ -1,7 +1,9 @@
 """Methods for training and applying neural nets."""
 
+import os
 import copy
 import random
+import pickle
 import warnings
 import numpy
 import keras
@@ -103,6 +105,20 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
     CLASS_CUTOFFS_KEY: numpy.array([25 * KT_TO_METRES_PER_SECOND])
 }
+
+NUM_EPOCHS_KEY = 'num_epochs'
+NUM_TRAINING_BATCHES_KEY = 'num_training_batches_per_epoch'
+TRAINING_OPTIONS_KEY = 'training_option_dict'
+NUM_VALIDATION_BATCHES_KEY = 'num_validation_batches_per_epoch'
+VALIDATION_OPTIONS_KEY = 'validation_option_dict'
+EARLY_STOPPING_KEY = 'do_early_stopping'
+PLATEAU_LR_MUTIPLIER_KEY = 'plateau_lr_multiplier'
+
+METADATA_KEYS = [
+    NUM_EPOCHS_KEY, NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
+    NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY, EARLY_STOPPING_KEY,
+    PLATEAU_LR_MUTIPLIER_KEY
+]
 
 
 def _find_desired_times(
@@ -658,6 +674,99 @@ def _check_generator_args(option_dict):
     return option_dict
 
 
+def _write_metafile(
+        pickle_file_name, num_epochs, num_training_batches_per_epoch,
+        training_option_dict, num_validation_batches_per_epoch,
+        validation_option_dict, do_early_stopping, plateau_lr_multiplier):
+    """Writes metadata to Pickle file.
+
+    :param pickle_file_name: Path to output file.
+    :param num_epochs: See doc for `train_model`.
+    :param num_training_batches_per_epoch: Same.
+    :param training_option_dict: Same.
+    :param num_validation_batches_per_epoch: Same.
+    :param validation_option_dict: Same.
+    :param do_early_stopping: Same.
+    :param plateau_lr_multiplier: Same.
+    """
+
+    metadata_dict = {
+        NUM_EPOCHS_KEY: num_epochs,
+        NUM_TRAINING_BATCHES_KEY: num_training_batches_per_epoch,
+        TRAINING_OPTIONS_KEY: training_option_dict,
+        NUM_VALIDATION_BATCHES_KEY: num_validation_batches_per_epoch,
+        VALIDATION_OPTIONS_KEY: validation_option_dict,
+        EARLY_STOPPING_KEY: do_early_stopping,
+        PLATEAU_LR_MUTIPLIER_KEY: plateau_lr_multiplier
+    }
+
+    file_system_utils.mkdir_recursive_if_necessary(file_name=pickle_file_name)
+
+    pickle_file_handle = open(pickle_file_name, 'wb')
+    pickle.dump(metadata_dict, pickle_file_handle)
+    pickle_file_handle.close()
+
+
+def find_metafile(model_file_name, raise_error_if_missing=True):
+    """Finds metafile for neural net.
+
+    :param model_file_name: Path to trained model.
+    :param raise_error_if_missing: Boolean flag.  If file is missing and
+        `raise_error_if_missing == True`, will throw error.  If file is missing
+        and `raise_error_if_missing == False`, will return *expected* file path.
+    :return: metafile_name: Path to metafile.
+    """
+
+    error_checking.assert_is_string(model_file_name)
+    error_checking.assert_is_boolean(raise_error_if_missing)
+
+    metafile_name = '{0:s}/model_metadata.p'.format(
+        os.path.split(model_file_name)[0]
+    )
+
+    if raise_error_if_missing and not os.path.isfile(metafile_name):
+        error_string = 'Cannot find file.  Expected at: "{0:s}"'.format(
+            metafile_name
+        )
+        raise ValueError(error_string)
+
+    return metafile_name
+
+
+def read_metafile(pickle_file_name):
+    """Reads metadata for neural net from Pickle file.
+
+    :param pickle_file_name: Path to input file.
+    :return: metadata_dict: Dictionary with the following keys.
+    metadata_dict['num_epochs']: See doc for `train_model`.
+    metadata_dict['num_training_batches_per_epoch']: Same.
+    metadata_dict['training_option_dict']: Same.
+    metadata_dict['num_validation_batches_per_epoch']: Same.
+    metadata_dict['validation_option_dict']: Same.
+    metadata_dict['do_early_stopping']: Same.
+    metadata_dict['plateau_lr_multiplier']: Same.
+
+    :raises: ValueError: if any expected key is not found in dictionary.
+    """
+
+    error_checking.assert_file_exists(pickle_file_name)
+
+    pickle_file_handle = open(pickle_file_name, 'rb')
+    metadata_dict = pickle.load(pickle_file_handle)
+    pickle_file_handle.close()
+
+    missing_keys = list(set(METADATA_KEYS) - set(metadata_dict.keys()))
+    if len(missing_keys) == 0:
+        return metadata_dict
+
+    error_string = (
+        '\n{0:s}\nKeys listed above were expected, but not found, in file '
+        '"{1:s}".'
+    ).format(str(missing_keys), pickle_file_name)
+
+    raise ValueError(error_string)
+
+
 def create_inputs(option_dict):
     """Creates input data for neural net.
 
@@ -997,6 +1106,21 @@ def train_model(
 
     training_generator = input_generator(training_option_dict)
     validation_generator = input_generator(validation_option_dict)
+
+    metafile_name = find_metafile(
+        model_file_name=model_file_name, raise_error_if_missing=False
+    )
+    print('Writing metadata to: "{0:s}"...'.format(metafile_name))
+
+    _write_metafile(
+        pickle_file_name=metafile_name, num_epochs=num_epochs,
+        num_training_batches_per_epoch=num_training_batches_per_epoch,
+        training_option_dict=training_option_dict,
+        num_validation_batches_per_epoch=num_validation_batches_per_epoch,
+        validation_option_dict=validation_option_dict,
+        do_early_stopping=do_early_stopping,
+        plateau_lr_multiplier=plateau_lr_multiplier
+    )
 
     model_object.fit_generator(
         generator=training_generator,
