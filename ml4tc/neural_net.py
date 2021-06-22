@@ -8,6 +8,7 @@ import warnings
 import numpy
 import keras
 import tensorflow.keras as tf_keras
+from scipy.interpolate import interp1d
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -27,6 +28,11 @@ TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M'
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
+
+SATELLITE_TOLERANCE_SEC = 930
+SATELLITE_MAX_MISSING_FRACTION = 0.26
+SHIPS_TOLERANCE_SEC = 0
+SHIPS_MAX_MISSING_FRACTION = 0.26
 
 DEFAULT_CLASS_CUTOFFS_KT = numpy.array(
     [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25], dtype=float
@@ -93,7 +99,8 @@ DEFAULT_GENERATOR_OPTION_DICT = {
 
 
 def _find_desired_times(
-        all_times_unix_sec, desired_times_unix_sec, tolerance_sec):
+        all_times_unix_sec, desired_times_unix_sec, tolerance_sec,
+        max_num_missing_times):
     """Finds desired times.
 
     L = number of desired times
@@ -101,9 +108,11 @@ def _find_desired_times(
     :param all_times_unix_sec: 1-D numpy array with all times available.
     :param desired_times_unix_sec: length-L numpy array of desired times.
     :param tolerance_sec: Tolerance.
+    :param max_num_missing_times: Max number of missing times allowed (M).  If
+        number of missing times <= M, output array will contain -1 for each
+        missing time.  If number of missing times > M, output will be None.
     :return: desired_indices: length-L numpy array of indices into
-        `all_times_unix_sec`.  If not all desired times were found, the output
-        will be None, instead.
+        `all_times_unix_sec`.  The output may also be None (see above).
     """
 
     desired_indices = []
@@ -127,11 +136,172 @@ def _find_desired_times(
 
             warnings.warn(warning_string)
 
-            return None
+            desired_indices.append(-1)
+            continue
 
         desired_indices.append(min_index)
 
-    return numpy.array(desired_indices, dtype=int)
+    desired_indices = numpy.array(desired_indices, dtype=int)
+    num_missing_times = numpy.sum(desired_indices == -1)
+    num_found_times = numpy.sum(desired_indices != -1)
+
+    if num_missing_times > max_num_missing_times:
+        return None
+    if num_found_times < 2 and num_missing_times > 0:
+        return None
+
+    return desired_indices
+
+
+def _interp_missing_times_nonspatial(data_values, times_sec):
+    """Interpolates to fill non-spatial data at missing times.
+
+    This method handles data for only one example and one variable.
+
+    T = number of time steps
+
+    :param data_values: length-T numpy array of data values.
+    :param times_sec: length-T numpy array of times (seconds).  Must be sorted
+        in ascending order.
+    :return: data_values: Same but without missing values.
+    """
+
+    missing_time_flags = numpy.isnan(data_values)
+    if not numpy.any(missing_time_flags):
+        return data_values
+
+    assert not numpy.all(missing_time_flags)
+
+    missing_time_indices = numpy.where(missing_time_flags)[0]
+    found_time_indices = numpy.where(
+        numpy.invert(missing_time_flags)
+    )[0]
+
+    fill_values = (
+        data_values[found_time_indices[0]],
+        data_values[found_time_indices[-1]]
+    )
+    interp_object = interp1d(
+        times_sec[found_time_indices], data_values[found_time_indices],
+        kind='linear', bounds_error=False, assume_sorted=True,
+        fill_value=fill_values
+    )
+    data_values[missing_time_indices] = interp_object(
+        times_sec[missing_time_indices]
+    )
+
+    return data_values
+
+
+def _interp_missing_times_spatial(data_matrix, times_sec):
+    """Interpolates to fill spatial data at missing times.
+
+    This method handles data for only one example and one variable.
+
+    M = number of rows in grid
+    N = number of columns in grid
+    T = number of time steps
+
+    :param data_matrix: M-by-N-by-T numpy array of data values.
+    :param times_sec: length-T numpy array of times (seconds).  Must be sorted
+        in ascending order.
+    :return: data_matrix: Same but without missing values.
+    """
+
+    missing_time_flags = numpy.any(numpy.isnan(data_matrix), axis=(0, 1))
+    if not numpy.any(missing_time_flags):
+        return data_matrix
+
+    assert not numpy.all(missing_time_flags)
+
+    missing_time_indices = numpy.where(missing_time_flags)[0]
+    found_time_indices = numpy.where(
+        numpy.invert(missing_time_flags)
+    )[0]
+
+    for j in missing_time_indices:
+        these_diffs = (j - found_time_indices).astype(float)
+        these_diffs[these_diffs < 0] = numpy.inf
+
+        if numpy.any(numpy.isfinite(these_diffs)):
+            left_time_index = found_time_indices[
+                numpy.argmin(numpy.absolute(these_diffs))
+            ]
+        else:
+            left_time_index = -1
+
+        these_diffs = (j - found_time_indices).astype(float)
+        these_diffs[these_diffs > 0] = numpy.inf
+
+        if numpy.any(numpy.isfinite(these_diffs)):
+            right_time_index = found_time_indices[
+                numpy.argmin(numpy.absolute(these_diffs))
+            ]
+        else:
+            right_time_index = -1
+
+        if left_time_index == -1:
+            data_matrix[..., j] = data_matrix[..., right_time_index]
+            continue
+
+        if right_time_index == -1:
+            data_matrix[..., j] = data_matrix[..., left_time_index]
+            continue
+
+        actual_time_diff_sec = times_sec[j] - times_sec[left_time_index]
+        reference_time_diff_sec = (
+            times_sec[right_time_index] - times_sec[left_time_index]
+        )
+        time_fraction = float(actual_time_diff_sec) / reference_time_diff_sec
+
+        increment_matrix = time_fraction * (
+            data_matrix[..., right_time_index] -
+            data_matrix[..., left_time_index]
+        )
+        data_matrix[..., j] = (
+            data_matrix[..., left_time_index] + increment_matrix
+        )
+
+    return data_matrix
+
+
+def _interp_missing_times(data_matrix, times_sec):
+    """Interpolates to fill data at missing times.
+
+    E = number of examples
+    T = number of time steps
+    C = number of channels
+
+    :param data_matrix: numpy array of data values.  Dimensions may be E x T x C
+        or E x M x N x T x C, where M and N are spatial dimensions.  Either way,
+        the first axis is the example axis; the last is the channel axis; and
+        the second-last is the time axis.
+    :param times_sec: length-T numpy array of times (seconds).  Must be sorted
+        in ascending order.
+    :return: data_matrix: Same but without missing values.
+    """
+
+    num_dimensions = len(data_matrix.shape)
+    assert num_dimensions == 3 or num_dimensions == 5
+    has_spatial_data = num_dimensions == 5
+
+    num_examples = data_matrix.shape[0]
+    num_channels = data_matrix.shape[-1]
+
+    for i in range(num_examples):
+        for k in range(num_channels):
+            if has_spatial_data:
+                data_matrix[i, ..., k] = _interp_missing_times_spatial(
+                    data_matrix=data_matrix[i, ..., k], times_sec=times_sec
+                )
+            else:
+                data_matrix[i, ..., k] = _interp_missing_times_nonspatial(
+                    data_values=data_matrix[i, ..., k], times_sec=times_sec
+                )
+
+    assert not numpy.any(numpy.isnan(data_matrix))
+
+    return data_matrix
 
 
 def _discretize_intensity_change(intensity_change_m_s01, class_cutoffs_m_s01):
@@ -189,12 +359,20 @@ def _read_one_example_file(
     ships_time_indices_by_example = []
     target_time_indices_by_example = []
 
+    satellite_max_num_missing_times = int(numpy.round(
+        SATELLITE_MAX_MISSING_FRACTION * len(satellite_lag_times_sec)
+    ))
+    ships_max_num_missing_times = int(numpy.round(
+        SHIPS_MAX_MISSING_FRACTION * len(ships_lag_times_sec)
+    ))
+
     for t in init_times_unix_sec:
         these_satellite_indices = _find_desired_times(
             all_times_unix_sec=
             xt.coords[example_utils.SATELLITE_TIME_DIM].values,
             desired_times_unix_sec=t - satellite_lag_times_sec,
-            tolerance_sec=930
+            tolerance_sec=SATELLITE_TOLERANCE_SEC,
+            max_num_missing_times=satellite_max_num_missing_times
         )
         if these_satellite_indices is None:
             continue
@@ -203,7 +381,8 @@ def _read_one_example_file(
             all_times_unix_sec=
             xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
             desired_times_unix_sec=t - ships_lag_times_sec,
-            tolerance_sec=0
+            tolerance_sec=SHIPS_TOLERANCE_SEC,
+            max_num_missing_times=ships_max_num_missing_times
         )
         if these_ships_indices is None:
             continue
@@ -213,7 +392,7 @@ def _read_one_example_file(
             xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
             desired_times_unix_sec=
             numpy.array([t, t + lead_time_sec], dtype=int),
-            tolerance_sec=0
+            tolerance_sec=0, max_num_missing_times=0
         )
         if these_target_indices is None:
             continue
@@ -349,6 +528,19 @@ def _read_one_example_file(
         else:
             target_array[i] = numpy.argmax(these_flags)
 
+    brightness_temp_matrix = _interp_missing_times(
+        data_matrix=brightness_temp_matrix,
+        times_sec=-1 * satellite_lag_times_sec
+    )
+    satellite_predictor_matrix = _interp_missing_times(
+        data_matrix=satellite_predictor_matrix,
+        times_sec=-1 * satellite_lag_times_sec
+    )
+    ships_predictor_matrix = _interp_missing_times(
+        data_matrix=ships_predictor_matrix,
+        times_sec=-1 * ships_lag_times_sec
+    )
+
     predictor_matrices = [
         brightness_temp_matrix, satellite_predictor_matrix,
         ships_predictor_matrix
@@ -385,6 +577,9 @@ def _check_generator_args(option_dict):
     error_checking.assert_is_numpy_array(
         option_dict[SATELLITE_LAG_TIMES_KEY], num_dimensions=1
     )
+    option_dict[SATELLITE_LAG_TIMES_KEY] = numpy.sort(
+        option_dict[SATELLITE_LAG_TIMES_KEY]
+    )[::-1]
 
     error_checking.assert_is_integer_numpy_array(
         option_dict[SHIPS_LAG_TIMES_KEY]
@@ -396,6 +591,9 @@ def _check_generator_args(option_dict):
     error_checking.assert_is_numpy_array(
         option_dict[SHIPS_LAG_TIMES_KEY], num_dimensions=1
     )
+    option_dict[SHIPS_LAG_TIMES_KEY] = numpy.sort(
+        option_dict[SHIPS_LAG_TIMES_KEY]
+    )[::-1]
 
     # TODO(thunderhoser): Allow either list to be empty.
     error_checking.assert_is_string_list(option_dict[SATELLITE_PREDICTORS_KEY])
