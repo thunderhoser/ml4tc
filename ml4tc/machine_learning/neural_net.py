@@ -10,6 +10,7 @@ from scipy.interpolate import interp1d
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
+from gewittergefahr.deep_learning import keras_metrics as custom_metrics
 from ml4tc.io import example_io
 from ml4tc.io import ships_io
 from ml4tc.utils import example_utils
@@ -30,6 +31,18 @@ DEFAULT_CLASS_CUTOFFS_KT = numpy.array(
     [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25], dtype=float
 )
 DEFAULT_CLASS_CUTOFFS_M_S01 = DEFAULT_CLASS_CUTOFFS_KT * KT_TO_METRES_PER_SECOND
+
+METRIC_DICT = {
+    'accuracy': custom_metrics.accuracy,
+    'binary_accuracy': custom_metrics.binary_accuracy,
+    'binary_csi': custom_metrics.binary_csi,
+    'binary_frequency_bias': custom_metrics.binary_frequency_bias,
+    'binary_pod': custom_metrics.binary_pod,
+    'binary_pofd': custom_metrics.binary_pofd,
+    'binary_peirce_score': custom_metrics.binary_peirce_score,
+    'binary_success_ratio': custom_metrics.binary_success_ratio,
+    'binary_focn': custom_metrics.binary_focn
+}
 
 PLATEAU_PATIENCE_EPOCHS = 10
 DEFAULT_LEARNING_RATE_MULTIPLIER = 0.5
@@ -361,13 +374,17 @@ def _read_one_example_file(
         SHIPS_MAX_MISSING_FRACTION * len(ships_lag_times_sec)
     ))
 
-    satellite_time_indices_by_example = []
-    ships_time_indices_by_example = []
-    target_array = None
-
     num_classes = len(class_cutoffs_m_s01) + 1
     num_positive_examples_found = 0
     num_negative_examples_found = 0
+
+    satellite_time_indices_by_example = []
+    ships_time_indices_by_example = []
+
+    if num_classes > 2:
+        target_array = numpy.full((0, num_classes), -1, dtype=int)
+    else:
+        target_array = numpy.full(0, -1, dtype=int)
 
     for t in init_times_unix_sec:
         these_satellite_indices = _find_desired_times(
@@ -427,18 +444,12 @@ def _read_one_example_file(
 
         if num_classes > 2:
             these_flags = numpy.expand_dims(these_flags, axis=0)
-
-            if target_array is None:
-                target_array = these_flags + 0
-            else:
-                target_array = numpy.concatenate(
-                    (target_array, these_flags), axis=0
-                )
         else:
-            if target_array is None:
-                target_array = []
+            these_flags = numpy.array([numpy.argmax(these_flags)], dtype=int)
 
-            target_array.append(numpy.argmax(these_flags))
+        target_array = numpy.concatenate(
+            (target_array, these_flags), axis=0
+        )
 
         satellite_time_indices_by_example.append(
             these_satellite_indices
@@ -456,8 +467,6 @@ def _read_one_example_file(
                 num_examples_desired
         ):
             break
-
-    target_array = numpy.array(target_array, dtype=int)
 
     num_examples = len(ships_time_indices_by_example)
     num_grid_rows = (
@@ -1007,7 +1016,9 @@ def read_model(hdf5_file_name):
     """
 
     error_checking.assert_file_exists(hdf5_file_name)
-    return tf_keras.models.load_model(hdf5_file_name)
+    return tf_keras.models.load_model(
+        hdf5_file_name, custom_objects=METRIC_DICT
+    )
 
 
 def apply_model(model_object, predictor_matrices, num_examples_per_batch,
