@@ -46,7 +46,8 @@ SHIPS_LAG_TIMES_KEY = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_KEY = 'satellite_predictor_names'
 SHIPS_PREDICTORS_LAGGED_KEY = 'ships_predictor_names_lagged'
 SHIPS_PREDICTORS_FORECAST_KEY = 'ships_predictor_names_forecast'
-NUM_EXAMPLES_PER_BATCH_KEY = 'num_examples_per_batch'
+NUM_POSITIVE_EXAMPLES_KEY = 'num_positive_examples_per_batch'
+NUM_NEGATIVE_EXAMPLES_KEY = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_KEY = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_KEY = 'class_cutoffs_m_s01'
 
@@ -84,8 +85,9 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     SATELLITE_PREDICTORS_KEY: DEFAULT_SATELLITE_PREDICTOR_NAMES,
     SHIPS_PREDICTORS_LAGGED_KEY: DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
     SHIPS_PREDICTORS_FORECAST_KEY: DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST,
-    NUM_EXAMPLES_PER_BATCH_KEY: 16,
-    MAX_EXAMPLES_PER_CYCLONE_KEY: 4,
+    NUM_POSITIVE_EXAMPLES_KEY: 8,
+    NUM_NEGATIVE_EXAMPLES_KEY: 24,
+    MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
     CLASS_CUTOFFS_KEY: numpy.array([25 * KT_TO_METRES_PER_SECOND])
 }
 
@@ -317,7 +319,8 @@ def _discretize_intensity_change(intensity_change_m_s01, class_cutoffs_m_s01):
 
 
 def _read_one_example_file(
-        example_file_name, num_examples_desired, lead_time_hours,
+        example_file_name, num_examples_desired, num_positive_examples_desired,
+        num_negative_examples_desired, lead_time_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
         ships_predictor_names_forecast, class_cutoffs_m_s01):
@@ -325,7 +328,11 @@ def _read_one_example_file(
 
     :param example_file_name: Path to input file.  Will be read by
         `example_io.read_file`.
-    :param num_examples_desired: Number of examples desired.
+    :param num_examples_desired: Number of total example desired.
+    :param num_positive_examples_desired: Number of positive examples (in
+        highest class) desired.
+    :param num_negative_examples_desired: Number of negative examples (not in
+        highest class) desired.
     :param lead_time_hours: See doc for `input_generator`.
     :param satellite_lag_times_minutes: Same.
     :param ships_lag_times_hours: Same.
@@ -347,16 +354,20 @@ def _read_one_example_file(
     ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
     lead_time_sec = lead_time_hours * HOURS_TO_SECONDS
 
-    satellite_time_indices_by_example = []
-    ships_time_indices_by_example = []
-    target_time_indices_by_example = []
-
     satellite_max_num_missing_times = int(numpy.round(
         SATELLITE_MAX_MISSING_FRACTION * len(satellite_lag_times_sec)
     ))
     ships_max_num_missing_times = int(numpy.round(
         SHIPS_MAX_MISSING_FRACTION * len(ships_lag_times_sec)
     ))
+
+    satellite_time_indices_by_example = []
+    ships_time_indices_by_example = []
+    target_array = None
+
+    num_classes = len(class_cutoffs_m_s01) + 1
+    num_positive_examples_found = 0
+    num_negative_examples_found = 0
 
     for t in init_times_unix_sec:
         these_satellite_indices = _find_desired_times(
@@ -389,14 +400,64 @@ def _read_one_example_file(
         if these_target_indices is None:
             continue
 
+        intensities_m_s01 = (
+            xt[example_utils.STORM_INTENSITY_KEY].values[
+                these_target_indices[0]:(these_target_indices[-1] + 1)
+            ]
+        )
+        intensity_change_m_s01 = numpy.max(
+            intensities_m_s01 - intensities_m_s01[0]
+        )
+        these_flags = _discretize_intensity_change(
+            intensity_change_m_s01=intensity_change_m_s01,
+            class_cutoffs_m_s01=class_cutoffs_m_s01
+        )
+
+        if these_flags[-1] == 1:
+            if num_positive_examples_found >= num_positive_examples_desired:
+                continue
+
+            num_positive_examples_found += 1
+
+        if these_flags[-1] == 0:
+            if num_negative_examples_found >= num_negative_examples_desired:
+                continue
+
+            num_negative_examples_found += 1
+
+        if num_classes > 2:
+            these_flags = numpy.expand_dims(these_flags, axis=0)
+
+            if target_array is None:
+                target_array = these_flags + 0
+            else:
+                target_array = numpy.concatenate(
+                    (target_array, these_flags), axis=0
+                )
+        else:
+            if target_array is None:
+                target_array = []
+
+            target_array.append(numpy.argmax(these_flags))
+
         satellite_time_indices_by_example.append(
             these_satellite_indices
         )
         ships_time_indices_by_example.append(these_ships_indices)
-        target_time_indices_by_example.append(these_target_indices)
 
-        if len(ships_time_indices_by_example) == num_examples_desired:
+        if (
+                num_positive_examples_found >= num_positive_examples_desired and
+                num_negative_examples_found >= num_negative_examples_desired
+        ):
             break
+
+        if (
+                num_positive_examples_found + num_negative_examples_found >=
+                num_examples_desired
+        ):
+            break
+
+    target_array = numpy.array(target_array, dtype=int)
 
     num_examples = len(ships_time_indices_by_example)
     num_grid_rows = (
@@ -433,12 +494,6 @@ def _read_one_example_file(
 
     these_dim = (num_examples, len(ships_lag_times_sec), num_ships_channels)
     ships_predictor_matrix = numpy.full(these_dim, numpy.nan)
-
-    num_classes = len(class_cutoffs_m_s01) + 1
-    if num_classes > 2:
-        target_array = numpy.full((num_examples, num_classes), -1, dtype=int)
-    else:
-        target_array = numpy.full(num_examples, -1, dtype=int)
 
     all_satellite_predictor_names = (
         xt.coords[
@@ -494,31 +549,6 @@ def _read_one_example_file(
                 ].values[k, :, ships_predictor_indices_forecast]
             )
             ships_predictor_matrix[i, j, len(lagged_values):] = forecast_values
-
-        # intensity_change_m_s01 = numpy.diff(
-        #     xt[example_utils.STORM_INTENSITY_KEY].values[
-        #         target_time_indices_by_example[i]
-        #     ]
-        # )[0]
-
-        first_index = target_time_indices_by_example[i][0]
-        last_index = target_time_indices_by_example[i][-1] + 1
-        intensities_m_s01 = (
-            xt[example_utils.STORM_INTENSITY_KEY].values[first_index:last_index]
-        )
-        intensity_change_m_s01 = numpy.max(
-            intensities_m_s01 - intensities_m_s01[0]
-        )
-
-        these_flags = _discretize_intensity_change(
-            intensity_change_m_s01=intensity_change_m_s01,
-            class_cutoffs_m_s01=class_cutoffs_m_s01
-        )
-
-        if num_classes > 2:
-            target_array[i, :] = these_flags
-        else:
-            target_array[i] = numpy.argmax(these_flags)
 
     brightness_temp_matrix = _interp_missing_times(
         data_matrix=brightness_temp_matrix,
@@ -596,12 +626,15 @@ def _check_generator_args(option_dict):
         option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
     )
 
-    error_checking.assert_is_integer(option_dict[NUM_EXAMPLES_PER_BATCH_KEY])
-    error_checking.assert_is_geq(option_dict[NUM_EXAMPLES_PER_BATCH_KEY], 10)
+    error_checking.assert_is_integer(option_dict[NUM_POSITIVE_EXAMPLES_KEY])
+    error_checking.assert_is_geq(option_dict[NUM_POSITIVE_EXAMPLES_KEY], 4)
+    error_checking.assert_is_integer(option_dict[NUM_NEGATIVE_EXAMPLES_KEY])
+    error_checking.assert_is_geq(option_dict[NUM_NEGATIVE_EXAMPLES_KEY], 4)
     error_checking.assert_is_integer(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY])
     error_checking.assert_is_geq(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY], 1)
     error_checking.assert_is_greater(
-        option_dict[NUM_EXAMPLES_PER_BATCH_KEY],
+        option_dict[NUM_POSITIVE_EXAMPLES_KEY] +
+        option_dict[NUM_NEGATIVE_EXAMPLES_KEY],
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
     )
 
@@ -639,7 +672,8 @@ def create_inputs(option_dict):
 
     option_dict[EXAMPLE_DIRECTORY_KEY] = 'foo'
     option_dict[YEARS_KEY] = numpy.array([1900], dtype=int)
-    option_dict[NUM_EXAMPLES_PER_BATCH_KEY] = 16
+    option_dict[NUM_POSITIVE_EXAMPLES_KEY] = 8
+    option_dict[NUM_NEGATIVE_EXAMPLES_KEY] = 8
     option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY] = 4
 
     option_dict = _check_generator_args(option_dict)
@@ -656,6 +690,8 @@ def create_inputs(option_dict):
     predictor_matrices, target_array = _read_one_example_file(
         example_file_name=example_file_name,
         num_examples_desired=int(1e10),
+        num_positive_examples_desired=int(1e10),
+        num_negative_examples_desired=int(1e10),
         lead_time_hours=lead_time_hours,
         satellite_lag_times_minutes=satellite_lag_times_minutes,
         ships_lag_times_hours=ships_lag_times_hours,
@@ -698,7 +734,10 @@ def input_generator(option_dict):
         SHIPS predictors to use.
     option_dict['ships_predictor_names_forecast']: 1-D list with names of
         forecast SHIPS predictors to use.
-    option_dict['num_examples_per_batch']: Number of examples per batch.
+    option_dict['num_positive_examples_per_batch']: Number of positive examples
+        (in highest class) per batch.
+    option_dict['num_negative_examples_per_batch']: Number of negative examples
+        (not in highest class) per batch.
     option_dict['max_examples_per_cyclone_in_batch']: Max number of examples
         (time steps) from one cyclone in a batch.
     option_dict['class_cutoffs_m_s01']: numpy array (length K - 1) of class
@@ -730,7 +769,8 @@ def input_generator(option_dict):
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
     ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
-    num_examples_per_batch = option_dict[NUM_EXAMPLES_PER_BATCH_KEY]
+    num_positive_examples_per_batch = option_dict[NUM_POSITIVE_EXAMPLES_KEY]
+    num_negative_examples_per_batch = option_dict[NUM_NEGATIVE_EXAMPLES_KEY]
     max_examples_per_cyclone_in_batch = (
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
     )
@@ -763,16 +803,31 @@ def input_generator(option_dict):
     ]
 
     file_index = 0
+    num_examples_per_batch = (
+        num_positive_examples_per_batch + num_negative_examples_per_batch
+    )
 
     while True:
         predictor_matrices = None
         target_array = None
         num_examples_in_memory = 0
+        num_positive_examples_in_memory = 0
+        num_negative_examples_in_memory = 0
 
         while num_examples_in_memory < num_examples_per_batch:
             if file_index == len(example_file_names):
                 file_index = 0
 
+            num_positive_examples_to_read = min([
+                max_examples_per_cyclone_in_batch,
+                num_positive_examples_per_batch -
+                num_positive_examples_in_memory
+            ])
+            num_negative_examples_to_read = min([
+                max_examples_per_cyclone_in_batch,
+                num_negative_examples_per_batch -
+                num_negative_examples_in_memory
+            ])
             num_examples_to_read = min([
                 max_examples_per_cyclone_in_batch,
                 num_examples_per_batch - num_examples_in_memory
@@ -782,6 +837,8 @@ def input_generator(option_dict):
                 _read_one_example_file(
                     example_file_name=example_file_names[file_index],
                     num_examples_desired=num_examples_to_read,
+                    num_positive_examples_desired=num_positive_examples_to_read,
+                    num_negative_examples_desired=num_negative_examples_to_read,
                     lead_time_hours=lead_time_hours,
                     satellite_lag_times_minutes=satellite_lag_times_minutes,
                     ships_lag_times_hours=ships_lag_times_hours,
@@ -809,7 +866,19 @@ def input_generator(option_dict):
                     (target_array, this_target_array), axis=0
                 )
 
-            num_examples_in_memory = target_array.shape[0]
+            if len(target_array.shape) == 1:
+                num_positive_examples_in_memory = numpy.sum(target_array == 1)
+                num_negative_examples_in_memory = numpy.sum(target_array == 0)
+            else:
+                num_positive_examples_in_memory = numpy.sum(target_array[:, -1])
+                num_negative_examples_in_memory = numpy.sum(
+                    target_array[:, :-1]
+                )
+
+            num_examples_in_memory = (
+                num_positive_examples_in_memory +
+                num_negative_examples_in_memory
+            )
 
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
         target_array = target_array.astype('float16')
