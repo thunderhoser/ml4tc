@@ -4,6 +4,8 @@ import unittest
 import numpy
 from ml4tc.machine_learning import neural_net
 
+TOLERANCE = 1e-6
+
 # The following constants are used to test _find_desired_times.
 DESIRED_TIMES_UNIX_SEC = numpy.array(
     [0, 900, 1800, 2700, 3600, 4500, 5400, 6300, 7200], dtype=int
@@ -28,7 +30,63 @@ THIRD_TIME_INDICES = numpy.array([4, 3, 3, 0, 0, 2, 5, 1, 6], dtype=int)
 FOURTH_ACTUAL_TIMES_UNIX_SEC = numpy.array(
     [4300, 5400, 3400, 400, 6000, 2100, 2600], dtype=int
 )
-FOURTH_TIME_INDICES = None
+FOURTH_TIME_INDICES = numpy.array([3, 3, 5, 6, 2, 0, 1, 4, -1], dtype=int)
+
+# The following constants are used to test _interp_missing_times.
+NAN = numpy.nan
+TIMES_FOR_INTERP_SEC = numpy.array([0, 1, 2, 3, 4, 5], dtype=float)
+
+THIS_MATRIX = numpy.array([
+    [NAN, 0, 0, 0],
+    [1, -5, 2, NAN],
+    [2, NAN, 4, NAN],
+    [3, NAN, 6, NAN],
+    [NAN, -50, 10, NAN],
+    [NAN, -100, 100, -30]
+], dtype=float)
+
+DATA_MATRIX_NON_SPATIAL_BEFORE_INTERP = numpy.stack(
+    (THIS_MATRIX, 2 * THIS_MATRIX), axis=0
+)
+
+THIS_MATRIX = numpy.array([
+    [1, 0, 0, 0],
+    [1, -5, 2, -6],
+    [2, -20, 4, -12],
+    [3, -35, 6, -18],
+    [3, -50, 10, -24],
+    [3, -100, 100, -30]
+], dtype=float)
+
+DATA_MATRIX_NON_SPATIAL_AFTER_INTERP = numpy.stack(
+    (THIS_MATRIX, 2 * THIS_MATRIX), axis=0
+)
+
+DATA_MATRIX_SPATIAL_BEFORE_INTERP = numpy.expand_dims(
+    DATA_MATRIX_NON_SPATIAL_BEFORE_INTERP, axis=1
+)
+DATA_MATRIX_SPATIAL_BEFORE_INTERP = numpy.expand_dims(
+    DATA_MATRIX_SPATIAL_BEFORE_INTERP, axis=1
+)
+DATA_MATRIX_SPATIAL_BEFORE_INTERP = numpy.repeat(
+    DATA_MATRIX_SPATIAL_BEFORE_INTERP, axis=1, repeats=480
+)
+DATA_MATRIX_SPATIAL_BEFORE_INTERP = numpy.repeat(
+    DATA_MATRIX_SPATIAL_BEFORE_INTERP, axis=2, repeats=640
+)
+
+DATA_MATRIX_SPATIAL_AFTER_INTERP = numpy.expand_dims(
+    DATA_MATRIX_NON_SPATIAL_AFTER_INTERP, axis=1
+)
+DATA_MATRIX_SPATIAL_AFTER_INTERP = numpy.expand_dims(
+    DATA_MATRIX_SPATIAL_AFTER_INTERP, axis=1
+)
+DATA_MATRIX_SPATIAL_AFTER_INTERP = numpy.repeat(
+    DATA_MATRIX_SPATIAL_AFTER_INTERP, axis=1, repeats=480
+)
+DATA_MATRIX_SPATIAL_AFTER_INTERP = numpy.repeat(
+    DATA_MATRIX_SPATIAL_AFTER_INTERP, axis=2, repeats=640
+)
 
 # The following constants are used to test _discretize_intensity_change.
 INTENSITY_CHANGE_M_S01 = 30.
@@ -58,15 +116,12 @@ class NeuralNetTests(unittest.TestCase):
         these_indices = neural_net._find_desired_times(
             all_times_unix_sec=FIRST_ACTUAL_TIMES_UNIX_SEC,
             desired_times_unix_sec=DESIRED_TIMES_UNIX_SEC,
-            tolerance_sec=TOLERANCE_SEC
+            tolerance_sec=TOLERANCE_SEC, max_num_missing_times=0
         )
 
-        if FIRST_TIME_INDICES is None:
-            self.assertTrue(these_indices is None)
-        else:
-            self.assertTrue(numpy.array_equal(
-                these_indices, FIRST_TIME_INDICES
-            ))
+        self.assertTrue(numpy.array_equal(
+            these_indices, FIRST_TIME_INDICES
+        ))
 
     def test_find_desired_times_second(self):
         """Ensures correct output from _find_desired_times.
@@ -77,15 +132,12 @@ class NeuralNetTests(unittest.TestCase):
         these_indices = neural_net._find_desired_times(
             all_times_unix_sec=SECOND_ACTUAL_TIMES_UNIX_SEC,
             desired_times_unix_sec=DESIRED_TIMES_UNIX_SEC,
-            tolerance_sec=TOLERANCE_SEC
+            tolerance_sec=TOLERANCE_SEC, max_num_missing_times=0
         )
 
-        if SECOND_TIME_INDICES is None:
-            self.assertTrue(these_indices is None)
-        else:
-            self.assertTrue(numpy.array_equal(
-                these_indices, SECOND_TIME_INDICES
-            ))
+        self.assertTrue(numpy.array_equal(
+            these_indices, SECOND_TIME_INDICES
+        ))
 
     def test_find_desired_times_third(self):
         """Ensures correct output from _find_desired_times.
@@ -96,34 +148,76 @@ class NeuralNetTests(unittest.TestCase):
         these_indices = neural_net._find_desired_times(
             all_times_unix_sec=THIRD_ACTUAL_TIMES_UNIX_SEC,
             desired_times_unix_sec=DESIRED_TIMES_UNIX_SEC,
-            tolerance_sec=TOLERANCE_SEC
+            tolerance_sec=TOLERANCE_SEC, max_num_missing_times=0
         )
 
-        if THIRD_TIME_INDICES is None:
-            self.assertTrue(these_indices is None)
-        else:
-            self.assertTrue(numpy.array_equal(
-                these_indices, THIRD_TIME_INDICES
-            ))
+        self.assertTrue(numpy.array_equal(
+            these_indices, THIRD_TIME_INDICES
+        ))
 
-    def test_find_desired_times_fourth(self):
+    def test_find_desired_times_fourth_allow_missing(self):
         """Ensures correct output from _find_desired_times.
 
-        In this case, using fourth set of actual times.
+        In this case, using fourth set of actual times and will allow missing
+        times.
         """
 
         these_indices = neural_net._find_desired_times(
             all_times_unix_sec=FOURTH_ACTUAL_TIMES_UNIX_SEC,
             desired_times_unix_sec=DESIRED_TIMES_UNIX_SEC,
-            tolerance_sec=TOLERANCE_SEC
+            tolerance_sec=TOLERANCE_SEC, max_num_missing_times=1
         )
 
-        if FOURTH_TIME_INDICES is None:
-            self.assertTrue(these_indices is None)
-        else:
-            self.assertTrue(numpy.array_equal(
-                these_indices, FOURTH_TIME_INDICES
-            ))
+        self.assertTrue(numpy.array_equal(
+            these_indices, FOURTH_TIME_INDICES
+        ))
+
+    def test_find_desired_times_fourth_no_allow_missing(self):
+        """Ensures correct output from _find_desired_times.
+
+        In this case, using fourth set of actual times and will *not* allow
+        missing times.
+        """
+
+        these_indices = neural_net._find_desired_times(
+            all_times_unix_sec=FOURTH_ACTUAL_TIMES_UNIX_SEC,
+            desired_times_unix_sec=DESIRED_TIMES_UNIX_SEC,
+            tolerance_sec=TOLERANCE_SEC, max_num_missing_times=0
+        )
+
+        self.assertTrue(these_indices is None)
+
+    def test_interp_missing_times_non_spatial(self):
+        """Ensures correct output from _interp_missing_times.
+
+        In this case, data are non-spatial.
+        """
+
+        this_data_matrix = neural_net._interp_missing_times(
+            data_matrix=DATA_MATRIX_NON_SPATIAL_BEFORE_INTERP + 0.,
+            times_sec=TIMES_FOR_INTERP_SEC
+        )
+
+        self.assertTrue(numpy.allclose(
+            this_data_matrix, DATA_MATRIX_NON_SPATIAL_AFTER_INTERP,
+            atol=TOLERANCE
+        ))
+
+    def test_interp_missing_times_spatial(self):
+        """Ensures correct output from _interp_missing_times.
+
+        In this case, data are spatial.
+        """
+
+        this_data_matrix = neural_net._interp_missing_times(
+            data_matrix=DATA_MATRIX_SPATIAL_BEFORE_INTERP + 0.,
+            times_sec=TIMES_FOR_INTERP_SEC
+        )
+
+        self.assertTrue(numpy.allclose(
+            this_data_matrix, DATA_MATRIX_SPATIAL_AFTER_INTERP,
+            atol=TOLERANCE
+        ))
 
     def test_discretize_intensity_change_first(self):
         """Ensures correct output from _discretize_intensity_change.
