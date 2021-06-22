@@ -369,13 +369,17 @@ def _read_one_example_file(
         SHIPS_MAX_MISSING_FRACTION * len(ships_lag_times_sec)
     ))
 
-    satellite_time_indices_by_example = []
-    ships_time_indices_by_example = []
-    target_array = None
-
     num_classes = len(class_cutoffs_m_s01) + 1
     num_positive_examples_found = 0
     num_negative_examples_found = 0
+
+    satellite_time_indices_by_example = []
+    ships_time_indices_by_example = []
+
+    if num_classes > 2:
+        target_array = numpy.full((0, num_classes), -1, dtype=int)
+    else:
+        target_array = numpy.full(0, -1, dtype=int)
 
     for t in init_times_unix_sec:
         these_satellite_indices = _find_desired_times(
@@ -435,18 +439,12 @@ def _read_one_example_file(
 
         if num_classes > 2:
             these_flags = numpy.expand_dims(these_flags, axis=0)
-
-            if target_array is None:
-                target_array = these_flags + 0
-            else:
-                target_array = numpy.concatenate(
-                    (target_array, these_flags), axis=0
-                )
         else:
-            if target_array is None:
-                target_array = []
+            these_flags = numpy.array([numpy.argmax(these_flags)], dtype=int)
 
-            target_array.append(numpy.argmax(these_flags))
+        target_array = numpy.concatenate(
+            (target_array, these_flags), axis=0
+        )
 
         satellite_time_indices_by_example.append(
             these_satellite_indices
@@ -464,8 +462,6 @@ def _read_one_example_file(
                 num_examples_desired
         ):
             break
-
-    target_array = numpy.array(target_array, dtype=int)
 
     num_examples = len(ships_time_indices_by_example)
     num_grid_rows = (
