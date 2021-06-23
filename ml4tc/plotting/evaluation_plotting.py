@@ -5,7 +5,7 @@ import matplotlib.colors
 import matplotlib.patches
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import error_checking
-from gewittergefahr.plotting import plotting_utils
+from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 
 POLYGON_OPACITY = 0.5
 CSI_LEVELS = numpy.linspace(0, 1, num=11, dtype=float)
@@ -616,7 +616,7 @@ def plot_roc_curve(
             norm=this_colour_norm_object, vmin=0., vmax=1., axes=axes_object
         )
 
-        colour_bar_object = plotting_utils.plot_colour_bar(
+        colour_bar_object = gg_plotting_utils.plot_colour_bar(
             axes_object_or_matrix=axes_object, data_matrix=peirce_score_matrix,
             colour_map_object=this_colour_map_object,
             colour_norm_object=this_colour_norm_object,
@@ -730,7 +730,7 @@ def plot_performance_diagram(
             vmax=1., axes=axes_object
         )
 
-        colour_bar_object = plotting_utils.plot_colour_bar(
+        colour_bar_object = gg_plotting_utils.plot_colour_bar(
             axes_object_or_matrix=axes_object, data_matrix=csi_matrix,
             colour_map_object=this_colour_map_object,
             colour_norm_object=this_colour_norm_object,

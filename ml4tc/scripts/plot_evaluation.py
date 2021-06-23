@@ -5,28 +5,28 @@ import numpy
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
-from gewittergefahr.gg_utils import model_evaluation as gg_model_eval
 from gewittergefahr.gg_utils import file_system_utils
-from ml4tc.io import prediction_io
+from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import evaluation
 from ml4tc.plotting import evaluation_plotting
 
 # TODO(thunderhoser): Currently this script works only for binary
 # classification.
 
-NUM_PROB_THRESHOLDS = 1001
-NUM_RELIABILITY_BINS = 20
-EVENT_FREQ_IN_TRAINING = 0.03
-
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
-PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
+EVALUATION_FILE_ARG_NAME = 'input_evaluation_file_name'
+CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
-PREDICTION_FILE_HELP_STRING = (
-    'Path to file with predicted and actual values.  Will be read by '
-    '`prediction_io.read_file`.'
+EVALUATION_FILE_HELP_STRING = (
+    'Path to file with evaluation results.  Will be read by '
+    '`evaluation.read_file`.'
+)
+CONFIDENCE_LEVEL_HELP_STRING = (
+    'Level (in range 0...1) for confidence intervals based on bootstrapping.'
 )
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Figures will be saved here.'
@@ -34,8 +34,12 @@ OUTPUT_DIR_HELP_STRING = (
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
-    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=True,
-    help=PREDICTION_FILE_HELP_STRING
+    '--' + EVALUATION_FILE_ARG_NAME, type=str, required=True,
+    help=EVALUATION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=0.95,
+    help=CONFIDENCE_LEVEL_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -43,46 +47,52 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(prediction_file_name, output_dir_name):
+def _run(evaluation_file_name, confidence_level, output_dir_name):
     """Plots model evaluation.
 
     This is effectively the main method.
 
-    :param prediction_file_name: See documentation at top of file.
+    :param evaluation_file_name: See documentation at top of file.
+    :param confidence_level: Same.
     :param output_dir_name: Same.
     """
+
+    error_checking.assert_is_geq(confidence_level, 0.9)
+    error_checking.assert_is_leq(confidence_level, 1.)
+    min_percentile = 50. * (1. - confidence_level)
+    max_percentile = 50. * (1. + confidence_level)
 
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
 
-    print('Reading data from: "{0:s}"...'.format(prediction_file_name))
-    prediction_dict = prediction_io.read_file(prediction_file_name)
-
-    target_classes = prediction_dict[prediction_io.TARGET_CLASSES_KEY]
-    forecast_prob_matrix = prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY]
-    num_classes = forecast_prob_matrix.shape[1]
-    assert num_classes == 2
-
-    forecast_probabilities = forecast_prob_matrix[:, 1]
-
-    probability_thresholds = gg_model_eval.get_binarization_thresholds(
-        threshold_arg=NUM_PROB_THRESHOLDS
-    )
-
-    pofd_values, pod_values = gg_model_eval.get_points_in_roc_curve(
-        forecast_probabilities=forecast_probabilities,
-        observed_labels=target_classes, threshold_arg=probability_thresholds
-    )
+    print('Reading data from: "{0:s}"...'.format(evaluation_file_name))
+    evaluation_table_xarray = evaluation.read_file(evaluation_file_name)
+    et = evaluation_table_xarray
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
     evaluation_plotting.plot_roc_curve(
         axes_object=axes_object,
-        pod_matrix=numpy.expand_dims(pod_values, axis=0),
-        pofd_matrix=numpy.expand_dims(pofd_values, axis=0)
+        pod_matrix=numpy.transpose(et[evaluation.POD_KEY].values),
+        pofd_matrix=numpy.transpose(et[evaluation.POFD_KEY].values),
+        confidence_level=confidence_level
     )
+
+    auc_values = et[evaluation.AUC_KEY].values
+    num_bootstrap_reps = len(auc_values)
+
+    if num_bootstrap_reps == 1:
+        title_string = 'AUC = {0:.3f}'.format(auc_values[0])
+    else:
+        title_string = 'AUC = [{0:.3f}, {1:.3f}]'.format(
+            numpy.percentile(auc_values, min_percentile),
+            numpy.percentile(auc_values, max_percentile)
+        )
+
+    axes_object.set_title(title_string)
+    print(title_string)
 
     figure_file_name = '{0:s}/roc_curve.jpg'.format(output_dir_name)
     print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
@@ -92,21 +102,36 @@ def _run(prediction_file_name, output_dir_name):
     )
     pyplot.close(figure_object)
 
-    success_ratios, pod_values = (
-        gg_model_eval.get_points_in_performance_diagram(
-            forecast_probabilities=forecast_probabilities,
-            observed_labels=target_classes, threshold_arg=probability_thresholds
-        )
-    )
-
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
     evaluation_plotting.plot_performance_diagram(
         axes_object=axes_object,
-        pod_matrix=numpy.expand_dims(pod_values, axis=0),
-        success_ratio_matrix=numpy.expand_dims(success_ratios, axis=0)
+        pod_matrix=numpy.transpose(et[evaluation.POD_KEY].values),
+        success_ratio_matrix=
+        numpy.transpose(et[evaluation.SUCCESS_RATIO_KEY].values),
+        confidence_level=confidence_level
     )
+
+    aupd_values = et[evaluation.AUPD_KEY].values
+    max_csi_values = numpy.max(et[evaluation.CSI_KEY].values, axis=1)
+
+    if num_bootstrap_reps == 1:
+        title_string = 'AUPD = {0:.3f} ... max CSI = {1:.3f}'.format(
+            aupd_values[0], max_csi_values[0]
+        )
+    else:
+        title_string = (
+            'AUPD = [{0:.3f}, {1:.3f}] ... max CSI = [{2:.3f}, {3:.3f}]'
+        ).format(
+            numpy.percentile(aupd_values, min_percentile),
+            numpy.percentile(aupd_values, max_percentile),
+            numpy.percentile(max_csi_values, min_percentile),
+            numpy.percentile(max_csi_values, max_percentile)
+        )
+
+    axes_object.set_title(title_string)
+    print(title_string)
 
     figure_file_name = '{0:s}/performance_diagram.jpg'.format(output_dir_name)
     print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
@@ -116,25 +141,49 @@ def _run(prediction_file_name, output_dir_name):
     )
     pyplot.close(figure_object)
 
-    mean_predictions, mean_observations, example_counts = (
-        gg_model_eval.get_points_in_reliability_curve(
-            forecast_probabilities=forecast_probabilities,
-            observed_labels=target_classes,
-            num_forecast_bins=NUM_RELIABILITY_BINS
-        )
-    )
-
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
     evaluation_plotting.plot_attributes_diagram(
         figure_object=figure_object, axes_object=axes_object,
-        mean_prediction_matrix=numpy.expand_dims(mean_predictions, axis=0),
-        mean_observation_matrix=numpy.expand_dims(mean_observations, axis=0),
-        example_counts=example_counts,
-        mean_value_in_training=EVENT_FREQ_IN_TRAINING,
-        min_value_to_plot=0., max_value_to_plot=1.
+        mean_prediction_matrix=
+        numpy.transpose(et[evaluation.MEAN_PREDICTION_KEY].values),
+        mean_observation_matrix=
+        numpy.transpose(et[evaluation.MEAN_OBSERVATION_KEY].values),
+        example_counts=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values,
+        mean_value_in_training=et.attrs[evaluation.TRAINING_EVENT_FREQ_KEY],
+        min_value_to_plot=0., max_value_to_plot=1.,
+        confidence_level=confidence_level
     )
+
+    brier_scores = et[evaluation.BRIER_SCORE_KEY].values
+    bss_values = et[evaluation.BRIER_SKILL_SCORE_KEY].values
+    reliabilities = et[evaluation.RELIABILITY_KEY].values
+    resolutions = et[evaluation.RESOLUTION_KEY].values
+
+    if num_bootstrap_reps == 1:
+        title_string = (
+            'BS = {0:.3f} ... BSS = {1:.3f} ... REL = {2:.3f} ... RES = {3:.3f}'
+        ).format(
+            brier_scores[0], bss_values[0], reliabilities[0], resolutions[0]
+        )
+    else:
+        title_string = (
+            'BS = [{0:.3f}, {1:.3f}] ... BSS = [{2:.3f}, {3:.3f}] ... '
+            'REL = [{4:.3f}, {5:.3f}] ... RES = [{6:.3f}, {7:.3f}]'
+        ).format(
+            numpy.percentile(brier_scores, min_percentile),
+            numpy.percentile(brier_scores, max_percentile),
+            numpy.percentile(bss_values, min_percentile),
+            numpy.percentile(bss_values, max_percentile),
+            numpy.percentile(reliabilities, min_percentile),
+            numpy.percentile(reliabilities, max_percentile),
+            numpy.percentile(resolutions, min_percentile),
+            numpy.percentile(resolutions, max_percentile)
+        )
+
+    axes_object.set_title(title_string)
+    print(title_string)
 
     figure_file_name = '{0:s}/attributes_diagram.jpg'.format(output_dir_name)
     print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
@@ -149,8 +198,9 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        prediction_file_name=getattr(
-            INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
+        evaluation_file_name=getattr(
+            INPUT_ARG_OBJECT, EVALUATION_FILE_ARG_NAME
         ),
+        confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
