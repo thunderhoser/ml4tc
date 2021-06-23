@@ -73,6 +73,8 @@ def _run(prediction_file_name, output_dir_name):
     assert num_classes == 2
 
     forecast_probabilities = forecast_prob_matrix[:, 1]
+    print(len(target_classes))
+    print(numpy.sum(target_classes == 1))
 
     probability_thresholds = gg_model_eval.get_binarization_thresholds(
         threshold_arg=NUM_PROB_THRESHOLDS
