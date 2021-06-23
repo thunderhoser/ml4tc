@@ -624,7 +624,7 @@ def plot_roc_curve(
             norm=this_colour_norm_object, vmin=0., vmax=1., axes=axes_object
         )
 
-        colour_bar_object = plotting_utils.plot_colour_bar(
+        colour_bar_object = gg_plotting_utils.plot_colour_bar(
             axes_object_or_matrix=axes_object, data_matrix=peirce_score_matrix,
             colour_map_object=this_colour_map_object,
             colour_norm_object=this_colour_norm_object,
@@ -738,7 +738,7 @@ def plot_performance_diagram(
             vmax=1., axes=axes_object
         )
 
-        colour_bar_object = plotting_utils.plot_colour_bar(
+        colour_bar_object = gg_plotting_utils.plot_colour_bar(
             axes_object_or_matrix=axes_object, data_matrix=csi_matrix,
             colour_map_object=this_colour_map_object,
             colour_norm_object=this_colour_norm_object,
