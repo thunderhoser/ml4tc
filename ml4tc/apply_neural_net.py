@@ -146,6 +146,10 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
             this_prob_matrix = numpy.concatenate(
                 (1. - this_prob_array, this_prob_array), axis=1
             )
+        elif this_prob_array.shape[1] == 1:
+            this_prob_matrix = numpy.concatenate(
+                (1. - this_prob_array, this_prob_array), axis=1
+            )
         else:
             this_prob_matrix = this_prob_array + 0.
 
