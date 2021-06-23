@@ -150,8 +150,8 @@ def _get_binary_scores_one_replicate(
         evaluation_table_xarray[MEAN_OBSERVATION_KEY].values[:, k],
         example_counts
     ) = gg_model_eval.get_points_in_reliability_curve(
-        forecast_probabilities=forecast_probabilities,
-        observed_labels=target_classes,
+        forecast_probabilities=forecast_probabilities[example_indices],
+        observed_labels=target_classes[example_indices],
         num_forecast_bins=num_reliability_bins
     )
 
@@ -207,15 +207,15 @@ def evaluate_model_binary(
         and dimensions should make this table self-explanatory.
     """
 
-    error_checking.assert_is_geq(forecast_probabilities, 0.)
-    error_checking.assert_is_leq(forecast_probabilities, 1.)
+    error_checking.assert_is_geq_numpy_array(forecast_probabilities, 0.)
+    error_checking.assert_is_leq_numpy_array(forecast_probabilities, 1.)
     error_checking.assert_is_numpy_array(
         forecast_probabilities, num_dimensions=1
     )
 
     error_checking.assert_is_integer_numpy_array(target_classes)
-    error_checking.assert_is_geq(target_classes, 0)
-    error_checking.assert_is_leq(target_classes, 1)
+    error_checking.assert_is_geq_numpy_array(target_classes, 0)
+    error_checking.assert_is_leq_numpy_array(target_classes, 1)
 
     num_examples = len(forecast_probabilities)
     expected_dim = numpy.array([num_examples], dtype=int)
