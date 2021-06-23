@@ -215,15 +215,15 @@ def evaluate_model_binary(
         and dimensions should make this table self-explanatory.
     """
 
-    error_checking.assert_is_geq(forecast_probabilities, 0.)
-    error_checking.assert_is_leq(forecast_probabilities, 1.)
+    error_checking.assert_is_geq_numpy_array(forecast_probabilities, 0.)
+    error_checking.assert_is_leq_numpy_array(forecast_probabilities, 1.)
     error_checking.assert_is_numpy_array(
         forecast_probabilities, num_dimensions=1
     )
 
     error_checking.assert_is_integer_numpy_array(target_classes)
-    error_checking.assert_is_geq(target_classes, 0)
-    error_checking.assert_is_leq(target_classes, 1)
+    error_checking.assert_is_geq_numpy_array(target_classes, 0)
+    error_checking.assert_is_leq_numpy_array(target_classes, 1)
 
     num_examples = len(forecast_probabilities)
     expected_dim = numpy.array([num_examples], dtype=int)
