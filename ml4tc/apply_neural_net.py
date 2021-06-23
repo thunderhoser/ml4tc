@@ -23,14 +23,6 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 NUM_EXAMPLES_PER_BATCH = 32
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
-BASE_OPTION_DICT = {
-    neural_net.LEAD_TIME_KEY: 24,
-    neural_net.SATELLITE_LAG_TIMES_KEY:
-        numpy.array([0, 60, 120, 180], dtype=int),
-    neural_net.SHIPS_LAG_TIMES_KEY: numpy.array([0, 6, 12, 18], dtype=int),
-    neural_net.CLASS_CUTOFFS_KEY: numpy.array([25 * KT_TO_METRES_PER_SECOND])
-}
-
 MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
@@ -84,6 +76,13 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
 
     print('Reading model from: "{0:s}"...'.format(model_file_name))
     model_object = neural_net.read_model(model_file_name)
+    metafile_name = neural_net.find_metafile(
+        model_file_name=model_file_name, raise_error_if_missing=True
+    )
+
+    print('Reading metadata from: "{0:s}"...'.format(metafile_name))
+    metadata_dict = neural_net.read_metafile(metafile_name)
+    training_option_dict = metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
 
     cyclone_id_strings = example_io.find_cyclones(
         directory_name=example_dir_name, raise_error_if_all_missing=True
@@ -111,7 +110,7 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     forecast_prob_array = None
 
     for this_example_file_name in example_file_names:
-        this_option_dict = copy.deepcopy(BASE_OPTION_DICT)
+        this_option_dict = copy.deepcopy(training_option_dict)
         this_option_dict[neural_net.EXAMPLE_FILE_KEY] = this_example_file_name
 
         these_predictor_matrices, this_target_array = (

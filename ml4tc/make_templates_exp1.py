@@ -84,7 +84,8 @@ LOSS_FUNCTION = keras.losses.binary_crossentropy
 METRIC_FUNCTION_LIST = [LOSS_FUNCTION] + list(neural_net.METRIC_DICT.values())
 
 OUTPUT_DIR_NAME = (
-    '/scratch1/RDARCH/rda-ghpcs/ml4tc_models/experiment01/templates'
+    '/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment01/'
+    'templates'
 )
 
 
