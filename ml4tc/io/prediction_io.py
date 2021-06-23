@@ -13,13 +13,13 @@ CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_character'
 PROBABILITY_MATRIX_KEY = 'forecast_probability_matrix'
 TARGET_CLASSES_KEY = 'target_classes'
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
-VALID_TIMES_KEY = 'valid_times_unix_sec'
+INIT_TIMES_KEY = 'init_times_unix_sec'
 MODEL_FILE_KEY = 'model_file_name'
 
 
 def write_file(
         netcdf_file_name, forecast_probability_matrix, target_classes,
-        cyclone_id_strings, valid_times_unix_sec, model_file_name):
+        cyclone_id_strings, init_times_unix_sec, model_file_name):
     """Writes predictions to NetCDF file.
 
     E = number of examples
@@ -31,7 +31,7 @@ def write_file(
     :param target_classes: length-E numpy array of target classes, all integers
         in range [0, K - 1].
     :param cyclone_id_strings: length-E list of cyclone IDs.
-    :param valid_times_unix_sec: length-E list of valid times.
+    :param init_times_unix_sec: length-E list of forecast-initialization times.
     :param model_file_name: Path to file with trained model (readable by
         `neural_net.read_model`).
     """
@@ -59,9 +59,9 @@ def write_file(
     for this_id_string in cyclone_id_strings:
         _ = satellite_utils.parse_cyclone_id(this_id_string)
 
-    error_checking.assert_is_integer_numpy_array(valid_times_unix_sec)
+    error_checking.assert_is_integer_numpy_array(init_times_unix_sec)
     error_checking.assert_is_numpy_array(
-        valid_times_unix_sec, exact_dimensions=expected_dim
+        init_times_unix_sec, exact_dimensions=expected_dim
     )
     error_checking.assert_is_string(model_file_name)
 
@@ -90,10 +90,10 @@ def write_file(
     dataset_object.variables[TARGET_CLASSES_KEY][:] = target_classes
 
     dataset_object.createVariable(
-        VALID_TIMES_KEY, datatype=numpy.int32,
+        INIT_TIMES_KEY, datatype=numpy.int32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
-    dataset_object.variables[VALID_TIMES_KEY][:] = valid_times_unix_sec
+    dataset_object.variables[INIT_TIMES_KEY][:] = init_times_unix_sec
 
     if num_examples == 0:
         num_id_characters = 1
@@ -128,7 +128,7 @@ def read_file(netcdf_file_name):
     prediction_dict['forecast_probability_matrix']: See doc for `write_file`.
     prediction_dict['target_classes']: Same.
     prediction_dict['cyclone_id_strings']: Same.
-    prediction_dict['valid_times_unix_sec']: Same.
+    prediction_dict['init_times_unix_sec']: Same.
     prediction_dict['model_file_name']: Same.
     """
 
@@ -142,7 +142,7 @@ def read_file(netcdf_file_name):
             str(id) for id in
             netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
         ],
-        VALID_TIMES_KEY: dataset_object.variables[VALID_TIMES_KEY][:],
+        INIT_TIMES_KEY: dataset_object.variables[INIT_TIMES_KEY][:],
         MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY))
     }
 

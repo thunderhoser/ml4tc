@@ -1,12 +1,11 @@
 """Applies trained neural net in inference mode."""
 
 import copy
-import pickle
 import argparse
 import numpy
-from sklearn.metrics import roc_auc_score
 from gewittergefahr.gg_utils import file_system_utils
 from ml4tc.io import example_io
+from ml4tc.io import prediction_io
 from ml4tc.utils import satellite_utils
 from ml4tc.machine_learning import neural_net
 
@@ -30,8 +29,8 @@ EXAMPLE_DIR_HELP_STRING = (
 )
 YEARS_HELP_STRING = 'Model will be applied to tropical cyclones in these years.'
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output (Pickle) file.  Predictions and target values will be saved'
-    ' here.'
+    'Path to output (Pickle) file.  Predictions and target values will be '
+    'written here by `prediction_io.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -76,18 +75,23 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     metadata_dict = neural_net.read_metafile(metafile_name)
     training_option_dict = metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
 
-    cyclone_id_strings = example_io.find_cyclones(
+    cyclone_id_string_by_file = example_io.find_cyclones(
         directory_name=example_dir_name, raise_error_if_all_missing=True
     )
-    cyclone_years = numpy.array(
-        [satellite_utils.parse_cyclone_id(c)[0] for c in cyclone_id_strings],
-        dtype=int
-    )
+    cyclone_year_by_file = numpy.array([
+        satellite_utils.parse_cyclone_id(c)[0]
+        for c in cyclone_id_string_by_file
+    ], dtype=int)
 
-    good_flags = numpy.array([c in years for c in cyclone_years], dtype=float)
+    good_flags = numpy.array(
+        [c in years for c in cyclone_year_by_file], dtype=float
+    )
     good_indices = numpy.where(good_flags)[0]
-    cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
-    cyclone_id_strings.sort()
+
+    cyclone_id_string_by_file = [
+        cyclone_id_string_by_file[k] for k in good_indices
+    ]
+    cyclone_id_string_by_file.sort()
 
     example_file_names = [
         example_io.find_file(
@@ -95,21 +99,31 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
             prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
-        for c in cyclone_id_strings
+        for c in cyclone_id_string_by_file
     ]
 
-    target_array = None
-    forecast_prob_array = None
+    target_classes = numpy.array([], dtype=int)
+    forecast_prob_matrix = None
+    cyclone_id_string_by_example = []
+    init_times_unix_sec = numpy.array([], dtype=int)
 
-    for this_example_file_name in example_file_names:
+    for i in range(len(example_file_names)):
         this_option_dict = copy.deepcopy(training_option_dict)
-        this_option_dict[neural_net.EXAMPLE_FILE_KEY] = this_example_file_name
+        this_option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_names[i]
 
-        these_predictor_matrices, this_target_array = (
-            neural_net.create_inputs(this_option_dict)
-        )
+        (
+            these_predictor_matrices,
+            this_target_array,
+            these_init_times_unix_sec
+        ) = neural_net.create_inputs(this_option_dict)
+
         if this_target_array.size == 0:
             continue
+
+        if len(this_target_array.shape) == 1:
+            these_target_classes = this_target_array + 0
+        else:
+            these_target_classes = numpy.argmax(this_target_array, axis=1)
 
         this_prob_array = neural_net.apply_model(
             model_object=model_object,
@@ -117,15 +131,31 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
             num_examples_per_batch=NUM_EXAMPLES_PER_BATCH, verbose=True
         )
 
-        if target_array is None:
-            target_array = this_target_array + 0
-            forecast_prob_array = this_prob_array + 0.
-        else:
-            target_array = numpy.concatenate(
-                (target_array, this_target_array), axis=0
+        if len(this_prob_array.shape) == 1:
+            this_prob_array = numpy.reshape(
+                this_prob_array, (len(this_prob_array), 1)
             )
-            forecast_prob_array = numpy.concatenate(
-                (forecast_prob_array, this_prob_array), axis=0
+            this_prob_matrix = numpy.concatenate(
+                (1. - this_prob_array, this_prob_array), axis=1
+            )
+        else:
+            this_prob_matrix = this_prob_array + 0.
+
+        target_classes = numpy.concatenate(
+            (target_classes, these_target_classes), axis=0
+        )
+        cyclone_id_string_by_example += (
+            [cyclone_id_string_by_file[i]] * len(these_init_times_unix_sec)
+        )
+        init_times_unix_sec = numpy.concatenate(
+            (init_times_unix_sec, these_init_times_unix_sec), axis=0
+        )
+
+        if forecast_prob_matrix is None:
+            forecast_prob_matrix = this_prob_matrix + 0.
+        else:
+            forecast_prob_matrix = numpy.concatenate(
+                (forecast_prob_matrix, this_prob_matrix), axis=0
             )
 
         print(SEPARATOR_STRING)
@@ -133,16 +163,14 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     print('Writing predictions and target values to: "{0:s}"...'.format(
         output_file_name
     ))
-
-    pickle_file_handle = open(output_file_name, 'wb')
-    pickle.dump(target_array, pickle_file_handle)
-    pickle.dump(forecast_prob_array, pickle_file_handle)
-    pickle_file_handle.close()
-
-    # TODO(thunderhoser): HACK.
-    if len(target_array.shape) == 1:
-        auc = roc_auc_score(target_array, forecast_prob_array)
-        print(auc)
+    prediction_io.write_file(
+        netcdf_file_name=output_file_name,
+        forecast_probability_matrix=forecast_prob_matrix,
+        target_classes=target_classes,
+        cyclone_id_strings=cyclone_id_string_by_example,
+        init_times_unix_sec=init_times_unix_sec,
+        model_file_name=model_file_name
+    )
 
 
 if __name__ == '__main__':

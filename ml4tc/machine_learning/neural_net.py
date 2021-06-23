@@ -371,13 +371,17 @@ def _read_one_example_file(
     :param class_cutoffs_m_s01: Same.
     :return: predictor_matrices: Same.
     :return: target_array: Same.
+    :return: init_times_unix_sec: 1-D numpy array with forecast-initialization
+        time for each example.
     """
 
     print('Reading data from: "{0:s}"...'.format(example_file_name))
     xt = example_io.read_file(example_file_name)
 
-    init_times_unix_sec = xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
-    numpy.random.shuffle(init_times_unix_sec)
+    all_init_times_unix_sec = (
+        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+    )
+    numpy.random.shuffle(all_init_times_unix_sec)
 
     satellite_lag_times_sec = satellite_lag_times_minutes * MINUTES_TO_SECONDS
     ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
@@ -396,13 +400,14 @@ def _read_one_example_file(
 
     satellite_time_indices_by_example = []
     ships_time_indices_by_example = []
+    init_times_unix_sec = []
 
     if num_classes > 2:
         target_array = numpy.full((0, num_classes), -1, dtype=int)
     else:
         target_array = numpy.full(0, -1, dtype=int)
 
-    for t in init_times_unix_sec:
+    for t in all_init_times_unix_sec:
         these_satellite_indices = _find_desired_times(
             all_times_unix_sec=
             xt.coords[example_utils.SATELLITE_TIME_DIM].values,
@@ -466,11 +471,11 @@ def _read_one_example_file(
         target_array = numpy.concatenate(
             (target_array, these_flags), axis=0
         )
-
         satellite_time_indices_by_example.append(
             these_satellite_indices
         )
         ships_time_indices_by_example.append(these_ships_indices)
+        init_times_unix_sec.append(t)
 
         if (
                 num_positive_examples_found >= num_positive_examples_desired and
@@ -483,6 +488,8 @@ def _read_one_example_file(
                 num_examples_desired
         ):
             break
+
+    init_times_unix_sec = numpy.array(init_times_unix_sec, dtype=int)
 
     num_examples = len(ships_time_indices_by_example)
     num_grid_rows = (
@@ -593,7 +600,7 @@ def _read_one_example_file(
         ships_predictor_matrix
     ]
 
-    return predictor_matrices, target_array
+    return predictor_matrices, target_array, init_times_unix_sec
 
 
 def _check_generator_args(option_dict):
@@ -786,6 +793,8 @@ def create_inputs(option_dict):
 
     :return: predictor_matrices: Same.
     :return: target_array: Same.
+    :return: init_times_unix_sec: 1-D numpy array with forecast-initialization
+        time for each example.
     """
 
     option_dict[EXAMPLE_DIRECTORY_KEY] = 'foo'
@@ -805,23 +814,25 @@ def create_inputs(option_dict):
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
 
-    predictor_matrices, target_array = _read_one_example_file(
-        example_file_name=example_file_name,
-        num_examples_desired=int(1e10),
-        num_positive_examples_desired=int(1e10),
-        num_negative_examples_desired=int(1e10),
-        lead_time_hours=lead_time_hours,
-        satellite_lag_times_minutes=satellite_lag_times_minutes,
-        ships_lag_times_hours=ships_lag_times_hours,
-        satellite_predictor_names=satellite_predictor_names,
-        ships_predictor_names_lagged=ships_predictor_names_lagged,
-        ships_predictor_names_forecast=ships_predictor_names_forecast,
-        class_cutoffs_m_s01=class_cutoffs_m_s01
+    predictor_matrices, target_array, init_times_unix_sec = (
+        _read_one_example_file(
+            example_file_name=example_file_name,
+            num_examples_desired=int(1e10),
+            num_positive_examples_desired=int(1e10),
+            num_negative_examples_desired=int(1e10),
+            lead_time_hours=lead_time_hours,
+            satellite_lag_times_minutes=satellite_lag_times_minutes,
+            ships_lag_times_hours=ships_lag_times_hours,
+            satellite_predictor_names=satellite_predictor_names,
+            ships_predictor_names_lagged=ships_predictor_names_lagged,
+            ships_predictor_names_forecast=ships_predictor_names_forecast,
+            class_cutoffs_m_s01=class_cutoffs_m_s01
+        )
     )
 
     predictor_matrices = [p.astype('float16') for p in predictor_matrices]
 
-    return predictor_matrices, target_array
+    return predictor_matrices, target_array, init_times_unix_sec
 
 
 def input_generator(option_dict):
@@ -965,7 +976,7 @@ def input_generator(option_dict):
                     ships_predictor_names_forecast=
                     ships_predictor_names_forecast,
                     class_cutoffs_m_s01=class_cutoffs_m_s01
-                )
+                )[:2]
             )
 
             file_index += 1
