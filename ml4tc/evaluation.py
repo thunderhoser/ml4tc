@@ -158,8 +158,8 @@ def _get_binary_scores_one_replicate(
         evaluation_table_xarray[MEAN_OBSERVATION_KEY].values[:, k],
         example_counts
     ) = gg_model_eval.get_points_in_reliability_curve(
-        forecast_probabilities=forecast_probabilities,
-        observed_labels=target_classes,
+        forecast_probabilities=forecast_probabilities[example_indices],
+        observed_labels=target_classes[example_indices],
         num_forecast_bins=num_reliability_bins
     )
 
