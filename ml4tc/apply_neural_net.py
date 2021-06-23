@@ -149,6 +149,8 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
         else:
             this_prob_matrix = this_prob_array + 0.
 
+        print(this_prob_matrix.shape)
+
         target_classes = numpy.concatenate(
             (target_classes, these_target_classes), axis=0
         )
