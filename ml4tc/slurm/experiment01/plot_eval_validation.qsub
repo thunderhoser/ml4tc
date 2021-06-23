@@ -1,22 +1,21 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_evaluation_25th_2010"
+#SBATCH --job-name="plot_eval_validation"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
+#SBATCH --ntasks=1
 #SBATCH --nodes=1
-#SBATCH --ntasks=8           # 8 tasks per node
-#SBATCH --cpus-per-task=2
-#SBATCH --ntasks-per-node=8  # 8 GPUs per node
-#SBATCH --exclusive
-#SBATCH --time=30:00:00
-#SBATCH --array=25
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --time=12:00:00
+#SBATCH --array=1-126
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_evaluation_25th_2010_%A_%a.out
+#SBATCH --output=plot_eval_validation_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -39,9 +38,10 @@ set conv_layer_l2_weight_string=`printf "%.12f" $conv_layer_l2_weight`
 set dense_layer_count_string=`printf "%1d" $dense_layer_count`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set prediction_file_name="${model_dir_name}/testing_predictions_2010.nc"
-set output_dir_name="${model_dir_name}/testing_predictions_2010"
+set input_file_name="${model_dir_name}/validation_2005-2009/evaluation.nc"
+set output_dir_name="${model_dir_name}/validation_2005-2009/evaluation"
 
 python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_prediction_file_name="${prediction_file_name}" \
+--input_evaluation_file_name="${input_file_name}" \
+--confidence_level=0.95 \
 --output_dir_name="${output_dir_name}"
