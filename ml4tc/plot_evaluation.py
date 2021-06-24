@@ -124,9 +124,6 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     aupd_values = et[evaluation.AUPD_KEY].values
     max_csi_values = numpy.max(et[evaluation.CSI_KEY].values, axis=0)
 
-    numpy.set_printoptions(threshold=sys.maxsize)
-    print(max_csi_values)
-
     if num_bootstrap_reps == 1:
         title_string = 'AUPD = {0:.3f}\nMax CSI = {1:.3f}'.format(
             aupd_values[0], max_csi_values[0]
