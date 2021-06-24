@@ -836,10 +836,13 @@ def read_metafile(pickle_file_name):
         training_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 0
         training_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = 1
 
-        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 3630
+        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 21610
         validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
         validation_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 21610
         validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
+
+    if validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] == 3630:
+        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 21610
 
     metadata_dict[TRAINING_OPTIONS_KEY] = training_option_dict
     metadata_dict[VALIDATION_OPTIONS_KEY] = validation_option_dict
