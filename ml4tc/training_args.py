@@ -29,6 +29,14 @@ SHIPS_LAG_TIMES_ARG_NAME = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_ARG_NAME = 'satellite_predictor_names'
 SHIPS_PREDICTORS_LAGGED_ARG_NAME = 'ships_predictor_names_lagged'
 SHIPS_PREDICTORS_FORECAST_ARG_NAME = 'ships_predictor_names_forecast'
+TRAINING_SAT_TIME_TOLERANCE_ARG_NAME = 'satellite_time_tolerance_training_sec'
+TRAINING_SAT_MAX_MISSING_ARG_NAME = 'satellite_max_missing_times_training'
+TRAINING_SHIPS_TIME_TOLERANCE_ARG_NAME = 'ships_time_tolerance_training_sec'
+TRAINING_SHIPS_MAX_MISSING_ARG_NAME = 'ships_max_missing_times_training'
+VALIDATION_SAT_TIME_TOLERANCE_ARG_NAME = (
+    'satellite_time_tolerance_validation_sec'
+)
+VALIDATION_SHIPS_TIME_TOLERANCE_ARG_NAME = 'ships_time_tolerance_validation_sec'
 NUM_POSITIVE_EXAMPLES_ARG_NAME = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_ARG_NAME = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_ARG_NAME = 'max_examples_per_cyclone_in_batch'
@@ -66,6 +74,35 @@ SHIPS_PREDICTORS_LAGGED_HELP_STRING = (
 SHIPS_PREDICTORS_FORECAST_HELP_STRING = (
     'List with names of forecast SHIPS predictors to use.'
 )
+
+TRAINING_SAT_TIME_TOLERANCE_HELP_STRING = (
+    'Time tolerance for satellite data.  For desired time t, if no data can be '
+    'found within `{0:s}` of t, then missing data will be interpolated.'
+).format(TRAINING_SAT_TIME_TOLERANCE_ARG_NAME)
+
+TRAINING_SAT_MAX_MISSING_HELP_STRING = (
+    'Max number of missing times for satellite data.  If more times are missing'
+    ' for example e, then e will not be used for training.'
+)
+
+TRAINING_SHIPS_TIME_TOLERANCE_HELP_STRING = (
+    'Time tolerance for SHIPS data.  For desired time t, if no data can be '
+    'found within `{0:s}` of t, then missing data will be interpolated.'
+).format(TRAINING_SHIPS_TIME_TOLERANCE_ARG_NAME)
+
+TRAINING_SHIPS_MAX_MISSING_HELP_STRING = (
+    'Max number of missing times for SHIPS data.  If more times are missing'
+    ' for example e, then e will not be used for training.'
+)
+
+VALIDATION_SAT_TIME_TOLERANCE_HELP_STRING = (
+    'Same as `{0:s}` but for validation data.'
+).format(TRAINING_SAT_TIME_TOLERANCE_ARG_NAME)
+
+VALIDATION_SHIPS_TIME_TOLERANCE_HELP_STRING = (
+    'Same as `{0:s}` but for validation data.'
+).format(TRAINING_SHIPS_TIME_TOLERANCE_ARG_NAME)
+
 NUM_POSITIVE_EXAMPLES_HELP_STRING = (
     'Number of positive examples (in highest class) per batch.'
 )
@@ -147,6 +184,31 @@ def add_input_args(parser_object):
         required=False,
         default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST,
         help=SHIPS_PREDICTORS_FORECAST_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + TRAINING_SAT_TIME_TOLERANCE_ARG_NAME, type=int, required=False,
+        default=930, help=TRAINING_SAT_TIME_TOLERANCE_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + TRAINING_SAT_MAX_MISSING_ARG_NAME, type=int, required=True,
+        help=TRAINING_SAT_MAX_MISSING_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + TRAINING_SHIPS_TIME_TOLERANCE_ARG_NAME, type=int, required=False,
+        default=0, help=TRAINING_SHIPS_TIME_TOLERANCE_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + TRAINING_SHIPS_MAX_MISSING_ARG_NAME, type=int, required=True,
+        help=TRAINING_SHIPS_MAX_MISSING_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + VALIDATION_SAT_TIME_TOLERANCE_ARG_NAME, type=int, required=False,
+        default=3630, help=VALIDATION_SAT_TIME_TOLERANCE_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + VALIDATION_SHIPS_TIME_TOLERANCE_ARG_NAME, type=int,
+        required=False, default=21610,
+        help=VALIDATION_SHIPS_TIME_TOLERANCE_HELP_STRING
     )
     parser_object.add_argument(
         '--' + NUM_POSITIVE_EXAMPLES_ARG_NAME, type=int, required=True,
