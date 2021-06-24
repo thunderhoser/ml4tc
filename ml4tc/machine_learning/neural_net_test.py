@@ -42,7 +42,7 @@ THIS_MATRIX = numpy.array([
     [2, NAN, 4, NAN],
     [3, NAN, 6, NAN],
     [NAN, -50, 10, NAN],
-    [NAN, -100, 100, -30]
+    [NAN, -100, 100, NAN]
 ], dtype=float)
 
 DATA_MATRIX_NON_SPATIAL_BEFORE_INTERP = numpy.stack(
@@ -51,11 +51,11 @@ DATA_MATRIX_NON_SPATIAL_BEFORE_INTERP = numpy.stack(
 
 THIS_MATRIX = numpy.array([
     [1, 0, 0, 0],
-    [1, -5, 2, -6],
-    [2, -20, 4, -12],
-    [3, -35, 6, -18],
-    [3, -50, 10, -24],
-    [3, -100, 100, -30]
+    [1, -5, 2, 0],
+    [2, -20, 4, 0],
+    [3, -35, 6, 0],
+    [3, -50, 10, 0],
+    [3, -100, 100, 0]
 ], dtype=float)
 
 DATA_MATRIX_NON_SPATIAL_AFTER_INTERP = numpy.stack(

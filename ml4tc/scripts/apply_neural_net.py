@@ -73,7 +73,7 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
 
     print('Reading metadata from: "{0:s}"...'.format(metafile_name))
     metadata_dict = neural_net.read_metafile(metafile_name)
-    training_option_dict = metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
+    validation_option_dict = metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
 
     cyclone_id_string_by_file = example_io.find_cyclones(
         directory_name=example_dir_name, raise_error_if_all_missing=True
@@ -108,7 +108,7 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     init_times_unix_sec = numpy.array([], dtype=int)
 
     for i in range(len(example_file_names)):
-        this_option_dict = copy.deepcopy(training_option_dict)
+        this_option_dict = copy.deepcopy(validation_option_dict)
         this_option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_names[i]
 
         (

@@ -160,9 +160,6 @@ def _find_desired_times(
     num_missing_times = numpy.sum(desired_indices == -1)
     num_found_times = numpy.sum(desired_indices != -1)
 
-    if num_missing_times > max_num_missing_times:
-        return None
-
     if num_found_times == 0:
         desired_time_strings = [
             time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
@@ -170,9 +167,24 @@ def _find_desired_times(
         ]
 
         warning_string = (
-            'POTENTIAL ERROR: Could not find time within {0:d} seconds of any '
-            'desired time:\n{1:s}'
+            'POTENTIAL ERROR: No times found.  Could not find time within {0:d}'
+            ' seconds of any desired time:\n{1:s}'
         ).format(tolerance_sec, str(desired_time_strings))
+
+        warnings.warn(warning_string)
+        return None
+
+    if num_missing_times > max_num_missing_times:
+        bad_times_unix_sec = desired_times_unix_sec[desired_indices == -1]
+        bad_time_strings = [
+            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+            for t in bad_times_unix_sec
+        ]
+
+        warning_string = (
+            'POTENTIAL ERROR: Too many missing times.  Could not find time '
+            'within {0:d} seconds of any of the following:\n{1:s}'
+        ).format(tolerance_sec, str(bad_time_strings))
 
         warnings.warn(warning_string)
         return None
@@ -806,10 +818,10 @@ def read_metafile(pickle_file_name):
         training_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 0
         training_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = 1
 
-        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 930
-        validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = 1
-        validation_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 0
-        validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = 1
+        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 3630
+        validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
+        validation_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 21610
+        validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
 
     metadata_dict[TRAINING_OPTIONS_KEY] = training_option_dict
     metadata_dict[VALIDATION_OPTIONS_KEY] = validation_option_dict
@@ -1173,6 +1185,8 @@ def train_model(
 
         validation_option_dict[this_key] = training_option_dict[this_key]
 
+    validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
+    validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict = _check_generator_args(validation_option_dict)
 
     model_file_name = '{0:s}/model.h5'.format(output_dir_name)
