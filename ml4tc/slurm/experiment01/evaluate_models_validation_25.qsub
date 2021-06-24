@@ -22,7 +22,6 @@ source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment01"
 
 set DENSE_LAYER_DROPOUT_RATES=(0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5)
@@ -46,5 +45,5 @@ python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
 --event_freq_in_training=0.11961675227 \
 --num_prob_thresholds=1001 \
 --num_reliability_bins=20 \
---num_bootstrap_reps=100 \
+--num_bootstrap_reps=1 \
 --output_eval_file_name="${evaluation_file_name}"

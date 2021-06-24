@@ -1,13 +1,13 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="apply_models_training"
+#SBATCH --job-name="plot_eval_southern_hemi"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=64G
+#SBATCH --mem=8G
 #SBATCH --time=12:00:00
 #SBATCH --array=25
 #SBATCH --exclude=h28n12
@@ -15,14 +15,13 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=apply_models_training_%A_%a.out
+#SBATCH --output=plot_eval_southern_hemi_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment01"
 
 set DENSE_LAYER_DROPOUT_RATES=(0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5 0.0 0.0 0.0 0.1 0.1 0.1 0.2 0.2 0.2 0.3 0.3 0.3 0.4 0.4 0.4 0.5 0.5 0.5)
@@ -38,11 +37,10 @@ set conv_layer_l2_weight_string=`printf "%.12f" $conv_layer_l2_weight`
 set dense_layer_count_string=`printf "%1d" $dense_layer_count`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set model_file_name="${model_dir_name}/model.h5"
-set output_file_name="${model_dir_name}/training_1993-2004_2015-2019/predictions.nc"
+set input_file_name="${model_dir_name}/southern_hemisphere/evaluation.nc"
+set output_dir_name="${model_dir_name}/southern_hemisphere/evaluation"
 
-python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
---input_model_file_name="${model_file_name}" \
---input_example_dir_name="${EXAMPLE_DIR_NAME}" \
---years 1993 1994 1995 1996 1997 1998 1999 2000 2001 2002 2003 2004 2015 2016 2017 2018 2019 \
---output_file_name="${output_file_name}"
+python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
+--input_evaluation_file_name="${input_file_name}" \
+--confidence_level=0.95 \
+--output_dir_name="${output_dir_name}"
