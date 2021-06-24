@@ -481,7 +481,7 @@ def _run(experiment_dir_name, output_dir_name):
         )
 
         figure_object, axes_object = _plot_scores_2d(
-            score_matrix=bss_matrix,
+            score_matrix=bss_matrix[..., k],
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
             colour_map_object=BSS_COLOUR_MAP_OBJECT,
             colour_norm_object=colour_norm_object
