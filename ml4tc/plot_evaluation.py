@@ -124,13 +124,16 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     aupd_values = et[evaluation.AUPD_KEY].values
     max_csi_values = numpy.max(et[evaluation.CSI_KEY].values, axis=1)
 
+    numpy.set_printoptions(threshold=sys.maxsize)
+    print(max_csi_values)
+
     if num_bootstrap_reps == 1:
-        title_string = 'AUPD = {0:.3f} ... max CSI = {1:.3f}'.format(
+        title_string = 'AUPD = {0:.3f}\nMax CSI = {1:.3f}'.format(
             aupd_values[0], max_csi_values[0]
         )
     else:
         title_string = (
-            'AUPD = [{0:.3f}, {1:.3f}] ... max CSI = [{2:.3f}, {3:.3f}]'
+            'AUPD = [{0:.3f}, {1:.3f}]\nMax CSI = [{2:.3f}, {3:.3f}]'
         ).format(
             numpy.percentile(aupd_values, min_percentile),
             numpy.percentile(aupd_values, max_percentile),
@@ -195,14 +198,14 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     if num_bootstrap_reps == 1:
         title_string = (
-            'BS = {0:.3f} ... BSS = {1:.3f} ... REL = {2:.3f} ... RES = {3:.3f}'
+            'BS = {0:.3f}\nBSS = {1:.3f}\nREL = {2:.3f}\nRES = {3:.3f}'
         ).format(
             brier_scores[0], bss_values[0], reliabilities[0], resolutions[0]
         )
     else:
         title_string = (
-            'BS = [{0:.3f}, {1:.3f}] ... BSS = [{2:.3f}, {3:.3f}] ... '
-            'REL = [{4:.3f}, {5:.3f}] ... RES = [{6:.3f}, {7:.3f}]'
+            'BS = [{0:.3f}, {1:.3f}]\nBSS = [{2:.3f}, {3:.3f}]\n'
+            'REL = [{4:.3f}, {5:.3f}]\nRES = [{6:.3f}, {7:.3f}]'
         ).format(
             numpy.percentile(brier_scores, min_percentile),
             numpy.percentile(brier_scores, max_percentile),
