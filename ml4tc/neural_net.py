@@ -31,16 +31,6 @@ MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
-SATELLITE_TOLERANCE_SEC = 930
-SATELLITE_MAX_MISSING_FRACTION = 0.26
-SHIPS_TOLERANCE_SEC = 0
-SHIPS_MAX_MISSING_FRACTION = 0.26
-
-DEFAULT_CLASS_CUTOFFS_KT = numpy.array(
-    [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25], dtype=float
-)
-DEFAULT_CLASS_CUTOFFS_M_S01 = DEFAULT_CLASS_CUTOFFS_KT * KT_TO_METRES_PER_SECOND
-
 METRIC_DICT = {
     'accuracy': custom_metrics.accuracy,
     'binary_accuracy': custom_metrics.binary_accuracy,
@@ -72,8 +62,10 @@ NUM_POSITIVE_EXAMPLES_KEY = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_KEY = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_KEY = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_KEY = 'class_cutoffs_m_s01'
-
-KT_TO_METRES_PER_SECOND = 1.852 / 3.6
+SATELLITE_TIME_TOLERANCE_KEY = 'satellite_time_tolerance_sec'
+SATELLITE_MAX_MISSING_TIMES_KEY = 'satellite_max_missing_times'
+SHIPS_TIME_TOLERANCE_KEY = 'ships_time_tolerance_sec'
+SHIPS_MAX_MISSING_TIMES_KEY = 'ships_max_missing_times'
 
 DEFAULT_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
@@ -175,9 +167,33 @@ def _find_desired_times(
     num_missing_times = numpy.sum(desired_indices == -1)
     num_found_times = numpy.sum(desired_indices != -1)
 
-    if num_missing_times > max_num_missing_times:
+    if num_found_times == 0:
+        desired_time_strings = [
+            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+            for t in desired_times_unix_sec
+        ]
+
+        warning_string = (
+            'POTENTIAL ERROR: No times found.  Could not find time within {0:d}'
+            ' seconds of any desired time:\n{1:s}'
+        ).format(tolerance_sec, str(desired_time_strings))
+
+        warnings.warn(warning_string)
         return None
-    if num_found_times < 2 and num_missing_times > 0:
+
+    if num_missing_times > max_num_missing_times:
+        bad_times_unix_sec = desired_times_unix_sec[desired_indices == -1]
+        bad_time_strings = [
+            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+            for t in bad_times_unix_sec
+        ]
+
+        warning_string = (
+            'POTENTIAL ERROR: Too many missing times.  Could not find time '
+            'within {0:d} seconds of any of the following:\n{1:s}'
+        ).format(tolerance_sec, str(bad_time_strings))
+
+        warnings.warn(warning_string)
         return None
 
     return desired_indices
@@ -206,6 +222,10 @@ def _interp_missing_times_nonspatial(data_values, times_sec):
     found_time_indices = numpy.where(
         numpy.invert(missing_time_flags)
     )[0]
+
+    if len(found_time_indices) == 1:
+        data_values[missing_time_indices] = data_values[found_time_indices[0]]
+        return data_values
 
     fill_values = (
         data_values[found_time_indices[0]],
@@ -359,7 +379,9 @@ def _read_one_example_file(
         num_negative_examples_desired, lead_time_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
-        ships_predictor_names_forecast, class_cutoffs_m_s01):
+        ships_predictor_names_forecast, class_cutoffs_m_s01,
+        satellite_time_tolerance_sec, satellite_max_missing_times,
+        ships_time_tolerance_sec, ships_max_missing_times):
     """Reads one example file for generator.
 
     :param example_file_name: Path to input file.  Will be read by
@@ -376,6 +398,10 @@ def _read_one_example_file(
     :param ships_predictor_names_lagged: Same.
     :param ships_predictor_names_forecast: Same.
     :param class_cutoffs_m_s01: Same.
+    :param satellite_time_tolerance_sec: Same.
+    :param satellite_max_missing_times: Same.
+    :param ships_time_tolerance_sec: Same.
+    :param ships_max_missing_times: Same.
     :return: predictor_matrices: Same.
     :return: target_array: Same.
     :return: init_times_unix_sec: 1-D numpy array with forecast-initialization
@@ -393,13 +419,6 @@ def _read_one_example_file(
     satellite_lag_times_sec = satellite_lag_times_minutes * MINUTES_TO_SECONDS
     ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
     lead_time_sec = lead_time_hours * HOURS_TO_SECONDS
-
-    satellite_max_num_missing_times = int(numpy.round(
-        SATELLITE_MAX_MISSING_FRACTION * len(satellite_lag_times_sec)
-    ))
-    ships_max_num_missing_times = int(numpy.round(
-        SHIPS_MAX_MISSING_FRACTION * len(ships_lag_times_sec)
-    ))
 
     num_classes = len(class_cutoffs_m_s01) + 1
     num_positive_examples_found = 0
@@ -419,8 +438,8 @@ def _read_one_example_file(
             all_times_unix_sec=
             xt.coords[example_utils.SATELLITE_TIME_DIM].values,
             desired_times_unix_sec=t - satellite_lag_times_sec,
-            tolerance_sec=SATELLITE_TOLERANCE_SEC,
-            max_num_missing_times=satellite_max_num_missing_times
+            tolerance_sec=satellite_time_tolerance_sec,
+            max_num_missing_times=satellite_max_missing_times
         )
         if these_satellite_indices is None:
             continue
@@ -429,30 +448,45 @@ def _read_one_example_file(
             all_times_unix_sec=
             xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
             desired_times_unix_sec=t - ships_lag_times_sec,
-            tolerance_sec=SHIPS_TOLERANCE_SEC,
-            max_num_missing_times=ships_max_num_missing_times
+            tolerance_sec=ships_time_tolerance_sec,
+            max_num_missing_times=ships_max_missing_times
         )
         if these_ships_indices is None:
             continue
 
-        these_target_indices = _find_desired_times(
-            all_times_unix_sec=
-            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
-            desired_times_unix_sec=
-            numpy.array([t, t + lead_time_sec], dtype=int),
-            tolerance_sec=0, max_num_missing_times=0
-        )
-        if these_target_indices is None:
-            continue
+        # TODO(thunderhoser): Change list of desired times to all 6-hour steps
+        # between t and t + lead_time_sec.
+        if t + lead_time_sec > numpy.max(all_init_times_unix_sec):
+            these_target_indices = _find_desired_times(
+                all_times_unix_sec=
+                xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
+                desired_times_unix_sec=numpy.array([t], dtype=int),
+                tolerance_sec=0, max_num_missing_times=0
+            )
 
-        intensities_m_s01 = (
-            xt[example_utils.STORM_INTENSITY_KEY].values[
-                these_target_indices[0]:(these_target_indices[-1] + 1)
-            ]
-        )
-        intensity_change_m_s01 = numpy.max(
-            intensities_m_s01 - intensities_m_s01[0]
-        )
+            intensity_change_m_s01 = -1 * xt[
+                example_utils.STORM_INTENSITY_KEY
+            ].values[these_target_indices[0]]
+        else:
+            these_target_indices = _find_desired_times(
+                all_times_unix_sec=
+                xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
+                desired_times_unix_sec=
+                numpy.array([t, t + lead_time_sec], dtype=int),
+                tolerance_sec=0, max_num_missing_times=0
+            )
+            if these_target_indices is None:
+                continue
+
+            intensities_m_s01 = (
+                xt[example_utils.STORM_INTENSITY_KEY].values[
+                    these_target_indices[0]:(these_target_indices[-1] + 1)
+                ]
+            )
+            intensity_change_m_s01 = numpy.max(
+                intensities_m_s01 - intensities_m_s01[0]
+            )
+
         these_flags = _discretize_intensity_change(
             intensity_change_m_s01=intensity_change_m_s01,
             class_cutoffs_m_s01=class_cutoffs_m_s01
@@ -685,6 +719,19 @@ def _check_generator_args(option_dict):
     )
     assert numpy.all(numpy.isfinite(option_dict[CLASS_CUTOFFS_KEY]))
 
+    error_checking.assert_is_integer(option_dict[SATELLITE_TIME_TOLERANCE_KEY])
+    error_checking.assert_is_geq(option_dict[SATELLITE_TIME_TOLERANCE_KEY], 0)
+    error_checking.assert_is_integer(
+        option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
+    )
+    error_checking.assert_is_geq(
+        option_dict[SATELLITE_MAX_MISSING_TIMES_KEY], 0
+    )
+    error_checking.assert_is_integer(option_dict[SHIPS_TIME_TOLERANCE_KEY])
+    error_checking.assert_is_geq(option_dict[SHIPS_TIME_TOLERANCE_KEY], 0)
+    error_checking.assert_is_integer(option_dict[SHIPS_MAX_MISSING_TIMES_KEY])
+    error_checking.assert_is_geq(option_dict[SHIPS_MAX_MISSING_TIMES_KEY], 0)
+
     return option_dict
 
 
@@ -769,6 +816,23 @@ def read_metafile(pickle_file_name):
     metadata_dict = pickle.load(pickle_file_handle)
     pickle_file_handle.close()
 
+    training_option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
+    validation_option_dict = metadata_dict[VALIDATION_OPTIONS_KEY]
+
+    if SATELLITE_TIME_TOLERANCE_KEY not in training_option_dict:
+        training_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 930
+        training_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = 1
+        training_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 0
+        training_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = 1
+
+        validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 3630
+        validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
+        validation_option_dict[SHIPS_TIME_TOLERANCE_KEY] = 21610
+        validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
+
+    metadata_dict[TRAINING_OPTIONS_KEY] = training_option_dict
+    metadata_dict[VALIDATION_OPTIONS_KEY] = validation_option_dict
+
     missing_keys = list(set(METADATA_KEYS) - set(metadata_dict.keys()))
     if len(missing_keys) == 0:
         return metadata_dict
@@ -797,6 +861,10 @@ def create_inputs(option_dict):
     option_dict['ships_predictor_names_lagged']: Same.
     option_dict['ships_predictor_names_forecast']: Same.
     option_dict['class_cutoffs_m_s01']: Same.
+    option_dict['satellite_time_tolerance_sec']: Same.
+    option_dict['satellite_max_missing_times']: Same.
+    option_dict['ships_time_tolerance_sec']: Same.
+    option_dict['ships_max_missing_times']: Same.
 
     :return: predictor_matrices: Same.
     :return: target_array: Same.
@@ -820,6 +888,10 @@ def create_inputs(option_dict):
     ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    satellite_time_tolerance_sec = option_dict[SATELLITE_TIME_TOLERANCE_KEY]
+    satellite_max_missing_times = option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
+    ships_time_tolerance_sec = option_dict[SHIPS_TIME_TOLERANCE_KEY]
+    ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
 
     predictor_matrices, target_array, init_times_unix_sec = (
         _read_one_example_file(
@@ -833,7 +905,11 @@ def create_inputs(option_dict):
             satellite_predictor_names=satellite_predictor_names,
             ships_predictor_names_lagged=ships_predictor_names_lagged,
             ships_predictor_names_forecast=ships_predictor_names_forecast,
-            class_cutoffs_m_s01=class_cutoffs_m_s01
+            class_cutoffs_m_s01=class_cutoffs_m_s01,
+            satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+            satellite_max_missing_times=satellite_max_missing_times,
+            ships_time_tolerance_sec=ships_time_tolerance_sec,
+            ships_max_missing_times=ships_max_missing_times
         )
     )
 
@@ -878,6 +954,17 @@ def input_generator(option_dict):
         (time steps) from one cyclone in a batch.
     option_dict['class_cutoffs_m_s01']: numpy array (length K - 1) of class
         cutoffs.
+    option_dict['satellite_time_tolerance_sec']: Time tolerance (seconds) for
+        satellite data.  For desired time t, if no data can be found within
+        'satellite_time_tolerance_sec' of t, then missing data will be
+        interpolated.
+    option_dict['satellite_max_missing_times']: Max number of missing times for
+        satellite data.  If more times are missing for example e, then e will
+        not be used for training.
+    option_dict['ships_time_tolerance_sec']: Same as
+        'satellite_time_tolerance_sec' but for SHIPS data.
+    option_dict['ships_max_missing_times']: Same as
+        'satellite_max_missing_times' but for SHIPS data.
 
     :return: predictor_matrices: 1-D list with the following elements.
 
@@ -911,6 +998,10 @@ def input_generator(option_dict):
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
     )
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    satellite_time_tolerance_sec = option_dict[SATELLITE_TIME_TOLERANCE_KEY]
+    satellite_max_missing_times = option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
+    ships_time_tolerance_sec = option_dict[SHIPS_TIME_TOLERANCE_KEY]
+    ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
 
     # TODO(thunderhoser): For SHIPS predictors, all lag times and forecast times
     # are currently flattened along the channel axis.  I might change this in
@@ -982,7 +1073,11 @@ def input_generator(option_dict):
                     ships_predictor_names_lagged=ships_predictor_names_lagged,
                     ships_predictor_names_forecast=
                     ships_predictor_names_forecast,
-                    class_cutoffs_m_s01=class_cutoffs_m_s01
+                    class_cutoffs_m_s01=class_cutoffs_m_s01,
+                    satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+                    satellite_max_missing_times=satellite_max_missing_times,
+                    ships_time_tolerance_sec=ships_time_tolerance_sec,
+                    ships_max_missing_times=ships_max_missing_times
                 )[:2]
             )
 
@@ -1087,13 +1182,18 @@ def train_model(
 
     training_option_dict = _check_generator_args(training_option_dict)
 
-    validation_keys_to_keep = [EXAMPLE_DIRECTORY_KEY, YEARS_KEY]
+    validation_keys_to_keep = [
+        EXAMPLE_DIRECTORY_KEY, YEARS_KEY,
+        SATELLITE_TIME_TOLERANCE_KEY, SHIPS_TIME_TOLERANCE_KEY
+    ]
     for this_key in list(training_option_dict.keys()):
         if this_key in validation_keys_to_keep:
             continue
 
         validation_option_dict[this_key] = training_option_dict[this_key]
 
+    validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
+    validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict = _check_generator_args(validation_option_dict)
 
     model_file_name = '{0:s}/model.h5'.format(output_dir_name)
