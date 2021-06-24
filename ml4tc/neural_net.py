@@ -168,32 +168,34 @@ def _find_desired_times(
     num_found_times = numpy.sum(desired_indices != -1)
 
     if num_found_times == 0:
-        desired_time_strings = [
-            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
-            for t in desired_times_unix_sec
-        ]
+        # desired_time_strings = [
+        #     time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+        #     for t in desired_times_unix_sec
+        # ]
+        #
+        # warning_string = (
+        #     'POTENTIAL ERROR: No times found.  Could not find time within {0:d}'
+        #     ' seconds of any desired time:\n{1:s}'
+        # ).format(tolerance_sec, str(desired_time_strings))
+        #
+        # warnings.warn(warning_string)
 
-        warning_string = (
-            'POTENTIAL ERROR: No times found.  Could not find time within {0:d}'
-            ' seconds of any desired time:\n{1:s}'
-        ).format(tolerance_sec, str(desired_time_strings))
-
-        warnings.warn(warning_string)
         return None
 
     if num_missing_times > max_num_missing_times:
-        bad_times_unix_sec = desired_times_unix_sec[desired_indices == -1]
-        bad_time_strings = [
-            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
-            for t in bad_times_unix_sec
-        ]
+        # bad_times_unix_sec = desired_times_unix_sec[desired_indices == -1]
+        # bad_time_strings = [
+        #     time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+        #     for t in bad_times_unix_sec
+        # ]
+        #
+        # warning_string = (
+        #     'POTENTIAL ERROR: Too many missing times.  Could not find time '
+        #     'within {0:d} seconds of any of the following:\n{1:s}'
+        # ).format(tolerance_sec, str(bad_time_strings))
+        #
+        # warnings.warn(warning_string)
 
-        warning_string = (
-            'POTENTIAL ERROR: Too many missing times.  Could not find time '
-            'within {0:d} seconds of any of the following:\n{1:s}'
-        ).format(tolerance_sec, str(bad_time_strings))
-
-        warnings.warn(warning_string)
         return None
 
     return desired_indices
@@ -475,7 +477,16 @@ def _read_one_example_file(
                 numpy.array([t, t + lead_time_sec], dtype=int),
                 tolerance_sec=0, max_num_missing_times=0
             )
+
             if these_target_indices is None:
+                this_valid_time_string = time_conversion.unix_sec_to_string(
+                    t + lead_time_sec, TIME_FORMAT_FOR_LOG
+                )
+                warning_string = (
+                    'POTENTIAL ERROR: Cannot find intensity at {0:s}.'
+                ).format(this_valid_time_string)
+
+                warnings.warn(warning_string)
                 continue
 
             intensities_m_s01 = (
