@@ -46,5 +46,5 @@ python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
 --event_freq_in_training=0.11961675227 \
 --num_prob_thresholds=1001 \
 --num_reliability_bins=20 \
---num_bootstrap_reps=1000 \
+--num_bootstrap_reps=1 \
 --output_eval_file_name="${evaluation_file_name}"
