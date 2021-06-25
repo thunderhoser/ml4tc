@@ -78,7 +78,9 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.SATELLITE_MAX_MISSING_TIMES_KEY:
             satellite_max_missing_times_training,
         neural_net.SHIPS_TIME_TOLERANCE_KEY: ships_time_tolerance_training_sec,
-        neural_net.SHIPS_MAX_MISSING_TIMES_KEY: ships_max_missing_times_training
+        neural_net.SHIPS_MAX_MISSING_TIMES_KEY:
+            ships_max_missing_times_training,
+        neural_net.USE_CLIMO_KEY: False
     }
 
     validation_option_dict = {
@@ -86,7 +88,9 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.YEARS_KEY: validation_years,
         neural_net.SATELLITE_TIME_TOLERANCE_KEY:
             satellite_time_tolerance_validation_sec,
-        neural_net.SHIPS_TIME_TOLERANCE_KEY: ships_time_tolerance_validation_sec
+        neural_net.SHIPS_TIME_TOLERANCE_KEY:
+            ships_time_tolerance_validation_sec,
+        neural_net.USE_CLIMO_KEY: True
     }
 
     print('Reading model template from: "{0:s}"...'.format(template_file_name))

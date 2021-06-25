@@ -30,7 +30,9 @@ THIRD_TIME_INDICES = numpy.array([4, 3, 3, 0, 0, 2, 5, 1, 6], dtype=int)
 FOURTH_ACTUAL_TIMES_UNIX_SEC = numpy.array(
     [4300, 5400, 3400, 400, 6000, 2100, 2600], dtype=int
 )
-FOURTH_TIME_INDICES = numpy.array([3, 3, 5, 6, 2, 0, 1, 4, -1], dtype=int)
+FOURTH_TIME_INDICES = numpy.array(
+    [3, 3, 5, 6, 2, 0, 1, 4, neural_net.MISSING_INDEX], dtype=int
+)
 
 # The following constants are used to test _interp_missing_times.
 NAN = numpy.nan
