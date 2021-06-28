@@ -598,6 +598,8 @@ def _read_one_example_file(
             )
         )
 
+        if these_flags is None:
+            continue
         if these_satellite_indices is None and not use_climo_as_backup:
             continue
 
