@@ -15,6 +15,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import time_conversion
 import file_system_utils
+import gg_plotting_utils
 import example_io
 import ships_io
 import example_utils
@@ -23,7 +24,17 @@ import neural_net
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-PREDICTOR_FONT_SIZE = 15
+DEFAULT_FONT_SIZE = 15
+PREDICTOR_FONT_SIZE = 8
+
+pyplot.rc('font', size=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
+pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
+
 MIN_COLOUR_VALUE = -3.
 MAX_COLOUR_VALUE = 3.
 COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
@@ -167,6 +178,13 @@ def plot_fcst_predictors_one_init_time(
     )
     axes_object.set_title(title_string)
 
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=predictor_matrix,
+        colour_map_object=COLOUR_MAP_OBJECT, min_value=MIN_COLOUR_VALUE,
+        max_value=MAX_COLOUR_VALUE, orientation_string='vertical',
+        extend_min=True, extend_max=True, font_size=DEFAULT_FONT_SIZE
+    )
+
     output_file_name = '{0:s}/ships_{1:s}_{2:s}_forecast.jpg'.format(
         output_dir_name, cyclone_id_string, init_time_string
     )
@@ -223,7 +241,7 @@ def plot_lagged_predictors_one_init_time(
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
-        dtype=float
+        type=float
     )
     x_tick_labels = (
         xt.coords[example_utils.SHIPS_PREDICTOR_LAGGED_DIM].values[
@@ -245,6 +263,13 @@ def plot_lagged_predictors_one_init_time(
         cyclone_id_string, init_time_string
     )
     axes_object.set_title(title_string)
+
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=predictor_matrix,
+        colour_map_object=COLOUR_MAP_OBJECT, min_value=MIN_COLOUR_VALUE,
+        max_value=MAX_COLOUR_VALUE, orientation_string='vertical',
+        extend_min=True, extend_max=True, font_size=DEFAULT_FONT_SIZE
+    )
 
     output_file_name = '{0:s}/ships_{1:s}_{2:s}_lagged.jpg'.format(
         output_dir_name, cyclone_id_string, init_time_string
