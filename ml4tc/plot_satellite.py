@@ -129,8 +129,10 @@ def plot_one_satellite_image(
     valid_time_string = time_conversion.unix_sec_to_string(
         valid_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = t[satellite_utils.CYCLONE_ID_KEY].values[time_index]
-    title_string = 'Brightness temperature for cyclone {0:s} at {1:s}'.format(
+    cyclone_id_string = str(
+        t[satellite_utils.CYCLONE_ID_KEY].values[time_index]
+    )
+    title_string = 'Brightness temp (K) for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
     axes_object.set_title(title_string)
