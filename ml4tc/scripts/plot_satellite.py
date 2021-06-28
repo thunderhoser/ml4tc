@@ -44,9 +44,7 @@ LAST_TIME_HELP_STRING = (
     '"yyyy-mm-dd-HHMMSS").'
 ).format(VALID_TIMES_ARG_NAME)
 
-OUTPUT_DIR_HELP_STRING = (
-    'Name of top-level output directory.  Images will be saved here.'
-)
+OUTPUT_DIR_HELP_STRING = 'Name of output directory.  Images will be saved here.'
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
@@ -71,17 +69,19 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _plot_one_satellite_image(
+def plot_one_satellite_image(
         satellite_table_xarray, time_index, border_latitudes_deg_n,
         border_longitudes_deg_e, output_dir_name):
     """Plots one satellite image.
 
+    P = number of points in border set
+
     :param satellite_table_xarray: xarray table in format returned by
         `satellite_io.read_file`.
     :param time_index: Index of time to plot.
-    :param border_latitudes_deg_n: See doc for `_plot_satellite_one_day`.
-    :param border_longitudes_deg_e: Same.
-    :param output_dir_name: Same.
+    :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
+    :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
+    :param output_dir_name: Name of output directory.  Image will be saved here.
     """
 
     t = satellite_table_xarray
@@ -196,7 +196,7 @@ def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
     border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
 
     for i in time_indices:
-        _plot_one_satellite_image(
+        plot_one_satellite_image(
             satellite_table_xarray=satellite_table_xarray, time_index=i,
             border_latitudes_deg_n=border_latitudes_deg_n,
             border_longitudes_deg_e=border_longitudes_deg_e,
