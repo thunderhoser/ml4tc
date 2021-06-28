@@ -91,13 +91,13 @@ def add_colour_bar(
         colour_norm_object, orientation_string, font_size):
     """Adds colour bar to plot.
 
-    :param brightness_temp_matrix_kelvins: See doc for `plot_2d_grid_latlng`.
+    :param brightness_temp_matrix_kelvins: See doc for `plot_2d_grid_regular`.
     :param axes_object: Same.
     :param colour_map_object: See doc for `get_colour_scheme`.
     :param colour_norm_object: Same.
     :param orientation_string: Orientation ("vertical" or "horizontal").
     :param font_size: Font size for labels on colour bar.
-    :return: colour_bar_object: See doc for `plot_2d_grid_latlng`.
+    :return: colour_bar_object: See doc for `plot_2d_grid_regular`.
     """
 
     error_checking.assert_is_numpy_array(
