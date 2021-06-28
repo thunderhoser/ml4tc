@@ -110,7 +110,7 @@ def plot_one_satellite_image(
         axes_object=axes_object
     )
     brightness_temp_matrix_kelvins = (
-        t[satellite_utils.BRIGHTNESS_TEMPERATURE_KEY][time_index, ...]
+        t[satellite_utils.BRIGHTNESS_TEMPERATURE_KEY][time_index, ...].values
     )
     satellite_plotting.plot_2d_grid_regular(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
