@@ -153,10 +153,10 @@ def plot_fcst_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
-    title_string = (
-        'Forecast SHIPS predictors for cyclone {0:s} at {1:s}'
-    ).format(cyclone_id_string, init_time_string)
+    cyclone_id_string = str(xt[ships_io.CYCLONE_ID_KEY].values[init_time_index])
+    title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
+        cyclone_id_string, init_time_string
+    )
     axes_object.set_title(title_string)
 
     output_file_name = '{0:s}/ships_{1:s}_{2:s}_forecast.jpg'.format(
@@ -232,8 +232,8 @@ def plot_lagged_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
-    title_string = 'Lagged SHIPS predictors for cyclone {0:s} at {1:s}'.format(
+    cyclone_id_string = str(xt[ships_io.CYCLONE_ID_KEY].values[init_time_index])
+    title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
     axes_object.set_title(title_string)
