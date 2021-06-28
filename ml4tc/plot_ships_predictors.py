@@ -144,7 +144,7 @@ def plot_fcst_predictors_one_init_time(
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
-        type=float
+        dtype=float
     )
     x_tick_labels = (
         xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[
