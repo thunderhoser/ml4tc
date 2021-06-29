@@ -154,9 +154,10 @@ def plot_predictors_one_time(
     valid_time_string = time_conversion.unix_sec_to_string(
         valid_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = (
-        xt[satellite_utils.CYCLONE_ID_KEY].values[time_index].decode('utf-8')
-    )
+    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[time_index]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     title_string = 'Satellite predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
