@@ -26,15 +26,15 @@ MAX_NORMALIZED_VALUE = 3.
 
 BAR_FACE_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
 BAR_EDGE_COLOUR = numpy.full(3, 0.)
-BAR_FONT_COLOUR = numpy.full(3, 0.)
+BAR_FONT_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
 BAR_EDGE_WIDTH = 2.
-BAR_FONT_SIZE = 15
+BAR_FONT_SIZE = 20
 
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 
-DEFAULT_FONT_SIZE = 15
+DEFAULT_FONT_SIZE = 30
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
@@ -131,15 +131,9 @@ def plot_predictors_one_time(
         edgecolor=BAR_EDGE_COLOUR, linewidth=BAR_EDGE_WIDTH
     )
 
-    x_min = max([
-        MIN_NORMALIZED_VALUE, axes_object.get_xlim()[0]
-    ])
-    x_max = min([
-        MAX_NORMALIZED_VALUE, axes_object.get_xlim()[1]
-    ])
-    axes_object.set_xlim(x_min, x_max)
-
     pyplot.yticks([], [])
+    axes_object.set_xlim(MIN_NORMALIZED_VALUE, MAX_NORMALIZED_VALUE)
+
     # x_tick_values, _ = pyplot.xticks()
     # pyplot.xticks(x_tick_values, rotation=90)
 
@@ -151,7 +145,7 @@ def plot_predictors_one_time(
         axes_object.text(
             0, y_coords[j], predictor_names[j], color=BAR_FONT_COLOUR,
             horizontalalignment='center', verticalalignment='center',
-            fontsize=BAR_FONT_SIZE
+            fontsize=BAR_FONT_SIZE, fontweight='bold'
         )
 
     valid_time_unix_sec = (
