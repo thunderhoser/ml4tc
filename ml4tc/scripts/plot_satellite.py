@@ -82,6 +82,7 @@ def plot_one_satellite_image(
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :return: output_file_name: Path to output file, where image was saved.
     """
 
     t = satellite_table_xarray
@@ -141,6 +142,8 @@ def plot_one_satellite_image(
         pad_inches=0, bbox_inches='tight'
     )
     pyplot.close(figure_object)
+
+    return output_file_name
 
 
 def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
