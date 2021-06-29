@@ -230,7 +230,9 @@ def plot_fcst_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = str(xt[ships_io.CYCLONE_ID_KEY].values[init_time_index])
+    cyclone_id_string = (
+        xt[ships_io.CYCLONE_ID_KEY].values[init_time_index].decode('utf-8')
+    )
     title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
@@ -299,7 +301,7 @@ def plot_lagged_predictors_one_init_time(
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
-        type=float
+        dtype=float
     )
     x_tick_labels = (
         xt.coords[example_utils.SHIPS_PREDICTOR_LAGGED_DIM].values[
@@ -316,7 +318,9 @@ def plot_lagged_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = str(xt[ships_io.CYCLONE_ID_KEY].values[init_time_index])
+    cyclone_id_string = (
+        xt[ships_io.CYCLONE_ID_KEY].values[init_time_index].decode('utf-8')
+    )
     title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
