@@ -21,7 +21,7 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 DEFAULT_FONT_SIZE = 30
-FORECAST_HOUR_FONT_SIZE = 12
+FORECAST_HOUR_FONT_SIZE = 8
 LAG_TIME_FONT_SIZE = 12
 PREDICTOR_FONT_SIZE = 7
 
@@ -137,7 +137,7 @@ def _add_colour_bar(figure_file_name, colour_bar_file_name):
         colour_map_object=COLOUR_MAP_OBJECT,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', extend_min=False, extend_max=False,
-        fraction_of_axis_length=1.25, font_size=DEFAULT_FONT_SIZE
+        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
     )
 
     tick_values = colour_bar_object.get_ticks()
@@ -209,7 +209,9 @@ def plot_fcst_predictors_one_init_time(
     pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=FORECAST_HOUR_FONT_SIZE
     )
-    axes_object.set_ylabel('Forecast time (hours)')
+    axes_object.set_ylabel(
+        'Forecast time (hours)', fontsize=FORECAST_HOUR_FONT_SIZE
+    )
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
@@ -230,9 +232,10 @@ def plot_fcst_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = (
-        xt[ships_io.CYCLONE_ID_KEY].values[init_time_index].decode('utf-8')
-    )
+    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
@@ -318,9 +321,10 @@ def plot_lagged_predictors_one_init_time(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    cyclone_id_string = (
-        xt[ships_io.CYCLONE_ID_KEY].values[init_time_index].decode('utf-8')
-    )
+    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
