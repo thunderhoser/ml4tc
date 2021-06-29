@@ -42,7 +42,7 @@ set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer
 set model_metafile_name="${model_dir_name}/model_metadata.p"
 set output_dir_name="${model_dir_name}/predictor_plots/2005AL12"
 
-python3 -u "${CODE_DIR_NAME}/plot_scalar_satellite_predictors.py" \
+python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
 --input_model_metafile_name="${model_metafile_name}" \
 --input_norm_example_file_name="${EXAMPLE_FILE_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
