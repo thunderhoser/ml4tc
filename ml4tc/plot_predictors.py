@@ -454,6 +454,7 @@ def _plot_lagged_ships_predictors(
             predictor_matrix = numpy.reshape(
                 predictor_matrix, (num_builtin_lag_times, num_predictors)
             )
+            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
@@ -590,6 +591,7 @@ def _plot_forecast_ships_predictors(
             predictor_matrix = numpy.reshape(
                 predictor_matrix, (num_forecast_hours, num_predictors)
             )
+            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
