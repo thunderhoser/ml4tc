@@ -742,26 +742,26 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     target_array = target_array[time_indices, ...]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
 
-    _plot_brightness_temps(
-        example_table_xarray=example_table_xarray,
-        normalization_table_xarray=normalization_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        init_times_unix_sec=init_times_unix_sec,
-        border_latitudes_deg_n=border_latitudes_deg_n,
-        border_longitudes_deg_e=border_longitudes_deg_e,
-        output_dir_name=output_dir_name
-    )
-    print(SEPARATOR_STRING)
-
-    _plot_scalar_satellite_predictors(
-        example_table_xarray=example_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        init_times_unix_sec=init_times_unix_sec,
-        output_dir_name=output_dir_name
-    )
-    print(SEPARATOR_STRING)
+    # _plot_brightness_temps(
+    #     example_table_xarray=example_table_xarray,
+    #     normalization_table_xarray=normalization_table_xarray,
+    #     model_metadata_dict=model_metadata_dict,
+    #     predictor_matrices=predictor_matrices,
+    #     init_times_unix_sec=init_times_unix_sec,
+    #     border_latitudes_deg_n=border_latitudes_deg_n,
+    #     border_longitudes_deg_e=border_longitudes_deg_e,
+    #     output_dir_name=output_dir_name
+    # )
+    # print(SEPARATOR_STRING)
+    #
+    # _plot_scalar_satellite_predictors(
+    #     example_table_xarray=example_table_xarray,
+    #     model_metadata_dict=model_metadata_dict,
+    #     predictor_matrices=predictor_matrices,
+    #     init_times_unix_sec=init_times_unix_sec,
+    #     output_dir_name=output_dir_name
+    # )
+    # print(SEPARATOR_STRING)
 
     _plot_lagged_ships_predictors(
         example_table_xarray=example_table_xarray,
