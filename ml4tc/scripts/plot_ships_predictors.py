@@ -20,9 +20,9 @@ from ml4tc.machine_learning import neural_net
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-DEFAULT_FONT_SIZE = 30
-FORECAST_HOUR_FONT_SIZE = 8
-LAG_TIME_FONT_SIZE = 12
+DEFAULT_FONT_SIZE = 20
+FORECAST_HOUR_FONT_SIZE = 7
+LAG_TIME_FONT_SIZE = 20
 PREDICTOR_FONT_SIZE = 7
 
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
@@ -190,6 +190,7 @@ def plot_fcst_predictors_one_init_time(
             init_time_index, :, predictor_indices
         ]
     )
+    predictor_matrix = predictor_matrix.astype(float)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
@@ -210,9 +211,7 @@ def plot_fcst_predictors_one_init_time(
     pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=FORECAST_HOUR_FONT_SIZE
     )
-    axes_object.set_ylabel(
-        'Forecast time (hours)', fontsize=FORECAST_HOUR_FONT_SIZE
-    )
+    axes_object.set_ylabel('Forecast time (hours)')
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
@@ -286,6 +285,7 @@ def plot_lagged_predictors_one_init_time(
             init_time_index, :, predictor_indices
         ]
     )
+    predictor_matrix = predictor_matrix.astype(float)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)

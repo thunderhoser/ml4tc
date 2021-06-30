@@ -256,6 +256,9 @@ def _plot_brightness_temps(
             output_file_name=concat_figure_file_name
         )
 
+        if num_lag_times == 1:
+            continue
+
         for j in range(num_lag_times):
             os.remove(panel_file_names[j])
 
@@ -373,6 +376,9 @@ def _plot_scalar_satellite_predictors(
             output_file_name=concat_figure_file_name
         )
 
+        if num_lag_times == 1:
+            continue
+
         for j in range(num_lag_times):
             os.remove(panel_file_names[j])
 
@@ -442,6 +448,7 @@ def _plot_lagged_ships_predictors(
             predictor_matrix = numpy.reshape(
                 predictor_matrix, (num_builtin_lag_times, num_predictors)
             )
+            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
@@ -504,6 +511,9 @@ def _plot_lagged_ships_predictors(
             input_file_name=concat_figure_file_name,
             output_file_name=concat_figure_file_name
         )
+
+        if num_model_lag_times == 1:
+            continue
 
         for j in range(num_model_lag_times):
             os.remove(panel_file_names[j])
@@ -575,6 +585,7 @@ def _plot_forecast_ships_predictors(
             predictor_matrix = numpy.reshape(
                 predictor_matrix, (num_forecast_hours, num_predictors)
             )
+            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
@@ -637,6 +648,9 @@ def _plot_forecast_ships_predictors(
             input_file_name=concat_figure_file_name,
             output_file_name=concat_figure_file_name
         )
+
+        if num_model_lag_times == 1:
+            continue
 
         for j in range(num_model_lag_times):
             os.remove(panel_file_names[j])
