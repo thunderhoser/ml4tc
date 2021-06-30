@@ -183,6 +183,7 @@ def plot_fcst_predictors_one_init_time(
     :param init_time_index: Same.
     :param predictor_indices: Same.
     :param output_dir_name: Same.
+    :return: output_file_name: Path to output file, where image was saved.
     """
 
     xt = example_table_xarray
@@ -267,6 +268,8 @@ def plot_fcst_predictors_one_init_time(
         colour_bar_file_name=colour_bar_file_name
     )
 
+    return figure_file_name
+
 
 def plot_lagged_predictors_one_init_time(
         example_table_xarray, init_time_index, predictor_indices,
@@ -279,6 +282,7 @@ def plot_lagged_predictors_one_init_time(
     :param predictor_indices: 1-D numpy array with indices of predictors to
         plot.
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :return: output_file_name: Path to output file, where image was saved.
     """
 
     xt = example_table_xarray
@@ -355,6 +359,8 @@ def plot_lagged_predictors_one_init_time(
         figure_file_name=figure_file_name,
         colour_bar_file_name=colour_bar_file_name
     )
+
+    return figure_file_name
 
 
 def _run(norm_example_file_name, forecast_predictor_names,

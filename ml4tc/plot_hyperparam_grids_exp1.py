@@ -371,8 +371,8 @@ def _run(experiment_dir_name, output_dir_name):
     print(SEPARATOR_STRING)
 
     _print_ranking_one_score(
-        score_matrix=numpy.absolute(1. - frequency_bias_matrix),
-        score_name='frequency-bias offset'
+        score_matrix=-numpy.absolute(1. - frequency_bias_matrix),
+        score_name='negative frequency-bias offset'
     )
     print(SEPARATOR_STRING)
 
