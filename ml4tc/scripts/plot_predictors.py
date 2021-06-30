@@ -1,6 +1,7 @@
 """Plots all predictors (scalars and brightness-temp maps) for a given model."""
 
 import os
+import shutil
 import argparse
 import numpy
 import xarray
@@ -9,16 +10,21 @@ from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.plotting import imagemagick_utils
 from ml4tc.io import example_io
 from ml4tc.io import border_io
+from ml4tc.io import ships_io
 from ml4tc.utils import example_utils
 from ml4tc.utils import satellite_utils
 from ml4tc.utils import normalization
 from ml4tc.machine_learning import neural_net
 from ml4tc.scripts import plot_satellite
+from ml4tc.scripts import \
+    plot_scalar_satellite_predictors as plot_scalar_satellite
+from ml4tc.scripts import plot_ships_predictors as plot_ships
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 MINUTES_TO_SECONDS = 60
+HOURS_TO_SECONDS = 3600
 
 PANEL_SIZE_PX = int(2.5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
@@ -133,7 +139,7 @@ def _plot_brightness_temps(
         actual_values_training=training_values
     )[..., 0]
 
-    # Plot maps of denormalized brightness temp.
+    # Housekeeping.
     num_init_times = len(init_times_unix_sec)
     lag_times_sec = (
         MINUTES_TO_SECONDS *
@@ -157,19 +163,12 @@ def _plot_brightness_temps(
         0, num_grid_columns - 1, num=num_grid_columns, dtype=int
     )
 
+    # Do actual stuff (plot maps of denormalized brightness temperature).
     for i in range(num_init_times):
         panel_file_names = [''] * num_lag_times
 
         for j in range(num_lag_times):
-            desired_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
-            k = numpy.argmin(numpy.absolute(
-                xt.coords[example_utils.SATELLITE_TIME_DIM].values -
-                desired_time_unix_sec
-            ))
-
-            valid_time_unix_sec = (
-                xt.coords[example_utils.SATELLITE_TIME_DIM].values[k]
-            )
+            valid_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
             satellite_metadata_dict = {
                 satellite_utils.GRID_ROW_DIM: grid_row_indices,
                 satellite_utils.GRID_COLUMN_DIM: grid_column_indices,
@@ -177,6 +176,10 @@ def _plot_brightness_temps(
                     numpy.array([valid_time_unix_sec], dtype=int)
             }
 
+            k = numpy.argmin(numpy.absolute(
+                xt.coords[example_utils.SATELLITE_TIME_DIM].values -
+                valid_time_unix_sec
+            ))
             grid_latitudes_deg_n = (
                 xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
             )
@@ -229,22 +232,413 @@ def _plot_brightness_temps(
                 init_times_unix_sec[i], TIME_FORMAT
             )
         )
-
         print('Concatenating panels to: "{0:s}"...'.format(
             concat_figure_file_name
         ))
-        imagemagick_utils.concatenate_images(
-            input_file_names=panel_file_names, num_panel_rows=num_panel_rows,
-            num_panel_columns=num_panel_columns,
-            output_file_name=concat_figure_file_name
-        )
+
+        if num_lag_times == 1:
+            shutil.move(panel_file_names[0], concat_figure_file_name)
+        else:
+            imagemagick_utils.concatenate_images(
+                input_file_names=panel_file_names,
+                num_panel_rows=num_panel_rows,
+                num_panel_columns=num_panel_columns,
+                output_file_name=concat_figure_file_name
+            )
+
         imagemagick_utils.resize_image(
             input_file_name=concat_figure_file_name,
             output_file_name=concat_figure_file_name,
             output_size_pixels=CONCAT_FIGURE_SIZE_PX
         )
+        imagemagick_utils.trim_whitespace(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name
+        )
 
         for j in range(num_lag_times):
+            os.remove(panel_file_names[j])
+
+
+def _plot_scalar_satellite_predictors(
+        example_table_xarray, model_metadata_dict, predictor_matrices,
+        init_times_unix_sec, output_dir_name):
+    """Plots scalar satellite predictors for each init time and lag time.
+
+    :param example_table_xarray: See doc for `_plot_brightness_temps`.
+    :param model_metadata_dict: Same.
+    :param predictor_matrices: Same.
+    :param init_times_unix_sec: Same.
+    :param output_dir_name: Same.
+    """
+
+    # Housekeeping.
+    xt = example_table_xarray
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+
+    num_init_times = len(init_times_unix_sec)
+    lag_times_sec = (
+        MINUTES_TO_SECONDS *
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
+    )
+    num_lag_times = len(lag_times_sec)
+
+    num_panel_rows = int(numpy.floor(
+        numpy.sqrt(num_lag_times)
+    ))
+    num_panel_columns = int(numpy.ceil(
+        float(num_lag_times) / num_panel_rows
+    ))
+
+    num_predictors = predictor_matrices[1].shape[-1]
+    predictor_indices = numpy.linspace(
+        0, num_predictors - 1, num=num_predictors, dtype=int
+    )
+
+    # Do actual stuff (plot bar graphs with normalized predictors).
+    for i in range(num_init_times):
+        panel_file_names = [''] * num_lag_times
+
+        for j in range(num_lag_times):
+            valid_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
+            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+
+            metadata_dict = {
+                example_utils.SATELLITE_TIME_DIM:
+                    numpy.array([valid_time_unix_sec], dtype=int),
+                example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM:
+                    validation_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
+            }
+
+            these_dim_2d = (
+                example_utils.SATELLITE_TIME_DIM,
+                example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
+            )
+            main_data_dict = {
+                example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY: (
+                    these_dim_2d,
+                    numpy.expand_dims(predictor_matrices[1][i, j, :], axis=0)
+                ),
+                satellite_utils.CYCLONE_ID_KEY: (
+                    (example_utils.SATELLITE_TIME_DIM,),
+                    [cyclone_id_string]
+                )
+            }
+
+            this_table_xarray = xarray.Dataset(
+                data_vars=main_data_dict, coords=metadata_dict
+            )
+            panel_file_names[j] = (
+                plot_scalar_satellite.plot_predictors_one_time(
+                    example_table_xarray=this_table_xarray, time_index=0,
+                    predictor_indices=predictor_indices,
+                    output_dir_name=output_dir_name
+                )
+            )
+            imagemagick_utils.resize_image(
+                input_file_name=panel_file_names[j],
+                output_file_name=panel_file_names[j],
+                output_size_pixels=PANEL_SIZE_PX
+            )
+
+        concat_figure_file_name = '{0:s}/{1:s}_scalar_satellite.jpg'.format(
+            output_dir_name,
+            time_conversion.unix_sec_to_string(
+                init_times_unix_sec[i], TIME_FORMAT
+            )
+        )
+        print('Concatenating panels to: "{0:s}"...'.format(
+            concat_figure_file_name
+        ))
+
+        if num_lag_times == 1:
+            shutil.move(panel_file_names[0], concat_figure_file_name)
+        else:
+            imagemagick_utils.concatenate_images(
+                input_file_names=panel_file_names,
+                num_panel_rows=num_panel_rows,
+                num_panel_columns=num_panel_columns,
+                output_file_name=concat_figure_file_name
+            )
+
+        imagemagick_utils.resize_image(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name,
+            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        )
+        imagemagick_utils.trim_whitespace(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name
+        )
+
+        for j in range(num_lag_times):
+            os.remove(panel_file_names[j])
+
+
+def _plot_lagged_ships_predictors(
+        example_table_xarray, model_metadata_dict, predictor_matrices,
+        init_times_unix_sec, output_dir_name):
+    """Plots lagged SHIPS predictors for each init time and model lag time.
+
+    :param example_table_xarray: See doc for `_plot_brightness_temps`.
+    :param model_metadata_dict: Same.
+    :param predictor_matrices: Same.
+    :param init_times_unix_sec: Same.
+    :param output_dir_name: Same.
+    """
+
+    # Housekeeping.
+    xt = example_table_xarray
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+
+    num_init_times = len(init_times_unix_sec)
+    model_lag_times_sec = (
+        HOURS_TO_SECONDS *
+        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    )
+    num_model_lag_times = len(model_lag_times_sec)
+
+    predictor_names = (
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+    )
+    builtin_lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
+    num_predictors = len(predictor_names)
+    num_builtin_lag_times = len(builtin_lag_times_hours)
+    predictor_indices = numpy.linspace(
+        0, num_predictors - 1, num=num_predictors, dtype=int
+    )
+
+    num_panel_rows = int(numpy.floor(
+        numpy.sqrt(num_model_lag_times)
+    ))
+    num_panel_columns = int(numpy.ceil(
+        float(num_model_lag_times) / num_panel_rows
+    ))
+
+    # Do actual stuff (plot 2-D colour maps with normalized predictors).
+    for i in range(num_init_times):
+        panel_file_names = [''] * num_model_lag_times
+
+        for j in range(num_model_lag_times):
+            valid_time_unix_sec = (
+                init_times_unix_sec[i] - model_lag_times_sec[j]
+            )
+            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+
+            metadata_dict = {
+                example_utils.SHIPS_LAG_TIME_DIM: builtin_lag_times_hours,
+                example_utils.SHIPS_VALID_TIME_DIM:
+                    numpy.array([valid_time_unix_sec], dtype=int),
+                example_utils.SHIPS_PREDICTOR_LAGGED_DIM: predictor_names
+            }
+
+            predictor_matrix = predictor_matrices[2][
+                i, j, :(num_predictors * num_builtin_lag_times)
+            ]
+            predictor_matrix = numpy.reshape(
+                predictor_matrix, (num_builtin_lag_times, num_predictors)
+            )
+            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+
+            these_dim_3d = (
+                example_utils.SHIPS_VALID_TIME_DIM,
+                example_utils.SHIPS_LAG_TIME_DIM,
+                example_utils.SHIPS_PREDICTOR_LAGGED_DIM
+            )
+            main_data_dict = {
+                example_utils.SHIPS_PREDICTORS_LAGGED_KEY: (
+                    these_dim_3d, predictor_matrix
+                ),
+                ships_io.CYCLONE_ID_KEY: (
+                    (example_utils.SHIPS_VALID_TIME_DIM,),
+                    [cyclone_id_string]
+                )
+            }
+
+            this_table_xarray = xarray.Dataset(
+                data_vars=main_data_dict, coords=metadata_dict
+            )
+            panel_file_names[j] = (
+                plot_ships.plot_lagged_predictors_one_init_time(
+                    example_table_xarray=this_table_xarray, init_time_index=0,
+                    predictor_indices=predictor_indices,
+                    output_dir_name=output_dir_name
+                )
+            )
+            imagemagick_utils.resize_image(
+                input_file_name=panel_file_names[j],
+                output_file_name=panel_file_names[j],
+                output_size_pixels=PANEL_SIZE_PX
+            )
+
+        concat_figure_file_name = '{0:s}/{1:s}_ships_lagged.jpg'.format(
+            output_dir_name,
+            time_conversion.unix_sec_to_string(
+                init_times_unix_sec[i], TIME_FORMAT
+            )
+        )
+        print('Concatenating panels to: "{0:s}"...'.format(
+            concat_figure_file_name
+        ))
+
+        if num_model_lag_times == 1:
+            shutil.move(panel_file_names[0], concat_figure_file_name)
+        else:
+            imagemagick_utils.concatenate_images(
+                input_file_names=panel_file_names,
+                num_panel_rows=num_panel_rows,
+                num_panel_columns=num_panel_columns,
+                output_file_name=concat_figure_file_name
+            )
+
+        imagemagick_utils.resize_image(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name,
+            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        )
+        imagemagick_utils.trim_whitespace(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name
+        )
+
+        for j in range(num_model_lag_times):
+            os.remove(panel_file_names[j])
+
+
+def _plot_forecast_ships_predictors(
+        example_table_xarray, model_metadata_dict, predictor_matrices,
+        init_times_unix_sec, output_dir_name):
+    """Plots lagged SHIPS predictors for each init time and lag time.
+
+    :param example_table_xarray: See doc for `_plot_brightness_temps`.
+    :param model_metadata_dict: Same.
+    :param predictor_matrices: Same.
+    :param init_times_unix_sec: Same.
+    :param output_dir_name: Same.
+    """
+
+    # Housekeeping.
+    xt = example_table_xarray
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+
+    num_init_times = len(init_times_unix_sec)
+    model_lag_times_sec = (
+        HOURS_TO_SECONDS *
+        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    )
+    num_model_lag_times = len(model_lag_times_sec)
+
+    predictor_names = (
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+    )
+    forecast_hours = xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
+    num_predictors = len(predictor_names)
+    num_forecast_hours = len(forecast_hours)
+    predictor_indices = numpy.linspace(
+        0, num_predictors - 1, num=num_predictors, dtype=int
+    )
+
+    num_panel_rows = int(numpy.floor(
+        numpy.sqrt(num_model_lag_times)
+    ))
+    num_panel_columns = int(numpy.ceil(
+        float(num_model_lag_times) / num_panel_rows
+    ))
+
+    # Do actual stuff (plot 2-D colour maps with normalized predictors).
+    for i in range(num_init_times):
+        panel_file_names = [''] * num_model_lag_times
+
+        for j in range(num_model_lag_times):
+            valid_time_unix_sec = (
+                init_times_unix_sec[i] - model_lag_times_sec[j]
+            )
+            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+
+            metadata_dict = {
+                example_utils.SHIPS_FORECAST_HOUR_DIM: forecast_hours,
+                example_utils.SHIPS_VALID_TIME_DIM:
+                    numpy.array([valid_time_unix_sec], dtype=int),
+                example_utils.SHIPS_PREDICTOR_FORECAST_DIM:
+                    predictor_names
+            }
+
+            predictor_matrix = predictor_matrices[2][
+                i, j, (-num_predictors * num_forecast_hours):
+            ]
+            predictor_matrix = numpy.reshape(
+                predictor_matrix, (num_forecast_hours, num_predictors)
+            )
+            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+
+            these_dim_3d = (
+                example_utils.SHIPS_VALID_TIME_DIM,
+                example_utils.SHIPS_FORECAST_HOUR_DIM,
+                example_utils.SHIPS_PREDICTOR_FORECAST_DIM
+            )
+            main_data_dict = {
+                example_utils.SHIPS_PREDICTORS_FORECAST_KEY: (
+                    these_dim_3d, predictor_matrix
+                ),
+                ships_io.CYCLONE_ID_KEY: (
+                    (example_utils.SHIPS_VALID_TIME_DIM,),
+                    [cyclone_id_string]
+                )
+            }
+
+            this_table_xarray = xarray.Dataset(
+                data_vars=main_data_dict, coords=metadata_dict
+            )
+            panel_file_names[j] = (
+                plot_ships.plot_fcst_predictors_one_init_time(
+                    example_table_xarray=this_table_xarray, init_time_index=0,
+                    predictor_indices=predictor_indices,
+                    output_dir_name=output_dir_name
+                )
+            )
+            imagemagick_utils.resize_image(
+                input_file_name=panel_file_names[j],
+                output_file_name=panel_file_names[j],
+                output_size_pixels=PANEL_SIZE_PX
+            )
+
+        concat_figure_file_name = '{0:s}/{1:s}_ships_forecast.jpg'.format(
+            output_dir_name,
+            time_conversion.unix_sec_to_string(
+                init_times_unix_sec[i], TIME_FORMAT
+            )
+        )
+        print('Concatenating panels to: "{0:s}"...'.format(
+            concat_figure_file_name
+        ))
+
+        if num_model_lag_times == 1:
+            shutil.move(panel_file_names[0], concat_figure_file_name)
+        else:
+            imagemagick_utils.concatenate_images(
+                input_file_names=panel_file_names,
+                num_panel_rows=num_panel_rows,
+                num_panel_columns=num_panel_columns,
+                output_file_name=concat_figure_file_name
+            )
+
+        imagemagick_utils.resize_image(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name,
+            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        )
+        imagemagick_utils.trim_whitespace(
+            input_file_name=concat_figure_file_name,
+            output_file_name=concat_figure_file_name
+        )
+
+        for j in range(num_model_lag_times):
             os.remove(panel_file_names[j])
 
 
@@ -339,6 +733,32 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         output_dir_name=output_dir_name
     )
     print(SEPARATOR_STRING)
+
+    _plot_scalar_satellite_predictors(
+        example_table_xarray=example_table_xarray,
+        model_metadata_dict=model_metadata_dict,
+        predictor_matrices=predictor_matrices,
+        init_times_unix_sec=init_times_unix_sec,
+        output_dir_name=output_dir_name
+    )
+    print(SEPARATOR_STRING)
+
+    _plot_lagged_ships_predictors(
+        example_table_xarray=example_table_xarray,
+        model_metadata_dict=model_metadata_dict,
+        predictor_matrices=predictor_matrices,
+        init_times_unix_sec=init_times_unix_sec,
+        output_dir_name=output_dir_name
+    )
+    print(SEPARATOR_STRING)
+
+    _plot_forecast_ships_predictors(
+        example_table_xarray=example_table_xarray,
+        model_metadata_dict=model_metadata_dict,
+        predictor_matrices=predictor_matrices,
+        init_times_unix_sec=init_times_unix_sec,
+        output_dir_name=output_dir_name
+    )
 
 
 if __name__ == '__main__':

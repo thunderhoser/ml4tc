@@ -101,6 +101,7 @@ def plot_predictors_one_time(
     :param predictor_indices: 1-D numpy array with indices of predictors to
         plot.
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :return: output_file_name: Path to output file, where image was saved.
     """
 
     xt = example_table_xarray
@@ -125,9 +126,6 @@ def plot_predictors_one_time(
 
     pyplot.yticks([], [])
     axes_object.set_xlim(MIN_NORMALIZED_VALUE, MAX_NORMALIZED_VALUE)
-
-    # x_tick_values, _ = pyplot.xticks()
-    # pyplot.xticks(x_tick_values, rotation=90)
 
     predictor_names = xt.coords[
         example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
@@ -166,6 +164,8 @@ def plot_predictors_one_time(
         pad_inches=0, bbox_inches='tight'
     )
     pyplot.close(figure_object)
+
+    return output_file_name
 
 
 def _run(norm_example_file_name, predictor_names, valid_time_strings,
