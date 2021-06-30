@@ -517,7 +517,7 @@ def _plot_lagged_ships_predictors(
             output_file_name=concat_figure_file_name
         )
 
-        if num_lag_times == 1:
+        if num_model_lag_times == 1:
             continue
 
         for j in range(num_model_lag_times):
@@ -653,7 +653,7 @@ def _plot_forecast_ships_predictors(
             output_file_name=concat_figure_file_name
         )
 
-        if num_lag_times == 1:
+        if num_model_lag_times == 1:
             continue
 
         for j in range(num_model_lag_times):

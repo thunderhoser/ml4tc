@@ -197,6 +197,7 @@ def plot_fcst_predictors_one_init_time(
             init_time_index, :, predictor_indices
         ]
     )
+    predictor_matrix = predictor_matrix.astype(float)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
@@ -293,6 +294,7 @@ def plot_lagged_predictors_one_init_time(
             init_time_index, :, predictor_indices
         ]
     )
+    predictor_matrix = predictor_matrix.astype(float)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
