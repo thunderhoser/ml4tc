@@ -168,7 +168,7 @@ def _add_colour_bar(figure_file_name, colour_bar_file_name):
 
 def plot_fcst_predictors_one_init_time(
         example_table_xarray, init_time_index, predictor_indices,
-        output_dir_name):
+        output_dir_name, info_string=None):
     """Plots forecast predictors for one initialization time.
 
     :param example_table_xarray: See doc for
@@ -176,6 +176,7 @@ def plot_fcst_predictors_one_init_time(
     :param init_time_index: Same.
     :param predictor_indices: Same.
     :param output_dir_name: Same.
+    :param info_string: Same.
     :return: output_file_name: Path to output file, where image was saved.
     """
 
@@ -236,9 +237,12 @@ def plot_fcst_predictors_one_init_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
+    title_string = 'SHIPS preds for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
+    if info_string is not None:
+        title_string += '; {0:s}'.format(info_string)
+
     axes_object.set_title(title_string)
 
     extensionless_file_name = '{0:s}/ships_{1:s}_{2:s}_forecast'.format(
@@ -265,7 +269,7 @@ def plot_fcst_predictors_one_init_time(
 
 def plot_lagged_predictors_one_init_time(
         example_table_xarray, init_time_index, predictor_indices,
-        output_dir_name):
+        output_dir_name, info_string=None):
     """Plots lagged predictors for one initialization time.
 
     :param example_table_xarray: xarray table in format returned by
@@ -274,6 +278,7 @@ def plot_lagged_predictors_one_init_time(
     :param predictor_indices: 1-D numpy array with indices of predictors to
         plot.
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :param info_string: Info string (to be appended to title).
     :return: output_file_name: Path to output file, where image was saved.
     """
 
@@ -329,9 +334,12 @@ def plot_lagged_predictors_one_init_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'SHIPS predictors for {0:s} at {1:s}'.format(
+    title_string = 'SHIPS preds for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
+    if info_string is not None:
+        title_string += '; {0:s}'.format(info_string)
+
     axes_object.set_title(title_string)
 
     extensionless_file_name = '{0:s}/ships_{1:s}_{2:s}_lagged'.format(
