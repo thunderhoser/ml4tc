@@ -42,4 +42,4 @@ set output_dir_name="${model_dir_name}/validation_2005-2009"
 
 python3 -u "${CODE_DIR_NAME}/split_predictions_by_month_and_basin.py" \
 --input_prediction_file_name="${input_file_name}" \
---output_dir_name="${output_dir_name}"
+--output_prediction_dir_name="${output_dir_name}"
