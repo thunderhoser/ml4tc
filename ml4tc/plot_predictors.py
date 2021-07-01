@@ -615,7 +615,6 @@ def _plot_forecast_ships_predictors(
                 predictor_matrix, (num_forecast_hours, num_predictors),
                 order='F'
             )
-            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
@@ -826,6 +825,8 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         ], dtype=bool)
 
         good_indices = numpy.where(good_flags)[0]
+        print(good_indices)
+
         these_times_unix_sec = (
             prediction_dict[prediction_io.INIT_TIMES_KEY][good_indices]
         )
