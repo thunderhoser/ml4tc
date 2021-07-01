@@ -34,7 +34,7 @@ FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 
-DEFAULT_FONT_SIZE = 30
+DEFAULT_FONT_SIZE = 20
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
@@ -100,7 +100,8 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def plot_predictors_one_time(
-        example_table_xarray, time_index, predictor_indices, output_dir_name):
+        example_table_xarray, time_index, predictor_indices, output_dir_name,
+        info_string=None):
     """Plots scalar satellite-based predictors for one valid time.
 
     :param example_table_xarray: xarray table in format returned by
@@ -109,6 +110,7 @@ def plot_predictors_one_time(
     :param predictor_indices: 1-D numpy array with indices of predictors to
         plot.
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :param info_string: Info string (to be appended to title).
     :return: output_file_name: Path to output file, where image was saved.
     """
 
@@ -156,9 +158,12 @@ def plot_predictors_one_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'Satellite predictors for {0:s} at {1:s}'.format(
+    title_string = 'Satellite preds for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
+    if info_string is not None:
+        title_string += '; {0:s}'.format(info_string)
+
     axes_object.set_title(title_string)
 
     output_file_name = '{0:s}/scalar_satellite_{1:s}_{2:s}.jpg'.format(

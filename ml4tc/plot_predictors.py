@@ -18,6 +18,7 @@ import imagemagick_utils
 import example_io
 import border_io
 import ships_io
+import prediction_io
 import example_utils
 import satellite_utils
 import normalization
@@ -31,6 +32,7 @@ TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
+METRES_PER_SECOND_TO_KT = 3.6 / 1.852
 
 PANEL_SIZE_PX = int(2.5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
@@ -38,6 +40,7 @@ CONCAT_FIGURE_SIZE_PX = int(1e7)
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_FILE_ARG_NAME = 'input_norm_example_file_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 INIT_TIMES_ARG_NAME = 'init_time_strings'
 FIRST_TIME_ARG_NAME = 'first_init_time_string'
 LAST_TIME_ARG_NAME = 'last_init_time_string'
@@ -54,6 +57,11 @@ NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be used to denormalize '
     'brightness-temperature maps before plotting).  Will be read by '
     '`normalization.read_file`.'
+)
+PREDICTION_FILE_HELP_STRING = (
+    'Path to file with predictions and targets.  Will be read by '
+    '`prediction_io.read_file`.  If you do not want to plot predictions and '
+    'targets, leave this argument alone.'
 )
 INIT_TIMES_HELP_STRING = (
     'List of initialization times (format "yyyy-mm-dd-HHMMSS").  '
@@ -85,6 +93,10 @@ INPUT_ARG_PARSER.add_argument(
     help=NORMALIZATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
+    help=PREDICTION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + INIT_TIMES_ARG_NAME, type=str, nargs='+', required=False,
     default=[''], help=INIT_TIMES_HELP_STRING
 )
@@ -104,8 +116,8 @@ INPUT_ARG_PARSER.add_argument(
 
 def _plot_brightness_temps(
         example_table_xarray, normalization_table_xarray, model_metadata_dict,
-        predictor_matrices, init_times_unix_sec, border_latitudes_deg_n,
-        border_longitudes_deg_e, output_dir_name):
+        predictor_matrices, init_times_unix_sec, info_strings,
+        border_latitudes_deg_n, border_longitudes_deg_e, output_dir_name):
     """Plots one brightness-temp map for each init time and lag time.
 
     P = number of points in border set
@@ -118,6 +130,7 @@ def _plot_brightness_temps(
         `neural_net.read_metafile`.
     :param predictor_matrices: See output doc for `neural_net.create_inputs`.
     :param init_times_unix_sec: Same.
+    :param info_strings: 1-D list of info strings, one per init time.
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
     :param output_dir_name: Name of output directory.  Figures will be saved
@@ -224,7 +237,8 @@ def _plot_brightness_temps(
                 satellite_table_xarray=satellite_table_xarray, time_index=0,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
-                output_dir_name=output_dir_name
+                output_dir_name=output_dir_name,
+                info_string=info_strings[i] if lag_times_sec[j] == 0 else None
             )
             imagemagick_utils.resize_image(
                 input_file_name=panel_file_names[j],
@@ -271,13 +285,14 @@ def _plot_brightness_temps(
 
 def _plot_scalar_satellite_predictors(
         example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, output_dir_name):
+        init_times_unix_sec, info_strings, output_dir_name):
     """Plots scalar satellite predictors for each init time and lag time.
 
     :param example_table_xarray: See doc for `_plot_brightness_temps`.
     :param model_metadata_dict: Same.
     :param predictor_matrices: Same.
     :param init_times_unix_sec: Same.
+    :param info_strings: Same.
     :param output_dir_name: Same.
     """
 
@@ -343,7 +358,10 @@ def _plot_scalar_satellite_predictors(
                 plot_scalar_satellite.plot_predictors_one_time(
                     example_table_xarray=this_table_xarray, time_index=0,
                     predictor_indices=predictor_indices,
-                    output_dir_name=output_dir_name
+                    output_dir_name=output_dir_name,
+                    info_string=(
+                        info_strings[i] if lag_times_sec[j] == 0 else None
+                    )
                 )
             )
             imagemagick_utils.resize_image(
@@ -391,13 +409,14 @@ def _plot_scalar_satellite_predictors(
 
 def _plot_lagged_ships_predictors(
         example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, output_dir_name):
+        init_times_unix_sec, info_strings, output_dir_name):
     """Plots lagged SHIPS predictors for each init time and model lag time.
 
     :param example_table_xarray: See doc for `_plot_brightness_temps`.
     :param model_metadata_dict: Same.
     :param predictor_matrices: Same.
     :param init_times_unix_sec: Same.
+    :param info_strings: Same.
     :param output_dir_name: Same.
     """
 
@@ -479,7 +498,10 @@ def _plot_lagged_ships_predictors(
                 plot_ships.plot_lagged_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
                     predictor_indices=predictor_indices,
-                    output_dir_name=output_dir_name
+                    output_dir_name=output_dir_name,
+                    info_string=(
+                        info_strings[i] if model_lag_times_sec[j] == 0 else None
+                    )
                 )
             )
             imagemagick_utils.resize_image(
@@ -527,13 +549,14 @@ def _plot_lagged_ships_predictors(
 
 def _plot_forecast_ships_predictors(
         example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, output_dir_name):
+        init_times_unix_sec, info_strings, output_dir_name):
     """Plots lagged SHIPS predictors for each init time and lag time.
 
     :param example_table_xarray: See doc for `_plot_brightness_temps`.
     :param model_metadata_dict: Same.
     :param predictor_matrices: Same.
     :param init_times_unix_sec: Same.
+    :param info_strings: Same.
     :param output_dir_name: Same.
     """
 
@@ -592,6 +615,7 @@ def _plot_forecast_ships_predictors(
                 predictor_matrix, (num_forecast_hours, num_predictors),
                 order='F'
             )
+            predictor_matrix = numpy.transpose(predictor_matrix)
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
 
             these_dim_3d = (
@@ -616,7 +640,10 @@ def _plot_forecast_ships_predictors(
                 plot_ships.plot_fcst_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
                     predictor_indices=predictor_indices,
-                    output_dir_name=output_dir_name
+                    output_dir_name=output_dir_name,
+                    info_string=(
+                        info_strings[i] if model_lag_times_sec[j] == 0 else None
+                    )
                 )
             )
             imagemagick_utils.resize_image(
@@ -663,15 +690,16 @@ def _plot_forecast_ships_predictors(
 
 
 def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
-         init_time_strings, first_init_time_string, last_init_time_string,
-         output_dir_name):
-    """Plots all predictors (scalars and brightness-temp maps) for a given model.
+         prediction_file_name, init_time_strings, first_init_time_string,
+         last_init_time_string, output_dir_name):
+    """Plots all predictors (scalars and brightness temps) for a given model.
 
     This is effectively the main method.
 
     :param model_metafile_name: See documentation at top of file.
     :param norm_example_file_name: Same.
     :param normalization_file_name: Same.
+    :param prediction_file_name: Same.
     :param init_time_strings: Same.
     :param first_init_time_string: Same.
     :param last_init_time_string: Same.
@@ -691,6 +719,9 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
     print('Reading data from: "{0:s}"...'.format(norm_example_file_name))
     example_table_xarray = example_io.read_file(norm_example_file_name)
+    cyclone_id_string = (
+        example_table_xarray[satellite_utils.CYCLONE_ID_KEY].values[0]
+    )
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
     normalization_table_xarray = normalization.read_file(
@@ -700,7 +731,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
     print(SEPARATOR_STRING)
 
-    predictor_matrices, target_array, all_init_times_unix_sec = (
+    predictor_matrices, _, all_init_times_unix_sec = (
         neural_net.create_inputs(validation_option_dict)
     )
     print(SEPARATOR_STRING)
@@ -739,34 +770,107 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         ], dtype=int)
 
     predictor_matrices = [a[time_indices, ...] for a in predictor_matrices]
-    target_array = target_array[time_indices, ...]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
 
-    # _plot_brightness_temps(
-    #     example_table_xarray=example_table_xarray,
-    #     normalization_table_xarray=normalization_table_xarray,
-    #     model_metadata_dict=model_metadata_dict,
-    #     predictor_matrices=predictor_matrices,
-    #     init_times_unix_sec=init_times_unix_sec,
-    #     border_latitudes_deg_n=border_latitudes_deg_n,
-    #     border_longitudes_deg_e=border_longitudes_deg_e,
-    #     output_dir_name=output_dir_name
-    # )
-    # print(SEPARATOR_STRING)
-    #
-    # _plot_scalar_satellite_predictors(
-    #     example_table_xarray=example_table_xarray,
-    #     model_metadata_dict=model_metadata_dict,
-    #     predictor_matrices=predictor_matrices,
-    #     init_times_unix_sec=init_times_unix_sec,
-    #     output_dir_name=output_dir_name
-    # )
-    # print(SEPARATOR_STRING)
+    num_init_times = len(init_times_unix_sec)
+    info_strings = [''] * num_init_times
+
+    xt = example_table_xarray
+    these_times_unix_sec = (
+        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+    )
+    good_indices = numpy.array([
+        numpy.where(these_times_unix_sec == t)[0][0]
+        for t in init_times_unix_sec
+    ], dtype=int)
+
+    current_intensities_kt = METRES_PER_SECOND_TO_KT * (
+        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
+    )
+    current_intensities_kt = numpy.round(current_intensities_kt).astype(int)
+
+    lead_time_sec = (
+        HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
+    )
+    good_indices = numpy.array([
+        numpy.where(these_times_unix_sec == t)[0][0]
+        for t in init_times_unix_sec + lead_time_sec
+    ], dtype=int)
+
+    future_intensities_kt = METRES_PER_SECOND_TO_KT * (
+        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
+    )
+    future_intensities_kt = numpy.round(future_intensities_kt).astype(int)
+
+    for i in range(num_init_times):
+        info_strings[i] = 'I = {0:d} to {1:d} kt'.format(
+            current_intensities_kt[i], future_intensities_kt[i]
+        )
+
+    if prediction_file_name != '':
+        print('Reading data from: "{0:s}"...'.format(prediction_file_name))
+        prediction_dict = prediction_io.read_file(prediction_file_name)
+
+        good_flags = numpy.array([
+            cid == cyclone_id_string
+            for cid in prediction_dict[prediction_io.CYCLONE_IDS_KEY]
+        ], dtype=bool)
+
+        good_indices = numpy.where(good_flags)[0]
+        these_times_unix_sec = (
+            prediction_dict[prediction_io.INIT_TIMES_KEY][good_indices]
+        )
+        good_subindices = numpy.array([
+            numpy.where(these_times_unix_sec == t)[0][0]
+            for t in init_times_unix_sec
+        ], dtype=int)
+
+        good_indices = good_indices[good_subindices]
+        target_classes = (
+            prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
+        )
+        forecast_prob_matrix = (
+            prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
+                good_indices, ...
+            ]
+        )
+
+        for i in range(num_init_times):
+            info_strings[i] += (
+                '; class = {0:d} of {1:d}; prob = {2:.2f}'
+            ).format(
+                target_classes[i] + 1, forecast_prob_matrix.shape[1],
+                forecast_prob_matrix[i, target_classes[i]]
+            )
+
+    _plot_brightness_temps(
+        example_table_xarray=example_table_xarray,
+        normalization_table_xarray=normalization_table_xarray,
+        model_metadata_dict=model_metadata_dict,
+        predictor_matrices=predictor_matrices,
+        info_strings=info_strings,
+        init_times_unix_sec=init_times_unix_sec,
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        output_dir_name=output_dir_name
+    )
+    print(SEPARATOR_STRING)
+
+    _plot_scalar_satellite_predictors(
+        example_table_xarray=example_table_xarray,
+        model_metadata_dict=model_metadata_dict,
+        predictor_matrices=predictor_matrices,
+        info_strings=info_strings,
+        init_times_unix_sec=init_times_unix_sec,
+        output_dir_name=output_dir_name
+    )
+    print(SEPARATOR_STRING)
 
     _plot_lagged_ships_predictors(
         example_table_xarray=example_table_xarray,
         model_metadata_dict=model_metadata_dict,
         predictor_matrices=predictor_matrices,
+        info_strings=info_strings,
         init_times_unix_sec=init_times_unix_sec,
         output_dir_name=output_dir_name
     )
@@ -776,6 +880,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         example_table_xarray=example_table_xarray,
         model_metadata_dict=model_metadata_dict,
         predictor_matrices=predictor_matrices,
+        info_strings=info_strings,
         init_times_unix_sec=init_times_unix_sec,
         output_dir_name=output_dir_name
     )
@@ -789,6 +894,9 @@ if __name__ == '__main__':
         norm_example_file_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_FILE_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
         init_time_strings=getattr(INPUT_ARG_OBJECT, INIT_TIMES_ARG_NAME),
         first_init_time_string=getattr(INPUT_ARG_OBJECT, FIRST_TIME_ARG_NAME),

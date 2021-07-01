@@ -24,9 +24,18 @@ import satellite_plotting
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
+DEFAULT_FONT_SIZE = 20
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
+
+pyplot.rc('font', size=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
+pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 SATELLITE_FILE_ARG_NAME = 'input_satellite_file_name'
 VALID_TIMES_ARG_NAME = 'valid_time_strings'
@@ -79,7 +88,7 @@ INPUT_ARG_PARSER.add_argument(
 
 def plot_one_satellite_image(
         satellite_table_xarray, time_index, border_latitudes_deg_n,
-        border_longitudes_deg_e, output_dir_name):
+        border_longitudes_deg_e, output_dir_name, info_string=None):
     """Plots one satellite image.
 
     P = number of points in border set
@@ -90,6 +99,7 @@ def plot_one_satellite_image(
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
     :param output_dir_name: Name of output directory.  Image will be saved here.
+    :param info_string: Info string (to be appended to title).
     :return: output_file_name: Path to output file, where image was saved.
     """
 
@@ -116,12 +126,13 @@ def plot_one_satellite_image(
     satellite_plotting.plot_2d_grid_regular(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object, latitudes_deg_n=grid_latitudes_deg_n,
-        longitudes_deg_e=grid_longitudes_deg_e
+        longitudes_deg_e=grid_longitudes_deg_e, font_size=DEFAULT_FONT_SIZE
     )
     plotting_utils.plot_grid_lines(
         plot_latitudes_deg_n=grid_latitudes_deg_n,
         plot_longitudes_deg_e=grid_longitudes_deg_e, axes_object=axes_object,
-        parallel_spacing_deg=2., meridian_spacing_deg=2.
+        parallel_spacing_deg=2., meridian_spacing_deg=2.,
+        font_size=DEFAULT_FONT_SIZE
     )
 
     valid_time_unix_sec = (
@@ -134,9 +145,12 @@ def plot_one_satellite_image(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'Brightness temp (K) for {0:s} at {1:s}'.format(
+    title_string = r'$T_b$ (Kelvins) for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
+    if info_string is not None:
+        title_string += '; {0:s}'.format(info_string)
+
     axes_object.set_title(title_string)
 
     output_file_name = '{0:s}/brightness_temp_{1:s}_{2:s}.jpg'.format(
