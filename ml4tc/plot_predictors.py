@@ -790,16 +790,21 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     current_intensities_kt = numpy.round(current_intensities_kt).astype(int)
 
     lead_time_sec = (
-        HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
+            HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
     )
-    good_indices = numpy.array([
-        numpy.where(these_times_unix_sec == t)[0][0]
+    good_indices_2d_list = [
+        numpy.where(these_times_unix_sec == t)[0]
         for t in init_times_unix_sec + lead_time_sec
+    ]
+    good_indices = numpy.array([
+        -1 if len(idcs) == 0 else idcs[0]
+        for idcs in good_indices_2d_list
     ], dtype=int)
 
     future_intensities_kt = METRES_PER_SECOND_TO_KT * (
         xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
     )
+    future_intensities_kt[good_indices == -1] = 0.
     future_intensities_kt = numpy.round(future_intensities_kt).astype(int)
 
     for i in range(num_init_times):
