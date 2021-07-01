@@ -40,12 +40,14 @@ set dense_layer_count_string=`printf "%1d" $dense_layer_count`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
 set model_metafile_name="${model_dir_name}/model_metadata.p"
+set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
 set output_dir_name="${model_dir_name}/predictor_plots/2005AL12"
 
 python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
 --input_model_metafile_name="${model_metafile_name}" \
 --input_norm_example_file_name="${EXAMPLE_FILE_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--input_prediction_file_name="${prediction_file_name}" \
 --first_init_time_string="2005-01-01-000000" \
 --last_init_time_string="2006-01-01-000000" \
 --output_dir_name="${output_dir_name}"

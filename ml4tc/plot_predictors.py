@@ -772,6 +772,10 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     predictor_matrices = [a[time_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
 
+    sort_indices = numpy.argsort(init_times_unix_sec)
+    predictor_matrices = [a[sort_indices, ...] for a in predictor_matrices]
+    init_times_unix_sec = init_times_unix_sec[sort_indices]
+
     num_init_times = len(init_times_unix_sec)
     info_strings = [''] * num_init_times
 
