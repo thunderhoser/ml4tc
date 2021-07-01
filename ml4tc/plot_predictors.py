@@ -819,6 +819,9 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         print('Reading data from: "{0:s}"...'.format(prediction_file_name))
         prediction_dict = prediction_io.read_file(prediction_file_name)
 
+        print(cyclone_id_string)
+        print(prediction_dict[prediction_io.CYCLONE_IDS_KEY])
+
         good_flags = numpy.array([
             cid == cyclone_id_string
             for cid in prediction_dict[prediction_io.CYCLONE_IDS_KEY]
