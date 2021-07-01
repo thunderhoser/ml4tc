@@ -210,8 +210,9 @@ def write_file(
         storm_latitudes_deg_n, exact_dimensions=expected_dim
     )
 
-    print(len(storm_longitudes_deg_e))
-    print(numpy.sum(storm_longitudes_deg_e > 360.))
+    print(numpy.where(storm_longitudes_deg_e > 360.)[0])
+    print(storm_longitudes_deg_e[storm_longitudes_deg_e > 360.])
+    print([cyclone_id_strings[k] for k in numpy.where(storm_longitudes_deg_e > 360.)[0]])
 
     lng_conversion.convert_lng_positive_in_west(
         storm_longitudes_deg_e, allow_nan=False
