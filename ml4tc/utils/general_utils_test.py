@@ -62,6 +62,21 @@ FOURTH_START_TIME_UNIX_SEC = 5
 FOURTH_END_TIME_UNIX_SEC = 6
 FOURTH_DESIRED_INDICES = None
 
+# The following constants are used to test create_latlng_grid.
+MIN_GRID_LATITUDE_DEG_N = 49.123
+MAX_GRID_LATITUDE_DEG_N = 59.321
+MIN_GRID_LONGITUDE_DEG_E = 240.567
+MAX_GRID_LONGITUDE_DEG_E = -101.789
+LATITUDE_SPACING_DEG = 1.
+LONGITUDE_SPACING_DEG = 2.
+
+GRID_POINT_LATITUDES_DEG = numpy.array(
+    [49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60], dtype=float
+)
+GRID_POINT_LONGITUDES_DEG = numpy.array(
+    [240, 242, 244, 246, 248, 250, 252, 254, 256, 258, 260], dtype=float
+)
+
 
 class GeneralUtilsTests(unittest.TestCase):
     """Each method is a unit test for general_utils.py."""
@@ -158,6 +173,27 @@ class GeneralUtilsTests(unittest.TestCase):
                 first_desired_time_unix_sec=FOURTH_START_TIME_UNIX_SEC,
                 last_desired_time_unix_sec=FOURTH_END_TIME_UNIX_SEC
             )
+
+    def test_create_latlng_grid(self):
+        """Ensures correct output from create_latlng_grid."""
+
+        these_latitudes_deg, these_longitudes_deg = (
+            general_utils.create_latlng_grid(
+                min_latitude_deg_n=MIN_GRID_LATITUDE_DEG_N,
+                max_latitude_deg_n=MAX_GRID_LATITUDE_DEG_N,
+                latitude_spacing_deg=LATITUDE_SPACING_DEG,
+                min_longitude_deg_e=MIN_GRID_LONGITUDE_DEG_E,
+                max_longitude_deg_e=MAX_GRID_LONGITUDE_DEG_E,
+                longitude_spacing_deg=LONGITUDE_SPACING_DEG
+            )
+        )
+
+        self.assertTrue(numpy.allclose(
+            these_latitudes_deg, GRID_POINT_LATITUDES_DEG, atol=TOLERANCE
+        ))
+        self.assertTrue(numpy.allclose(
+            these_longitudes_deg, GRID_POINT_LONGITUDES_DEG, atol=TOLERANCE
+        ))
 
 
 if __name__ == '__main__':
