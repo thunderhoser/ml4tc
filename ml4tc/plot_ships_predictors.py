@@ -244,7 +244,7 @@ def plot_fcst_predictors_one_init_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'SHIPS preds for {0:s} at {1:s}'.format(
+    title_string = 'SHIPS for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
     if info_string is not None:
@@ -341,7 +341,7 @@ def plot_lagged_predictors_one_init_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'SHIPS preds for {0:s} at {1:s}'.format(
+    title_string = 'SHIPS for {0:s} at {1:s}'.format(
         cyclone_id_string, init_time_string
     )
     if info_string is not None:

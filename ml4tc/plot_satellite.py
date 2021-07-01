@@ -145,7 +145,7 @@ def plot_one_satellite_image(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = r'$T_b$ (Kelvins) for {0:s} at {1:s}'.format(
+    title_string = r'$T_b$ for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
     if info_string is not None:

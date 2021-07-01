@@ -821,17 +821,12 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         print('Reading data from: "{0:s}"...'.format(prediction_file_name))
         prediction_dict = prediction_io.read_file(prediction_file_name)
 
-        print(cyclone_id_string)
-        print(prediction_dict[prediction_io.CYCLONE_IDS_KEY])
-
         good_flags = numpy.array([
             cid == cyclone_id_string
             for cid in prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         ], dtype=bool)
 
         good_indices = numpy.where(good_flags)[0]
-        print(good_indices)
-
         these_times_unix_sec = (
             prediction_dict[prediction_io.INIT_TIMES_KEY][good_indices]
         )
@@ -852,10 +847,11 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
         for i in range(num_init_times):
             info_strings[i] += (
-                '; class = {0:d} of {1:d}; prob = {2:.2f}'
+                '; class = {0:d} of {1:d}; prob = {2:.2f}; other prob = {3:.2f}'
             ).format(
                 target_classes[i] + 1, forecast_prob_matrix.shape[1],
-                forecast_prob_matrix[i, target_classes[i]]
+                forecast_prob_matrix[i, target_classes[i]],
+                forecast_prob_matrix[i, target_classes[i] - 1]
             )
 
     _plot_brightness_temps(

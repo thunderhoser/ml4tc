@@ -158,7 +158,7 @@ def plot_predictors_one_time(
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    title_string = 'Satellite preds for {0:s} at {1:s}'.format(
+    title_string = 'Satellite for {0:s} at {1:s}'.format(
         cyclone_id_string, valid_time_string
     )
     if info_string is not None:
