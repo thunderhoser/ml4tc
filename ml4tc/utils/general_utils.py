@@ -4,9 +4,12 @@ import gzip
 import shutil
 import numpy
 from scipy.ndimage import distance_transform_edt
+from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import error_checking
 
 GZIP_FILE_EXTENSION = '.gz'
+TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M%S'
+
 DEGREES_TO_RADIANS = numpy.pi / 180
 
 
@@ -82,3 +85,57 @@ def fill_nans(data_matrix):
         numpy.isnan(data_matrix), return_distances=False, return_indices=True
     )
     return data_matrix[tuple(indices)]
+
+
+def find_exact_times(
+        actual_times_unix_sec, desired_times_unix_sec=None,
+        first_desired_time_unix_sec=None, last_desired_time_unix_sec=None):
+    """Finds desired times in array.
+
+    D = number of desired times
+
+    :param actual_times_unix_sec: 1-D numpy array of actual times.
+    :param desired_times_unix_sec: length-D numpy array of desired times.
+    :param first_desired_time_unix_sec: First desired time.
+    :param last_desired_time_unix_sec: Last desired time.
+    :return: desired_indices: length-D numpy array of indices into the array
+        `actual_times_unix_sec`.
+    :raises: ValueError: if cannot find actual time between
+        `first_desired_time_unix_sec` and `last_desired_time_unix_sec`.
+    """
+
+    if desired_times_unix_sec is not None:
+        error_checking.assert_is_integer_numpy_array(desired_times_unix_sec)
+        error_checking.assert_is_numpy_array(
+            desired_times_unix_sec, num_dimensions=1
+        )
+
+        return numpy.array([
+            numpy.where(actual_times_unix_sec == t)[0][0]
+            for t in desired_times_unix_sec
+        ], dtype=int)
+
+    error_checking.assert_is_integer(first_desired_time_unix_sec)
+    error_checking.assert_is_integer(last_desired_time_unix_sec)
+    error_checking.assert_is_geq(
+        last_desired_time_unix_sec, first_desired_time_unix_sec
+    )
+
+    desired_indices = numpy.where(numpy.logical_and(
+        actual_times_unix_sec >= first_desired_time_unix_sec,
+        actual_times_unix_sec <= last_desired_time_unix_sec
+    ))[0]
+
+    if len(desired_indices) > 0:
+        return desired_indices
+
+    first_desired_time_string = time_conversion.unix_sec_to_string(
+        first_desired_time_unix_sec, TIME_FORMAT_FOR_LOG
+    )
+    last_desired_time_string = time_conversion.unix_sec_to_string(
+        last_desired_time_unix_sec, TIME_FORMAT_FOR_LOG
+    )
+    error_string = 'Cannot find any times between {0:s} and {1:s}.'.format(
+        first_desired_time_string, last_desired_time_string
+    )
+    raise ValueError(error_string)

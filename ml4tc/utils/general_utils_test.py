@@ -47,6 +47,21 @@ MATRIX_WITHOUT_NANS_3D = numpy.stack(
     (MATRIX_WITHOUT_NANS_2D, MATRIX_WITHOUT_NANS_2D), axis=0
 )
 
+# The following constants are used to test find_exact_times.
+ACTUAL_TIMES_UNIX_SEC = numpy.array([7, 1, 12, 59, 15, 34], dtype=int)
+FIRST_DESIRED_TIMES_UNIX_SEC = numpy.array([15, 1, 7, 59], dtype=int)
+FIRST_DESIRED_INDICES = numpy.array([4, 1, 0, 3], dtype=int)
+SECOND_DESIRED_TIMES_UNIX_SEC = numpy.array([15, 1, 7, 59, 2], dtype=int)
+SECOND_DESIRED_INDICES = None
+
+THIRD_START_TIME_UNIX_SEC = 5
+THIRD_END_TIME_UNIX_SEC = 50
+THIRD_DESIRED_INDICES = numpy.array([0, 2, 4, 5], dtype=int)
+
+FOURTH_START_TIME_UNIX_SEC = 5
+FOURTH_END_TIME_UNIX_SEC = 6
+FOURTH_DESIRED_INDICES = None
+
 
 class GeneralUtilsTests(unittest.TestCase):
     """Each method is a unit test for general_utils.py."""
@@ -93,6 +108,56 @@ class GeneralUtilsTests(unittest.TestCase):
         self.assertTrue(numpy.allclose(
             this_matrix_without_nans, MATRIX_WITHOUT_NANS_3D, atol=TOLERANCE
         ))
+
+    def test_find_exact_times_first(self):
+        """Ensures correct output from find_exact_times.
+
+        In this case, using first set of input args.
+        """
+
+        these_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=ACTUAL_TIMES_UNIX_SEC,
+            desired_times_unix_sec=FIRST_DESIRED_TIMES_UNIX_SEC
+        )
+        self.assertTrue(numpy.array_equal(these_indices, FIRST_DESIRED_INDICES))
+
+    def test_find_exact_times_second(self):
+        """Ensures correct output from find_exact_times.
+
+        In this case, using second set of input args.
+        """
+
+        with self.assertRaises(IndexError):
+            general_utils.find_exact_times(
+                actual_times_unix_sec=ACTUAL_TIMES_UNIX_SEC,
+                desired_times_unix_sec=SECOND_DESIRED_TIMES_UNIX_SEC
+            )
+
+    def test_find_exact_times_third(self):
+        """Ensures correct output from find_exact_times.
+
+        In this case, using third set of input args.
+        """
+
+        these_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=ACTUAL_TIMES_UNIX_SEC,
+            first_desired_time_unix_sec=THIRD_START_TIME_UNIX_SEC,
+            last_desired_time_unix_sec=THIRD_END_TIME_UNIX_SEC
+        )
+        self.assertTrue(numpy.array_equal(these_indices, THIRD_DESIRED_INDICES))
+
+    def test_find_exact_times_fourth(self):
+        """Ensures correct output from find_exact_times.
+
+        In this case, using fourth set of input args.
+        """
+
+        with self.assertRaises(ValueError):
+            general_utils.find_exact_times(
+                actual_times_unix_sec=ACTUAL_TIMES_UNIX_SEC,
+                first_desired_time_unix_sec=FOURTH_START_TIME_UNIX_SEC,
+                last_desired_time_unix_sec=FOURTH_END_TIME_UNIX_SEC
+            )
 
 
 if __name__ == '__main__':
