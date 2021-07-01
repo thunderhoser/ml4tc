@@ -37,6 +37,12 @@ METRIC_DICT = {
     'binary_focn': custom_metrics.binary_focn
 }
 
+PREDICTOR_MATRICES_KEY = 'predictor_matrices'
+TARGET_ARRAY_KEY = 'target_array'
+INIT_TIMES_KEY = 'init_times_unix_sec'
+STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
+STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
+
 PLATEAU_PATIENCE_EPOCHS = 10
 DEFAULT_LEARNING_RATE_MULTIPLIER = 0.5
 PLATEAU_COOLDOWN_EPOCHS = 0
@@ -525,6 +531,8 @@ def _read_one_example_file(
         use_climo_as_backup):
     """Reads one example file for generator.
 
+    E = number of examples returned
+
     :param example_file_name: Path to input file.  Will be read by
         `example_io.read_file`.
     :param num_examples_desired: Number of total example desired.
@@ -544,10 +552,16 @@ def _read_one_example_file(
     :param ships_time_tolerance_sec: Same.
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
-    :return: predictor_matrices: Same.
-    :return: target_array: Same.
-    :return: init_times_unix_sec: 1-D numpy array with forecast-initialization
-        time for each example.
+
+    :return: data_dict: Dictionary with the following keys.
+    data_dict['predictor_matrices']: See output doc for `input_generator`.
+    data_dict['target_array']: Same.
+    data_dict['init_times_unix_sec']: length-E numpy array of forecast-
+        initialization times.
+    data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
+        (deg N).
+    data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
+        longitudes (deg E).
     """
 
     print('Reading data from: "{0:s}"...'.format(example_file_name))
@@ -569,6 +583,8 @@ def _read_one_example_file(
     satellite_time_indices_by_example = []
     ships_time_indices_by_example = []
     init_times_unix_sec = []
+    storm_latitudes_deg_n = []
+    storm_longitudes_deg_e = []
 
     if num_classes > 2:
         target_array = numpy.full((0, num_classes), -1, dtype=int)
@@ -622,6 +638,16 @@ def _read_one_example_file(
         ships_time_indices_by_example.append(these_ships_indices)
         init_times_unix_sec.append(t)
 
+        this_index = numpy.where(
+            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values == t
+        )[0][0]
+        storm_latitudes_deg_n.append(
+            xt[ships_io.STORM_LATITUDE_KEY].values[this_index]
+        )
+        storm_longitudes_deg_e.append(
+            xt[ships_io.STORM_LONGITUDE_KEY].values[this_index]
+        )
+
         if (
                 num_positive_examples_found >= num_positive_examples_desired and
                 num_negative_examples_found >= num_negative_examples_desired
@@ -635,6 +661,8 @@ def _read_one_example_file(
             break
 
     init_times_unix_sec = numpy.array(init_times_unix_sec, dtype=int)
+    storm_latitudes_deg_n = numpy.array(storm_latitudes_deg_n)
+    storm_longitudes_deg_e = numpy.array(storm_longitudes_deg_e)
 
     num_examples = len(ships_time_indices_by_example)
     num_grid_rows = (
@@ -758,7 +786,13 @@ def _read_one_example_file(
         ships_predictor_matrix
     ]
 
-    return predictor_matrices, target_array, init_times_unix_sec
+    return {
+        PREDICTOR_MATRICES_KEY: predictor_matrices,
+        TARGET_ARRAY_KEY: target_array,
+        INIT_TIMES_KEY: init_times_unix_sec,
+        STORM_LATITUDES_KEY: storm_latitudes_deg_n,
+        STORM_LONGITUDES_KEY: storm_longitudes_deg_e
+    }
 
 
 def _check_generator_args(option_dict):
@@ -990,10 +1024,7 @@ def create_inputs(option_dict):
     option_dict['ships_max_missing_times']: Same.
     option_dict['use_climo_as_backup']: Same.
 
-    :return: predictor_matrices: Same.
-    :return: target_array: Same.
-    :return: init_times_unix_sec: 1-D numpy array with forecast-initialization
-        time for each example.
+    :return: data_dict: See doc for `_read_one_example_file`.
     """
 
     option_dict[EXAMPLE_DIRECTORY_KEY] = 'foo'
@@ -1018,30 +1049,30 @@ def create_inputs(option_dict):
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
 
-    predictor_matrices, target_array, init_times_unix_sec = (
-        _read_one_example_file(
-            example_file_name=example_file_name,
-            num_examples_desired=int(1e10),
-            num_positive_examples_desired=int(1e10),
-            num_negative_examples_desired=int(1e10),
-            lead_time_hours=lead_time_hours,
-            satellite_lag_times_minutes=satellite_lag_times_minutes,
-            ships_lag_times_hours=ships_lag_times_hours,
-            satellite_predictor_names=satellite_predictor_names,
-            ships_predictor_names_lagged=ships_predictor_names_lagged,
-            ships_predictor_names_forecast=ships_predictor_names_forecast,
-            class_cutoffs_m_s01=class_cutoffs_m_s01,
-            satellite_time_tolerance_sec=satellite_time_tolerance_sec,
-            satellite_max_missing_times=satellite_max_missing_times,
-            ships_time_tolerance_sec=ships_time_tolerance_sec,
-            ships_max_missing_times=ships_max_missing_times,
-            use_climo_as_backup=use_climo_as_backup
-        )
+    data_dict = _read_one_example_file(
+        example_file_name=example_file_name,
+        num_examples_desired=int(1e10),
+        num_positive_examples_desired=int(1e10),
+        num_negative_examples_desired=int(1e10),
+        lead_time_hours=lead_time_hours,
+        satellite_lag_times_minutes=satellite_lag_times_minutes,
+        ships_lag_times_hours=ships_lag_times_hours,
+        satellite_predictor_names=satellite_predictor_names,
+        ships_predictor_names_lagged=ships_predictor_names_lagged,
+        ships_predictor_names_forecast=ships_predictor_names_forecast,
+        class_cutoffs_m_s01=class_cutoffs_m_s01,
+        satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+        satellite_max_missing_times=satellite_max_missing_times,
+        ships_time_tolerance_sec=ships_time_tolerance_sec,
+        ships_max_missing_times=ships_max_missing_times,
+        use_climo_as_backup=use_climo_as_backup
     )
 
-    predictor_matrices = [p.astype('float16') for p in predictor_matrices]
+    data_dict[PREDICTOR_MATRICES_KEY] = [
+        p.astype('float16') for p in data_dict[PREDICTOR_MATRICES_KEY]
+    ]
 
-    return predictor_matrices, target_array, init_times_unix_sec
+    return data_dict
 
 
 def input_generator(option_dict):
@@ -1191,28 +1222,28 @@ def input_generator(option_dict):
                 num_examples_per_batch - num_examples_in_memory
             ])
 
-            these_predictor_matrices, this_target_array = (
-                _read_one_example_file(
-                    example_file_name=example_file_names[file_index],
-                    num_examples_desired=num_examples_to_read,
-                    num_positive_examples_desired=num_positive_examples_to_read,
-                    num_negative_examples_desired=num_negative_examples_to_read,
-                    lead_time_hours=lead_time_hours,
-                    satellite_lag_times_minutes=satellite_lag_times_minutes,
-                    ships_lag_times_hours=ships_lag_times_hours,
-                    satellite_predictor_names=satellite_predictor_names,
-                    ships_predictor_names_lagged=ships_predictor_names_lagged,
-                    ships_predictor_names_forecast=
-                    ships_predictor_names_forecast,
-                    class_cutoffs_m_s01=class_cutoffs_m_s01,
-                    satellite_time_tolerance_sec=satellite_time_tolerance_sec,
-                    satellite_max_missing_times=satellite_max_missing_times,
-                    ships_time_tolerance_sec=ships_time_tolerance_sec,
-                    ships_max_missing_times=ships_max_missing_times,
-                    use_climo_as_backup=use_climo_as_backup
-                )[:2]
-            )
+            this_data_dict = _read_one_example_file(
+                example_file_name=example_file_names[file_index],
+                num_examples_desired=num_examples_to_read,
+                num_positive_examples_desired=num_positive_examples_to_read,
+                num_negative_examples_desired=num_negative_examples_to_read,
+                lead_time_hours=lead_time_hours,
+                satellite_lag_times_minutes=satellite_lag_times_minutes,
+                ships_lag_times_hours=ships_lag_times_hours,
+                satellite_predictor_names=satellite_predictor_names,
+                ships_predictor_names_lagged=ships_predictor_names_lagged,
+                ships_predictor_names_forecast=
+                ships_predictor_names_forecast,
+                class_cutoffs_m_s01=class_cutoffs_m_s01,
+                satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+                satellite_max_missing_times=satellite_max_missing_times,
+                ships_time_tolerance_sec=ships_time_tolerance_sec,
+                ships_max_missing_times=ships_max_missing_times,
+                use_climo_as_backup=use_climo_as_backup
+            )[:2]
 
+            these_predictor_matrices = this_data_dict[PREDICTOR_MATRICES_KEY]
+            this_target_array = this_data_dict[TARGET_ARRAY_KEY]
             file_index += 1
 
             if predictor_matrices is None:
