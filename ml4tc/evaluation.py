@@ -13,6 +13,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import gg_model_evaluation as gg_model_eval
 import file_system_utils
 import error_checking
+import prediction_io
 import satellite_utils
 
 DEFAULT_NUM_PROB_THRESHOLDS = 1001
@@ -386,4 +387,35 @@ def write_file(evaluation_table_xarray, netcdf_file_name):
 
     evaluation_table_xarray.to_netcdf(
         path=netcdf_file_name, mode='w', format='NETCDF3_64BIT'
+    )
+
+
+def find_file(
+        directory_name, month=None, basin_id_string=None,
+        grid_row=None, grid_column=None, raise_error_if_missing=True):
+    """Finds NetCDF file with evaluation results.
+
+    :param directory_name: See doc for `prediction_io.find_file`.
+    :param month: Same.
+    :param basin_id_string: Same.
+    :param grid_row: Same.
+    :param grid_column: Same.
+    :param raise_error_if_missing: Same.
+    :return: evaluation_file_name: File path.
+    """
+
+    prediction_file_name = prediction_io.find_file(
+        directory_name=directory_name,
+        month=month, basin_id_string=basin_id_string,
+        grid_row=grid_row, grid_column=grid_column,
+        raise_error_if_missing=raise_error_if_missing
+    )
+
+    pathless_file_name = os.path.split(prediction_file_name)[-1].replace(
+        'predictions', 'evaluation'
+    )
+
+    return '{0:s}/{1:s}'.format(
+        os.path.split(prediction_file_name)[0],
+        pathless_file_name
     )
