@@ -39,10 +39,10 @@ set dense_layer_count_string=`printf "%1d" $dense_layer_count`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
 set model_file_name="${model_dir_name}/model.h5"
-set output_file_name="${model_dir_name}/training_1993-2004_2015-2019/predictions.nc"
+set output_dir_name="${model_dir_name}/training_1993-2004_2015-2019"
 
 python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --years 1993 1994 1995 1996 1997 1998 1999 2000 2001 2002 2003 2004 2015 2016 2017 2018 2019 \
---output_file_name="${output_file_name}"
+--output_dir_name="${output_dir_name}"
