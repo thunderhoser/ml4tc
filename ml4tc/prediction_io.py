@@ -210,9 +210,8 @@ def write_file(
         storm_latitudes_deg_n, exact_dimensions=expected_dim
     )
 
-    print(numpy.nanmin(storm_longitudes_deg_e))
-    print(numpy.nanmax(storm_longitudes_deg_e))
-    print(numpy.any(numpy.isnan(storm_longitudes_deg_e)))
+    print(len(storm_longitudes_deg_e))
+    print(numpy.sum(storm_longitudes_deg_e > 360.))
 
     lng_conversion.convert_lng_positive_in_west(
         storm_longitudes_deg_e, allow_nan=False
