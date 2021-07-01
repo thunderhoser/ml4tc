@@ -721,6 +721,8 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     cyclone_id_string = (
         example_table_xarray[satellite_utils.CYCLONE_ID_KEY].values[0]
     )
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
     normalization_table_xarray = normalization.read_file(
