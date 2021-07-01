@@ -17,6 +17,7 @@ import time_conversion
 import file_system_utils
 import satellite_io
 import border_io
+import general_utils
 import satellite_utils
 import plotting_utils
 import satellite_plotting
@@ -195,31 +196,21 @@ def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
         last_valid_time_unix_sec = time_conversion.string_to_unix_sec(
             last_valid_time_string, TIME_FORMAT
         )
-        time_indices = numpy.where(numpy.logical_and(
-            all_valid_times_unix_sec >= first_valid_time_unix_sec,
-            all_valid_times_unix_sec <= last_valid_time_unix_sec
-        ))[0]
-
-        if len(time_indices) == 0:
-            error_string = (
-                'Cannot find any valid times in file "{0:s}" between {1:s} and '
-                '{2:s}.'
-            ).format(
-                satellite_file_name, first_valid_time_string,
-                last_valid_time_string
-            )
-
-            raise ValueError(error_string)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_valid_times_unix_sec,
+            first_desired_time_unix_sec=first_valid_time_unix_sec,
+            last_desired_time_unix_sec=last_valid_time_unix_sec
+        )
     else:
         valid_times_unix_sec = numpy.array([
             time_conversion.string_to_unix_sec(t, TIME_FORMAT)
             for t in valid_time_strings
         ], dtype=int)
 
-        time_indices = numpy.array([
-            numpy.where(all_valid_times_unix_sec == t)[0][0]
-            for t in valid_times_unix_sec
-        ], dtype=int)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_valid_times_unix_sec,
+            desired_times_unix_sec=valid_times_unix_sec
+        )
 
     border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
 

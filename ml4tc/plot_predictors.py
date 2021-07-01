@@ -21,6 +21,7 @@ import ships_io
 import prediction_io
 import example_utils
 import satellite_utils
+import general_utils
 import normalization
 import neural_net
 import plot_satellite
@@ -765,31 +766,21 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         last_init_time_unix_sec = time_conversion.string_to_unix_sec(
             last_init_time_string, TIME_FORMAT
         )
-        time_indices = numpy.where(numpy.logical_and(
-            all_init_times_unix_sec >= first_init_time_unix_sec,
-            all_init_times_unix_sec <= last_init_time_unix_sec
-        ))[0]
-
-        if len(time_indices) == 0:
-            error_string = (
-                'Cannot find any init times in file "{0:s}" between {1:s} and '
-                '{2:s}.'
-            ).format(
-                norm_example_file_name, first_init_time_string,
-                last_init_time_string
-            )
-
-            raise ValueError(error_string)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_init_times_unix_sec,
+            first_desired_time_unix_sec=first_init_time_unix_sec,
+            last_desired_time_unix_sec=last_init_time_unix_sec
+        )
     else:
         init_times_unix_sec = numpy.array([
             time_conversion.string_to_unix_sec(t, TIME_FORMAT)
             for t in init_time_strings
         ], dtype=int)
 
-        time_indices = numpy.array([
-            numpy.where(all_init_times_unix_sec == t)[0][0]
-            for t in init_times_unix_sec
-        ], dtype=int)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_init_times_unix_sec,
+            desired_times_unix_sec=init_times_unix_sec
+        )
 
     predictor_matrices = [a[time_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
@@ -808,7 +799,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     info_strings = [''] * num_init_times
 
     for i in range(num_init_times):
-        info_strings[i] = r'$I$ = {0:d} to {1:d} kt'.format(
+        info_strings[i] = 'I = {0:d} to {1:d} kt'.format(
             current_intensities_kt[i], future_intensities_kt[i]
         )
 

@@ -16,6 +16,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import time_conversion
 import file_system_utils
 import example_io
+import general_utils
 import example_utils
 import satellite_utils
 import neural_net
@@ -212,36 +213,27 @@ def _run(norm_example_file_name, predictor_names, valid_time_strings,
     )
 
     if len(valid_time_strings) == 1 and valid_time_strings[0] == '':
-        first_valid_time_unix_sec = time_conversion.string_to_unix_sec(
+        first_time_unix_sec = time_conversion.string_to_unix_sec(
             first_time_string, TIME_FORMAT
         )
-        last_valid_time_unix_sec = time_conversion.string_to_unix_sec(
+        last_time_unix_sec = time_conversion.string_to_unix_sec(
             last_time_string, TIME_FORMAT
         )
-        time_indices = numpy.where(numpy.logical_and(
-            all_valid_times_unix_sec >= first_valid_time_unix_sec,
-            all_valid_times_unix_sec <= last_valid_time_unix_sec
-        ))[0]
-
-        if len(time_indices) == 0:
-            error_string = (
-                'Cannot find any valid times in file "{0:s}" between {1:s} and '
-                '{2:s}.'
-            ).format(
-                norm_example_file_name, first_time_string, last_time_string
-            )
-
-            raise ValueError(error_string)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_valid_times_unix_sec,
+            first_desired_time_unix_sec=first_time_unix_sec,
+            last_desired_time_unix_sec=last_time_unix_sec
+        )
     else:
         valid_times_unix_sec = numpy.array([
             time_conversion.string_to_unix_sec(t, TIME_FORMAT)
             for t in valid_time_strings
         ], dtype=int)
 
-        time_indices = numpy.array([
-            numpy.where(all_valid_times_unix_sec == t)[0][0]
-            for t in valid_times_unix_sec
-        ], dtype=int)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_valid_times_unix_sec,
+            desired_times_unix_sec=valid_times_unix_sec
+        )
 
     for i in time_indices:
         plot_predictors_one_time(

@@ -5,13 +5,13 @@ import sys
 import gzip
 import shutil
 import numpy
-from scipy.ndimage import distance_transform_edt
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+from scipy.ndimage import distance_transform_edt
 import time_conversion
 import error_checking
 

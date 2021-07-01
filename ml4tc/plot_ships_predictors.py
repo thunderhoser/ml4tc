@@ -21,6 +21,7 @@ import gg_plotting_utils
 import imagemagick_utils
 import example_io
 import ships_io
+import general_utils
 import example_utils
 import neural_net
 
@@ -422,31 +423,21 @@ def _run(norm_example_file_name, forecast_predictor_names,
         last_init_time_unix_sec = time_conversion.string_to_unix_sec(
             last_init_time_string, TIME_FORMAT
         )
-        time_indices = numpy.where(numpy.logical_and(
-            all_init_times_unix_sec >= first_init_time_unix_sec,
-            all_init_times_unix_sec <= last_init_time_unix_sec
-        ))[0]
-
-        if len(time_indices) == 0:
-            error_string = (
-                'Cannot find any init times in file "{0:s}" between {1:s} and '
-                '{2:s}.'
-            ).format(
-                norm_example_file_name, first_init_time_string,
-                last_init_time_string
-            )
-
-            raise ValueError(error_string)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_init_times_unix_sec,
+            first_desired_time_unix_sec=first_init_time_unix_sec,
+            last_desired_time_unix_sec=last_init_time_unix_sec
+        )
     else:
         init_times_unix_sec = numpy.array([
             time_conversion.string_to_unix_sec(t, TIME_FORMAT)
             for t in init_time_strings
         ], dtype=int)
 
-        time_indices = numpy.array([
-            numpy.where(all_init_times_unix_sec == t)[0][0]
-            for t in init_times_unix_sec
-        ], dtype=int)
+        time_indices = general_utils.find_exact_times(
+            actual_times_unix_sec=all_init_times_unix_sec,
+            desired_times_unix_sec=init_times_unix_sec
+        )
 
     for i in time_indices:
         plot_lagged_predictors_one_init_time(
