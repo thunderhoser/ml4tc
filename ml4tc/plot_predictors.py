@@ -114,6 +114,155 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
+def _get_intensities(example_table_xarray, init_times_unix_sec,
+                     model_metadata_dict):
+    """Returns current and future storm intensities.
+
+    T = number of forecast-initialization times
+
+    :param example_table_xarray: xarray table returned by
+        `example_io.read_file`.
+    :param init_times_unix_sec: length-T numpy array of forecast-initialization
+        times.
+    :param model_metadata_dict: Dictionary returned by
+        `neural_net.read_metafile`.
+    :return: current_intensities_kt: length-T numpy array of current intensities
+        (knots).
+    :return: future_intensities_kt: length-T numpy array of future intensities
+        (knots).
+    """
+
+    xt = example_table_xarray
+    these_times_unix_sec = (
+        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+    )
+    good_indices = numpy.array([
+        numpy.where(these_times_unix_sec == t)[0][0]
+        for t in init_times_unix_sec
+    ], dtype=int)
+
+    current_intensities_kt = METRES_PER_SECOND_TO_KT * (
+        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
+    )
+    current_intensities_kt = numpy.round(current_intensities_kt).astype(int)
+
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+    lead_time_sec = (
+        HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
+    )
+    good_indices_2d_list = [
+        numpy.where(these_times_unix_sec == t)[0]
+        for t in init_times_unix_sec + lead_time_sec
+    ]
+    good_indices = numpy.array([
+        -1 if len(idcs) == 0 else idcs[0]
+        for idcs in good_indices_2d_list
+    ], dtype=int)
+
+    future_intensities_kt = METRES_PER_SECOND_TO_KT * (
+        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
+    )
+    future_intensities_kt[good_indices == -1] = 0.
+    future_intensities_kt = numpy.round(future_intensities_kt).astype(int)
+
+    return current_intensities_kt, future_intensities_kt
+
+
+def _get_predictions_and_targets(prediction_file_name, cyclone_id_string,
+                                 init_times_unix_sec):
+    """Returns prediction and target for each forecast-initialization time.
+
+    T = number of forecast-initialization times
+    K = number of classes
+
+    :param prediction_file_name: Path to input file.  Will be read by
+        `prediction_io.read_file`.
+    :param cyclone_id_string: ID for desired cyclone.
+    :param init_times_unix_sec: length-T numpy array of desired init times.
+    :return: forecast_prob_matrix: T-by-K numpy array of forecast class
+        probabilities.
+    :return: target_classes: length-T numpy array of target classes (integers in
+        range 0...[K - 1]).
+    """
+
+    print('Reading data from: "{0:s}"...'.format(prediction_file_name))
+    prediction_dict = prediction_io.read_file(prediction_file_name)
+
+    good_flags = numpy.array([
+        cid == cyclone_id_string
+        for cid in prediction_dict[prediction_io.CYCLONE_IDS_KEY]
+    ], dtype=bool)
+
+    good_indices = numpy.where(good_flags)[0]
+    these_times_unix_sec = (
+        prediction_dict[prediction_io.INIT_TIMES_KEY][good_indices]
+    )
+    good_subindices = numpy.array([
+        numpy.where(these_times_unix_sec == t)[0][0]
+        for t in init_times_unix_sec
+    ], dtype=int)
+
+    good_indices = good_indices[good_subindices]
+    target_classes = (
+        prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
+    )
+    forecast_prob_matrix = (
+        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
+            good_indices, ...
+        ]
+    )
+
+    return forecast_prob_matrix, target_classes
+
+
+def _concat_panels(panel_file_names, concat_figure_file_name):
+    """Concatenates panels into one figure.
+
+    :param panel_file_names: 1-D list of paths to input image files.
+    :param concat_figure_file_name: Path to output image file.
+    """
+
+    print('Concatenating panels to: "{0:s}"...'.format(
+        concat_figure_file_name
+    ))
+
+    num_panels = len(panel_file_names)
+    num_panel_rows = int(numpy.floor(
+        numpy.sqrt(num_panels)
+    ))
+    num_panel_columns = int(numpy.ceil(
+        float(num_panels) / num_panel_rows
+    ))
+
+    if num_panels == 1:
+        shutil.move(panel_file_names[0], concat_figure_file_name)
+    else:
+        imagemagick_utils.concatenate_images(
+            input_file_names=panel_file_names,
+            num_panel_rows=num_panel_rows,
+            num_panel_columns=num_panel_columns,
+            output_file_name=concat_figure_file_name
+        )
+
+    imagemagick_utils.resize_image(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name,
+        output_size_pixels=CONCAT_FIGURE_SIZE_PX
+    )
+    imagemagick_utils.trim_whitespace(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name
+    )
+
+    if num_panels == 1:
+        return
+
+    for this_panel_file_name in panel_file_names:
+        os.remove(this_panel_file_name)
+
+
 def _plot_brightness_temps(
         example_table_xarray, normalization_table_xarray, model_metadata_dict,
         predictor_matrices, init_times_unix_sec, info_strings,
@@ -165,13 +314,6 @@ def _plot_brightness_temps(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     num_lag_times = len(lag_times_sec)
-
-    num_panel_rows = int(numpy.floor(
-        numpy.sqrt(num_lag_times)
-    ))
-    num_panel_columns = int(numpy.ceil(
-        float(num_lag_times) / num_panel_rows
-    ))
 
     num_grid_rows = brightness_temp_matrix_kelvins.shape[1]
     num_grid_columns = brightness_temp_matrix_kelvins.shape[2]
@@ -252,35 +394,10 @@ def _plot_brightness_temps(
                 init_times_unix_sec[i], TIME_FORMAT
             )
         )
-        print('Concatenating panels to: "{0:s}"...'.format(
-            concat_figure_file_name
-        ))
-
-        if num_lag_times == 1:
-            shutil.move(panel_file_names[0], concat_figure_file_name)
-        else:
-            imagemagick_utils.concatenate_images(
-                input_file_names=panel_file_names,
-                num_panel_rows=num_panel_rows,
-                num_panel_columns=num_panel_columns,
-                output_file_name=concat_figure_file_name
-            )
-
-        imagemagick_utils.resize_image(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name,
-            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        _concat_panels(
+            panel_file_names=panel_file_names,
+            concat_figure_file_name=concat_figure_file_name
         )
-        imagemagick_utils.trim_whitespace(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name
-        )
-
-        if num_lag_times == 1:
-            continue
-
-        for j in range(num_lag_times):
-            os.remove(panel_file_names[j])
 
 
 def _plot_scalar_satellite_predictors(
@@ -308,13 +425,6 @@ def _plot_scalar_satellite_predictors(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     num_lag_times = len(lag_times_sec)
-
-    num_panel_rows = int(numpy.floor(
-        numpy.sqrt(num_lag_times)
-    ))
-    num_panel_columns = int(numpy.ceil(
-        float(num_lag_times) / num_panel_rows
-    ))
 
     num_predictors = predictor_matrices[1].shape[-1]
     predictor_indices = numpy.linspace(
@@ -376,35 +486,10 @@ def _plot_scalar_satellite_predictors(
                 init_times_unix_sec[i], TIME_FORMAT
             )
         )
-        print('Concatenating panels to: "{0:s}"...'.format(
-            concat_figure_file_name
-        ))
-
-        if num_lag_times == 1:
-            shutil.move(panel_file_names[0], concat_figure_file_name)
-        else:
-            imagemagick_utils.concatenate_images(
-                input_file_names=panel_file_names,
-                num_panel_rows=num_panel_rows,
-                num_panel_columns=num_panel_columns,
-                output_file_name=concat_figure_file_name
-            )
-
-        imagemagick_utils.resize_image(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name,
-            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        _concat_panels(
+            panel_file_names=panel_file_names,
+            concat_figure_file_name=concat_figure_file_name
         )
-        imagemagick_utils.trim_whitespace(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name
-        )
-
-        if num_lag_times == 1:
-            continue
-
-        for j in range(num_lag_times):
-            os.remove(panel_file_names[j])
 
 
 def _plot_lagged_ships_predictors(
@@ -442,13 +527,6 @@ def _plot_lagged_ships_predictors(
     predictor_indices = numpy.linspace(
         0, num_predictors - 1, num=num_predictors, dtype=int
     )
-
-    num_panel_rows = int(numpy.floor(
-        numpy.sqrt(num_model_lag_times)
-    ))
-    num_panel_columns = int(numpy.ceil(
-        float(num_model_lag_times) / num_panel_rows
-    ))
 
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
     for i in range(num_init_times):
@@ -516,35 +594,10 @@ def _plot_lagged_ships_predictors(
                 init_times_unix_sec[i], TIME_FORMAT
             )
         )
-        print('Concatenating panels to: "{0:s}"...'.format(
-            concat_figure_file_name
-        ))
-
-        if num_model_lag_times == 1:
-            shutil.move(panel_file_names[0], concat_figure_file_name)
-        else:
-            imagemagick_utils.concatenate_images(
-                input_file_names=panel_file_names,
-                num_panel_rows=num_panel_rows,
-                num_panel_columns=num_panel_columns,
-                output_file_name=concat_figure_file_name
-            )
-
-        imagemagick_utils.resize_image(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name,
-            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        _concat_panels(
+            panel_file_names=panel_file_names,
+            concat_figure_file_name=concat_figure_file_name
         )
-        imagemagick_utils.trim_whitespace(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name
-        )
-
-        if num_model_lag_times == 1:
-            continue
-
-        for j in range(num_model_lag_times):
-            os.remove(panel_file_names[j])
 
 
 def _plot_forecast_ships_predictors(
@@ -582,13 +635,6 @@ def _plot_forecast_ships_predictors(
     predictor_indices = numpy.linspace(
         0, num_predictors - 1, num=num_predictors, dtype=int
     )
-
-    num_panel_rows = int(numpy.floor(
-        numpy.sqrt(num_model_lag_times)
-    ))
-    num_panel_columns = int(numpy.ceil(
-        float(num_model_lag_times) / num_panel_rows
-    ))
 
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
     for i in range(num_init_times):
@@ -657,35 +703,10 @@ def _plot_forecast_ships_predictors(
                 init_times_unix_sec[i], TIME_FORMAT
             )
         )
-        print('Concatenating panels to: "{0:s}"...'.format(
-            concat_figure_file_name
-        ))
-
-        if num_model_lag_times == 1:
-            shutil.move(panel_file_names[0], concat_figure_file_name)
-        else:
-            imagemagick_utils.concatenate_images(
-                input_file_names=panel_file_names,
-                num_panel_rows=num_panel_rows,
-                num_panel_columns=num_panel_columns,
-                output_file_name=concat_figure_file_name
-            )
-
-        imagemagick_utils.resize_image(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name,
-            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        _concat_panels(
+            panel_file_names=panel_file_names,
+            concat_figure_file_name=concat_figure_file_name
         )
-        imagemagick_utils.trim_whitespace(
-            input_file_name=concat_figure_file_name,
-            output_file_name=concat_figure_file_name
-        )
-
-        if num_model_lag_times == 1:
-            continue
-
-        for j in range(num_model_lag_times):
-            os.remove(panel_file_names[j])
 
 
 def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
@@ -777,81 +798,33 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     predictor_matrices = [a[sort_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = init_times_unix_sec[sort_indices]
 
+    current_intensities_kt, future_intensities_kt = _get_intensities(
+        example_table_xarray=example_table_xarray,
+        init_times_unix_sec=init_times_unix_sec,
+        model_metadata_dict=model_metadata_dict
+    )
+
     num_init_times = len(init_times_unix_sec)
     info_strings = [''] * num_init_times
 
-    xt = example_table_xarray
-    these_times_unix_sec = (
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
-    )
-    good_indices = numpy.array([
-        numpy.where(these_times_unix_sec == t)[0][0]
-        for t in init_times_unix_sec
-    ], dtype=int)
-
-    current_intensities_kt = METRES_PER_SECOND_TO_KT * (
-        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
-    )
-    current_intensities_kt = numpy.round(current_intensities_kt).astype(int)
-
-    lead_time_sec = (
-            HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
-    )
-    good_indices_2d_list = [
-        numpy.where(these_times_unix_sec == t)[0]
-        for t in init_times_unix_sec + lead_time_sec
-    ]
-    good_indices = numpy.array([
-        -1 if len(idcs) == 0 else idcs[0]
-        for idcs in good_indices_2d_list
-    ], dtype=int)
-
-    future_intensities_kt = METRES_PER_SECOND_TO_KT * (
-        xt[example_utils.STORM_INTENSITY_KEY].values[good_indices]
-    )
-    future_intensities_kt[good_indices == -1] = 0.
-    future_intensities_kt = numpy.round(future_intensities_kt).astype(int)
-
     for i in range(num_init_times):
-        info_strings[i] = 'I = {0:d} to {1:d} kt'.format(
+        info_strings[i] = r'$I$ = {0:d} to {1:d} kt'.format(
             current_intensities_kt[i], future_intensities_kt[i]
         )
 
     if prediction_file_name != '':
-        print('Reading data from: "{0:s}"...'.format(prediction_file_name))
-        prediction_dict = prediction_io.read_file(prediction_file_name)
-
-        good_flags = numpy.array([
-            cid == cyclone_id_string
-            for cid in prediction_dict[prediction_io.CYCLONE_IDS_KEY]
-        ], dtype=bool)
-
-        good_indices = numpy.where(good_flags)[0]
-        these_times_unix_sec = (
-            prediction_dict[prediction_io.INIT_TIMES_KEY][good_indices]
-        )
-        good_subindices = numpy.array([
-            numpy.where(these_times_unix_sec == t)[0][0]
-            for t in init_times_unix_sec
-        ], dtype=int)
-
-        good_indices = good_indices[good_subindices]
-        target_classes = (
-            prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
-        )
-        forecast_prob_matrix = (
-            prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
-                good_indices, ...
-            ]
+        forecast_prob_matrix, target_classes = _get_predictions_and_targets(
+            prediction_file_name=prediction_file_name,
+            cyclone_id_string=cyclone_id_string,
+            init_times_unix_sec=init_times_unix_sec
         )
 
         for i in range(num_init_times):
             info_strings[i] += (
-                '; class = {0:d} of {1:d}; prob = {2:.2f}; other prob = {3:.2f}'
+                '; class = {0:d} of {1:d}; prob = {2:.2f}'
             ).format(
                 target_classes[i] + 1, forecast_prob_matrix.shape[1],
-                forecast_prob_matrix[i, target_classes[i]],
-                forecast_prob_matrix[i, target_classes[i] - 1]
+                forecast_prob_matrix[i, target_classes[i]]
             )
 
     _plot_brightness_temps(
