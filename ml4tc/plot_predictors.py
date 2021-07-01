@@ -754,9 +754,9 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
     print(SEPARATOR_STRING)
 
-    predictor_matrices, _, all_init_times_unix_sec = (
-        neural_net.create_inputs(validation_option_dict)
-    )
+    data_dict = neural_net.create_inputs(validation_option_dict)
+    predictor_matrices = data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+    all_init_times_unix_sec = data_dict[neural_net.INIT_TIMES_KEY]
     print(SEPARATOR_STRING)
 
     if len(init_time_strings) == 1 and init_time_strings[0] == '':

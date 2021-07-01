@@ -25,7 +25,7 @@ KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
-OUTPUT_FILE_ARG_NAME = 'output_file_name'
+OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 MODEL_FILE_HELP_STRING = (
     'Path to trained model.  Will be read by `neural_net.read_model`.'
@@ -36,9 +36,10 @@ EXAMPLE_DIR_HELP_STRING = (
     '`example_io.read_file`.'
 )
 YEARS_HELP_STRING = 'Model will be applied to tropical cyclones in these years.'
-OUTPUT_FILE_HELP_STRING = (
-    'Path to output (Pickle) file.  Predictions and target values will be '
-    'written here by `prediction_io.write_file`.'
+OUTPUT_DIR_HELP_STRING = (
+    'Name of output directory.  Predictions and targets will be written here by'
+    ' `prediction_io.write_file`, to an exact location determined by '
+    '`prediction_io.find_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -55,12 +56,12 @@ INPUT_ARG_PARSER.add_argument(
     help=YEARS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
-    help=OUTPUT_FILE_HELP_STRING
+    '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
+    help=OUTPUT_DIR_HELP_STRING
 )
 
 
-def _run(model_file_name, example_dir_name, years, output_file_name):
+def _run(model_file_name, example_dir_name, years, output_dir_name):
     """Applies trained neural net in inference mode.
 
     This is effectively the main method.
@@ -68,10 +69,12 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     :param model_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param years: Same.
-    :param output_file_name: Same.
+    :param output_dir_name: Same.
     """
 
-    file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=output_dir_name
+    )
 
     print('Reading model from: "{0:s}"...'.format(model_file_name))
     model_object = neural_net.read_model(model_file_name)
@@ -114,28 +117,30 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
     forecast_prob_matrix = None
     cyclone_id_string_by_example = []
     init_times_unix_sec = numpy.array([], dtype=int)
+    storm_latitudes_deg_n = numpy.array([], dtype=float)
+    storm_longitudes_deg_e = numpy.array([], dtype=float)
 
     for i in range(len(example_file_names)):
         this_option_dict = copy.deepcopy(validation_option_dict)
         this_option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_names[i]
+        this_data_dict = neural_net.create_inputs(this_option_dict)
 
-        (
-            these_predictor_matrices,
-            this_target_array,
-            these_init_times_unix_sec
-        ) = neural_net.create_inputs(this_option_dict)
-
-        if this_target_array.size == 0:
+        if this_data_dict[neural_net.TARGET_ARRAY_KEY].size == 0:
             continue
 
-        if len(this_target_array.shape) == 1:
-            these_target_classes = this_target_array + 0
+        if len(this_data_dict[neural_net.TARGET_ARRAY_KEY].shape) == 1:
+            these_target_classes = (
+                this_data_dict[neural_net.TARGET_ARRAY_KEY] + 0
+            )
         else:
-            these_target_classes = numpy.argmax(this_target_array, axis=1)
+            these_target_classes = numpy.argmax(
+                this_data_dict[neural_net.TARGET_ARRAY_KEY], axis=1
+            )
 
         this_prob_array = neural_net.apply_model(
             model_object=model_object,
-            predictor_matrices=these_predictor_matrices,
+            predictor_matrices=
+            this_data_dict[neural_net.PREDICTOR_MATRICES_KEY],
             num_examples_per_batch=NUM_EXAMPLES_PER_BATCH, verbose=True
         )
 
@@ -153,17 +158,26 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
         else:
             this_prob_matrix = this_prob_array + 0.
 
-        print(this_prob_matrix.shape)
-
         target_classes = numpy.concatenate(
             (target_classes, these_target_classes), axis=0
         )
         cyclone_id_string_by_example += (
-            [cyclone_id_string_by_file[i]] * len(these_init_times_unix_sec)
+            [cyclone_id_string_by_file[i]] *
+            len(this_data_dict[neural_net.INIT_TIMES_KEY])
         )
         init_times_unix_sec = numpy.concatenate(
-            (init_times_unix_sec, these_init_times_unix_sec), axis=0
+            (init_times_unix_sec, this_data_dict[neural_net.INIT_TIMES_KEY]),
+            axis=0
         )
+        storm_latitudes_deg_n = numpy.concatenate((
+            storm_latitudes_deg_n,
+            this_data_dict[neural_net.STORM_LATITUDES_KEY]
+        ), axis=0)
+
+        storm_longitudes_deg_e = numpy.concatenate((
+            storm_longitudes_deg_e,
+            this_data_dict[neural_net.STORM_LONGITUDES_KEY]
+        ), axis=0)
 
         if forecast_prob_matrix is None:
             forecast_prob_matrix = this_prob_matrix + 0.
@@ -174,6 +188,10 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
 
         print(SEPARATOR_STRING)
 
+    output_file_name = prediction_io.find_file(
+        directory_name=output_dir_name, raise_error_if_missing=False
+    )
+
     print('Writing predictions and target values to: "{0:s}"...'.format(
         output_file_name
     ))
@@ -183,6 +201,8 @@ def _run(model_file_name, example_dir_name, years, output_file_name):
         target_classes=target_classes,
         cyclone_id_strings=cyclone_id_string_by_example,
         init_times_unix_sec=init_times_unix_sec,
+        storm_latitudes_deg_n=storm_latitudes_deg_n,
+        storm_longitudes_deg_e=storm_longitudes_deg_e,
         model_file_name=model_file_name
     )
 
@@ -194,5 +214,5 @@ if __name__ == '__main__':
         model_file_name=getattr(INPUT_ARG_OBJECT, MODEL_FILE_ARG_NAME),
         example_dir_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_DIR_ARG_NAME),
         years=numpy.array(getattr(INPUT_ARG_OBJECT, YEARS_ARG_NAME), dtype=int),
-        output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
+        output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
