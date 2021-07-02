@@ -88,6 +88,9 @@ def _run(input_file_name, output_dir_name):
         )
         d = this_prediction_dict
 
+        if len(d[prediction_io.INIT_TIMES_KEY]) == 0:
+            continue
+
         this_output_file_name = prediction_io.find_file(
             directory_name=output_dir_name,
             basin_id_string=this_basin_id_string,
