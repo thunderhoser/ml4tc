@@ -96,6 +96,7 @@ def _run(prediction_file_name, event_freq_in_training, num_prob_thresholds,
 
     print(SEPARATOR_STRING)
 
+    print('Writing results to: "{0:s}"...'.format(output_file_name))
     evaluation.write_file(
         evaluation_table_xarray=evaluation_table_xarray,
         netcdf_file_name=output_file_name
