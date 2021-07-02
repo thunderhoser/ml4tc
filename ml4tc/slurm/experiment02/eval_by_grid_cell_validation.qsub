@@ -49,8 +49,9 @@ while ($i <= ${#GRID_ROWS})
 
     while ($j <= ${#GRID_COLUMNS})
         set this_input_file_name="${prediction_dir_name}/predictions_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_COLUMNS[$j]}.nc"
+        echo ${this_input_file_name}
         
-        if (-e "$this_input_file_name") then
+        if (-e $this_input_file_name) then
             set this_output_file_name="${prediction_dir_name}/evaluation_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_COLUMNS[$j]}.nc"
 
             python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
