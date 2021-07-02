@@ -49,15 +49,18 @@ while ($i <= ${#GRID_ROWS})
 
     while ($j <= ${#GRID_COLUMNS})
         set this_input_file_name="${prediction_dir_name}/predictions_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_ROWS[$j]}.nc"
-        set this_output_file_name="${prediction_dir_name}/evaluation_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_ROWS[$j]}.nc"
+        
+        if (-e "$this_input_file_name") then
+            set this_output_file_name="${prediction_dir_name}/evaluation_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_ROWS[$j]}.nc"
 
-        python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
-        --input_prediction_file_name="${this_input_file_name}" \
-        --event_freq_in_training=0.07267640234 \
-        --num_prob_thresholds=1001 \
-        --num_reliability_bins=20 \
-        --num_bootstrap_reps=1 \
-        --output_eval_file_name="${this_output_file_name}"
+            python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+            --input_prediction_file_name="${this_input_file_name}" \
+            --event_freq_in_training=0.07267640234 \
+            --num_prob_thresholds=1001 \
+            --num_reliability_bins=20 \
+            --num_bootstrap_reps=1 \
+            --output_eval_file_name="${this_output_file_name}"
+        endif
     
         @ j = $j + 1
     end
