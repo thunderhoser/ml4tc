@@ -47,17 +47,17 @@ FIGURE_RESOLUTION_DPI = 300
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 INPUT_DIR_ARG_NAME = 'input_evaluation_dir_name'
-PROB_THRESHOLD_ARG_NAME = 'prob_threshold'
+TOTAL_VALIDN_EVAL_FILE_ARG_NAME = 'input_total_validn_eval_file_name'
 CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 INPUT_DIR_HELP_STRING = (
     'Name of input directory.  Evaluation files therein will be found by '
-    '`evaluation.find_file` and read by `evaluation.read_evaluation`.'
+    '`evaluation.find_file` and read by `evaluation.read_file`.'
 )
-PROB_THRESHOLD_HELP_STRING = (
-    'Probability threshold for scores based on deterministic (not '
-    'probabilistic) forecasts.'
+TOTAL_VALIDN_EVAL_FILE_HELP_STRING = (
+    'Path to evaluation file for total validation set.  Will be read by '
+    '`evaluation.read_file` and used to determine best probability threshold.'
 )
 CONFIDENCE_LEVEL_HELP_STRING = 'Confidence level for error bars.'
 OUTPUT_DIR_HELP_STRING = (
@@ -70,8 +70,8 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + PROB_THRESHOLD_ARG_NAME, type=float, required=True,
-    help=PROB_THRESHOLD_HELP_STRING
+    '--' + TOTAL_VALIDN_EVAL_FILE_ARG_NAME, type=str, required=True,
+    help=TOTAL_VALIDN_EVAL_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=0.95,
@@ -579,14 +579,14 @@ def _plot_by_basin(evaluation_dir_name, probability_threshold, confidence_level,
     return [auc_csi_file_name, pod_far_file_name]
 
 
-def _run(evaluation_dir_name, probability_threshold, confidence_level,
+def _run(evaluation_dir_name, total_validn_eval_file_name, confidence_level,
          output_dir_name):
     """Plots evaluation by month, then by ocean basin, separately.
 
     This is effectively the main method.
 
     :param evaluation_dir_name: See documentation at top of file.
-    :param probability_threshold: Same.
+    :param total_validn_eval_file_name: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     """
@@ -594,6 +594,10 @@ def _run(evaluation_dir_name, probability_threshold, confidence_level,
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
+
+    print('Reading data from: "{0:s}"...'.format(total_validn_eval_file_name))
+    this_table_xarray = evaluation.read_file(total_validn_eval_file_name)
+    probability_threshold = evaluation.find_best_threshold(this_table_xarray)
 
     panel_file_names = _plot_by_month(
         evaluation_dir_name=evaluation_dir_name,
@@ -627,8 +631,8 @@ if __name__ == '__main__':
 
     _run(
         evaluation_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
-        probability_threshold=getattr(
-            INPUT_ARG_OBJECT, PROB_THRESHOLD_ARG_NAME
+        total_validn_eval_file_name=getattr(
+            INPUT_ARG_OBJECT, TOTAL_VALIDN_EVAL_FILE_ARG_NAME
         ),
         confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
