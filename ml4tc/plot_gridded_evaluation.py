@@ -253,7 +253,7 @@ def _plot_one_score(
     plotting_utils.plot_grid_lines(
         plot_latitudes_deg_n=grid_latitudes_deg_n,
         plot_longitudes_deg_e=grid_longitudes_deg_e, axes_object=axes_object,
-        parallel_spacing_deg=2., meridian_spacing_deg=2., font_size=FONT_SIZE
+        parallel_spacing_deg=10., meridian_spacing_deg=20., font_size=FONT_SIZE
     )
 
     if title_string is not None:
@@ -305,13 +305,12 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         prediction_io.read_grid_metafile(grid_metafile_name)
     )
 
-    print(numpy.min(grid_longitudes_deg_e))
-    print(numpy.max(grid_longitudes_deg_e))
-    grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+    border_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+        border_longitudes_deg_e
+    )
+    grid_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         grid_longitudes_deg_e
     )
-    print(numpy.min(grid_longitudes_deg_e))
-    print(numpy.max(grid_longitudes_deg_e))
 
     num_grid_rows = len(grid_latitudes_deg_n)
     num_grid_columns = len(grid_longitudes_deg_e)
@@ -350,16 +349,16 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
             event_freq_by_bin = numpy.nanmean(
                 et[evaluation.MEAN_OBSERVATION_KEY].values, axis=1
             )
-            print(event_freq_by_bin)
-            print(et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values)
+            weights = et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
+            real_indices = numpy.where(weights > 0)[0]
+
             event_freq_matrix[i, j] = numpy.average(
-                event_freq_by_bin,
-                weights=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
+                event_freq_by_bin[real_indices],
+                weights=weights[real_indices]
             )
-            print(event_freq_matrix[i, j])
             mean_prob_matrix[i, j] = numpy.average(
-                et[evaluation.MEAN_PREDICTION_NO_BS_KEY].values,
-                weights=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
+                et[evaluation.MEAN_PREDICTION_NO_BS_KEY].values[real_indices],
+                weights=weights[real_indices]
             )
 
             all_prob_thresholds = (
@@ -373,16 +372,16 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
             )
             assert threshold_diff <= TOLERANCE
 
-            pod_matrix[i, j] = numpy.mean(
+            pod_matrix[i, j] = numpy.nanmean(
                 et[evaluation.POD_KEY].values[threshold_index, :]
             )
-            far_matrix[i, j] = 1. - numpy.mean(
+            far_matrix[i, j] = 1. - numpy.nanmean(
                 et[evaluation.SUCCESS_RATIO_KEY].values[threshold_index, :]
             )
-            frequency_bias_matrix[i, j] = numpy.mean(
+            frequency_bias_matrix[i, j] = numpy.nanmean(
                 et[evaluation.FREQUENCY_BIAS_KEY].values[threshold_index, :]
             )
-            csi_matrix[i, j] = numpy.mean(
+            csi_matrix[i, j] = numpy.nanmean(
                 et[evaluation.CSI_KEY].values[threshold_index, :]
             )
 
