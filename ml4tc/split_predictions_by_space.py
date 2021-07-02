@@ -20,8 +20,8 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 MIN_LATITUDE_DEG_N = -60.
 MAX_LATITUDE_DEG_N = 60.
-MIN_LONGITUDE_DEG_E = 1.
-MAX_LONGITUDE_DEG_E = 359.
+MIN_LONGITUDE_DEG_E = 0.
+MAX_LONGITUDE_DEG_E = 360.
 
 INPUT_FILE_ARG_NAME = 'input_prediction_file_name'
 LATITUDE_SPACING_ARG_NAME = 'latitude_spacing_deg'
@@ -106,14 +106,11 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
             min_latitude_deg_n=MIN_LATITUDE_DEG_N,
             max_latitude_deg_n=MAX_LATITUDE_DEG_N,
             latitude_spacing_deg=latitude_spacing_deg,
-            min_longitude_deg_e=MIN_LONGITUDE_DEG_E,
-            max_longitude_deg_e=MAX_LONGITUDE_DEG_E,
+            min_longitude_deg_e=MIN_LONGITUDE_DEG_E + longitude_spacing_deg / 2,
+            max_longitude_deg_e=MAX_LONGITUDE_DEG_E - longitude_spacing_deg / 2,
             longitude_spacing_deg=longitude_spacing_deg
         )
     )
-
-    print(grid_latitudes_deg_n)
-    print(grid_longitudes_deg_e)
 
     num_grid_rows = len(grid_latitudes_deg_n)
     num_grid_columns = len(grid_longitudes_deg_e)
@@ -128,12 +125,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
         )
     )
 
-    print(grid_edge_latitudes_deg)
-    print(grid_edge_longitudes_deg)
-    print(numpy.min(storm_longitudes_deg_e))
-    print(numpy.max(storm_longitudes_deg_e))
-
     print(SEPARATOR_STRING)
+    num_examples_written = 0
 
     for i in range(num_grid_rows):
         for j in range(num_grid_columns):
@@ -153,6 +146,9 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
 
             if len(d[prediction_io.INIT_TIMES_KEY]) == 0:
                 continue
+
+            num_examples_written += len(d[prediction_io.INIT_TIMES_KEY])
+            print(num_examples_written)
 
             this_output_file_name = prediction_io.find_file(
                 directory_name=output_dir_name, grid_row=i, grid_column=j,
