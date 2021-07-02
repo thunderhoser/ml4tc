@@ -130,6 +130,7 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
 
     print(grid_edge_latitudes_deg)
     print(grid_edge_longitudes_deg)
+    print(storm_longitudes_deg_e)
 
     print(SEPARATOR_STRING)
 
