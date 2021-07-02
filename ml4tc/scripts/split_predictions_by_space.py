@@ -12,8 +12,8 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 MIN_LATITUDE_DEG_N = -60.
 MAX_LATITUDE_DEG_N = 60.
-MIN_LONGITUDE_DEG_E = -180.
-MAX_LONGITUDE_DEG_E = 180.
+MIN_LONGITUDE_DEG_E = 0.
+MAX_LONGITUDE_DEG_E = 360.
 
 INPUT_FILE_ARG_NAME = 'input_prediction_file_name'
 LATITUDE_SPACING_ARG_NAME = 'latitude_spacing_deg'
@@ -76,7 +76,7 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
         prediction_dict=prediction_dict, desired_indices=good_indices
     )
 
-    storm_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+    storm_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
     )
     good_indices = numpy.where(numpy.logical_and(
@@ -88,7 +88,7 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
     )
 
     storm_latitudes_deg_n = prediction_dict[prediction_io.STORM_LATITUDES_KEY]
-    storm_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+    storm_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
     )
 
@@ -98,8 +98,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
             min_latitude_deg_n=MIN_LATITUDE_DEG_N,
             max_latitude_deg_n=MAX_LATITUDE_DEG_N,
             latitude_spacing_deg=latitude_spacing_deg,
-            min_longitude_deg_e=MIN_LONGITUDE_DEG_E,
-            max_longitude_deg_e=MAX_LONGITUDE_DEG_E,
+            min_longitude_deg_e=MIN_LONGITUDE_DEG_E + longitude_spacing_deg / 2,
+            max_longitude_deg_e=MAX_LONGITUDE_DEG_E - longitude_spacing_deg / 2,
             longitude_spacing_deg=longitude_spacing_deg
         )
     )
