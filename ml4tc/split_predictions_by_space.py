@@ -84,7 +84,7 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
         prediction_dict=prediction_dict, desired_indices=good_indices
     )
 
-    storm_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+    storm_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
     )
     good_indices = numpy.where(numpy.logical_and(
@@ -96,7 +96,7 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
     )
 
     storm_latitudes_deg_n = prediction_dict[prediction_io.STORM_LATITUDES_KEY]
-    storm_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+    storm_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
     )
 
