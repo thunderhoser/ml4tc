@@ -350,10 +350,13 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
             event_freq_by_bin = numpy.nanmean(
                 et[evaluation.MEAN_OBSERVATION_KEY].values, axis=1
             )
+            print(event_freq_by_bin)
+            print(et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values)
             event_freq_matrix[i, j] = numpy.average(
                 event_freq_by_bin,
                 weights=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
             )
+            print(event_freq_matrix[i, j])
             mean_prob_matrix[i, j] = numpy.average(
                 et[evaluation.MEAN_PREDICTION_NO_BS_KEY].values,
                 weights=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
