@@ -14,6 +14,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import grids
 import gg_radar_utils
+import longitude_conversion as lng_conversion
 import error_checking
 
 SHEAR_VORT_DIV_NAMES = [
@@ -481,6 +482,10 @@ def plot_latlng_grid(
         min_longitude_deg=min_grid_point_longitude_deg,
         lat_spacing_deg=latitude_spacing_deg,
         lng_spacing_deg=longitude_spacing_deg)
+
+    grid_cell_edge_longitudes_deg = lng_conversion.convert_lng_negative_in_west(
+        grid_cell_edge_longitudes_deg
+    )
 
     field_matrix_at_edges = numpy.ma.masked_where(
         numpy.isnan(field_matrix_at_edges), field_matrix_at_edges)
