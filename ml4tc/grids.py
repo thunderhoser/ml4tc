@@ -17,6 +17,8 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import longitude_conversion as lng_conversion
 import error_checking
 
+TOLERANCE = 1e-6
+
 
 def get_xy_grid_points(x_min_metres=None, y_min_metres=None,
                        x_spacing_metres=None, y_spacing_metres=None,
@@ -329,3 +331,107 @@ def latlng_field_grid_points_to_edges(
 
     return (field_matrix, grid_cell_edge_latitudes_deg,
             grid_cell_edge_longitudes_deg)
+
+
+def find_events_in_grid_cell(
+        event_x_coords_metres, event_y_coords_metres, grid_edge_x_coords_metres,
+        grid_edge_y_coords_metres, row_index, column_index, verbose):
+    """Finds events in a certain grid cell.
+
+    E = number of events
+    M = number of rows in grid
+    N = number of columns in grid
+
+    :param event_x_coords_metres: length-E numpy array of x-coordinates.
+    :param event_y_coords_metres: length-E numpy array of y-coordinates.
+    :param grid_edge_x_coords_metres: length-(N + 1) numpy array with
+        x-coordinates at edges of grid cells.
+    :param grid_edge_y_coords_metres: length-(M + 1) numpy array with
+        y-coordinates at edges of grid cells.
+    :param row_index: Will find events in [i]th row of grid, where
+        i = `row_index.`
+    :param column_index: Will find events in [j]th column of grid, where
+        j = `column_index.`
+    :param verbose: Boolean flag.  If True, messages will be printed to command
+        window.
+    :return: desired_indices: 1-D numpy array with indices of events in desired
+        grid cell.
+    """
+
+    error_checking.assert_is_numpy_array_without_nan(event_x_coords_metres)
+    error_checking.assert_is_numpy_array(
+        event_x_coords_metres, num_dimensions=1)
+
+    num_events = len(event_x_coords_metres)
+    these_expected_dim = numpy.array([num_events], dtype=int)
+
+    error_checking.assert_is_numpy_array_without_nan(event_y_coords_metres)
+    error_checking.assert_is_numpy_array(
+        event_y_coords_metres, exact_dimensions=these_expected_dim)
+
+    error_checking.assert_is_numpy_array(
+        grid_edge_x_coords_metres, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(grid_edge_x_coords_metres), 0
+    )
+
+    error_checking.assert_is_numpy_array(
+        grid_edge_y_coords_metres, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(grid_edge_y_coords_metres), 0
+    )
+
+    error_checking.assert_is_integer(row_index)
+    error_checking.assert_is_geq(row_index, 0)
+    error_checking.assert_is_integer(column_index)
+    error_checking.assert_is_geq(column_index, 0)
+    error_checking.assert_is_boolean(verbose)
+
+    x_min_metres = grid_edge_x_coords_metres[column_index]
+    x_max_metres = grid_edge_x_coords_metres[column_index + 1]
+    y_min_metres = grid_edge_y_coords_metres[row_index]
+    y_max_metres = grid_edge_y_coords_metres[row_index + 1]
+
+    if row_index == len(grid_edge_y_coords_metres) - 2:
+        y_max_metres += TOLERANCE
+    if column_index == len(grid_edge_x_coords_metres) - 2:
+        x_max_metres += TOLERANCE
+
+    # TODO(thunderhoser): If need be, I could speed this up by computing
+    # `row_flags` only once per row and `column_flags` only once per column.
+    row_flags = numpy.logical_and(
+        event_y_coords_metres >= y_min_metres,
+        event_y_coords_metres < y_max_metres
+    )
+
+    if not numpy.any(row_flags):
+        if verbose:
+            print('0 of {0:d} events are in grid cell ({1:d}, {2:d})!'.format(
+                num_events, row_index, column_index
+            ))
+
+        return numpy.array([], dtype=int)
+
+    column_flags = numpy.logical_and(
+        event_x_coords_metres >= x_min_metres,
+        event_x_coords_metres < x_max_metres
+    )
+
+    if not numpy.any(column_flags):
+        if verbose:
+            print('0 of {0:d} events are in grid cell ({1:d}, {2:d})!'.format(
+                num_events, row_index, column_index
+            ))
+
+        return numpy.array([], dtype=int)
+
+    desired_indices = numpy.where(numpy.logical_and(
+        row_flags, column_flags
+    ))[0]
+
+    if verbose:
+        print('{0:d} of {1:d} events are in grid cell ({2:d}, {3:d})!'.format(
+            len(desired_indices), num_events, row_index, column_index
+        ))
+
+    return desired_indices
