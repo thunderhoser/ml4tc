@@ -35,10 +35,10 @@ pyplot.rc('figure', titlesize=FONT_SIZE)
 
 INPUT_DIR_ARG_NAME = 'input_evaluation_dir_name'
 GRID_METAFILE_ARG_NAME = 'input_grid_metafile_name'
+TOTAL_VALIDN_EVAL_FILE_ARG_NAME = 'input_total_validn_eval_file_name'
 SEQ_COLOUR_MAP_ARG_NAME = 'sequential_colour_map_name'
 DIV_COLOUR_MAP_ARG_NAME = 'diverging_colour_map_name'
 BIAS_COLOUR_MAP_ARG_NAME = 'bias_colour_map_name'
-PROB_THRESHOLD_ARG_NAME = 'probability_threshold'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 INPUT_DIR_HELP_STRING = (
@@ -49,6 +49,10 @@ INPUT_DIR_HELP_STRING = (
 GRID_METAFILE_HELP_STRING = (
     'Path to file with grid metadata.  Will be read by '
     '`prediction_io.read_grid_metafile`.'
+)
+TOTAL_VALIDN_EVAL_FILE_HELP_STRING = (
+    'Path to evaluation file for total validation set.  Will be read by '
+    '`evaluation.read_file` and used to determine best probability threshold.'
 )
 SEQ_COLOUR_MAP_HELP_STRING = (
     'Name of sequential colour map (must be accepted by '
@@ -62,11 +66,6 @@ DIV_COLOUR_MAP_HELP_STRING = (
 BIAS_COLOUR_MAP_HELP_STRING = (
     'Name of colour map for frequency bias (must be accepted by '
     '`matplotlib.pyplot.get_cmap`).'
-)
-PROB_THRESHOLD_HELP_STRING = (
-    'Probability threshold used to compute POD, success ratio, CSI, and bias.  '
-    'If you do not want to plot the aforelisted scores, leave this argument '
-    'alone.'
 )
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Figures will be saved here.'
@@ -82,6 +81,10 @@ INPUT_ARG_PARSER.add_argument(
     help=GRID_METAFILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + TOTAL_VALIDN_EVAL_FILE_ARG_NAME, type=str, required=True,
+    help=TOTAL_VALIDN_EVAL_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + SEQ_COLOUR_MAP_ARG_NAME, type=str, required=False, default='plasma',
     help=SEQ_COLOUR_MAP_HELP_STRING
 )
@@ -92,10 +95,6 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + BIAS_COLOUR_MAP_ARG_NAME, type=str, required=False,
     default='seismic', help=BIAS_COLOUR_MAP_HELP_STRING
-)
-INPUT_ARG_PARSER.add_argument(
-    '--' + PROB_THRESHOLD_ARG_NAME, type=float, required=False, default=-1,
-    help=PROB_THRESHOLD_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -266,26 +265,27 @@ def _plot_one_score(
     pyplot.close(figure_object)
 
 
-def _run(evaluation_dir_name, grid_metafile_name, sequential_colour_map_name,
-         diverging_colour_map_name, bias_colour_map_name, probability_threshold,
-         output_dir_name):
+def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
+         sequential_colour_map_name, diverging_colour_map_name,
+         bias_colour_map_name, output_dir_name):
     """Plots evaluation scores on grid.
 
     This is effectively the main method.
 
     :param evaluation_dir_name: See documentation at top of file.
     :param grid_metafile_name: Same.
+    :param total_validn_eval_file_name: Same.
     :param sequential_colour_map_name: Same.
     :param diverging_colour_map_name: Same.
     :param bias_colour_map_name: Same.
-    :param probability_threshold: Same.
     :param output_dir_name: Same.
     """
 
-    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+    print('Reading data from: "{0:s}"...'.format(total_validn_eval_file_name))
+    this_table_xarray = evaluation.read_file(total_validn_eval_file_name)
+    probability_threshold = evaluation.find_best_threshold(this_table_xarray)
 
-    if probability_threshold <= 0:
-        probability_threshold = None
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
 
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
@@ -342,9 +342,6 @@ def _run(evaluation_dir_name, grid_metafile_name, sequential_colour_map_name,
                 et[evaluation.MEAN_PREDICTION_NO_BS_KEY].values,
                 weights=et[evaluation.EXAMPLE_COUNT_NO_BS_KEY].values
             )
-
-            if probability_threshold is None:
-                continue
 
             all_prob_thresholds = (
                 et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values
@@ -420,9 +417,6 @@ def _run(evaluation_dir_name, grid_metafile_name, sequential_colour_map_name,
         title_string='Model-based climatology'
     )
 
-    if probability_threshold is None:
-        return
-
     _plot_one_score(
         score_matrix=pod_matrix,
         grid_latitudes_deg_n=grid_latitudes_deg_n,
@@ -478,6 +472,9 @@ if __name__ == '__main__':
     _run(
         evaluation_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
         grid_metafile_name=getattr(INPUT_ARG_OBJECT, GRID_METAFILE_ARG_NAME),
+        total_validn_eval_file_name=getattr(
+            INPUT_ARG_OBJECT, TOTAL_VALIDN_EVAL_FILE_ARG_NAME
+        ),
         sequential_colour_map_name=getattr(
             INPUT_ARG_OBJECT, SEQ_COLOUR_MAP_ARG_NAME
         ),
@@ -486,9 +483,6 @@ if __name__ == '__main__':
         ),
         bias_colour_map_name=getattr(
             INPUT_ARG_OBJECT, BIAS_COLOUR_MAP_ARG_NAME
-        ),
-        probability_threshold=getattr(
-            INPUT_ARG_OBJECT, PROB_THRESHOLD_ARG_NAME
         ),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )

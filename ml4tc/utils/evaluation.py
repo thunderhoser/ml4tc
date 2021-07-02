@@ -357,6 +357,46 @@ def evaluate_model_binary(
     return evaluation_table_xarray
 
 
+def find_best_threshold(evaluation_table_xarray):
+    """Finds best probability threshold (that which maximizes CSI).
+
+    :param evaluation_table_xarray: xarray table in format created by
+        `evaluate_model_binary`.
+    :return: best_threshold: Best probability threshold.
+    """
+
+    csi_by_threshold = numpy.mean(
+        evaluation_table_xarray[CSI_KEY].values, axis=1
+    )
+    best_index = numpy.argmax(csi_by_threshold)
+    best_threshold = evaluation_table_xarray.coords[
+        PROBABILITY_THRESHOLD_DIM
+    ].values[best_index]
+
+    num_true_positives = numpy.mean(
+        evaluation_table_xarray[NUM_TRUE_POSITIVES_KEY].values[best_index, :]
+    )
+    num_false_positives = numpy.mean(
+        evaluation_table_xarray[NUM_FALSE_POSITIVES_KEY].values[best_index, :]
+    )
+    num_false_negatives = numpy.mean(
+        evaluation_table_xarray[NUM_FALSE_NEGATIVES_KEY].values[best_index, :]
+    )
+    num_true_negatives = numpy.mean(
+        evaluation_table_xarray[NUM_TRUE_NEGATIVES_KEY].values[best_index, :]
+    )
+
+    print((
+        'Best CSI = {0:.3f} ... prob threshold = {1:.3f} ... a, b, c, d at '
+        'same threshold = {2:.1f}, {3:.1f}, {4:.1f}, {5:.1f}'
+    ).format(
+        csi_by_threshold[best_index], best_threshold, num_true_positives,
+        num_false_positives, num_false_negatives, num_true_negatives
+    ))
+
+    return best_threshold
+
+
 def read_file(netcdf_file_name):
     """Reads evaluation results from NetCDF file.
 

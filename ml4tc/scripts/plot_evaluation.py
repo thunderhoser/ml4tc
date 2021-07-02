@@ -132,30 +132,7 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     axes_object.set_title(title_string)
     print(title_string)
-
-    csi_by_threshold = numpy.mean(et[evaluation.CSI_KEY].values, axis=1)
-    best_index = numpy.argmax(csi_by_threshold)
-
-    num_true_positives = numpy.mean(
-        et[evaluation.NUM_TRUE_POSITIVES_KEY].values[best_index, :]
-    )
-    num_false_positives = numpy.mean(
-        et[evaluation.NUM_FALSE_POSITIVES_KEY].values[best_index, :]
-    )
-    num_false_negatives = numpy.mean(
-        et[evaluation.NUM_FALSE_NEGATIVES_KEY].values[best_index, :]
-    )
-    num_true_negatives = numpy.mean(
-        et[evaluation.NUM_TRUE_NEGATIVES_KEY].values[best_index, :]
-    )
-
-    print((
-        'Best CSI = {0:.3f} ... a, b, c, d at same threshold = '
-        '{1:.1f}, {2:.1f}, {3:.1f}, {4:.1f}'
-    ).format(
-        csi_by_threshold[best_index], num_true_positives, num_false_positives,
-        num_false_negatives, num_true_negatives
-    ))
+    _ = evaluation.find_best_threshold(evaluation_table_xarray)
 
     figure_file_name = '{0:s}/performance_diagram.jpg'.format(output_dir_name)
     print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
