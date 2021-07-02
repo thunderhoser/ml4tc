@@ -14,6 +14,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import longitude_conversion as lng_conversion
 import file_system_utils
 import gg_plotting_utils
 import radar_plotting
@@ -303,6 +304,14 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
     grid_latitudes_deg_n, grid_longitudes_deg_e = (
         prediction_io.read_grid_metafile(grid_metafile_name)
     )
+
+    print(numpy.min(grid_longitudes_deg_e))
+    print(numpy.max(grid_longitudes_deg_e))
+    grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        grid_longitudes_deg_e
+    )
+    print(numpy.min(grid_longitudes_deg_e))
+    print(numpy.max(grid_longitudes_deg_e))
 
     num_grid_rows = len(grid_latitudes_deg_n)
     num_grid_columns = len(grid_longitudes_deg_e)
