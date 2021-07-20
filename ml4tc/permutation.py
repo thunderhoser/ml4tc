@@ -751,8 +751,6 @@ def make_auc_cost_function():
         error_checking.assert_is_numpy_array(target_values, num_dimensions=1)
         error_checking.assert_is_numpy_array(forecast_probs, num_dimensions=1)
 
-        print(target_values)
-
         return -1 * sklearn_auc(y_true=target_values, y_score=forecast_probs)
 
     return cost_function
