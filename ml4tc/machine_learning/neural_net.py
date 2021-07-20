@@ -68,31 +68,34 @@ SHIPS_TIME_TOLERANCE_KEY = 'ships_time_tolerance_sec'
 SHIPS_MAX_MISSING_TIMES_KEY = 'ships_max_missing_times'
 USE_CLIMO_KEY = 'use_climo_as_backup'
 
-DEFAULT_SATELLITE_PREDICTOR_NAMES = (
+ALL_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
     set(example_utils.SATELLITE_METADATA_KEYS)
 )
-DEFAULT_SATELLITE_PREDICTOR_NAMES.remove(
+ALL_SATELLITE_PREDICTOR_NAMES.remove(
     satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
 )
-DEFAULT_SATELLITE_PREDICTOR_NAMES = list(DEFAULT_SATELLITE_PREDICTOR_NAMES)
+ALL_SATELLITE_PREDICTOR_NAMES = list(ALL_SATELLITE_PREDICTOR_NAMES)
+DEFAULT_SATELLITE_PREDICTOR_NAMES = copy.deepcopy(ALL_SATELLITE_PREDICTOR_NAMES)
 
-DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED = (
+ALL_SHIPS_PREDICTOR_NAMES_LAGGED = (
     set(ships_io.SATELLITE_FIELD_NAMES) -
     set(example_utils.SHIPS_METADATA_KEYS)
 )
-DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED.discard(ships_io.VALID_TIME_KEY)
-DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED = list(
-    DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED
+ALL_SHIPS_PREDICTOR_NAMES_LAGGED.discard(ships_io.VALID_TIME_KEY)
+ALL_SHIPS_PREDICTOR_NAMES_LAGGED = list(ALL_SHIPS_PREDICTOR_NAMES_LAGGED)
+DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED = copy.deepcopy(
+    ALL_SHIPS_PREDICTOR_NAMES_LAGGED
 )
 
-DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST = (
+ALL_SHIPS_PREDICTOR_NAMES_FORECAST = (
     set(ships_io.FORECAST_FIELD_NAMES) -
     set(example_utils.SHIPS_METADATA_KEYS)
 )
-DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST.discard(ships_io.VALID_TIME_KEY)
-DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST = list(
-    DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST
+ALL_SHIPS_PREDICTOR_NAMES_FORECAST.discard(ships_io.VALID_TIME_KEY)
+ALL_SHIPS_PREDICTOR_NAMES_FORECAST = list(ALL_SHIPS_PREDICTOR_NAMES_FORECAST)
+DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST = copy.deepcopy(
+    ALL_SHIPS_PREDICTOR_NAMES_FORECAST
 )
 
 DEFAULT_GENERATOR_OPTION_DICT = {
@@ -119,6 +122,10 @@ METADATA_KEYS = [
     NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY, EARLY_STOPPING_KEY,
     PLATEAU_LR_MUTIPLIER_KEY
 ]
+
+GRIDDED_SATELLITE_ENUM = 0
+UNGRIDDED_SATELLITE_ENUM = 1
+SHIPS_ENUM = 2
 
 
 def _find_desired_times(
@@ -754,19 +761,11 @@ def _read_one_example_file(
             if k == MISSING_INDEX:
                 continue
 
-            lagged_values = numpy.ravel(
-                xt[
-                    example_utils.SHIPS_PREDICTORS_LAGGED_KEY
-                ].values[k, :, ships_predictor_indices_lagged]
+            ships_predictor_matrix[i, j, :] = _ships_predictors_xarray_to_keras(
+                example_table_xarray=xt, init_time_index=k,
+                lagged_predictor_indices=ships_predictor_indices_lagged,
+                forecast_predictor_indices=ships_predictor_indices_forecast
             )
-            ships_predictor_matrix[i, j, :len(lagged_values)] = lagged_values
-
-            forecast_values = numpy.ravel(
-                xt[
-                    example_utils.SHIPS_PREDICTORS_FORECAST_KEY
-                ].values[k, :, ships_predictor_indices_forecast]
-            )
-            ships_predictor_matrix[i, j, len(lagged_values):] = forecast_values
 
     brightness_temp_matrix = _interp_missing_times(
         data_matrix=brightness_temp_matrix,
@@ -886,6 +885,45 @@ def _check_generator_args(option_dict):
     return option_dict
 
 
+def _ships_predictors_xarray_to_keras(
+        example_table_xarray, init_time_index, lagged_predictor_indices,
+        forecast_predictor_indices):
+    """Converts SHIPS predictors from xarray format to Keras format.
+
+    :param example_table_xarray: xarray table returned by
+        `example_io.read_file`.
+    :param init_time_index: Will extract predictors from the [i]th SHIPS
+        initialization time, where i = `init_time_index`.
+    :param lagged_predictor_indices: 1-D numpy array with indices of lagged
+        predictors to use.
+    :param forecast_predictor_indices: 1-D numpy array with indices of forecast
+        predictors to use.
+    :return: predictor_values_1d: 1-D numpy array with all desired SHIPS
+        predictors.
+    """
+
+    error_checking.assert_is_integer(init_time_index)
+    error_checking.assert_is_geq(init_time_index, 0)
+    error_checking.assert_is_integer_numpy_array(lagged_predictor_indices)
+    error_checking.assert_is_geq_numpy_array(lagged_predictor_indices, 0)
+    error_checking.assert_is_integer_numpy_array(forecast_predictor_indices)
+    error_checking.assert_is_geq_numpy_array(forecast_predictor_indices, 0)
+
+    lagged_values = numpy.ravel(
+        example_table_xarray[
+            example_utils.SHIPS_PREDICTORS_LAGGED_KEY
+        ].values[init_time_index, :, lagged_predictor_indices]
+    )
+
+    forecast_values = numpy.ravel(
+        example_table_xarray[
+            example_utils.SHIPS_PREDICTORS_FORECAST_KEY
+        ].values[init_time_index, :, forecast_predictor_indices]
+    )
+
+    return numpy.concatenate((lagged_values, forecast_values))
+
+
 def _write_metafile(
         pickle_file_name, num_epochs, num_training_batches_per_epoch,
         training_option_dict, num_validation_batches_per_epoch,
@@ -1000,6 +1038,135 @@ def read_metafile(pickle_file_name):
     ).format(str(missing_keys), pickle_file_name)
 
     raise ValueError(error_string)
+
+
+def ships_predictors_3d_to_4d(
+        predictor_matrix_3d, num_lagged_predictors, num_builtin_lag_times,
+        num_forecast_predictors, num_forecast_hours):
+    """Converts SHIPS predictors from 3-D to 4-D matrices.
+
+    S = number of scalar predictors =
+        (num_forecast_hours * num_forecast_predictors) +
+        (num_builtin_lag_times * num_lagged_predictors)
+
+    E = number of examples
+    T_model = number of model lag times
+    T_lagged = number of built-in SHIPS lag times
+    T_fcst = number of built-in SHIPS forecast hours
+    P_lagged = number of lagged predictors
+    P_fcst = number of forecast predictors
+
+    :param predictor_matrix_3d: numpy array (E x T_model x S) of predictors.
+    :param num_lagged_predictors: P_lagged in the above discussion.
+    :param num_builtin_lag_times: T_lagged in the above discussion.
+    :param num_forecast_predictors: P_fcst in the above discussion.
+    :param num_forecast_hours: T_fcst in the above discussion.
+    :return: lagged_predictor_matrix_4d: numpy array
+        (E x T_model x T_lagged x P_lagged) of lagged SHIPS predictors.
+    :return: forecast_predictor_matrix_4d: numpy array
+        (E x T_model x T_fcst x P_fcst) of forecast SHIPS predictors.
+    """
+
+    error_checking.assert_is_numpy_array(predictor_matrix_3d, num_dimensions=3)
+    error_checking.assert_is_numpy_array_without_nan(predictor_matrix_3d)
+    error_checking.assert_is_integer(num_lagged_predictors)
+    error_checking.assert_is_greater(num_lagged_predictors, 0)
+    error_checking.assert_is_integer(num_builtin_lag_times)
+    error_checking.assert_is_greater(num_builtin_lag_times, 0)
+    error_checking.assert_is_integer(num_forecast_predictors)
+    error_checking.assert_is_greater(num_forecast_predictors, 0)
+    error_checking.assert_is_integer(num_forecast_hours)
+    error_checking.assert_is_greater(num_forecast_hours, 0)
+
+    num_scalar_predictors = (
+        num_lagged_predictors * num_builtin_lag_times +
+        num_forecast_predictors * num_forecast_hours
+    )
+    assert num_scalar_predictors == predictor_matrix_3d.shape[2]
+
+    num_examples = predictor_matrix_3d.shape[0]
+    num_model_lag_times = predictor_matrix_3d.shape[1]
+
+    lagged_predictor_matrix_3d = predictor_matrix_3d[
+        ..., :(-num_forecast_predictors * num_forecast_hours)
+    ]
+    these_dimensions = (
+        num_examples, num_model_lag_times, num_lagged_predictors,
+        num_builtin_lag_times
+    )
+    lagged_predictor_matrix_4d = numpy.reshape(
+        lagged_predictor_matrix_3d, these_dimensions
+    )
+    lagged_predictor_matrix_4d = numpy.swapaxes(
+        lagged_predictor_matrix_4d, 2, 3
+    )
+
+    forecast_predictor_matrix_3d = predictor_matrix_3d[
+        ..., (-num_forecast_predictors * num_forecast_hours):
+    ]
+    these_dimensions = (
+        num_examples, num_model_lag_times, num_forecast_predictors,
+        num_forecast_hours
+    )
+    forecast_predictor_matrix_4d = numpy.reshape(
+        forecast_predictor_matrix_3d, these_dimensions
+    )
+    forecast_predictor_matrix_4d = numpy.swapaxes(
+        forecast_predictor_matrix_4d, 2, 3
+    )
+
+    return lagged_predictor_matrix_4d, forecast_predictor_matrix_4d
+
+
+def ships_predictors_4d_to_3d(lagged_predictor_matrix_4d,
+                              forecast_predictor_matrix_4d):
+    """Converts SHIPS predictors from 4-D to 3-D matrices.
+
+    This method is the inverse of `ships_predictors_3d_to_4d`.
+
+    :param lagged_predictor_matrix_4d: See doc for `ships_predictors_3d_to_4d`.
+    :param forecast_predictor_matrix_4d: Same.
+    :return: predictor_matrix_3d: Same.
+    """
+
+    error_checking.assert_is_numpy_array(
+        lagged_predictor_matrix_4d, num_dimensions=4
+    )
+    error_checking.assert_is_numpy_array_without_nan(lagged_predictor_matrix_4d)
+
+    num_examples = lagged_predictor_matrix_4d.shape[0]
+    num_model_lag_times = lagged_predictor_matrix_4d.shape[1]
+    expected_dim = numpy.array(
+        (num_examples, num_model_lag_times) +
+        forecast_predictor_matrix_4d.shape[2:], dtype=int
+    )
+
+    error_checking.assert_is_numpy_array(
+        forecast_predictor_matrix_4d, exact_dimensions=expected_dim
+    )
+    error_checking.assert_is_numpy_array_without_nan(
+        forecast_predictor_matrix_4d
+    )
+
+    these_dimensions = (
+        num_examples, num_model_lag_times,
+        lagged_predictor_matrix_4d[0, 0, ...].size
+    )
+    lagged_predictor_matrix_3d = numpy.reshape(
+        numpy.swapaxes(lagged_predictor_matrix_4d, 2, 3), these_dimensions
+    )
+
+    these_dimensions = (
+        num_examples, num_model_lag_times,
+        forecast_predictor_matrix_4d[0, 0, ...].size
+    )
+    forecast_predictor_matrix_3d = numpy.reshape(
+        numpy.swapaxes(forecast_predictor_matrix_4d, 2, 3), these_dimensions
+    )
+
+    return numpy.concatenate(
+        (lagged_predictor_matrix_3d, forecast_predictor_matrix_3d), axis=-1
+    )
 
 
 def create_inputs(option_dict):

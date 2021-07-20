@@ -513,14 +513,21 @@ def _plot_lagged_ships_predictors(
     )
     num_model_lag_times = len(model_lag_times_sec)
 
-    predictor_names = (
+    lagged_predictor_names = (
         validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
     )
     builtin_lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    num_predictors = len(predictor_names)
+    num_forecast_predictors = len(
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+    )
+    num_forecast_hours = len(
+        xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
+    )
+
+    num_lagged_predictors = len(lagged_predictor_names)
     num_builtin_lag_times = len(builtin_lag_times_hours)
-    predictor_indices = numpy.linspace(
-        0, num_predictors - 1, num=num_predictors, dtype=int
+    lagged_predictor_indices = numpy.linspace(
+        0, num_lagged_predictors - 1, num=num_lagged_predictors, dtype=int
     )
 
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
@@ -537,17 +544,22 @@ def _plot_lagged_ships_predictors(
                 example_utils.SHIPS_LAG_TIME_DIM: builtin_lag_times_hours,
                 example_utils.SHIPS_VALID_TIME_DIM:
                     numpy.array([valid_time_unix_sec], dtype=int),
-                example_utils.SHIPS_PREDICTOR_LAGGED_DIM: predictor_names
+                example_utils.SHIPS_PREDICTOR_LAGGED_DIM: lagged_predictor_names
             }
 
-            predictor_matrix = predictor_matrices[2][
-                i, j, :(num_predictors * num_builtin_lag_times)
-            ]
-            predictor_matrix = numpy.reshape(
-                predictor_matrix, (num_builtin_lag_times, num_predictors),
-                order='F'
-            )
+            predictor_matrix = predictor_matrices[2][i, j, :]
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+
+            predictor_matrix = neural_net.ships_predictors_3d_to_4d(
+                predictor_matrix_3d=predictor_matrix,
+                num_lagged_predictors=num_lagged_predictors,
+                num_builtin_lag_times=num_builtin_lag_times,
+                num_forecast_predictors=num_forecast_predictors,
+                num_forecast_hours=num_forecast_hours
+            )[0]
+
+            predictor_matrix = predictor_matrix[:, 0, ...]
 
             these_dim_3d = (
                 example_utils.SHIPS_VALID_TIME_DIM,
@@ -570,7 +582,7 @@ def _plot_lagged_ships_predictors(
             panel_file_names[j] = (
                 plot_ships.plot_lagged_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
-                    predictor_indices=predictor_indices,
+                    predictor_indices=lagged_predictor_indices,
                     output_dir_name=output_dir_name,
                     info_string=(
                         info_strings[i] if model_lag_times_sec[j] == 0 else None
@@ -621,14 +633,21 @@ def _plot_forecast_ships_predictors(
     )
     num_model_lag_times = len(model_lag_times_sec)
 
-    predictor_names = (
+    num_lagged_predictors = len(
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+    )
+    num_builtin_lag_times = len(
+        xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
+    )
+    forecast_predictor_names = (
         validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
     )
     forecast_hours = xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
-    num_predictors = len(predictor_names)
+
+    num_forecast_predictors = len(forecast_predictor_names)
     num_forecast_hours = len(forecast_hours)
-    predictor_indices = numpy.linspace(
-        0, num_predictors - 1, num=num_predictors, dtype=int
+    forecast_predictor_indices = numpy.linspace(
+        0, num_forecast_predictors - 1, num=num_forecast_predictors, dtype=int
     )
 
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
@@ -646,17 +665,22 @@ def _plot_forecast_ships_predictors(
                 example_utils.SHIPS_VALID_TIME_DIM:
                     numpy.array([valid_time_unix_sec], dtype=int),
                 example_utils.SHIPS_PREDICTOR_FORECAST_DIM:
-                    predictor_names
+                    forecast_predictor_names
             }
 
-            predictor_matrix = predictor_matrices[2][
-                i, j, (-num_predictors * num_forecast_hours):
-            ]
-            predictor_matrix = numpy.reshape(
-                predictor_matrix, (num_forecast_hours, num_predictors),
-                order='F'
-            )
+            predictor_matrix = predictor_matrices[2][i, j, :]
             predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
+
+            predictor_matrix = neural_net.ships_predictors_3d_to_4d(
+                predictor_matrix_3d=predictor_matrix,
+                num_lagged_predictors=num_lagged_predictors,
+                num_builtin_lag_times=num_builtin_lag_times,
+                num_forecast_predictors=num_forecast_predictors,
+                num_forecast_hours=num_forecast_hours
+            )[1]
+
+            predictor_matrix = predictor_matrix[:, 0, ...]
 
             these_dim_3d = (
                 example_utils.SHIPS_VALID_TIME_DIM,
@@ -679,7 +703,7 @@ def _plot_forecast_ships_predictors(
             panel_file_names[j] = (
                 plot_ships.plot_fcst_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
-                    predictor_indices=predictor_indices,
+                    predictor_indices=forecast_predictor_indices,
                     output_dir_name=output_dir_name,
                     info_string=(
                         info_strings[i] if model_lag_times_sec[j] == 0 else None
