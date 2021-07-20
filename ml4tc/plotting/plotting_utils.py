@@ -48,9 +48,9 @@ def plot_grid_lines(
     error_checking.assert_is_numpy_array(
         plot_longitudes_deg_e, num_dimensions=1
     )
-    # plot_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-    #     plot_longitudes_deg_e, allow_nan=False
-    # )
+    plot_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        plot_longitudes_deg_e, allow_nan=False
+    )
 
     error_checking.assert_is_greater(parallel_spacing_deg, 0.)
     error_checking.assert_is_greater(meridian_spacing_deg, 0.)
@@ -147,9 +147,9 @@ def plot_borders(
     error_checking.assert_is_numpy_array(
         border_longitudes_deg_e, exact_dimensions=expected_dim
     )
-    # border_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-    #     border_longitudes_deg_e, allow_nan=True
-    # )
+    border_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        border_longitudes_deg_e, allow_nan=True
+    )
 
     axes_object.plot(
         border_longitudes_deg_e, border_latitudes_deg_n, color=line_colour,

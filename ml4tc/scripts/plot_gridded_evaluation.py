@@ -22,10 +22,10 @@ DUMMY_FIELD_NAME = 'reflectivity_column_max_dbz'
 MAX_COLOUR_PERCENTILE = 100.
 
 FIGURE_RESOLUTION_DPI = 300
-FIGURE_WIDTH_INCHES = 15
-FIGURE_HEIGHT_INCHES = 15
+FIGURE_WIDTH_INCHES = 20
+FIGURE_HEIGHT_INCHES = 11.25
 
-FONT_SIZE = 50
+FONT_SIZE = 40
 pyplot.rc('font', size=FONT_SIZE)
 pyplot.rc('axes', titlesize=FONT_SIZE)
 pyplot.rc('axes', labelsize=FONT_SIZE)
