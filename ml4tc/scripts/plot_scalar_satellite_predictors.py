@@ -10,31 +10,11 @@ from gewittergefahr.gg_utils import file_system_utils
 from ml4tc.io import example_io
 from ml4tc.utils import general_utils
 from ml4tc.utils import example_utils
-from ml4tc.utils import satellite_utils
 from ml4tc.machine_learning import neural_net
+from ml4tc.plotting import scalar_satellite_plotting
 
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
-MIN_NORMALIZED_VALUE = -3.
-MAX_NORMALIZED_VALUE = 3.
-
-BAR_FACE_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
-BAR_EDGE_COLOUR = numpy.full(3, 0.)
-BAR_FONT_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
-BAR_EDGE_WIDTH = 2.
-BAR_FONT_SIZE = 20
-
 FIGURE_RESOLUTION_DPI = 300
-FIGURE_WIDTH_INCHES = 15
-FIGURE_HEIGHT_INCHES = 15
-
-DEFAULT_FONT_SIZE = 20
-pyplot.rc('font', size=DEFAULT_FONT_SIZE)
-pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
-pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
-pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 EXAMPLE_FILE_ARG_NAME = 'input_norm_example_file_name'
 PREDICTORS_ARG_NAME = 'predictor_names'
@@ -92,88 +72,6 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def plot_predictors_one_time(
-        example_table_xarray, time_index, predictor_indices, output_dir_name,
-        info_string=None):
-    """Plots scalar satellite-based predictors for one valid time.
-
-    :param example_table_xarray: xarray table in format returned by
-        `example_io.read_file`.
-    :param time_index: Index of valid time to plot.
-    :param predictor_indices: 1-D numpy array with indices of predictors to
-        plot.
-    :param output_dir_name: Name of output directory.  Image will be saved here.
-    :param info_string: Info string (to be appended to title).
-    :return: output_file_name: Path to output file, where image was saved.
-    """
-
-    xt = example_table_xarray
-    predictor_values = (
-        xt[example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY].values[
-            time_index, predictor_indices
-        ]
-    )
-
-    num_predictors = len(predictor_values)
-    y_coords = numpy.linspace(
-        0, num_predictors - 1, num=num_predictors, dtype=float
-    )
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    axes_object.barh(
-        y_coords, predictor_values, color=BAR_FACE_COLOUR,
-        edgecolor=BAR_EDGE_COLOUR, linewidth=BAR_EDGE_WIDTH
-    )
-
-    pyplot.yticks([], [])
-    axes_object.set_xlim(MIN_NORMALIZED_VALUE, MAX_NORMALIZED_VALUE)
-
-    predictor_names = xt.coords[
-        example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
-    ].values[predictor_indices].tolist()
-
-    for j in range(num_predictors):
-        axes_object.text(
-            0, y_coords[j], predictor_names[j], color=BAR_FONT_COLOUR,
-            horizontalalignment='center', verticalalignment='center',
-            fontsize=BAR_FONT_SIZE, fontweight='bold'
-        )
-
-    valid_time_unix_sec = (
-        xt.coords[example_utils.SATELLITE_TIME_DIM].values[time_index]
-    )
-    valid_time_string = time_conversion.unix_sec_to_string(
-        valid_time_unix_sec, TIME_FORMAT
-    )
-    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[time_index]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    title_string = 'Satellite for {0:s} at {1:s}'.format(
-        cyclone_id_string, valid_time_string
-    )
-    if info_string is not None:
-        title_string += '; {0:s}'.format(info_string)
-
-    axes_object.set_title(title_string)
-
-    output_file_name = '{0:s}/scalar_satellite_{1:s}_{2:s}.jpg'.format(
-        output_dir_name, cyclone_id_string, valid_time_string
-    )
-    file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
-
-    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
-    figure_object.savefig(
-        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    return output_file_name
-
-
 def _run(norm_example_file_name, predictor_names, valid_time_strings,
          first_time_string, last_time_string, output_dir_name):
     """Plots normalized values of scalar satellite-based predictors.
@@ -187,6 +85,10 @@ def _run(norm_example_file_name, predictor_names, valid_time_strings,
     :param last_time_string: Same.
     :param output_dir_name: Same.
     """
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=output_dir_name
+    )
 
     print('Reading data from: "{0:s}"...'.format(norm_example_file_name))
     example_table_xarray = example_io.read_file(norm_example_file_name)
@@ -228,11 +130,23 @@ def _run(norm_example_file_name, predictor_names, valid_time_strings,
         )
 
     for i in time_indices:
-        plot_predictors_one_time(
-            example_table_xarray=example_table_xarray,
-            time_index=i, predictor_indices=predictor_indices,
-            output_dir_name=output_dir_name
+        figure_object, _, pathless_output_file_name = (
+            scalar_satellite_plotting.plot_bar_graph_one_time(
+                example_table_xarray=example_table_xarray, time_index=i,
+                predictor_indices=predictor_indices
+            )
         )
+
+        output_file_name = '{0:s}/{1:s}'.format(
+            output_dir_name, pathless_output_file_name
+        )
+
+        print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+        figure_object.savefig(
+            output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_object)
 
 
 if __name__ == '__main__':

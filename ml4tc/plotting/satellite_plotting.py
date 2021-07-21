@@ -14,6 +14,9 @@ DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
 DEFAULT_CUTOFF_TEMP_KELVINS = 240.
 
+DEFAULT_SALIENCY_CMAP_OBJECT = pyplot.get_cmap('binary')
+DEFAULT_SALIENCY_CONTOUR_WIDTH = 2
+
 
 def _grid_points_to_edges(grid_point_coords):
     """Converts grid-point coordinates to grid-cell-edge coordinates.
@@ -224,4 +227,90 @@ def plot_2d_grid_regular(
         axes_object=axes_object, colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string=cbar_orientation_string, font_size=font_size
+    )
+
+
+def plot_saliency(
+        saliency_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
+        min_abs_contour_value, max_abs_contour_value, half_num_contours,
+        colour_map_object=DEFAULT_SALIENCY_CMAP_OBJECT,
+        line_width=DEFAULT_SALIENCY_CONTOUR_WIDTH):
+    """Plots saliency on 2-D grid.
+
+    M = number of rows in grid
+    N = number of columns in grid
+
+    :param saliency_matrix: M-by-N numpy array of saliency values.
+    :param axes_object: Instance of `matplotlib.axes._subplots.AxesSubplot`.
+        Will plot on these axes.
+    :param latitudes_deg_n: length-M numpy array of grid-point latitudes (deg
+        north).
+    :param longitudes_deg_e: length-N numpy array of grid-point longitudes (deg
+        east).
+    :param min_abs_contour_value: Minimum absolute saliency to plot.
+    :param max_abs_contour_value: Max absolute saliency to plot.
+    :param half_num_contours: Number of contours on either side of zero.
+    :param colour_map_object: Colour scheme (instance of
+        `matplotlib.pyplot.cm`).
+    :param line_width: Width of contour lines.
+    """
+
+    error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
+    error_checking.assert_is_valid_lat_numpy_array(latitudes_deg_n)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(latitudes_deg_n), 0.
+    )
+
+    error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
+    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e
+    )
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(longitudes_deg_e), 0.
+    )
+
+    num_rows = len(latitudes_deg_n)
+    num_columns = len(longitudes_deg_e)
+    expected_dim = numpy.array([num_rows, num_columns], dtype=int)
+
+    error_checking.assert_is_numpy_array_without_nan(saliency_matrix)
+    error_checking.assert_is_numpy_array(
+        saliency_matrix, exact_dimensions=expected_dim
+    )
+
+    if min_abs_contour_value < 0.001 or max_abs_contour_value < 0.01:
+        min_abs_contour_value = 0.001
+        max_abs_contour_value = 0.01
+
+    error_checking.assert_is_greater(
+        max_abs_contour_value, min_abs_contour_value
+    )
+    error_checking.assert_is_integer(half_num_contours)
+    error_checking.assert_is_geq(half_num_contours, 5)
+
+    latitude_matrix_deg_n, longitude_matrix_deg_e = (
+        grids.latlng_vectors_to_matrices(
+            unique_latitudes_deg=latitudes_deg_n,
+            unique_longitudes_deg=longitudes_deg_e
+        )
+    )
+
+    # Plot positive values.
+    contour_levels = numpy.linspace(
+        min_abs_contour_value, max_abs_contour_value, num=half_num_contours
+    )
+
+    axes_object.contour(
+        longitude_matrix_deg_e, latitude_matrix_deg_n, saliency_matrix,
+        contour_levels, cmap=colour_map_object,
+        vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
+        linewidths=line_width, linestyles='solid', zorder=1e6
+    )
+
+    # Plot negative values.
+    axes_object.contour(
+        longitude_matrix_deg_e, latitude_matrix_deg_n, -1 * saliency_matrix,
+        contour_levels, cmap=colour_map_object,
+        vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
+        linewidths=line_width, linestyles='dashed', zorder=1e6
     )
