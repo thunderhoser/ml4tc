@@ -1650,4 +1650,10 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
     if verbose:
         print('Have applied model to all {0:d} examples!'.format(num_examples))
 
+    if (
+            len(forecast_prob_array.shape) == 2 and
+            forecast_prob_array.shape[1] == 1
+    ):
+        forecast_prob_array = forecast_prob_array[:, 0]
+
     return forecast_prob_array

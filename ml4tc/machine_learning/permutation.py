@@ -173,12 +173,12 @@ def _permute_values(
         else:
             if permuted_value_matrix is None:
                 permuted_value_matrix = forecast_predictor_matrix_4d[
-                    ..., variable_index
+                    ..., variable_index - num_lagged_predictors
                 ][random_indices, ...]
 
-            forecast_predictor_matrix_4d[..., variable_index] = (
-                permuted_value_matrix
-            )
+            forecast_predictor_matrix_4d[
+                ..., variable_index - num_lagged_predictors
+            ] = permuted_value_matrix
     else:
         if variable_index < num_lagged_predictors:
             if permuted_value_matrix is None:
@@ -192,11 +192,13 @@ def _permute_values(
         else:
             if permuted_value_matrix is None:
                 permuted_value_matrix = forecast_predictor_matrix_4d[
-                    :, model_lag_time_index, :, variable_index
+                    :, model_lag_time_index, :,
+                    variable_index - num_lagged_predictors
                 ][random_indices, ...]
 
             forecast_predictor_matrix_4d[
-                :, model_lag_time_index, :, variable_index
+                :, model_lag_time_index, :,
+                variable_index - num_lagged_predictors
             ] = permuted_value_matrix
 
     predictor_matrix = neural_net.ships_predictors_4d_to_3d(
@@ -272,8 +274,12 @@ def _depermute_values(
                 clean_lagged_predictor_matrix_4d[..., variable_index]
             )
         else:
-            forecast_predictor_matrix_4d[..., variable_index] = (
-                clean_forecast_predictor_matrix_4d[..., variable_index]
+            forecast_predictor_matrix_4d[
+                ..., variable_index - num_lagged_predictors
+            ] = (
+                clean_forecast_predictor_matrix_4d[
+                    ..., variable_index - num_lagged_predictors
+                ]
             )
     else:
         i = model_lag_time_index
@@ -284,8 +290,10 @@ def _depermute_values(
                 clean_lagged_predictor_matrix_4d[:, i, :, j]
             )
         else:
-            forecast_predictor_matrix_4d[:, i, :, j] = (
-                clean_forecast_predictor_matrix_4d[:, i, :, j]
+            forecast_predictor_matrix_4d[:, i, :, j - num_lagged_predictors] = (
+                clean_forecast_predictor_matrix_4d[
+                    :, i, :, j - num_lagged_predictors
+                ]
             )
 
     predictor_matrix = neural_net.ships_predictors_4d_to_3d(
@@ -389,7 +397,7 @@ def _predictor_indices_to_metadata(model_metadata_dict, one_step_result_dict):
         matrix_indices = one_step_result_dict[DEPERMUTED_MATRICES_KEY]
         variable_indices = one_step_result_dict[DEPERMUTED_VARIABLES_KEY]
 
-    predictor_names = ['']
+    predictor_names = []
     for i, j in zip(matrix_indices, variable_indices):
         predictor_names.append(predictor_names_by_matrix[i][j])
 
