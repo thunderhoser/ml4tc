@@ -4,10 +4,8 @@ import os
 import sys
 import argparse
 import numpy
-from PIL import Image
 import matplotlib
 matplotlib.use('agg')
-import matplotlib.colors
 from matplotlib import pyplot
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -17,37 +15,15 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import time_conversion
 import file_system_utils
-import gg_plotting_utils
-import imagemagick_utils
 import example_io
-import ships_io
 import general_utils
 import example_utils
 import neural_net
+import plotting_utils
+import ships_plotting
 
-SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
-
-DEFAULT_FONT_SIZE = 20
-FORECAST_HOUR_FONT_SIZE = 7
-LAG_TIME_FONT_SIZE = 20
-PREDICTOR_FONT_SIZE = 7
-
-pyplot.rc('font', size=DEFAULT_FONT_SIZE)
-pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
-pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
-pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
-pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
-
-MIN_COLOUR_VALUE = -3.
-MAX_COLOUR_VALUE = 3.
-COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
-
-FIGURE_RESOLUTION_DPI = 600
-FIGURE_WIDTH_INCHES = 15
-FIGURE_HEIGHT_INCHES = 15
+FIGURE_RESOLUTION_DPI = 300
 
 EXAMPLE_FILE_ARG_NAME = 'input_norm_example_file_name'
 FORECAST_PREDICTORS_ARG_NAME = 'forecast_predictor_names'
@@ -116,262 +92,6 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _add_colour_bar(figure_file_name, colour_bar_file_name):
-    """Adds colour bar to saved image file.
-
-    :param figure_file_name: Path to saved image file.  Colour bar will be added
-        to this image.
-    :param colour_bar_file_name: Path to output file.  Image with colour bar
-        will be saved here.
-    """
-
-    this_image_matrix = Image.open(figure_file_name)
-    figure_width_px, figure_height_px = this_image_matrix.size
-    figure_width_inches = float(figure_width_px) / FIGURE_RESOLUTION_DPI
-    figure_height_inches = float(figure_height_px) / FIGURE_RESOLUTION_DPI
-
-    extra_figure_object, extra_axes_object = pyplot.subplots(
-        1, 1, figsize=(figure_width_inches, figure_height_inches)
-    )
-    extra_axes_object.axis('off')
-
-    colour_norm_object = matplotlib.colors.Normalize(
-        vmin=MIN_COLOUR_VALUE, vmax=MAX_COLOUR_VALUE, clip=False
-    )
-    dummy_values = numpy.array([MIN_COLOUR_VALUE, MAX_COLOUR_VALUE])
-
-    colour_bar_object = gg_plotting_utils.plot_colour_bar(
-        axes_object_or_matrix=extra_axes_object, data_matrix=dummy_values,
-        colour_map_object=COLOUR_MAP_OBJECT,
-        colour_norm_object=colour_norm_object,
-        orientation_string='vertical', extend_min=False, extend_max=False,
-        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
-    )
-
-    tick_values = colour_bar_object.get_ticks()
-    tick_strings = ['{0:.1f}'.format(v) for v in tick_values]
-    colour_bar_object.set_ticks(tick_values)
-    colour_bar_object.set_ticklabels(tick_strings)
-
-    extra_figure_object.savefig(
-        colour_bar_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(extra_figure_object)
-
-    print('Concatenating colour bar to: "{0:s}"...'.format(figure_file_name))
-
-    imagemagick_utils.concatenate_images(
-        input_file_names=[figure_file_name, colour_bar_file_name],
-        output_file_name=figure_file_name,
-        num_panel_rows=1, num_panel_columns=2,
-        extra_args_string='-gravity Center'
-    )
-
-    os.remove(colour_bar_file_name)
-    imagemagick_utils.trim_whitespace(
-        input_file_name=figure_file_name, output_file_name=figure_file_name
-    )
-
-
-def plot_fcst_predictors_one_init_time(
-        example_table_xarray, init_time_index, predictor_indices,
-        output_dir_name, info_string=None):
-    """Plots forecast predictors for one initialization time.
-
-    :param example_table_xarray: See doc for
-        `plot_lagged_predictors_one_init_time`.
-    :param init_time_index: Same.
-    :param predictor_indices: Same.
-    :param output_dir_name: Same.
-    :param info_string: Same.
-    :return: output_file_name: Path to output file, where image was saved.
-    """
-
-    xt = example_table_xarray
-
-    forecast_times_hours = numpy.round(
-        xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
-    ).astype(int)
-
-    predictor_matrix = numpy.transpose(
-        xt[example_utils.SHIPS_PREDICTORS_FORECAST_KEY].values[
-            init_time_index, :, predictor_indices
-        ]
-    )
-    predictor_matrix = predictor_matrix.astype(float)
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    colour_norm_object = pyplot.Normalize(
-        vmin=MIN_COLOUR_VALUE, vmax=MAX_COLOUR_VALUE
-    )
-    axes_object.imshow(
-        predictor_matrix, cmap=COLOUR_MAP_OBJECT, origin='lower',
-        norm=colour_norm_object
-    )
-
-    y_tick_values = numpy.linspace(
-        0, predictor_matrix.shape[0] - 1, num=predictor_matrix.shape[0],
-        dtype=float
-    )
-    y_tick_labels = ['{0:d}'.format(t) for t in forecast_times_hours]
-    pyplot.yticks(
-        y_tick_values, y_tick_labels, fontsize=FORECAST_HOUR_FONT_SIZE
-    )
-    axes_object.set_ylabel('Forecast time (hours)')
-
-    x_tick_values = numpy.linspace(
-        0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
-        dtype=float
-    )
-    x_tick_labels = (
-        xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[
-            predictor_indices
-        ].tolist()
-    )
-    pyplot.xticks(
-        x_tick_values, x_tick_labels, rotation=90., fontsize=PREDICTOR_FONT_SIZE
-    )
-
-    init_time_unix_sec = (
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values[init_time_index]
-    )
-    init_time_string = time_conversion.unix_sec_to_string(
-        init_time_unix_sec, TIME_FORMAT
-    )
-    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    title_string = 'SHIPS for {0:s} at {1:s}'.format(
-        cyclone_id_string, init_time_string
-    )
-    if info_string is not None:
-        title_string += '; {0:s}'.format(info_string)
-
-    axes_object.set_title(title_string)
-
-    extensionless_file_name = '{0:s}/ships_{1:s}_{2:s}_forecast'.format(
-        output_dir_name, cyclone_id_string, init_time_string
-    )
-    figure_file_name = '{0:s}.jpg'.format(extensionless_file_name)
-    colour_bar_file_name = '{0:s}_cbar.jpg'.format(extensionless_file_name)
-    file_system_utils.mkdir_recursive_if_necessary(file_name=figure_file_name)
-
-    print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
-    figure_object.savefig(
-        figure_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    _add_colour_bar(
-        figure_file_name=figure_file_name,
-        colour_bar_file_name=colour_bar_file_name
-    )
-
-    return figure_file_name
-
-
-def plot_lagged_predictors_one_init_time(
-        example_table_xarray, init_time_index, predictor_indices,
-        output_dir_name, info_string=None):
-    """Plots lagged predictors for one initialization time.
-
-    :param example_table_xarray: xarray table in format returned by
-        `example_io.read_file`.
-    :param init_time_index: Index of initial time to plot.
-    :param predictor_indices: 1-D numpy array with indices of predictors to
-        plot.
-    :param output_dir_name: Name of output directory.  Image will be saved here.
-    :param info_string: Info string (to be appended to title).
-    :return: output_file_name: Path to output file, where image was saved.
-    """
-
-    xt = example_table_xarray
-
-    lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    predictor_matrix = numpy.transpose(
-        xt[example_utils.SHIPS_PREDICTORS_LAGGED_KEY].values[
-            init_time_index, :, predictor_indices
-        ]
-    )
-    predictor_matrix = predictor_matrix.astype(float)
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    colour_norm_object = pyplot.Normalize(
-        vmin=MIN_COLOUR_VALUE, vmax=MAX_COLOUR_VALUE
-    )
-    axes_object.imshow(
-        predictor_matrix, cmap=COLOUR_MAP_OBJECT, origin='lower',
-        norm=colour_norm_object
-    )
-
-    y_tick_values = numpy.linspace(
-        0, predictor_matrix.shape[0] - 1, num=predictor_matrix.shape[0],
-        dtype=float
-    )
-    y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
-    pyplot.yticks(y_tick_values, y_tick_labels, fontsize=LAG_TIME_FONT_SIZE)
-    axes_object.set_ylabel('Lag time (hours)')
-
-    x_tick_values = numpy.linspace(
-        0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
-        dtype=float
-    )
-    x_tick_labels = (
-        xt.coords[example_utils.SHIPS_PREDICTOR_LAGGED_DIM].values[
-            predictor_indices
-        ].tolist()
-    )
-    pyplot.xticks(
-        x_tick_values, x_tick_labels, rotation=90., fontsize=PREDICTOR_FONT_SIZE
-    )
-
-    init_time_unix_sec = (
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values[init_time_index]
-    )
-    init_time_string = time_conversion.unix_sec_to_string(
-        init_time_unix_sec, TIME_FORMAT
-    )
-    cyclone_id_string = xt[ships_io.CYCLONE_ID_KEY].values[init_time_index]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    title_string = 'SHIPS for {0:s} at {1:s}'.format(
-        cyclone_id_string, init_time_string
-    )
-    if info_string is not None:
-        title_string += '; {0:s}'.format(info_string)
-
-    axes_object.set_title(title_string)
-
-    extensionless_file_name = '{0:s}/ships_{1:s}_{2:s}_lagged'.format(
-        output_dir_name, cyclone_id_string, init_time_string
-    )
-    figure_file_name = '{0:s}.jpg'.format(extensionless_file_name)
-    colour_bar_file_name = '{0:s}_cbar.jpg'.format(extensionless_file_name)
-    file_system_utils.mkdir_recursive_if_necessary(file_name=figure_file_name)
-
-    print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
-    figure_object.savefig(
-        figure_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    _add_colour_bar(
-        figure_file_name=figure_file_name,
-        colour_bar_file_name=colour_bar_file_name
-    )
-
-    return figure_file_name
-
-
 def _run(norm_example_file_name, forecast_predictor_names,
          lagged_predictor_names, init_time_strings, first_init_time_string,
          last_init_time_string, output_dir_name):
@@ -388,6 +108,10 @@ def _run(norm_example_file_name, forecast_predictor_names,
     :param output_dir_name: Same.
     :raises: ValueError: if desired init times cannot be found.
     """
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=output_dir_name
+    )
 
     print('Reading data from: "{0:s}"...'.format(norm_example_file_name))
     example_table_xarray = example_io.read_file(norm_example_file_name)
@@ -439,17 +163,78 @@ def _run(norm_example_file_name, forecast_predictor_names,
             desired_times_unix_sec=init_times_unix_sec
         )
 
+    colour_norm_object = pyplot.Normalize(
+        vmin=ships_plotting.MIN_NORMALIZED_VALUE,
+        vmax=ships_plotting.MAX_NORMALIZED_VALUE
+    )
+
     for i in time_indices:
-        plot_lagged_predictors_one_init_time(
-            example_table_xarray=example_table_xarray,
-            init_time_index=i, predictor_indices=lagged_predictor_indices,
-            output_dir_name=output_dir_name
+        figure_object, _, pathless_file_name = (
+            ships_plotting.plot_lagged_predictors_one_init_time(
+                example_table_xarray=example_table_xarray, init_time_index=i,
+                predictor_indices=lagged_predictor_indices
+            )
         )
 
-        plot_fcst_predictors_one_init_time(
-            example_table_xarray=example_table_xarray,
-            init_time_index=i, predictor_indices=forecast_predictor_indices,
-            output_dir_name=output_dir_name
+        extensionless_file_name = '.'.join(
+            pathless_file_name.split('.')[:-1]
+        )
+        figure_file_name = '{0:s}/{1:s}.jpg'.format(
+            output_dir_name, extensionless_file_name
+        )
+        colour_bar_file_name = '{0:s}/{1:s}_cbar.jpg'.format(
+            output_dir_name, extensionless_file_name
+        )
+
+        print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
+        figure_object.savefig(
+            figure_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_object)
+
+        plotting_utils.add_colour_bar(
+            figure_file_name=figure_file_name,
+            temporary_cbar_file_name=colour_bar_file_name,
+            colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+            colour_norm_object=colour_norm_object,
+            orientation_string='vertical',
+            font_size=ships_plotting.DEFAULT_FONT_SIZE,
+            cbar_label_string=''
+        )
+
+        figure_object, _, pathless_file_name = (
+            ships_plotting.plot_fcst_predictors_one_init_time(
+                example_table_xarray=example_table_xarray, init_time_index=i,
+                predictor_indices=forecast_predictor_indices
+            )
+        )
+
+        extensionless_file_name = '.'.join(
+            pathless_file_name.split('.')[:-1]
+        )
+        figure_file_name = '{0:s}/{1:s}.jpg'.format(
+            output_dir_name, extensionless_file_name
+        )
+        colour_bar_file_name = '{0:s}/{1:s}_cbar.jpg'.format(
+            output_dir_name, extensionless_file_name
+        )
+
+        print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
+        figure_object.savefig(
+            figure_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_object)
+
+        plotting_utils.add_colour_bar(
+            figure_file_name=figure_file_name,
+            temporary_cbar_file_name=colour_bar_file_name,
+            colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+            colour_norm_object=colour_norm_object,
+            orientation_string='vertical',
+            font_size=ships_plotting.DEFAULT_FONT_SIZE,
+            cbar_label_string=''
         )
 
 

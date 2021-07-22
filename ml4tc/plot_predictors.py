@@ -6,6 +6,9 @@ import shutil
 import argparse
 import numpy
 import xarray
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -24,9 +27,9 @@ import satellite_utils
 import general_utils
 import normalization
 import neural_net
+import scalar_satellite_plotting
+import ships_plotting
 import plot_satellite
-import plot_scalar_satellite_predictors as plot_scalar_satellite
-import plot_ships_predictors as plot_ships
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -35,6 +38,7 @@ MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 METRES_PER_SECOND_TO_KT = 3.6 / 1.852
 
+FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
@@ -465,16 +469,28 @@ def _plot_scalar_satellite_predictors(
             this_table_xarray = xarray.Dataset(
                 data_vars=main_data_dict, coords=metadata_dict
             )
-            panel_file_names[j] = (
-                plot_scalar_satellite.plot_predictors_one_time(
+            figure_object, _, pathless_output_file_name = (
+                scalar_satellite_plotting.plot_bar_graph_one_time(
                     example_table_xarray=this_table_xarray, time_index=0,
                     predictor_indices=predictor_indices,
-                    output_dir_name=output_dir_name,
                     info_string=(
                         info_strings[i] if lag_times_sec[j] == 0 else None
                     )
                 )
             )
+
+            panel_file_names[j] = '{0:s}/{1:s}'.format(
+                output_dir_name, pathless_output_file_name
+            )
+            print('Saving figure to file: "{0:s}"...'.format(
+                panel_file_names[j]
+            ))
+            figure_object.savefig(
+                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
+                pad_inches=0, bbox_inches='tight'
+            )
+            pyplot.close(figure_object)
+
             imagemagick_utils.resize_image(
                 input_file_name=panel_file_names[j],
                 output_file_name=panel_file_names[j],
@@ -585,16 +601,28 @@ def _plot_lagged_ships_predictors(
             this_table_xarray = xarray.Dataset(
                 data_vars=main_data_dict, coords=metadata_dict
             )
-            panel_file_names[j] = (
-                plot_ships.plot_lagged_predictors_one_init_time(
+            figure_object, _, pathless_output_file_name = (
+                ships_plotting.plot_lagged_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
                     predictor_indices=lagged_predictor_indices,
-                    output_dir_name=output_dir_name,
                     info_string=(
                         info_strings[i] if model_lag_times_sec[j] == 0 else None
                     )
                 )
             )
+
+            panel_file_names[j] = '{0:s}/{1:s}'.format(
+                output_dir_name, pathless_output_file_name
+            )
+            print('Saving figure to file: "{0:s}"...'.format(
+                panel_file_names[j]
+            ))
+            figure_object.savefig(
+                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
+                pad_inches=0, bbox_inches='tight'
+            )
+            pyplot.close(figure_object)
+
             imagemagick_utils.resize_image(
                 input_file_name=panel_file_names[j],
                 output_file_name=panel_file_names[j],
@@ -706,16 +734,28 @@ def _plot_forecast_ships_predictors(
             this_table_xarray = xarray.Dataset(
                 data_vars=main_data_dict, coords=metadata_dict
             )
-            panel_file_names[j] = (
-                plot_ships.plot_fcst_predictors_one_init_time(
+            figure_object, _, pathless_output_file_name = (
+                ships_plotting.plot_fcst_predictors_one_init_time(
                     example_table_xarray=this_table_xarray, init_time_index=0,
                     predictor_indices=forecast_predictor_indices,
-                    output_dir_name=output_dir_name,
                     info_string=(
                         info_strings[i] if model_lag_times_sec[j] == 0 else None
                     )
                 )
             )
+
+            panel_file_names[j] = '{0:s}/{1:s}'.format(
+                output_dir_name, pathless_output_file_name
+            )
+            print('Saving figure to file: "{0:s}"...'.format(
+                panel_file_names[j]
+            ))
+            figure_object.savefig(
+                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
+                pad_inches=0, bbox_inches='tight'
+            )
+            pyplot.close(figure_object)
+
             imagemagick_utils.resize_image(
                 input_file_name=panel_file_names[j],
                 output_file_name=panel_file_names[j],
