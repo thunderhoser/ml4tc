@@ -196,15 +196,19 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             layer_name=layer_name, neuron_indices=neuron_indices,
             ideal_activation=ideal_activation
         )
+        print(len(these_saliency_matrices))
         print(SEPARATOR_STRING)
 
         if saliency_matrices[0] is None:
             saliency_matrices = copy.deepcopy(these_saliency_matrices)
+            print(len(saliency_matrices))
         else:
             for j in range(len(saliency_matrices)):
                 saliency_matrices[j] = numpy.concatenate(
                     (saliency_matrices[j], these_saliency_matrices[j]), axis=0
                 )
+
+            print(len(saliency_matrices))
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
