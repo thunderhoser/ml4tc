@@ -442,8 +442,8 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                 pyplot.close(figure_object)
 
                 imagemagick_utils.resize_image(
-                    input_file_name=panel_file_names[j],
-                    output_file_name=panel_file_names[j],
+                    input_file_name=panel_file_names[k],
+                    output_file_name=panel_file_names[k],
                     output_size_pixels=PANEL_SIZE_PX
                 )
 
