@@ -16,6 +16,8 @@ import satellite_utils
 import neural_net
 import saliency
 
+tensorflow.compat.v1.disable_eager_execution()
+
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 MODEL_FILE_ARG_NAME = 'input_model_file_name'
