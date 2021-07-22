@@ -98,7 +98,7 @@ def get_saliency_one_neuron(
     return saliency_utils.do_saliency_calculations(
         model_object=model_object, loss_tensor=loss_tensor,
         list_of_input_matrices=predictor_matrices
-    )[0]
+    )
 
 
 def write_file(
