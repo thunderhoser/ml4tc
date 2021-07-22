@@ -387,7 +387,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
             )
             pyplot.close(figure_object)
 
-            axes_objects, pathless_output_file_names = (
+            figure_objects, axes_objects, pathless_output_file_names = (
                 _plot_lagged_ships_predictors(
                     predictor_matrices=
                     data_dict[neural_net.PREDICTOR_MATRICES_KEY],
@@ -398,7 +398,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_index=init_time_index,
                     init_time_unix_sec=
                     data_dict[neural_net.INIT_TIMES_KEY][init_time_index]
-                )[1:]
+                )
             )
 
             num_lagged_predictors = len(
@@ -435,11 +435,11 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                 print('Saving figure to file: "{0:s}"...'.format(
                     panel_file_names[k]
                 ))
-                figure_object.savefig(
+                figure_objects[k].savefig(
                     panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
                     pad_inches=0, bbox_inches='tight'
                 )
-                pyplot.close(figure_object)
+                pyplot.close(figure_objects[k])
 
                 imagemagick_utils.resize_image(
                     input_file_name=panel_file_names[k],
