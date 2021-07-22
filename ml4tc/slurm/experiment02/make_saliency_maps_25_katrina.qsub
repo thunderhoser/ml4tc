@@ -41,7 +41,7 @@ set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer
 set model_file_name="${model_dir_name}/model.h5"
 set output_file_name="${model_dir_name}/saliency_katrina.nc"
 
-python3 -u "${CODE_DIR_NAME}/make_saliency_maps.qsub" \
+python3 -u "${CODE_DIR_NAME}/make_saliency_maps.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings "2005AL12" \
