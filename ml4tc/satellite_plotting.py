@@ -16,7 +16,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import grids
 import longitude_conversion as lng_conversion
 import error_checking
-import plotting_utils
+import gg_plotting_utils
 
 DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
@@ -125,7 +125,7 @@ def add_colour_bar(
     else:
         padding = None
 
-    colour_bar_object = plotting_utils.plot_colour_bar(
+    colour_bar_object = gg_plotting_utils.plot_colour_bar(
         axes_object_or_matrix=axes_object,
         data_matrix=brightness_temp_matrix_kelvins,
         colour_map_object=colour_map_object,

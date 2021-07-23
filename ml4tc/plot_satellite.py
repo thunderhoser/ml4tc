@@ -89,7 +89,8 @@ INPUT_ARG_PARSER.add_argument(
 
 def plot_one_satellite_image(
         satellite_table_xarray, time_index, border_latitudes_deg_n,
-        border_longitudes_deg_e, output_dir_name, info_string=None):
+        border_longitudes_deg_e, output_dir_name,
+        cbar_orientation_string='vertical', info_string=None):
     """Plots one satellite image.
 
     P = number of points in border set
@@ -99,6 +100,8 @@ def plot_one_satellite_image(
     :param time_index: Index of time to plot.
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
+    :param cbar_orientation_string: See doc for
+        `satellite_plotting.plot_2d_grid_regular`.
     :param output_dir_name: Name of output directory.  Image will be saved here.
         If you do not want to save image right away, make this None.
     :param info_string: Info string (to be appended to title).
@@ -133,7 +136,9 @@ def plot_one_satellite_image(
     satellite_plotting.plot_2d_grid_regular(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object, latitudes_deg_n=grid_latitudes_deg_n,
-        longitudes_deg_e=grid_longitudes_deg_e, font_size=DEFAULT_FONT_SIZE
+        longitudes_deg_e=grid_longitudes_deg_e,
+        cbar_orientation_string=cbar_orientation_string,
+        font_size=DEFAULT_FONT_SIZE
     )
     plotting_utils.plot_grid_lines(
         plot_latitudes_deg_n=grid_latitudes_deg_n,
@@ -232,6 +237,7 @@ def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
             satellite_table_xarray=satellite_table_xarray, time_index=i,
             border_latitudes_deg_n=border_latitudes_deg_n,
             border_longitudes_deg_e=border_longitudes_deg_e,
+            cbar_orientation_string='vertical',
             output_dir_name=output_dir_name
         )
 
