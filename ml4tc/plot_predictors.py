@@ -389,7 +389,7 @@ def _plot_brightness_temps(
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 output_dir_name=output_dir_name,
                 info_string=info_strings[i] if lag_times_sec[j] == 0 else None
-            )
+            )[-1]
             imagemagick_utils.resize_image(
                 input_file_name=panel_file_names[j],
                 output_file_name=panel_file_names[j],

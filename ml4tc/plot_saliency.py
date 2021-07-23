@@ -21,30 +21,38 @@ import error_checking
 import imagemagick_utils
 import ships_io
 import example_io
+import border_io
 import example_utils
 import satellite_utils
+import normalization
 import saliency
 import neural_net
 import plotting_utils
 import ships_plotting
+import satellite_plotting
 import scalar_satellite_plotting
+import plot_satellite
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
+MAX_COLOUR_PERCENTILE = 99.
 
 SHIPS_FORECAST_HOURS = numpy.linspace(-12, 120, num=23, dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
-MAX_COLOUR_PERCENTILE = 99.
+DEFAULT_FONT_SIZE = 20
+COLOUR_BAR_FONT_SIZE = 12
+
+BRIGHTNESS_TEMP_CMAP_OBJECT = pyplot.get_cmap('BuGn')
 SCALAR_SATELLITE_FONT_SIZE = 20
-SCALAR_SATELLITE_COLOUR_MAP_OBJECT = pyplot.get_cmap('binary')
+SCALAR_SATELLITE_CMAP_OBJECT = pyplot.get_cmap('binary')
 LAGGED_SHIPS_FONT_SIZE = 20
-LAGGED_SHIPS_COLOUR_MAP_OBJECT = pyplot.get_cmap('binary')
+LAGGED_SHIPS_CMAP_OBJECT = pyplot.get_cmap('binary')
 FORECAST_SHIPS_FONT_SIZE = 10
-FORECAST_SHIPS_COLOUR_MAP_OBJECT = pyplot.get_cmap('binary')
+FORECAST_SHIPS_CMAP_OBJECT = pyplot.get_cmap('binary')
 
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
@@ -85,6 +93,148 @@ INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
+
+
+def plot_brightness_temp(
+        predictor_matrices_one_example, model_metadata_dict,
+        cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
+        grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e,
+        border_latitudes_deg_n, border_longitudes_deg_e):
+    """Plots brightness-temperature map for each lag time at one init time.
+
+    M = number of rows in grid
+    N = number of columns in grid
+    L = number of model lag times
+    P = number of points in border set
+
+    :param predictor_matrices_one_example: See doc for
+        `plot_lagged_ships_predictors`.
+    :param model_metadata_dict: Same.
+    :param cyclone_id_string: Same.
+    :param init_time_unix_sec: Same.
+    :param normalization_table_xarray: xarray table returned by
+        `normalization.read_file`.
+    :param grid_latitude_matrix_deg_n: M-by-L numpy array of grid-point
+        latitudes (deg north).
+    :param grid_longitude_matrix_deg_e: N-by-L numpy array of grid-point
+        longitudes (deg east).
+    :param border_latitudes_deg_n: length-P numpy array of latitudes
+        (deg north).
+    :param border_longitudes_deg_e: length-P numpy array of longitudes
+        (deg east).
+    :return: figure_objects: See doc for
+        `plot_lagged_ships_predictors`.
+    :return: axes_objects: Same.
+    :return: pathless_output_file_names: Same.
+    """
+
+    # Check input args.
+    error_checking.assert_is_list(predictor_matrices_one_example)
+    for this_predictor_matrix in predictor_matrices_one_example:
+        error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
+
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_integer(init_time_unix_sec)
+
+    error_checking.assert_is_numpy_array(
+        grid_latitude_matrix_deg_n, num_dimensions=2
+    )
+
+    num_model_lag_times = grid_latitude_matrix_deg_n.shape[1]
+    expected_dim = numpy.array(
+        [grid_longitude_matrix_deg_e.shape[0], num_model_lag_times], dtype=int
+    )
+    error_checking.assert_is_numpy_array(
+        grid_longitude_matrix_deg_e, exact_dimensions=expected_dim
+    )
+
+    # Denormalize brightness temperatures.
+    nt = normalization_table_xarray
+    predictor_names_norm = list(
+        nt.coords[normalization.SATELLITE_PREDICTOR_GRIDDED_DIM].values
+    )
+
+    k = predictor_names_norm.index(satellite_utils.BRIGHTNESS_TEMPERATURE_KEY)
+    training_values = (
+        nt[normalization.SATELLITE_PREDICTORS_GRIDDED_KEY].values[:, k]
+    )
+    training_values = training_values[numpy.isfinite(training_values)]
+
+    brightness_temp_matrix_kelvins = normalization._denorm_one_variable(
+        normalized_values_new=predictor_matrices_one_example[0],
+        actual_values_training=training_values
+    )[..., 0]
+
+    # Housekeeping.
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+    model_lag_times_sec = (
+        MINUTES_TO_SECONDS *
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
+    )
+    num_model_lag_times = len(model_lag_times_sec)
+
+    num_grid_rows = brightness_temp_matrix_kelvins.shape[1]
+    num_grid_columns = brightness_temp_matrix_kelvins.shape[2]
+    grid_row_indices = numpy.linspace(
+        0, num_grid_rows - 1, num=num_grid_rows, dtype=int
+    )
+    grid_column_indices = numpy.linspace(
+        0, num_grid_columns - 1, num=num_grid_columns, dtype=int
+    )
+
+    # For each model lag time:
+    figure_objects = [None] * num_model_lag_times
+    axes_objects = [None] * num_model_lag_times
+    pathless_output_file_names = [''] * num_model_lag_times
+
+    for j in range(num_model_lag_times):
+        valid_time_unix_sec = init_time_unix_sec - model_lag_times_sec[j]
+
+        metadata_dict = {
+            satellite_utils.GRID_ROW_DIM: grid_row_indices,
+            satellite_utils.GRID_COLUMN_DIM: grid_column_indices,
+            satellite_utils.TIME_DIM:
+                numpy.array([valid_time_unix_sec], dtype=int)
+        }
+
+        dimensions = (
+            satellite_utils.TIME_DIM,
+            satellite_utils.GRID_ROW_DIM, satellite_utils.GRID_COLUMN_DIM
+        )
+        main_data_dict = {
+            satellite_utils.CYCLONE_ID_KEY: (
+                (satellite_utils.TIME_DIM,),
+                [cyclone_id_string]
+            ),
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY: (
+                dimensions,
+                brightness_temp_matrix_kelvins[[0], ..., j]
+            ),
+            satellite_utils.GRID_LATITUDE_KEY: (
+                (satellite_utils.TIME_DIM, satellite_utils.GRID_ROW_DIM),
+                numpy.transpose(grid_latitude_matrix_deg_n[:, [j]])
+            ),
+            satellite_utils.GRID_LONGITUDE_KEY: (
+                (satellite_utils.TIME_DIM, satellite_utils.GRID_COLUMN_DIM),
+                numpy.transpose(grid_longitude_matrix_deg_e[:, [j]])
+            )
+        }
+
+        example_table_xarray = xarray.Dataset(
+            data_vars=main_data_dict, coords=metadata_dict
+        )
+        figure_objects[j], axes_objects[j], pathless_output_file_names[j] = (
+            plot_satellite.plot_one_satellite_image(
+                satellite_table_xarray=example_table_xarray, time_index=0,
+                border_latitudes_deg_n=border_latitudes_deg_n,
+                border_longitudes_deg_e=border_longitudes_deg_e,
+                output_dir_name=None
+            )
+        )
+
+    return figure_objects, axes_objects, pathless_output_file_names
 
 
 def plot_scalar_satellite_predictors(
@@ -453,7 +603,7 @@ def _plot_scalar_satellite_saliency(
         data_matrix=saliency_matrices_one_example[1][0, ...],
         axes_object=axes_object,
         font_size=SCALAR_SATELLITE_FONT_SIZE,
-        colour_map_object=SCALAR_SATELLITE_COLOUR_MAP_OBJECT,
+        colour_map_object=SCALAR_SATELLITE_CMAP_OBJECT,
         max_absolute_colour_value=max_absolute_colour_value
     )
 
@@ -480,8 +630,7 @@ def _plot_scalar_satellite_saliency(
         temporary_cbar_file_name=temporary_cbar_file_name,
         colour_map_object=scalar_satellite_plotting.COLOUR_MAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=scalar_satellite_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor'
     )
 
@@ -491,10 +640,157 @@ def _plot_scalar_satellite_saliency(
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         temporary_cbar_file_name=temporary_cbar_file_name,
-        colour_map_object=SCALAR_SATELLITE_COLOUR_MAP_OBJECT,
+        colour_map_object=SCALAR_SATELLITE_CMAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=scalar_satellite_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='Absolute saliency'
+    )
+
+
+def _plot_brightness_temp_saliency(
+        data_dict, saliency_dict, model_metadata_dict,
+        cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
+        border_latitudes_deg_n, border_longitudes_deg_e, output_dir_name):
+    """Plots saliency for brightness temp for each lag time at one init time.
+
+    P = number of points in border set
+
+    :param data_dict: See doc for `_plot_scalar_satellite_saliency`.
+    :param saliency_dict: Same.
+    :param model_metadata_dict: Same.
+    :param cyclone_id_string: Same.
+    :param init_time_unix_sec: Same.
+    :param normalization_table_xarray: xarray table returned by
+        `normalization.read_file`.
+    :param border_latitudes_deg_n: length-P numpy array of latitudes
+        (deg north).
+    :param border_longitudes_deg_e: length-P numpy array of longitudes
+        (deg east).
+    :param output_dir_name: Same.
+    """
+
+    predictor_example_index = numpy.where(
+        data_dict[neural_net.INIT_TIMES_KEY] == init_time_unix_sec
+    )[0][0]
+    saliency_example_index = numpy.where(
+        saliency_dict[saliency.INIT_TIMES_KEY] == init_time_unix_sec
+    )[0][0]
+
+    predictor_matrices_one_example = [
+        p[[predictor_example_index], ...]
+        for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+    ]
+    saliency_matrices_one_example = [
+        s[[saliency_example_index], ...]
+        for s in saliency_dict[saliency.SALIENCY_KEY]
+    ]
+    grid_latitude_matrix_deg_n = data_dict[
+        neural_net.GRID_LATITUDE_MATRIX_KEY
+    ][predictor_example_index, ...]
+
+    grid_longitude_matrix_deg_e = data_dict[
+        neural_net.GRID_LONGITUDE_MATRIX_KEY
+    ][predictor_example_index, ...]
+
+    figure_objects, axes_objects, pathless_output_file_names = (
+        plot_brightness_temp(
+            predictor_matrices_one_example=predictor_matrices_one_example,
+            model_metadata_dict=model_metadata_dict,
+            cyclone_id_string=cyclone_id_string,
+            init_time_unix_sec=init_time_unix_sec,
+            grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
+            grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
+            normalization_table_xarray=normalization_table_xarray,
+            border_latitudes_deg_n=border_latitudes_deg_n,
+            border_longitudes_deg_e=border_longitudes_deg_e
+        )
+    )
+
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+    num_model_lag_times = len(
+        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    )
+
+    all_saliency_values = numpy.concatenate([
+        numpy.ravel(s) for s in saliency_matrices_one_example
+    ])
+    max_abs_contour_value = numpy.percentile(
+        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
+    )
+
+    panel_file_names = [''] * num_model_lag_times
+
+    for k in range(num_model_lag_times):
+
+        # TODO(thunderhoser): Do 0.001 thing everywhere.
+        satellite_plotting.plot_saliency(
+            saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
+            axes_object=axes_objects[k],
+            latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+            longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+            min_abs_contour_value=0.001,
+            max_abs_contour_value=max_abs_contour_value,
+            half_num_contours=10,
+            colour_map_object=BRIGHTNESS_TEMP_CMAP_OBJECT
+        )
+
+        panel_file_names[k] = '{0:s}/{1:s}'.format(
+            output_dir_name, pathless_output_file_names[k]
+        )
+        print('Saving figure to file: "{0:s}"...'.format(
+            panel_file_names[k]
+        ))
+        figure_objects[k].savefig(
+            panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_objects[k])
+
+        imagemagick_utils.resize_image(
+            input_file_name=panel_file_names[k],
+            output_file_name=panel_file_names[k],
+            output_size_pixels=PANEL_SIZE_PX
+        )
+
+    init_time_string = time_conversion.unix_sec_to_string(
+        init_time_unix_sec, TIME_FORMAT
+    )
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'.format(
+        output_dir_name, cyclone_id_string, init_time_string
+    )
+    plotting_utils.concat_panels(
+        panel_file_names=panel_file_names,
+        concat_figure_file_name=concat_figure_file_name
+    )
+
+    temporary_cbar_file_name = (
+        '{0:s}/{1:s}_{2:s}_brightness_temp_cbar.jpg'
+    ).format(
+        output_dir_name, cyclone_id_string, init_time_string
+    )
+    colour_map_object, colour_norm_object = (
+        satellite_plotting.get_colour_scheme()
+    )
+    plotting_utils.add_colour_bar(
+        figure_file_name=concat_figure_file_name,
+        temporary_cbar_file_name=temporary_cbar_file_name,
+        colour_map_object=colour_map_object,
+        colour_norm_object=colour_norm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='Brightness temp (K)'
+    )
+
+    colour_norm_object = pyplot.Normalize(
+        vmin=0.001, vmax=max_abs_contour_value
+    )
+    plotting_utils.add_colour_bar(
+        figure_file_name=concat_figure_file_name,
+        temporary_cbar_file_name=temporary_cbar_file_name,
+        colour_map_object=BRIGHTNESS_TEMP_CMAP_OBJECT,
+        colour_norm_object=colour_norm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Absolute saliency'
     )
 
@@ -574,7 +870,7 @@ def _plot_lagged_ships_saliency(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
             font_size=LAGGED_SHIPS_FONT_SIZE,
-            colour_map_object=LAGGED_SHIPS_COLOUR_MAP_OBJECT,
+            colour_map_object=LAGGED_SHIPS_CMAP_OBJECT,
             max_absolute_colour_value=max_absolute_colour_value
         )
 
@@ -596,8 +892,8 @@ def _plot_lagged_ships_saliency(
             output_size_pixels=PANEL_SIZE_PX
         )
 
-    concat_figure_file_name = '{0:s}/{1:s}_ships_lagged.jpg'.format(
-        output_dir_name,
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_lagged.jpg'.format(
+        output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
     plotting_utils.concat_panels(
@@ -605,8 +901,8 @@ def _plot_lagged_ships_saliency(
         concat_figure_file_name=concat_figure_file_name
     )
 
-    temporary_cbar_file_name = '{0:s}/{1:s}_ships_lagged_cbar.jpg'.format(
-        output_dir_name,
+    temporary_cbar_file_name = '{0:s}/{1:s}_{2:s}_ships_lagged_cbar.jpg'.format(
+        output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
     colour_norm_object = pyplot.Normalize(
@@ -618,8 +914,7 @@ def _plot_lagged_ships_saliency(
         temporary_cbar_file_name=temporary_cbar_file_name,
         colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=ships_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor'
     )
 
@@ -629,10 +924,9 @@ def _plot_lagged_ships_saliency(
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         temporary_cbar_file_name=temporary_cbar_file_name,
-        colour_map_object=LAGGED_SHIPS_COLOUR_MAP_OBJECT,
+        colour_map_object=LAGGED_SHIPS_CMAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=ships_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Absolute saliency'
     )
 
@@ -712,7 +1006,7 @@ def _plot_forecast_ships_saliency(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
             font_size=FORECAST_SHIPS_FONT_SIZE,
-            colour_map_object=FORECAST_SHIPS_COLOUR_MAP_OBJECT,
+            colour_map_object=FORECAST_SHIPS_CMAP_OBJECT,
             max_absolute_colour_value=max_absolute_colour_value
         )
 
@@ -734,8 +1028,8 @@ def _plot_forecast_ships_saliency(
             output_size_pixels=PANEL_SIZE_PX
         )
 
-    concat_figure_file_name = '{0:s}/{1:s}_ships_forecast.jpg'.format(
-        output_dir_name,
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_forecast.jpg'.format(
+        output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
     plotting_utils.concat_panels(
@@ -743,8 +1037,10 @@ def _plot_forecast_ships_saliency(
         concat_figure_file_name=concat_figure_file_name
     )
 
-    temporary_cbar_file_name = '{0:s}/{1:s}_ships_forecast_cbar.jpg'.format(
-        output_dir_name,
+    temporary_cbar_file_name = (
+        '{0:s}/{1:s}_{2:s}_ships_forecast_cbar.jpg'
+    ).format(
+        output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
     colour_norm_object = pyplot.Normalize(
@@ -756,8 +1052,7 @@ def _plot_forecast_ships_saliency(
         temporary_cbar_file_name=temporary_cbar_file_name,
         colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=ships_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor'
     )
 
@@ -767,10 +1062,9 @@ def _plot_forecast_ships_saliency(
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         temporary_cbar_file_name=temporary_cbar_file_name,
-        colour_map_object=FORECAST_SHIPS_COLOUR_MAP_OBJECT,
+        colour_map_object=FORECAST_SHIPS_CMAP_OBJECT,
         colour_norm_object=colour_norm_object,
-        orientation_string='vertical',
-        font_size=ships_plotting.DEFAULT_FONT_SIZE,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Absolute saliency'
     )
 
@@ -791,7 +1085,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         directory_name=output_dir_name
     )
 
-    # Read saliency maps and model metadata.
+    # Read files.
     print('Reading data from: "{0:s}"...'.format(saliency_file_name))
     saliency_dict = saliency.read_file(saliency_file_name)
 
@@ -805,6 +1099,13 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
     base_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
+
+    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
+    normalization_table_xarray = normalization.read_file(
+        normalization_file_name
+    )
+
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
 
     # Find example files.
     unique_cyclone_id_strings = numpy.unique(
@@ -835,6 +1136,17 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         )[0]
 
         for j in example_indices:
+            _plot_brightness_temp_saliency(
+                data_dict=data_dict, saliency_dict=saliency_dict,
+                model_metadata_dict=model_metadata_dict,
+                cyclone_id_string=unique_cyclone_id_strings[i],
+                init_time_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY][j],
+                normalization_table_xarray=normalization_table_xarray,
+                border_latitudes_deg_n=border_latitudes_deg_n,
+                border_longitudes_deg_e=border_longitudes_deg_e,
+                output_dir_name=output_dir_name
+            )
+
             _plot_scalar_satellite_saliency(
                 data_dict=data_dict, saliency_dict=saliency_dict,
                 model_metadata_dict=model_metadata_dict,

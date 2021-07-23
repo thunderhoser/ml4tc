@@ -218,7 +218,7 @@ def add_colour_bar(
     )
 
     tick_values = colour_bar_object.get_ticks()
-    tick_strings = ['{0:.1f}'.format(v) for v in tick_values]
+    tick_strings = ['{0:.2g}'.format(v) for v in tick_values]
     colour_bar_object.set_ticks(tick_values)
     colour_bar_object.set_ticklabels(tick_strings)
     colour_bar_object.set_label(cbar_label_string, fontsize=font_size)
