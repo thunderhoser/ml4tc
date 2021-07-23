@@ -94,18 +94,51 @@ def plot_brightness_temp(
         border_latitudes_deg_n, border_longitudes_deg_e):
     """Plots brightness-temperature map for each lag time at one init time.
 
+    M = number of rows in grid
+    N = number of columns in grid
+    L = number of model lag times
+    P = number of points in border set
+
     :param predictor_matrices_one_example: See doc for
         `plot_lagged_ships_predictors`.
     :param model_metadata_dict: Same.
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
-    :return: figure_objects: Same.
+    :param normalization_table_xarray: xarray table returned by
+        `normalization.read_file`.
+    :param grid_latitude_matrix_deg_n: M-by-L numpy array of grid-point
+        latitudes (deg north).
+    :param grid_longitude_matrix_deg_e: N-by-L numpy array of grid-point
+        longitudes (deg east).
+    :param border_latitudes_deg_n: length-P numpy array of latitudes
+        (deg north).
+    :param border_longitudes_deg_e: length-P numpy array of longitudes
+        (deg east).
+    :return: figure_objects: See doc for
+        `plot_lagged_ships_predictors`.
     :return: axes_objects: Same.
     :return: pathless_output_file_names: Same.
     """
 
-    # TODO(thunderhoser): Fix input doc.
-    # TODO(thunderhoser): Check input args.
+    # Check input args.
+    error_checking.assert_is_list(predictor_matrices_one_example)
+    for this_predictor_matrix in predictor_matrices_one_example:
+        error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
+
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_integer(init_time_unix_sec)
+
+    error_checking.assert_is_numpy_array(
+        grid_latitude_matrix_deg_n, num_dimensions=2
+    )
+
+    num_model_lag_times = grid_latitude_matrix_deg_n.shape[1]
+    expected_dim = numpy.array(
+        [grid_longitude_matrix_deg_e.shape[0], num_model_lag_times], dtype=int
+    )
+    error_checking.assert_is_numpy_array(
+        grid_longitude_matrix_deg_e, exact_dimensions=expected_dim
+    )
 
     # Denormalize brightness temperatures.
     nt = normalization_table_xarray
@@ -612,7 +645,7 @@ def _plot_brightness_temp_saliency(
         border_latitudes_deg_n, border_longitudes_deg_e, output_dir_name):
     """Plots saliency for brightness temp for each lag time at one init time.
 
-    P = number of points in set of borders
+    P = number of points in border set
 
     :param data_dict: See doc for `_plot_scalar_satellite_saliency`.
     :param saliency_dict: Same.
