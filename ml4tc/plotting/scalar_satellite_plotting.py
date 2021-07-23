@@ -122,7 +122,7 @@ def plot_bar_graph_one_time(
 
     axes_object.set_title(title_string)
 
-    pathless_output_file_name = 'scalar_satellite_{0:s}_{1:s}.jpg'.format(
+    pathless_output_file_name = '{0:s}_{1:s}_scalar_satellite.jpg'.format(
         cyclone_id_string, valid_time_string
     )
 
@@ -216,10 +216,10 @@ def plot_colour_map_multi_times(
 
     axes_object.set_title(title_string)
 
-    pathless_output_file_name = 'scalar_satellite_{0:s}_{1:s}_{2:s}.jpg'.format(
+    pathless_output_file_name = '{0:s}_{1:s}-{2:s}_scalar_satellite.jpg'.format(
         cyclone_id_string,
-        valid_time_strings[numpy.argmin(valid_times_unix_sec)],
-        valid_time_strings[numpy.argmax(valid_times_unix_sec)]
+        valid_time_strings[numpy.argmin(valid_times_unix_sec)].replace('-', ''),
+        valid_time_strings[numpy.argmax(valid_times_unix_sec)].replace('-', '')
     )
 
     return figure_object, axes_object, pathless_output_file_name

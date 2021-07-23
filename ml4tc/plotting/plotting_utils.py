@@ -1,6 +1,7 @@
 """Helper methods for plotting (mostly 2-D georeferenced maps)."""
 
 import os
+import shutil
 import numpy
 from PIL import Image
 import matplotlib
@@ -8,11 +9,13 @@ matplotlib.use('agg')
 import matplotlib.pyplot as pyplot
 from gewittergefahr.gg_utils import number_rounding
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
+from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 from gewittergefahr.plotting import imagemagick_utils
 
 FIGURE_RESOLUTION_DPI = 300
+CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 GRID_LINE_WIDTH = 1.
 GRID_LINE_COLOUR = numpy.full(3, 0.)
@@ -239,3 +242,55 @@ def add_colour_bar(
     imagemagick_utils.trim_whitespace(
         input_file_name=figure_file_name, output_file_name=figure_file_name
     )
+
+
+def concat_panels(panel_file_names, concat_figure_file_name):
+    """Concatenates panels into one figure.
+
+    :param panel_file_names: 1-D list of paths to input image files.
+    :param concat_figure_file_name: Path to output image file.
+    """
+
+    error_checking.assert_is_string_list(panel_file_names)
+    error_checking.assert_is_string(concat_figure_file_name)
+    file_system_utils.mkdir_recursive_if_necessary(
+        file_name=concat_figure_file_name
+    )
+
+    print('Concatenating panels to: "{0:s}"...'.format(
+        concat_figure_file_name
+    ))
+
+    num_panels = len(panel_file_names)
+    num_panel_rows = int(numpy.floor(
+        numpy.sqrt(num_panels)
+    ))
+    num_panel_columns = int(numpy.ceil(
+        float(num_panels) / num_panel_rows
+    ))
+
+    if num_panels == 1:
+        shutil.move(panel_file_names[0], concat_figure_file_name)
+    else:
+        imagemagick_utils.concatenate_images(
+            input_file_names=panel_file_names,
+            num_panel_rows=num_panel_rows,
+            num_panel_columns=num_panel_columns,
+            output_file_name=concat_figure_file_name
+        )
+
+    imagemagick_utils.resize_image(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name,
+        output_size_pixels=CONCAT_FIGURE_SIZE_PX
+    )
+    imagemagick_utils.trim_whitespace(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name
+    )
+
+    if num_panels == 1:
+        return
+
+    for this_panel_file_name in panel_file_names:
+        os.remove(this_panel_file_name)
