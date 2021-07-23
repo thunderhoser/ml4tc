@@ -15,6 +15,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import gg_general_utils
 import time_conversion
 import file_system_utils
 import error_checking
@@ -723,11 +724,16 @@ def _plot_brightness_temp_saliency(
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
+        this_saliency_matrix = (
+            gg_general_utils.apply_gaussian_filter(
+                input_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
+                e_folding_radius_grid_cells=2.
+            )
+        )
 
         # TODO(thunderhoser): Do 0.001 thing everywhere.
         satellite_plotting.plot_saliency(
-            saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
-            axes_object=axes_objects[k],
+            saliency_matrix=this_saliency_matrix, axes_object=axes_objects[k],
             latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
             longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
             min_abs_contour_value=0.001,
