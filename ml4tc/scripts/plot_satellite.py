@@ -92,8 +92,14 @@ def plot_one_satellite_image(
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
     :param output_dir_name: Name of output directory.  Image will be saved here.
+        If you do not want to save image right away, make this None.
     :param info_string: Info string (to be appended to title).
-    :return: output_file_name: Path to output file, where image was saved.
+    :return: figure_object: Figure handle (instance of
+        `matplotlib.figure.Figure`).
+    :return: axes_object: Axes handle (instance of
+        `matplotlib.axes._subplots.AxesSubplot`).
+    :return: output_file_name: Path to output file, where image was saved.  If
+        `output_dir_name is None`, this will be a pathless file name.
     """
 
     t = satellite_table_xarray
@@ -146,8 +152,15 @@ def plot_one_satellite_image(
 
     axes_object.set_title(title_string)
 
-    output_file_name = '{0:s}/brightness_temp_{1:s}_{2:s}.jpg'.format(
-        output_dir_name, cyclone_id_string, valid_time_string
+    pathless_output_file_name = '{0:s}_{1:s}_brightness_temp.jpg'.format(
+        cyclone_id_string, valid_time_string
+    )
+
+    if output_dir_name is None:
+        return figure_object, axes_object, pathless_output_file_name
+
+    output_file_name = '{0:s}/{1:s}'.format(
+        output_dir_name, pathless_output_file_name
     )
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
 
@@ -158,7 +171,7 @@ def plot_one_satellite_image(
     )
     pyplot.close(figure_object)
 
-    return output_file_name
+    return None, None, output_file_name
 
 
 def _run(satellite_file_name, valid_time_strings, first_valid_time_string,

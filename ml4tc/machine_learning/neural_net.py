@@ -42,6 +42,8 @@ TARGET_ARRAY_KEY = 'target_array'
 INIT_TIMES_KEY = 'init_times_unix_sec'
 STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
+GRID_LATITUDE_MATRIX_KEY = 'grid_latitude_matrix_deg_n'
+GRID_LONGITUDE_MATRIX_KEY = 'grid_longitude_matrix_deg_e'
 
 PLATEAU_PATIENCE_EPOCHS = 10
 DEFAULT_LEARNING_RATE_MULTIPLIER = 0.5
@@ -539,6 +541,9 @@ def _read_one_example_file(
     """Reads one example file for generator.
 
     E = number of examples returned
+    M = number of rows in satellite grid
+    N = number of columns in satellite grid
+    T = number of lag times
 
     :param example_file_name: Path to input file.  Will be read by
         `example_io.read_file`.
@@ -568,6 +573,10 @@ def _read_one_example_file(
     data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
         (deg N).
     data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
+        longitudes (deg E).
+    data_dict['grid_latitude_matrix_deg_n']: E-by-M-by-T numpy array of grid
+        latitudes (deg N).
+    data_dict['grid_longitude_matrix_deg_e']: E-by-N-by-T numpy array of grid
         longitudes (deg E).
     """
 
@@ -684,6 +693,13 @@ def _read_one_example_file(
     )
     brightness_temp_matrix = numpy.full(these_dim, numpy.nan)
 
+    grid_latitude_matrix_deg_n = numpy.full(
+        (num_examples, num_grid_rows, len(satellite_lag_times_sec)), numpy.nan
+    )
+    grid_longitude_matrix_deg_e = numpy.full(
+        (num_examples, num_grid_columns, len(satellite_lag_times_sec)), numpy.nan
+    )
+
     these_dim = (
         num_examples, len(satellite_lag_times_sec),
         len(satellite_predictor_names)
@@ -748,6 +764,13 @@ def _read_one_example_file(
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
             ].values[k, ..., 0]
 
+            grid_latitude_matrix_deg_n[i, :, j] = (
+                xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
+            )
+            grid_longitude_matrix_deg_e[i, :, j] = (
+                xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
+            )
+
             satellite_predictor_matrix[i, j, :] = xt[
                 example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
             ].values[k, satellite_predictor_indices]
@@ -790,7 +813,9 @@ def _read_one_example_file(
         TARGET_ARRAY_KEY: target_array,
         INIT_TIMES_KEY: init_times_unix_sec,
         STORM_LATITUDES_KEY: storm_latitudes_deg_n,
-        STORM_LONGITUDES_KEY: storm_longitudes_deg_e
+        STORM_LONGITUDES_KEY: storm_longitudes_deg_e,
+        GRID_LATITUDE_MATRIX_KEY: grid_latitude_matrix_deg_n,
+        GRID_LONGITUDE_MATRIX_KEY: grid_longitude_matrix_deg_e
     }
 
 
