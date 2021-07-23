@@ -353,6 +353,9 @@ def _plot_brightness_temps(
                 xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
             )
             cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[k]
+            if not isinstance(cyclone_id_string, str):
+                cyclone_id_string = cyclone_id_string.decode('utf-8')
+
             these_dim_3d = (
                 satellite_utils.TIME_DIM,
                 satellite_utils.GRID_ROW_DIM, satellite_utils.GRID_COLUMN_DIM
@@ -393,12 +396,13 @@ def _plot_brightness_temps(
                 output_size_pixels=PANEL_SIZE_PX
             )
 
-        concat_figure_file_name = '{0:s}/{1:s}_brightness_temp.jpg'.format(
-            output_dir_name,
-            time_conversion.unix_sec_to_string(
-                init_times_unix_sec[i], TIME_FORMAT
-            )
+        this_time_string = time_conversion.unix_sec_to_string(
+            init_times_unix_sec[i], TIME_FORMAT
         )
+        concat_figure_file_name = (
+            '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'
+        ).format(output_dir_name, cyclone_id_string, this_time_string)
+
         _concat_panels(
             panel_file_names=panel_file_names,
             concat_figure_file_name=concat_figure_file_name
@@ -436,13 +440,16 @@ def _plot_scalar_satellite_predictors(
         0, num_predictors - 1, num=num_predictors, dtype=int
     )
 
+    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     # Do actual stuff (plot bar graphs with normalized predictors).
     for i in range(num_init_times):
         panel_file_names = [''] * num_lag_times
 
         for j in range(num_lag_times):
             valid_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
-            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
 
             metadata_dict = {
                 example_utils.SATELLITE_TIME_DIM:
@@ -497,12 +504,13 @@ def _plot_scalar_satellite_predictors(
                 output_size_pixels=PANEL_SIZE_PX
             )
 
-        concat_figure_file_name = '{0:s}/{1:s}_scalar_satellite.jpg'.format(
-            output_dir_name,
-            time_conversion.unix_sec_to_string(
-                init_times_unix_sec[i], TIME_FORMAT
-            )
+        this_time_string = time_conversion.unix_sec_to_string(
+            init_times_unix_sec[i], TIME_FORMAT
         )
+        concat_figure_file_name = (
+            '{0:s}/{1:s}_{2:s}_scalar_satellite.jpg'
+        ).format(output_dir_name, cyclone_id_string, this_time_string)
+
         _concat_panels(
             panel_file_names=panel_file_names,
             concat_figure_file_name=concat_figure_file_name
@@ -552,6 +560,10 @@ def _plot_lagged_ships_predictors(
         0, num_lagged_predictors - 1, num=num_lagged_predictors, dtype=int
     )
 
+    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
     for i in range(num_init_times):
         panel_file_names = [''] * num_model_lag_times
@@ -560,7 +572,6 @@ def _plot_lagged_ships_predictors(
             valid_time_unix_sec = (
                 init_times_unix_sec[i] - model_lag_times_sec[j]
             )
-            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
 
             metadata_dict = {
                 example_utils.SHIPS_LAG_TIME_DIM: builtin_lag_times_hours,
@@ -629,12 +640,13 @@ def _plot_lagged_ships_predictors(
                 output_size_pixels=PANEL_SIZE_PX
             )
 
-        concat_figure_file_name = '{0:s}/{1:s}_ships_lagged.jpg'.format(
-            output_dir_name,
-            time_conversion.unix_sec_to_string(
-                init_times_unix_sec[i], TIME_FORMAT
-            )
+        this_time_string = time_conversion.unix_sec_to_string(
+            init_times_unix_sec[i], TIME_FORMAT
         )
+        concat_figure_file_name = (
+            '{0:s}/{1:s}_{2:s}_ships_lagged.jpg'
+        ).format(output_dir_name, cyclone_id_string, this_time_string)
+
         _concat_panels(
             panel_file_names=panel_file_names,
             concat_figure_file_name=concat_figure_file_name
@@ -684,6 +696,10 @@ def _plot_forecast_ships_predictors(
         0, num_forecast_predictors - 1, num=num_forecast_predictors, dtype=int
     )
 
+    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
+    if not isinstance(cyclone_id_string, str):
+        cyclone_id_string = cyclone_id_string.decode('utf-8')
+
     # Do actual stuff (plot 2-D colour maps with normalized predictors).
     for i in range(num_init_times):
         panel_file_names = [''] * num_model_lag_times
@@ -692,7 +708,6 @@ def _plot_forecast_ships_predictors(
             valid_time_unix_sec = (
                 init_times_unix_sec[i] - model_lag_times_sec[j]
             )
-            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
 
             metadata_dict = {
                 example_utils.SHIPS_FORECAST_HOUR_DIM: forecast_hours,
@@ -762,12 +777,13 @@ def _plot_forecast_ships_predictors(
                 output_size_pixels=PANEL_SIZE_PX
             )
 
-        concat_figure_file_name = '{0:s}/{1:s}_ships_forecast.jpg'.format(
-            output_dir_name,
-            time_conversion.unix_sec_to_string(
-                init_times_unix_sec[i], TIME_FORMAT
-            )
+        this_time_string = time_conversion.unix_sec_to_string(
+            init_times_unix_sec[i], TIME_FORMAT
         )
+        concat_figure_file_name = (
+            '{0:s}/{1:s}_{2:s}_ships_forecast.jpg'
+        ).format(output_dir_name, cyclone_id_string, this_time_string)
+
         _concat_panels(
             panel_file_names=panel_file_names,
             concat_figure_file_name=concat_figure_file_name
