@@ -731,7 +731,6 @@ def _plot_brightness_temp_saliency(
             )
         )
 
-        # TODO(thunderhoser): Do 0.001 thing everywhere.
         satellite_plotting.plot_saliency(
             saliency_matrix=this_saliency_matrix, axes_object=axes_objects[k],
             latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
