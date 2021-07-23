@@ -256,15 +256,11 @@ def plot_saliency(
     """
 
     error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
-    error_checking.assert_is_valid_lat_numpy_array(latitudes_deg_n)
     error_checking.assert_is_greater_numpy_array(
         numpy.diff(latitudes_deg_n), 0.
     )
 
     error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
-    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-        longitudes_deg_e
-    )
     error_checking.assert_is_greater_numpy_array(
         numpy.diff(longitudes_deg_e), 0.
     )
@@ -293,6 +289,9 @@ def plot_saliency(
             unique_latitudes_deg=latitudes_deg_n,
             unique_longitudes_deg=longitudes_deg_e
         )
+    )
+    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitude_matrix_deg_e
     )
 
     # Plot positive values.
