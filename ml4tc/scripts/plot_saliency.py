@@ -222,7 +222,7 @@ def plot_brightness_temp(
                 satellite_table_xarray=example_table_xarray, time_index=0,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
-                output_dir_name=None
+                cbar_orientation_string=None, output_dir_name=None
             )
         )
 
