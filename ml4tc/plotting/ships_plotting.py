@@ -117,7 +117,7 @@ def plot_lagged_predictors_one_init_time(
 
     axes_object.set_title(title_string)
 
-    pathless_output_file_name = 'ships_{0:s}_{1:s}_lagged'.format(
+    pathless_output_file_name = 'ships_{0:s}_{1:s}_lagged.jpg'.format(
         cyclone_id_string, init_time_string
     )
 
@@ -209,7 +209,7 @@ def plot_fcst_predictors_one_init_time(
 
     axes_object.set_title(title_string)
 
-    pathless_output_file_name = 'ships_{0:s}_{1:s}_forecast'.format(
+    pathless_output_file_name = 'ships_{0:s}_{1:s}_forecast.jpg'.format(
         cyclone_id_string, init_time_string
     )
 
