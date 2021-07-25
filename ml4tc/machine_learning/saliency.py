@@ -22,6 +22,10 @@ GRIDDED_SATELLITE_SALIENCY_KEY = 'gridded_satellite_saliency_matrix'
 UNGRIDDED_SATELLITE_SALIENCY_KEY = 'ungridded_satellite_saliency_matrix'
 SHIPS_SALIENCY_KEY = 'ships_saliency_matrix'
 SALIENCY_KEY = 'saliency_matrices'
+GRIDDED_SATELLITE_INPUT_GRAD_KEY = 'gridded_satellite_input_grad_matrix'
+UNGRIDDED_SATELLITE_INPUT_GRAD_KEY = 'ungridded_satellite_input_grad_matrix'
+SHIPS_INPUT_GRAD_KEY = 'ships_input_grad_matrix'
+INPUT_TIME_GRAD_KEY = 'input_times_grad_matrices'
 
 MODEL_FILE_KEY = 'model_file_name'
 LAYER_NAME_KEY = 'layer_name'
@@ -102,9 +106,9 @@ def get_saliency_one_neuron(
 
 
 def write_file(
-        netcdf_file_name, saliency_matrices, cyclone_id_strings,
-        init_times_unix_sec, model_file_name, layer_name, neuron_indices,
-        ideal_activation):
+        netcdf_file_name, saliency_matrices, input_times_grad_matrices,
+        cyclone_id_strings, init_times_unix_sec, model_file_name, layer_name,
+        neuron_indices, ideal_activation):
     """Writes saliency maps to NetCDF file.
 
     E = number of examples
@@ -115,6 +119,8 @@ def write_file(
         array of saliency values.  saliency_matrices[i] should have the same
         shape as the [i]th input tensor to the model.  Also, the first axis of
         each numpy array must have length E.
+    :param input_times_grad_matrices: Same as `saliency_matrices` but with
+        input-times-gradient values instead.
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_times_unix_sec: length-E numpy array of forecast-init times.
     :param model_file_name: Path to file with neural net used to create saliency
@@ -131,10 +137,16 @@ def write_file(
     )
 
     error_checking.assert_is_list(saliency_matrices)
+    error_checking.assert_is_list(input_times_grad_matrices)
+    assert len(saliency_matrices) == len(input_times_grad_matrices)
+
     num_examples = -1
 
     for i in range(len(saliency_matrices)):
         error_checking.assert_is_numpy_array_without_nan(saliency_matrices[i])
+        error_checking.assert_is_numpy_array_without_nan(
+            input_times_grad_matrices[i]
+        )
         if i == 0:
             num_examples = saliency_matrices[i].shape[0]
 
@@ -143,6 +155,9 @@ def write_file(
         )
         error_checking.assert_is_numpy_array(
             saliency_matrices[i], exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_numpy_array(
+            input_times_grad_matrices[i], exact_dimensions=expected_dim
         )
 
     expected_dim = numpy.array([num_examples], dtype=int)
@@ -234,10 +249,18 @@ def write_file(
     )
     dataset_object.createVariable(
         GRIDDED_SATELLITE_SALIENCY_KEY,
-        datatype=numpy.float32, dimensions=these_dim
+        datatype=numpy.float16, dimensions=these_dim
     )
     dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:] = (
         saliency_matrices[0]
+    )
+
+    dataset_object.createVariable(
+        GRIDDED_SATELLITE_INPUT_GRAD_KEY,
+        datatype=numpy.float16, dimensions=these_dim
+    )
+    dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
+        input_times_grad_matrices[0]
     )
 
     these_dim = (
@@ -246,19 +269,34 @@ def write_file(
     )
     dataset_object.createVariable(
         UNGRIDDED_SATELLITE_SALIENCY_KEY,
-        datatype=numpy.float32, dimensions=these_dim
+        datatype=numpy.float16, dimensions=these_dim
     )
     dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:] = (
         saliency_matrices[1]
+    )
+
+    dataset_object.createVariable(
+        UNGRIDDED_SATELLITE_INPUT_GRAD_KEY,
+        datatype=numpy.float16, dimensions=these_dim
+    )
+    dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
+        input_times_grad_matrices[1]
     )
 
     these_dim = (
         EXAMPLE_DIMENSION_KEY, SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY
     )
     dataset_object.createVariable(
-        SHIPS_SALIENCY_KEY, datatype=numpy.float32, dimensions=these_dim
+        SHIPS_SALIENCY_KEY, datatype=numpy.float16, dimensions=these_dim
     )
     dataset_object.variables[SHIPS_SALIENCY_KEY][:] = saliency_matrices[2]
+
+    dataset_object.createVariable(
+        SHIPS_INPUT_GRAD_KEY, datatype=numpy.float16, dimensions=these_dim
+    )
+    dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:] = (
+        input_times_grad_matrices[2]
+    )
 
     dataset_object.close()
 
@@ -269,6 +307,7 @@ def read_file(netcdf_file_name):
     :param netcdf_file_name: Path to input file.
     :return: saliency_dict: Dictionary with the following keys.
     saliency_dict['saliency_matrices']: See doc for `write_file`.
+    saliency_dict['input_times_grad_matrices']: Same.
     saliency_dict['cyclone_id_strings']: Same.
     saliency_dict['init_times_unix_sec']: Same.
     saliency_dict['model_file_name']: Same.
@@ -284,9 +323,15 @@ def read_file(netcdf_file_name):
         dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:],
         dataset_object.variables[SHIPS_SALIENCY_KEY][:]
     ]
+    input_times_grad_matrices = [
+        dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:],
+        dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:],
+        dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:]
+    ]
 
     saliency_dict = {
         SALIENCY_KEY: saliency_matrices,
+        INPUT_TIME_GRAD_KEY: input_times_grad_matrices,
         CYCLONE_IDS_KEY: [
             str(id) for id in
             netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
