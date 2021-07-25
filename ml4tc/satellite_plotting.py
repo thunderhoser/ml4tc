@@ -22,8 +22,8 @@ DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
 DEFAULT_CUTOFF_TEMP_KELVINS = 240.
 
-DEFAULT_SALIENCY_CMAP_OBJECT = pyplot.get_cmap('binary')
-DEFAULT_SALIENCY_CONTOUR_WIDTH = 2
+DEFAULT_CONTOUR_CMAP_OBJECT = pyplot.get_cmap('binary')
+DEFAULT_CONTOUR_WIDTH = 2
 
 
 def _grid_points_to_edges(grid_point_coords):
@@ -241,9 +241,9 @@ def plot_2d_grid_regular(
 def plot_saliency(
         saliency_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
         min_abs_contour_value, max_abs_contour_value, half_num_contours,
-        colour_map_object=DEFAULT_SALIENCY_CMAP_OBJECT,
-        line_width=DEFAULT_SALIENCY_CONTOUR_WIDTH):
-    """Plots saliency on 2-D grid.
+        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        line_width=DEFAULT_CONTOUR_WIDTH):
+    """Plots saliency map on 2-D grid.
 
     M = number of rows in grid
     N = number of columns in grid
@@ -320,4 +320,75 @@ def plot_saliency(
         contour_levels, cmap=colour_map_object,
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='dashed', zorder=1e6
+    )
+
+
+def plot_class_activation(
+        class_activation_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
+        min_contour_value, max_contour_value, num_contours,
+        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        line_width=DEFAULT_CONTOUR_WIDTH):
+    """Plots class-activation map on 2-D grid.
+
+    M = number of rows in grid
+    N = number of columns in grid
+
+    :param class_activation_matrix: M-by-N numpy array of class activations.
+    :param axes_object: See doc for `plot_saliency`.
+    :param latitudes_deg_n: Same.
+    :param longitudes_deg_e: Same.
+    :param min_contour_value: Minimum class activation to plot.
+    :param max_contour_value: Max class activation to plot.
+    :param num_contours: Number of contours.
+    :param colour_map_object: Colour scheme (instance of
+        `matplotlib.pyplot.cm`).
+    :param line_width: Width of contour lines.
+    """
+
+    error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(latitudes_deg_n), 0.
+    )
+
+    error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(
+        numpy.diff(longitudes_deg_e), 0.
+    )
+
+    num_rows = len(latitudes_deg_n)
+    num_columns = len(longitudes_deg_e)
+    expected_dim = numpy.array([num_rows, num_columns], dtype=int)
+
+    error_checking.assert_is_numpy_array_without_nan(class_activation_matrix)
+    error_checking.assert_is_numpy_array(
+        class_activation_matrix, exact_dimensions=expected_dim
+    )
+
+    if min_contour_value < 0.001 or max_contour_value < 0.01:
+        min_contour_value = 0.001
+        max_contour_value = 0.01
+
+    error_checking.assert_is_greater(max_contour_value, min_contour_value)
+    error_checking.assert_is_integer(num_contours)
+    error_checking.assert_is_geq(num_contours, 5)
+
+    latitude_matrix_deg_n, longitude_matrix_deg_e = (
+        grids.latlng_vectors_to_matrices(
+            unique_latitudes_deg=latitudes_deg_n,
+            unique_longitudes_deg=longitudes_deg_e
+        )
+    )
+    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitude_matrix_deg_e
+    )
+
+    contour_levels = numpy.linspace(
+        min_contour_value, max_contour_value, num=num_contours
+    )
+
+    axes_object.contour(
+        longitude_matrix_deg_e, latitude_matrix_deg_n, class_activation_matrix,
+        contour_levels, cmap=colour_map_object,
+        vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
+        linewidths=line_width, linestyles='solid', zorder=1e6
     )

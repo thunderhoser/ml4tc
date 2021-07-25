@@ -1127,6 +1127,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         for c in unique_cyclone_id_strings
     ]
 
+    # Plot saliency maps.
     for i in range(num_cyclones):
         option_dict = copy.deepcopy(base_option_dict)
         option_dict[neural_net.EXAMPLE_FILE_KEY] = unique_example_file_names[i]
