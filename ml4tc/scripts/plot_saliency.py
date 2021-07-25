@@ -7,7 +7,7 @@ import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
-from gewittergefahr.gg_utils import general_utils
+from gewittergefahr.gg_utils import general_utils as gg_general_utils
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
@@ -717,7 +717,7 @@ def _plot_brightness_temp_saliency(
 
     for k in range(num_model_lag_times):
         this_saliency_matrix = (
-            general_utils.apply_gaussian_filter(
+            gg_general_utils.apply_gaussian_filter(
                 input_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
                 e_folding_radius_grid_cells=2.
             )
@@ -1119,6 +1119,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         for c in unique_cyclone_id_strings
     ]
 
+    # Plot saliency maps.
     for i in range(num_cyclones):
         option_dict = copy.deepcopy(base_option_dict)
         option_dict[neural_net.EXAMPLE_FILE_KEY] = unique_example_file_names[i]
