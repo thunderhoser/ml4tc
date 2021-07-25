@@ -212,7 +212,7 @@ def _plot_cam_one_example(
 
     for k in range(num_model_lag_times):
         satellite_plotting.plot_class_activation(
-            class_activation_matrix=cam_matrix_one_example[0, ...],
+            class_activation_matrix=cam_matrix_log10_one_example[0, ...],
             axes_object=axes_objects[k],
             latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
             longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
