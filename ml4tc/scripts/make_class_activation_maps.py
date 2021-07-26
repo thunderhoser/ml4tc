@@ -30,12 +30,12 @@ EXAMPLE_DIR_HELP_STRING = (
     '`example_io.find_file` and read by `example_io.read_file`.'
 )
 YEARS_HELP_STRING = (
-    'Will create saliency maps for tropical cyclones in these years.  If you '
-    'want to use specific cyclones instead, leave this argument alone.'
+    'Will create class-activation maps for tropical cyclones in these years.  '
+    'If you want to use specific cyclones instead, leave this argument alone.'
 )
 CYCLONE_IDS_HELP_STRING = (
-    'Will create saliency maps for these tropical cyclones.  If you want to use'
-    ' full years instead, leave this argument alone.'
+    'Will create class-activation maps for these tropical cyclones.  If you '
+    'want to use full years instead, leave this argument alone.'
 )
 TARGET_CLASS_HELP_STRING = (
     'Class-activation maps will be created for this class.  Must be an integer '
@@ -46,8 +46,7 @@ TARGET_LAYER_HELP_STRING = (
     'activations in this layer.  Layer must have spatial outputs.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Name of output file.  Results will be saved here by '
-    '`saliency.write_file`.'
+    'Name of output file.  Results will be saved here by `gradcam.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()

@@ -1,15 +1,12 @@
-"""Creates saliency maps."""
+"""Creates occlusion maps."""
 
 import copy
 import argparse
 import numpy
-import tensorflow
 from ml4tc.io import example_io
 from ml4tc.utils import satellite_utils
 from ml4tc.machine_learning import neural_net
-from ml4tc.machine_learning import saliency
-
-tensorflow.compat.v1.disable_eager_execution()
+from ml4tc.machine_learning import occlusion
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -17,9 +14,10 @@ MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
 CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
-LAYER_NAME_ARG_NAME = 'layer_name'
-NEURON_INDICES_ARG_NAME = 'neuron_indices'
-IDEAL_ACTIVATION_ARG_NAME = 'ideal_activation'
+TARGET_CLASS_ARG_NAME = 'target_class'
+HALF_WINDOW_SIZE_ARG_NAME = 'half_window_size_px'
+STRIDE_LENGTH_ARG_NAME = 'stride_length_px'
+FILL_VALUE_ARG_NAME = 'fill_value'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 MODEL_FILE_HELP_STRING = (
@@ -30,26 +28,29 @@ EXAMPLE_DIR_HELP_STRING = (
     '`example_io.find_file` and read by `example_io.read_file`.'
 )
 YEARS_HELP_STRING = (
-    'Will create saliency maps for tropical cyclones in these years.  If you '
+    'Will create occlusion maps for tropical cyclones in these years.  If you '
     'want to use specific cyclones instead, leave this argument alone.'
 )
 CYCLONE_IDS_HELP_STRING = (
-    'Will create saliency maps for these tropical cyclones.  If you want to use'
-    ' full years instead, leave this argument alone.'
+    'Will create occlusion maps for these tropical cyclones.  If you want to '
+    'use full years instead, leave this argument alone.'
 )
-LAYER_NAME_HELP_STRING = 'Name of layer with relevant neuron.'
-NEURON_INDICES_HELP_STRING = (
-    '1-D numpy array with indices of relevant neuron.  Must have length D - 1, '
-    'where D = number of dimensions in layer output.  The first dimension is '
-    'the batch dimension, which always has length `None` in Keras.'
+TARGET_CLASS_HELP_STRING = (
+    'Occlusion maps will be created for this class.  Must be an integer in '
+    '0...(K - 1), where K = number of classes.'
 )
-IDEAL_ACTIVATION_HELP_STRING = (
-    'Ideal neuron activation, used to define loss function.  The loss function '
-    'will be (neuron_activation - ideal_activation)**2.'
+HALF_WINDOW_SIZE_HELP_STRING = (
+    'Half-size of occlusion window (pixels).  If half-size is P, the full '
+    'window will (2 * P + 1) rows by (2 * P + 1) columns.'
+)
+STRIDE_LENGTH_HELP_STRING = 'Stride length for occlusion window (pixels).'
+FILL_VALUE_HELP_STRING = (
+    'Fill value.  Inside the occlusion window, all brightness temperatures will'
+    ' be assigned this value, to simulate missing data.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Results will be saved here by '
-    '`saliency.write_file`.'
+    'Name of output file.  Results will be saved here by '
+    '`occlusion.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -70,16 +71,20 @@ INPUT_ARG_PARSER.add_argument(
     default=[''], help=CYCLONE_IDS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + LAYER_NAME_ARG_NAME, type=str, required=True,
-    help=LAYER_NAME_HELP_STRING
+    '--' + TARGET_CLASS_ARG_NAME, type=int, required=True,
+    help=TARGET_CLASS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + NEURON_INDICES_ARG_NAME, type=int, nargs='+', required=True,
-    help=NEURON_INDICES_HELP_STRING
+    '--' + HALF_WINDOW_SIZE_ARG_NAME, type=int, required=True,
+    help=HALF_WINDOW_SIZE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + IDEAL_ACTIVATION_ARG_NAME, type=float, required=True,
-    help=IDEAL_ACTIVATION_HELP_STRING
+    '--' + STRIDE_LENGTH_ARG_NAME, type=int, required=True,
+    help=STRIDE_LENGTH_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + FILL_VALUE_ARG_NAME, type=float, required=False, default=0,
+    help=FILL_VALUE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
@@ -88,8 +93,9 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
-         layer_name, neuron_indices, ideal_activation, output_file_name):
-    """Creates saliency maps.
+         target_class, half_window_size_px, stride_length_px, fill_value,
+         output_file_name):
+    """Creates occlusion maps.
 
     This is effectively the main method.
 
@@ -97,9 +103,10 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     :param example_dir_name: Same.
     :param years: Same.
     :param unique_cyclone_id_strings: Same.
-    :param layer_name: Same.
-    :param neuron_indices: Same.
-    :param ideal_activation: Same.
+    :param target_class: Same.
+    :param half_window_size_px: Same.
+    :param stride_length_px: Same.
+    :param fill_value: Same.
     :param output_file_name: Same.
     """
 
@@ -151,14 +158,12 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         for c in unique_cyclone_id_strings
     ]
 
-    print(SEPARATOR_STRING)
-
     # Create saliency maps.
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    saliency_matrices = [None]
-    input_times_grad_matrices = [None]
+    occlusion_prob_matrix = None
+    normalized_occlusion_matrix = None
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -183,43 +188,40 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             this_data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        these_saliency_matrices = saliency.get_saliency_one_neuron(
+        this_prob_matrix, these_original_probs = occlusion.get_occlusion_maps(
             model_object=model_object,
             predictor_matrices=these_predictor_matrices,
-            layer_name=layer_name, neuron_indices=neuron_indices,
-            ideal_activation=ideal_activation
+            target_class=target_class, half_window_size_px=half_window_size_px,
+            stride_length_px=stride_length_px, fill_value=fill_value
         )
-        these_input_times_grad_matrices = [
-            p * s for p, s in
-            zip(these_predictor_matrices, these_saliency_matrices)
-        ]
-        print(SEPARATOR_STRING)
+        this_norm_matrix = occlusion.normalize_occlusion_maps(
+            occlusion_prob_matrix=this_prob_matrix,
+            original_probs=these_original_probs
+        )
 
-        if saliency_matrices[0] is None:
-            saliency_matrices = copy.deepcopy(these_saliency_matrices)
-            input_times_grad_matrices = copy.deepcopy(
-                these_input_times_grad_matrices
-            )
+        if occlusion_prob_matrix is None:
+            occlusion_prob_matrix = this_prob_matrix + 0.
+            normalized_occlusion_matrix = this_norm_matrix + 0.
         else:
-            for j in range(len(saliency_matrices)):
-                saliency_matrices[j] = numpy.concatenate(
-                    (saliency_matrices[j], these_saliency_matrices[j]), axis=0
-                )
-                input_times_grad_matrices[j] = numpy.concatenate((
-                    input_times_grad_matrices[j],
-                    these_input_times_grad_matrices[j]
-                ), axis=0)
+            occlusion_prob_matrix = numpy.concatenate(
+                (occlusion_prob_matrix, this_prob_matrix), axis=0
+            )
+            normalized_occlusion_matrix = numpy.concatenate(
+                (normalized_occlusion_matrix, this_norm_matrix), axis=0
+            )
+
+    print(SEPARATOR_STRING)
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
-    saliency.write_file(
+    occlusion.write_file(
         netcdf_file_name=output_file_name,
-        saliency_matrices=saliency_matrices,
-        input_times_grad_matrices=input_times_grad_matrices,
+        occlusion_prob_matrix=occlusion_prob_matrix,
+        normalized_occlusion_matrix=normalized_occlusion_matrix,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,
-        layer_name=layer_name, neuron_indices=neuron_indices,
-        ideal_activation=ideal_activation
+        target_class=target_class, half_window_size_px=half_window_size_px,
+        stride_length_px=stride_length_px, fill_value=fill_value
     )
 
 
@@ -233,10 +235,11 @@ if __name__ == '__main__':
         unique_cyclone_id_strings=getattr(
             INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME
         ),
-        layer_name=getattr(INPUT_ARG_OBJECT, LAYER_NAME_ARG_NAME),
-        neuron_indices=numpy.array(
-            getattr(INPUT_ARG_OBJECT, NEURON_INDICES_ARG_NAME), dtype=int
+        target_class=getattr(INPUT_ARG_OBJECT, TARGET_CLASS_ARG_NAME),
+        half_window_size_px=getattr(
+            INPUT_ARG_OBJECT, HALF_WINDOW_SIZE_ARG_NAME
         ),
-        ideal_activation=getattr(INPUT_ARG_OBJECT, IDEAL_ACTIVATION_ARG_NAME),
+        stride_length_px=getattr(INPUT_ARG_OBJECT, STRIDE_LENGTH_ARG_NAME),
+        fill_value=getattr(INPUT_ARG_OBJECT, FILL_VALUE_ARG_NAME),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )

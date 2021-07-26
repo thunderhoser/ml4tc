@@ -287,7 +287,7 @@ def write_file(
         GRID_COLUMN_DIMENSION_KEY
     )
     dataset_object.createVariable(
-        CLASS_ACTIVATION_KEY, datatype=numpy.float32, dimensions=these_dim
+        CLASS_ACTIVATION_KEY, datatype=numpy.float16, dimensions=these_dim
     )
     dataset_object.variables[CLASS_ACTIVATION_KEY][:] = (
         class_activation_matrix
