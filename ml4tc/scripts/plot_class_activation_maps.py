@@ -17,7 +17,7 @@ from ml4tc.machine_learning import gradcam
 from ml4tc.machine_learning import neural_net
 from ml4tc.plotting import plotting_utils
 from ml4tc.plotting import satellite_plotting
-from ml4tc.scripts import plot_saliency
+from ml4tc.plotting import predictor_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -162,10 +162,9 @@ def _plot_cam_one_example(
             [cam_example_index], ...
         ]
     )
-    cam_matrix_one_example = numpy.maximum(cam_matrix_one_example, 1e-3)
-    cam_matrix_log10_one_example = numpy.log10(cam_matrix_one_example)
 
     grid_latitude_matrix_deg_n = data_dict[
+
         neural_net.GRID_LATITUDE_MATRIX_KEY
     ][predictor_example_index, ...]
 
@@ -174,7 +173,7 @@ def _plot_cam_one_example(
     ][predictor_example_index, ...]
 
     figure_objects, axes_objects, pathless_output_file_names = (
-        plot_saliency.plot_brightness_temp(
+        predictor_plotting.plot_brightness_temp_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
@@ -194,10 +193,10 @@ def _plot_cam_one_example(
         validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
     )
     max_contour_value = numpy.percentile(
-        cam_matrix_log10_one_example, MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example, MAX_COLOUR_PERCENTILE
     )
     min_contour_value = numpy.percentile(
-        cam_matrix_log10_one_example, 100 - MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example, 100 - MAX_COLOUR_PERCENTILE
     )
 
     panel_file_names = [''] * num_model_lag_times
@@ -242,21 +241,16 @@ def _plot_cam_one_example(
         concat_figure_file_name=concat_figure_file_name
     )
 
-    temporary_cbar_file_name = (
-        '{0:s}/{1:s}_{2:s}_brightness_temp_cbar.jpg'
-    ).format(
-        output_dir_name, cyclone_id_string, init_time_string
-    )
     this_colour_map_object, colour_norm_object = (
         satellite_plotting.get_colour_scheme()
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
-        temporary_cbar_file_name=temporary_cbar_file_name,
         colour_map_object=this_colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string='Brightness temp (K)'
+        cbar_label_string='Brightness temp (K)',
+        tick_label_format_string='{0:d}'
     )
 
     colour_norm_object = pyplot.Normalize(
@@ -264,11 +258,10 @@ def _plot_cam_one_example(
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
-        temporary_cbar_file_name=temporary_cbar_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=r'log$_{10}$(class activation)'
+        cbar_label_string='Class activation', tick_label_format_string='{0:.2g}'
     )
 
 

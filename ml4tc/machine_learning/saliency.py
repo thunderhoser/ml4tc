@@ -25,7 +25,7 @@ SALIENCY_KEY = 'saliency_matrices'
 GRIDDED_SATELLITE_INPUT_GRAD_KEY = 'gridded_satellite_input_grad_matrix'
 UNGRIDDED_SATELLITE_INPUT_GRAD_KEY = 'ungridded_satellite_input_grad_matrix'
 SHIPS_INPUT_GRAD_KEY = 'ships_input_grad_matrix'
-INPUT_TIME_GRAD_KEY = 'input_times_grad_matrices'
+INPUT_TIMES_GRAD_KEY = 'input_times_grad_matrices'
 
 MODEL_FILE_KEY = 'model_file_name'
 LAYER_NAME_KEY = 'layer_name'
@@ -331,7 +331,7 @@ def read_file(netcdf_file_name):
 
     saliency_dict = {
         SALIENCY_KEY: saliency_matrices,
-        INPUT_TIME_GRAD_KEY: input_times_grad_matrices,
+        INPUT_TIMES_GRAD_KEY: input_times_grad_matrices,
         CYCLONE_IDS_KEY: [
             str(id) for id in
             netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
