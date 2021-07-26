@@ -56,7 +56,7 @@ IDEAL_ACTIVATION_HELP_STRING = (
     'will be (neuron_activation - ideal_activation)**2.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Name of output file.  Results will be saved here by '
+    'Path to output file.  Results will be saved here by '
     '`saliency.write_file`.'
 )
 
@@ -161,12 +161,12 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
 
     print(SEPARATOR_STRING)
 
-    # Create saliency maps for one example (i.e., one tropical cyclone) at a
-    # time.
+    # Create saliency maps.
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     saliency_matrices = [None]
+    input_times_grad_matrices = [None]
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -197,19 +197,32 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             layer_name=layer_name, neuron_indices=neuron_indices,
             ideal_activation=ideal_activation
         )
+        these_input_times_grad_matrices = [
+            p * s for p, s in
+            zip(these_predictor_matrices, these_saliency_matrices)
+        ]
         print(SEPARATOR_STRING)
 
         if saliency_matrices[0] is None:
             saliency_matrices = copy.deepcopy(these_saliency_matrices)
+            input_times_grad_matrices = copy.deepcopy(
+                these_input_times_grad_matrices
+            )
         else:
             for j in range(len(saliency_matrices)):
                 saliency_matrices[j] = numpy.concatenate(
                     (saliency_matrices[j], these_saliency_matrices[j]), axis=0
                 )
+                input_times_grad_matrices[j] = numpy.concatenate((
+                    input_times_grad_matrices[j],
+                    these_input_times_grad_matrices[j]
+                ), axis=0)
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
-        netcdf_file_name=output_file_name, saliency_matrices=saliency_matrices,
+        netcdf_file_name=output_file_name,
+        saliency_matrices=saliency_matrices,
+        input_times_grad_matrices=input_times_grad_matrices,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,

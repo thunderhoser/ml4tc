@@ -1,11 +1,10 @@
-"""Creates class-activation maps (CAM)."""
+"""Creates occlusion maps."""
 
 import os
 import sys
 import copy
 import argparse
 import numpy
-import tensorflow
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -14,20 +13,19 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import example_io
 import satellite_utils
-import gradcam
 import neural_net
-
-tensorflow.compat.v1.disable_eager_execution()
+import occlusion
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
-NUM_EXAMPLES_PER_CHUNK = 100
 
 MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
 CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
 TARGET_CLASS_ARG_NAME = 'target_class'
-TARGET_LAYER_ARG_NAME = 'target_layer_name'
+HALF_WINDOW_SIZE_ARG_NAME = 'half_window_size_px'
+STRIDE_LENGTH_ARG_NAME = 'stride_length_px'
+FILL_VALUE_ARG_NAME = 'fill_value'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 MODEL_FILE_HELP_STRING = (
@@ -38,23 +36,29 @@ EXAMPLE_DIR_HELP_STRING = (
     '`example_io.find_file` and read by `example_io.read_file`.'
 )
 YEARS_HELP_STRING = (
-    'Will create class-activation maps for tropical cyclones in these years.  '
-    'If you want to use specific cyclones instead, leave this argument alone.'
+    'Will create occlusion maps for tropical cyclones in these years.  If you '
+    'want to use specific cyclones instead, leave this argument alone.'
 )
 CYCLONE_IDS_HELP_STRING = (
-    'Will create class-activation maps for these tropical cyclones.  If you '
-    'want to use full years instead, leave this argument alone.'
+    'Will create occlusion maps for these tropical cyclones.  If you want to '
+    'use full years instead, leave this argument alone.'
 )
 TARGET_CLASS_HELP_STRING = (
-    'Class-activation maps will be created for this class.  Must be an integer '
-    'in 0...(K - 1), where K = number of classes.'
+    'Occlusion maps will be created for this class.  Must be an integer in '
+    '0...(K - 1), where K = number of classes.'
 )
-TARGET_LAYER_HELP_STRING = (
-    'Name of target layer.  Neuron-importance weights will be based on '
-    'activations in this layer.  Layer must have spatial outputs.'
+HALF_WINDOW_SIZE_HELP_STRING = (
+    'Half-size of occlusion window (pixels).  If half-size is P, the full '
+    'window will (2 * P + 1) rows by (2 * P + 1) columns.'
+)
+STRIDE_LENGTH_HELP_STRING = 'Stride length for occlusion window (pixels).'
+FILL_VALUE_HELP_STRING = (
+    'Fill value.  Inside the occlusion window, all brightness temperatures will'
+    ' be assigned this value, to simulate missing data.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Name of output file.  Results will be saved here by `gradcam.write_file`.'
+    'Name of output file.  Results will be saved here by '
+    '`occlusion.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -79,8 +83,16 @@ INPUT_ARG_PARSER.add_argument(
     help=TARGET_CLASS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + TARGET_LAYER_ARG_NAME, type=str, required=True,
-    help=TARGET_LAYER_HELP_STRING
+    '--' + HALF_WINDOW_SIZE_ARG_NAME, type=int, required=True,
+    help=HALF_WINDOW_SIZE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + STRIDE_LENGTH_ARG_NAME, type=int, required=True,
+    help=STRIDE_LENGTH_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + FILL_VALUE_ARG_NAME, type=float, required=False, default=0,
+    help=FILL_VALUE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
@@ -89,8 +101,9 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
-         target_class, target_layer_name, output_file_name):
-    """Creates class-activation maps (CAM).
+         target_class, half_window_size_px, stride_length_px, fill_value,
+         output_file_name):
+    """Creates occlusion maps.
 
     This is effectively the main method.
 
@@ -99,7 +112,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     :param years: Same.
     :param unique_cyclone_id_strings: Same.
     :param target_class: Same.
-    :param target_layer_name: Same.
+    :param half_window_size_px: Same.
+    :param stride_length_px: Same.
+    :param fill_value: Same.
     :param output_file_name: Same.
     """
 
@@ -151,21 +166,18 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         for c in unique_cyclone_id_strings
     ]
 
-    # Create CAMs for one example (i.e., one tropical cyclone) at a time.
+    # Create saliency maps.
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    class_activation_matrix = None
+    occlusion_prob_matrix = None
+    normalized_occlusion_matrix = None
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
-
-    num_examples_done = 0
 
     for i in range(len(example_file_names)):
         this_option_dict = copy.deepcopy(validation_option_dict)
         this_option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_names[i]
-
-        print(SEPARATOR_STRING)
         this_data_dict = neural_net.create_inputs(this_option_dict)
         print(SEPARATOR_STRING)
 
@@ -184,53 +196,40 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             this_data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        for j in range(this_num_examples):
-            if numpy.mod(j, 5) == 0:
-                print((
-                    'Have created CAM for {0:d} of {1:d} time steps in tropical'
-                    ' cyclone...'
-                ).format(
-                    j, this_num_examples
-                ))
+        this_prob_matrix, these_original_probs = occlusion.get_occlusion_maps(
+            model_object=model_object,
+            predictor_matrices=these_predictor_matrices,
+            target_class=target_class, half_window_size_px=half_window_size_px,
+            stride_length_px=stride_length_px, fill_value=fill_value
+        )
+        this_norm_matrix = occlusion.normalize_occlusion_maps(
+            occlusion_prob_matrix=this_prob_matrix,
+            original_probs=these_original_probs
+        )
 
-            this_cam_matrix = gradcam.run_gradcam(
-                model_object=model_object,
-                predictor_matrices_one_example=
-                [p[[j], ...] for p in these_predictor_matrices],
-                target_class=target_class, target_layer_name=target_layer_name
+        if occlusion_prob_matrix is None:
+            occlusion_prob_matrix = this_prob_matrix + 0.
+            normalized_occlusion_matrix = this_norm_matrix + 0.
+        else:
+            occlusion_prob_matrix = numpy.concatenate(
+                (occlusion_prob_matrix, this_prob_matrix), axis=0
+            )
+            normalized_occlusion_matrix = numpy.concatenate(
+                (normalized_occlusion_matrix, this_norm_matrix), axis=0
             )
 
-            if class_activation_matrix is None:
-                dimensions = (NUM_EXAMPLES_PER_CHUNK,) + this_cam_matrix.shape
-                class_activation_matrix = numpy.full(dimensions, numpy.nan)
-
-            if num_examples_done >= class_activation_matrix.shape[0]:
-                dimensions = (NUM_EXAMPLES_PER_CHUNK,) + this_cam_matrix.shape
-                class_activation_matrix = numpy.concatenate((
-                    class_activation_matrix,
-                    numpy.full(dimensions, numpy.nan)
-                ))
-
-            class_activation_matrix[num_examples_done, ...] = this_cam_matrix
-            num_examples_done += 1
-
-        print((
-            'Have created CAM for all {0:d} time steps in tropical cyclone!'
-        ).format(
-            this_num_examples
-        ))
-
     print(SEPARATOR_STRING)
-    class_activation_matrix = class_activation_matrix[:num_examples_done, ...]
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
-    gradcam.write_file(
+    occlusion.write_file(
         netcdf_file_name=output_file_name,
-        class_activation_matrix=class_activation_matrix,
+        occlusion_prob_matrix=occlusion_prob_matrix,
+        normalized_occlusion_matrix=normalized_occlusion_matrix,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,
-        target_class=target_class, target_layer_name=target_layer_name
+        target_class=target_class, half_window_size_px=half_window_size_px,
+        stride_length_px=stride_length_px, fill_value=fill_value
     )
 
 
@@ -245,6 +244,10 @@ if __name__ == '__main__':
             INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME
         ),
         target_class=getattr(INPUT_ARG_OBJECT, TARGET_CLASS_ARG_NAME),
-        target_layer_name=getattr(INPUT_ARG_OBJECT, TARGET_LAYER_ARG_NAME),
+        half_window_size_px=getattr(
+            INPUT_ARG_OBJECT, HALF_WINDOW_SIZE_ARG_NAME
+        ),
+        stride_length_px=getattr(INPUT_ARG_OBJECT, STRIDE_LENGTH_ARG_NAME),
+        fill_value=getattr(INPUT_ARG_OBJECT, FILL_VALUE_ARG_NAME),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )

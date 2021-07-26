@@ -1,4 +1,4 @@
-"""Plots class-activation maps."""
+"""Plots occlusion maps."""
 
 import os
 import sys
@@ -21,7 +21,7 @@ import imagemagick_utils
 import example_io
 import border_io
 import normalization
-import gradcam
+import occlusion
 import neural_net
 import plotting_utils
 import satellite_plotting
@@ -36,15 +36,16 @@ COLOUR_BAR_FONT_SIZE = 12
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
 
-GRADCAM_FILE_ARG_NAME = 'input_gradcam_file_name'
+OCCLUSION_FILE_ARG_NAME = 'input_occlusion_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+PLOT_NORMALIZED_ARG_NAME = 'plot_normalized_occlusion'
 COLOUR_MAP_ARG_NAME = 'colour_map_name'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
-GRADCAM_FILE_HELP_STRING = (
-    'Path to file with Grad-CAM results.  Will be read by `gradcam.read_file`.'
+OCCLUSION_FILE_HELP_STRING = (
+    'Path to file with occlusion maps.  Will be read by `occlusion.read_file`.'
 )
 EXAMPLE_DIR_HELP_STRING = (
     'Name of directory with input examples.  Files therein will be found by '
@@ -55,20 +56,23 @@ NORMALIZATION_FILE_HELP_STRING = (
     'brightness-temperature maps before plotting).  Will be read by '
     '`normalization.read_file`.'
 )
+PLOT_NORMALIZED_HELP_STRING = (
+    'Boolean flag.  If 1 (0), will plot normalized (standard) occlusion maps.'
+)
 COLOUR_MAP_HELP_STRING = (
-    'Name of colour scheme for class activation.  Must be accepted by '
+    'Name of colour scheme for occlusion map.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
 )
 SMOOTHING_RADIUS_HELP_STRING = (
-    'Smoothing radius (number of pixels) for class-activation maps.  If you do '
+    'Smoothing radius (number of pixels) for occlusion maps.  If you do '
     'not want to smooth, make this 0 or negative.'
 )
 OUTPUT_DIR_HELP_STRING = 'Name of output directory.  Images will be saved here.'
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
-    '--' + GRADCAM_FILE_ARG_NAME, type=str, required=True,
-    help=GRADCAM_FILE_HELP_STRING
+    '--' + OCCLUSION_FILE_ARG_NAME, type=str, required=True,
+    help=OCCLUSION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + EXAMPLE_DIR_ARG_NAME, type=str, required=True,
@@ -77,6 +81,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
     help=NORMALIZATION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_NORMALIZED_ARG_NAME, type=int, required=True,
+    help=PLOT_NORMALIZED_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + COLOUR_MAP_ARG_NAME, type=str, required=False, default='BuGn',
@@ -92,51 +100,53 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _smooth_maps(class_activation_dict, smoothing_radius_px):
-    """Smooths class-activation maps via Gaussian filter.
+def _smooth_maps(occlusion_dict, smoothing_radius_px, plot_normalized_occlusion):
+    """Smooths occlusion maps via Gaussian filter.
 
-    :param class_activation_dict: Dictionary returned by `gradcam.read_file`.
+    :param occlusion_dict: Dictionary returned by `occlusion.read_file`.
     :param smoothing_radius_px: e-folding radius (num pixels).
-    :return: class_activation_dict: Same as input but with smoothed maps.
+    :param plot_normalized_occlusion: See documentation at top of file.
+    :return: occlusion_dict: Same as input but with smoothed maps.
     """
 
     print((
-        'Smoothing class-activation maps with Gaussian filter (e-folding radius'
-        ' of {0:.1f} grid cells)...'
+        'Smoothing occlusion maps with Gaussian filter (e-folding radius of '
+        '{0:.1f} grid cells)...'
     ).format(
         smoothing_radius_px
     ))
 
-    class_activation_matrix = (
-        class_activation_dict[gradcam.CLASS_ACTIVATION_KEY]
-    )
-    num_examples = class_activation_matrix.shape[0]
+    if plot_normalized_occlusion:
+        this_key = occlusion.NORMALIZED_OCCLUSION_KEY
+    else:
+        this_key = occlusion.OCCLUSION_PROBS_KEY
+
+    occlusion_matrix = occlusion_dict[this_key]
+    num_examples = occlusion_matrix.shape[0]
 
     for i in range(num_examples):
-        class_activation_matrix[i, ...] = (
-            gg_general_utils.apply_gaussian_filter(
-                input_matrix=class_activation_matrix[i, ...],
-                e_folding_radius_grid_cells=smoothing_radius_px
-            )
+        occlusion_matrix[i, ...] = gg_general_utils.apply_gaussian_filter(
+            input_matrix=occlusion_matrix[i, ...],
+            e_folding_radius_grid_cells=smoothing_radius_px
         )
 
-    class_activation_dict[gradcam.CLASS_ACTIVATION_KEY] = (
-        class_activation_matrix
-    )
-    return class_activation_dict
+    occlusion_dict[this_key] = occlusion_matrix
+    return occlusion_dict
 
 
-def _plot_cam_one_example(
-        data_dict, class_activation_dict, model_metadata_dict,
-        cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
-        border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
-        output_dir_name):
-    """Plots class-activation map for one example.
+def _plot_occlusion_map_one_example(
+        data_dict, occlusion_dict, plot_normalized_occlusion,
+        model_metadata_dict, cyclone_id_string, init_time_unix_sec,
+        normalization_table_xarray, border_latitudes_deg_n,
+        border_longitudes_deg_e, colour_map_object, output_dir_name):
+    """Plots occlusion map for one example.
 
     P = number of points in border set
 
     :param data_dict: Dictionary returned by `neural_net.create_inputs`.
-    :param class_activation_dict: Dictionary returned by `saliency.read_file`.
+    :param occlusion_dict: Dictionary returned by `occlusion.read_file`.
+    :param plot_normalized_occlusion: Boolean flag.  If True (False), will plot
+        normalized (standard) occlusion map.
     :param model_metadata_dict: Dictionary returned by
         `neural_net.read_metafile`.
     :param cyclone_id_string: Cyclone ID (must be accepted by
@@ -157,18 +167,22 @@ def _plot_cam_one_example(
     predictor_example_index = numpy.where(
         data_dict[neural_net.INIT_TIMES_KEY] == init_time_unix_sec
     )[0][0]
-    cam_example_index = numpy.where(
-        class_activation_dict[gradcam.INIT_TIMES_KEY] == init_time_unix_sec
+    occlusion_example_index = numpy.where(
+        occlusion_dict[occlusion.INIT_TIMES_KEY] == init_time_unix_sec
     )[0][0]
 
     predictor_matrices_one_example = [
         p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
-    cam_matrix_one_example = (
-        class_activation_dict[gradcam.CLASS_ACTIVATION_KEY][
-            [cam_example_index], ...
-        ]
+
+    if plot_normalized_occlusion:
+        this_key = occlusion.NORMALIZED_OCCLUSION_KEY
+    else:
+        this_key = occlusion.OCCLUSION_PROBS_KEY
+
+    occlusion_matrix_one_example = (
+        occlusion_dict[this_key][[occlusion_example_index], ...]
     )
 
     grid_latitude_matrix_deg_n = data_dict[
@@ -199,25 +213,27 @@ def _plot_cam_one_example(
     num_model_lag_times = len(
         validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
     )
-    max_contour_value = numpy.percentile(
-        cam_matrix_one_example, MAX_COLOUR_PERCENTILE
-    )
-    min_contour_value = numpy.percentile(
-        cam_matrix_one_example, 100 - MAX_COLOUR_PERCENTILE
-    )
-
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        satellite_plotting.plot_class_activation(
-            class_activation_matrix=cam_matrix_one_example[0, ...],
-            axes_object=axes_objects[k],
-            latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-            longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-            min_contour_value=min_contour_value,
-            max_contour_value=max_contour_value,
-            num_contours=15, colour_map_object=colour_map_object
-        )
+        if plot_normalized_occlusion:
+            satellite_plotting.plot_saliency(
+                saliency_matrix=occlusion_matrix_one_example[0, ...],
+                axes_object=axes_objects[k],
+                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                min_abs_contour_value=0.05, max_abs_contour_value=0.95,
+                half_num_contours=10, colour_map_object=colour_map_object
+            )
+        else:
+            satellite_plotting.plot_class_activation(
+                class_activation_matrix=occlusion_matrix_one_example[0, ...],
+                axes_object=axes_objects[k],
+                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                min_contour_value=0.05, max_contour_value=0.95,
+                num_contours=10, colour_map_object=colour_map_object
+            )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -260,29 +276,33 @@ def _plot_cam_one_example(
         tick_label_format_string='{0:d}'
     )
 
-    colour_norm_object = pyplot.Normalize(
-        vmin=min_contour_value, vmax=max_contour_value
+    colour_norm_object = pyplot.Normalize(vmin=0.05, vmax=0.95)
+    label_string = (
+        'Normalized probability decrease' if plot_normalized_occlusion
+        else 'Post-occlusion probability'
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string='Class activation', tick_label_format_string='{0:.2g}'
+        cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
     )
 
 
-def _run(gradcam_file_name, example_dir_name, normalization_file_name,
-         colour_map_name, smoothing_radius_px, output_dir_name):
+def _run(occlusion_file_name, example_dir_name, normalization_file_name,
+         colour_map_name, smoothing_radius_px, plot_normalized_occlusion,
+         output_dir_name):
     """Plots class-activation maps.
 
     This is effectively the main method.
 
-    :param gradcam_file_name: See documentation at top of file.
+    :param occlusion_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
     :param colour_map_name: Same.
     :param smoothing_radius_px: Same.
+    :param plot_normalized_occlusion: Same.
     :param output_dir_name: Same.
     """
 
@@ -292,16 +312,17 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     )
 
     # Read files.
-    print('Reading data from: "{0:s}"...'.format(gradcam_file_name))
-    class_activation_dict = gradcam.read_file(gradcam_file_name)
+    print('Reading data from: "{0:s}"...'.format(occlusion_file_name))
+    occlusion_dict = occlusion.read_file(occlusion_file_name)
 
     if smoothing_radius_px > 0:
-        class_activation_dict = _smooth_maps(
-            class_activation_dict=class_activation_dict,
-            smoothing_radius_px=smoothing_radius_px
+        occlusion_dict = _smooth_maps(
+            occlusion_dict=occlusion_dict,
+            smoothing_radius_px=smoothing_radius_px,
+            plot_normalized_occlusion=plot_normalized_occlusion
         )
 
-    model_file_name = class_activation_dict[gradcam.MODEL_FILE_KEY]
+    model_file_name = occlusion_dict[occlusion.MODEL_FILE_KEY]
     model_metafile_name = neural_net.find_metafile(
         model_file_name=model_file_name, raise_error_if_missing=True
     )
@@ -321,7 +342,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
 
     # Find example files.
     unique_cyclone_id_strings = numpy.unique(
-        numpy.array(class_activation_dict[gradcam.CYCLONE_IDS_KEY])
+        numpy.array(occlusion_dict[occlusion.CYCLONE_IDS_KEY])
     )
     num_cyclones = len(unique_cyclone_id_strings)
 
@@ -334,7 +355,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
         for c in unique_cyclone_id_strings
     ]
 
-    # Plot class-activation maps.
+    # Plot occlusion maps.
     for i in range(num_cyclones):
         option_dict = copy.deepcopy(base_option_dict)
         option_dict[neural_net.EXAMPLE_FILE_KEY] = unique_example_file_names[i]
@@ -344,18 +365,18 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
         print(SEPARATOR_STRING)
 
         example_indices = numpy.where(
-            numpy.array(class_activation_dict[gradcam.CYCLONE_IDS_KEY]) ==
+            numpy.array(occlusion_dict[occlusion.CYCLONE_IDS_KEY]) ==
             unique_cyclone_id_strings[i]
         )[0]
 
         for j in example_indices:
-            _plot_cam_one_example(
+            _plot_occlusion_map_one_example(
                 data_dict=data_dict,
-                class_activation_dict=class_activation_dict,
+                occlusion_dict=occlusion_dict,
+                plot_normalized_occlusion=plot_normalized_occlusion,
                 model_metadata_dict=model_metadata_dict,
                 cyclone_id_string=unique_cyclone_id_strings[i],
-                init_time_unix_sec=
-                class_activation_dict[gradcam.INIT_TIMES_KEY][j],
+                init_time_unix_sec=occlusion_dict[occlusion.INIT_TIMES_KEY][j],
                 normalization_table_xarray=normalization_table_xarray,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
@@ -368,11 +389,14 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        gradcam_file_name=getattr(INPUT_ARG_OBJECT, GRADCAM_FILE_ARG_NAME),
+        occlusion_file_name=getattr(INPUT_ARG_OBJECT, OCCLUSION_FILE_ARG_NAME),
         example_dir_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_DIR_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
+        plot_normalized_occlusion=bool(getattr(
+            INPUT_ARG_OBJECT, PLOT_NORMALIZED_ARG_NAME
+        )),
         colour_map_name=getattr(INPUT_ARG_OBJECT, COLOUR_MAP_ARG_NAME),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME

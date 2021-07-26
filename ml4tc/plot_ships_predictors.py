@@ -182,9 +182,6 @@ def _run(norm_example_file_name, forecast_predictor_names,
         figure_file_name = '{0:s}/{1:s}.jpg'.format(
             output_dir_name, extensionless_file_name
         )
-        colour_bar_file_name = '{0:s}/{1:s}_cbar.jpg'.format(
-            output_dir_name, extensionless_file_name
-        )
 
         print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
         figure_object.savefig(
@@ -195,12 +192,11 @@ def _run(norm_example_file_name, forecast_predictor_names,
 
         plotting_utils.add_colour_bar(
             figure_file_name=figure_file_name,
-            temporary_cbar_file_name=colour_bar_file_name,
             colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
             colour_norm_object=colour_norm_object,
             orientation_string='vertical',
             font_size=ships_plotting.DEFAULT_FONT_SIZE,
-            cbar_label_string=''
+            cbar_label_string='', tick_label_format_string='{0:.2g}'
         )
 
         figure_object, _, pathless_file_name = (
@@ -216,9 +212,6 @@ def _run(norm_example_file_name, forecast_predictor_names,
         figure_file_name = '{0:s}/{1:s}.jpg'.format(
             output_dir_name, extensionless_file_name
         )
-        colour_bar_file_name = '{0:s}/{1:s}_cbar.jpg'.format(
-            output_dir_name, extensionless_file_name
-        )
 
         print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
         figure_object.savefig(
@@ -229,12 +222,11 @@ def _run(norm_example_file_name, forecast_predictor_names,
 
         plotting_utils.add_colour_bar(
             figure_file_name=figure_file_name,
-            temporary_cbar_file_name=colour_bar_file_name,
             colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
             colour_norm_object=colour_norm_object,
             orientation_string='vertical',
             font_size=ships_plotting.DEFAULT_FONT_SIZE,
-            cbar_label_string=''
+            cbar_label_string='', tick_label_format_string='{0:.2g}'
         )
 
 

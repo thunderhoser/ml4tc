@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_saliency_maps_25_katrina"
+#SBATCH --job-name="plot_occlusion_maps_norm_25_katrina"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -15,7 +15,7 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_saliency_maps_25_katrina_%A_%a.out
+#SBATCH --output=plot_occlusion_maps_norm_25_katrina_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -39,13 +39,13 @@ set conv_layer_l2_weight_string=`printf "%.12f" $conv_layer_l2_weight`
 set dense_layer_count_string=`printf "%1d" $dense_layer_count`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set saliency_file_name="${model_dir_name}/saliency_katrina.nc"
-set output_dir_name="${model_dir_name}/saliency_katrina"
+set occlusion_file_name="${model_dir_name}/occlusion_katrina.nc"
+set output_dir_name="${model_dir_name}/occlusion_katrina/normalized"
 
-python3 -u "${CODE_DIR_NAME}/plot_saliency.py" \
---input_saliency_file_name="${saliency_file_name}" \
+python3 -u "${CODE_DIR_NAME}/plot_occlusion_maps.py" \
+--input_occlusion_file_name="${occlusion_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
---plot_input_times_grad=0 \
+--plot_normalized_occlusion=1 \
 --smoothing_radius_px=2 \
 --output_dir_name="${output_dir_name}"

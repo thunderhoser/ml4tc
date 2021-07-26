@@ -174,19 +174,22 @@ def plot_borders(
 
 
 def add_colour_bar(
-        figure_file_name, temporary_cbar_file_name, colour_map_object,
-        colour_norm_object, orientation_string, font_size, cbar_label_string):
+        figure_file_name, colour_map_object, colour_norm_object,
+        orientation_string, font_size, cbar_label_string,
+        tick_label_format_string='{0:.2g}', temporary_cbar_file_name=None):
     """Adds colour bar to saved image file.
 
     :param figure_file_name: Path to saved image file.  Colour bar will be added
         to this image.
-    :param temporary_cbar_file_name: Path to temporary image file where colour
-        bar will be saved.
     :param colour_map_object: See doc for `gg_plotting_utils.plot_colour_bar`.
     :param colour_norm_object: Same.
     :param orientation_string: Same.
     :param font_size: Same.
     :param cbar_label_string: Label for colour bar.
+    :param tick_label_format_string: Number format for tick labels.  A valid
+        example is '{0:.2g}'.
+    :param temporary_cbar_file_name: Path to temporary image file where colour
+        bar will be saved.  If None, will determine this on the fly.
     """
 
     this_image_matrix = Image.open(figure_file_name)
@@ -213,15 +216,23 @@ def add_colour_bar(
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string=orientation_string,
-        extend_min=False, extend_max=False, fraction_of_axis_length=1.,
+        extend_min=False, extend_max=False, fraction_of_axis_length=1.25,
         font_size=font_size
     )
 
     tick_values = colour_bar_object.get_ticks()
-    tick_strings = ['{0:.2g}'.format(v) for v in tick_values]
+    if 'd' in tick_label_format_string:
+        tick_values = numpy.round(tick_values).astype(int)
+
+    tick_strings = [tick_label_format_string.format(v) for v in tick_values]
     colour_bar_object.set_ticks(tick_values)
     colour_bar_object.set_ticklabels(tick_strings)
     colour_bar_object.set_label(cbar_label_string, fontsize=font_size)
+
+    if temporary_cbar_file_name is None:
+        temporary_cbar_file_name = '{0:s}_cbar.jpg'.format(
+            '.'.join(figure_file_name.split('.')[:-1])
+        )
 
     extra_figure_object.savefig(
         temporary_cbar_file_name, dpi=FIGURE_RESOLUTION_DPI,

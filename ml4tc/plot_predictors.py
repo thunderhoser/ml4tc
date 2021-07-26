@@ -2,10 +2,8 @@
 
 import os
 import sys
-import shutil
 import argparse
 import numpy
-import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
@@ -20,27 +18,30 @@ import file_system_utils
 import imagemagick_utils
 import example_io
 import border_io
-import ships_io
 import prediction_io
 import example_utils
 import satellite_utils
 import general_utils
 import normalization
 import neural_net
+import plotting_utils
+import satellite_plotting
 import scalar_satellite_plotting
 import ships_plotting
-import plot_satellite
+import predictor_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 METRES_PER_SECOND_TO_KT = 3.6 / 1.852
+SHIPS_FORECAST_HOURS = numpy.linspace(-12, 120, num=23, dtype=int)
+SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
+TITLE_FONT_SIZE = 16
+COLOUR_BAR_FONT_SIZE = 20
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
-CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_FILE_ARG_NAME = 'input_norm_example_file_name'
@@ -222,572 +223,227 @@ def _get_predictions_and_targets(prediction_file_name, cyclone_id_string,
     return forecast_prob_matrix, target_classes
 
 
-def _concat_panels(panel_file_names, concat_figure_file_name):
-    """Concatenates panels into one figure.
+def _finish_figure_scalar_satellite(figure_object, output_dir_name,
+                                    init_time_unix_sec, cyclone_id_string):
+    """Finishes one figure for scalar (ungridded) satellite-based predictors.
 
-    :param panel_file_names: 1-D list of paths to input image files.
-    :param concat_figure_file_name: Path to output image file.
+    One figure corresponds to one forecast-initialization time.
+
+    :param figure_object: Figure handle (instances of
+        `matplotlib.figure.Figure`).
+    :param output_dir_name: Name of output directory.
+    :param init_time_unix_sec: Forecast-initialization time.
+    :param cyclone_id_string: Cyclone ID.
     """
 
-    print('Concatenating panels to: "{0:s}"...'.format(
-        concat_figure_file_name
-    ))
-
-    num_panels = len(panel_file_names)
-    num_panel_rows = int(numpy.floor(
-        numpy.sqrt(num_panels)
-    ))
-    num_panel_columns = int(numpy.ceil(
-        float(num_panels) / num_panel_rows
-    ))
-
-    if num_panels == 1:
-        shutil.move(panel_file_names[0], concat_figure_file_name)
-    else:
-        imagemagick_utils.concatenate_images(
-            input_file_names=panel_file_names,
-            num_panel_rows=num_panel_rows,
-            num_panel_columns=num_panel_columns,
-            output_file_name=concat_figure_file_name
-        )
-
-    imagemagick_utils.resize_image(
-        input_file_name=concat_figure_file_name,
-        output_file_name=concat_figure_file_name,
-        output_size_pixels=CONCAT_FIGURE_SIZE_PX
+    init_time_string = time_conversion.unix_sec_to_string(
+        init_time_unix_sec, TIME_FORMAT
     )
-    imagemagick_utils.trim_whitespace(
-        input_file_name=concat_figure_file_name,
-        output_file_name=concat_figure_file_name
+    output_file_name = '{0:s}/{1:s}_{2:s}_scalar_satellite.jpg'.format(
+        output_dir_name, cyclone_id_string, init_time_string
     )
 
-    if num_panels == 1:
-        return
+    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
 
-    for this_panel_file_name in panel_file_names:
-        os.remove(this_panel_file_name)
+    colour_norm_object = pyplot.Normalize(
+        vmin=scalar_satellite_plotting.MIN_NORMALIZED_VALUE,
+        vmax=scalar_satellite_plotting.MAX_NORMALIZED_VALUE
+    )
+    plotting_utils.add_colour_bar(
+        figure_file_name=output_file_name,
+        colour_map_object=scalar_satellite_plotting.COLOUR_MAP_OBJECT,
+        colour_norm_object=colour_norm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='', tick_label_format_string='{0:.2g}'
+    )
 
 
-def _plot_brightness_temps(
-        example_table_xarray, normalization_table_xarray, model_metadata_dict,
-        predictor_matrices, init_times_unix_sec, info_strings,
-        border_latitudes_deg_n, border_longitudes_deg_e, output_dir_name):
-    """Plots one brightness-temp map for each init time and lag time.
+def _finish_figure_brightness_temp(
+        figure_objects, pathless_panel_file_names, output_dir_name,
+        init_time_unix_sec, cyclone_id_string):
+    """Finishes one figure for brightness temperature.
 
-    P = number of points in border set
+    One figure corresponds to one forecast-initialization time.
 
-    :param example_table_xarray: xarray table returned by
-        `example_io.read_file`.
-    :param normalization_table_xarray: xarray table returned by
-        `normalization.read_file`.
-    :param model_metadata_dict: Dictionary returned by
-        `neural_net.read_metafile`.
-    :param predictor_matrices: See output doc for `neural_net.create_inputs`.
-    :param init_times_unix_sec: Same.
-    :param info_strings: 1-D list of info strings, one per init time.
-    :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
-    :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
-    :param output_dir_name: Name of output directory.  Figures will be saved
-        here.
+    L = number of model lag times
+
+    :param figure_objects: length-L list of figure handles (instances of
+        `matplotlib.figure.Figure`).
+    :param pathless_panel_file_names: length-L list of pathless file names for
+        panels.
+    :param output_dir_name: Name of output directory.
+    :param init_time_unix_sec: Forecast-initialization time.
+    :param cyclone_id_string: Cyclone ID.
     """
 
-    xt = example_table_xarray
-    nt = normalization_table_xarray
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
-    )
+    num_model_lag_times = len(figure_objects)
+    panel_file_names = [
+        '{0:s}/{1:s}'.format(output_dir_name, p)
+        for p in pathless_panel_file_names
+    ]
 
-    # Denormalize brightness temperatures.
-    predictor_names_norm = list(
-        nt.coords[normalization.SATELLITE_PREDICTOR_GRIDDED_DIM].values
-    )
-    k = predictor_names_norm.index(satellite_utils.BRIGHTNESS_TEMPERATURE_KEY)
-    training_values = (
-        nt[normalization.SATELLITE_PREDICTORS_GRIDDED_KEY].values[:, k]
-    )
-    training_values = training_values[numpy.isfinite(training_values)]
-
-    brightness_temp_matrix_kelvins = normalization._denorm_one_variable(
-        normalized_values_new=predictor_matrices[0],
-        actual_values_training=training_values
-    )[..., 0]
-
-    # Housekeeping.
-    num_init_times = len(init_times_unix_sec)
-    lag_times_sec = (
-        MINUTES_TO_SECONDS *
-        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
-    )
-    num_lag_times = len(lag_times_sec)
-
-    num_grid_rows = brightness_temp_matrix_kelvins.shape[1]
-    num_grid_columns = brightness_temp_matrix_kelvins.shape[2]
-    grid_row_indices = numpy.linspace(
-        0, num_grid_rows - 1, num=num_grid_rows, dtype=int
-    )
-    grid_column_indices = numpy.linspace(
-        0, num_grid_columns - 1, num=num_grid_columns, dtype=int
-    )
-
-    # Do actual stuff (plot maps of denormalized brightness temperature).
-    for i in range(num_init_times):
-        panel_file_names = [''] * num_lag_times
-
-        for j in range(num_lag_times):
-            valid_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
-            satellite_metadata_dict = {
-                satellite_utils.GRID_ROW_DIM: grid_row_indices,
-                satellite_utils.GRID_COLUMN_DIM: grid_column_indices,
-                satellite_utils.TIME_DIM:
-                    numpy.array([valid_time_unix_sec], dtype=int)
-            }
-
-            k = numpy.argmin(numpy.absolute(
-                xt.coords[example_utils.SATELLITE_TIME_DIM].values -
-                valid_time_unix_sec
-            ))
-            grid_latitudes_deg_n = (
-                xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
-            )
-            grid_longitudes_deg_e = (
-                xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
-            )
-            cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[k]
-            if not isinstance(cyclone_id_string, str):
-                cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-            these_dim_3d = (
-                satellite_utils.TIME_DIM,
-                satellite_utils.GRID_ROW_DIM, satellite_utils.GRID_COLUMN_DIM
-            )
-
-            satellite_data_dict = {
-                satellite_utils.CYCLONE_ID_KEY: (
-                    (satellite_utils.TIME_DIM,),
-                    [cyclone_id_string]
-                ),
-                satellite_utils.BRIGHTNESS_TEMPERATURE_KEY: (
-                    these_dim_3d,
-                    brightness_temp_matrix_kelvins[[i], ..., j]
-                ),
-                satellite_utils.GRID_LATITUDE_KEY: (
-                    (satellite_utils.TIME_DIM, satellite_utils.GRID_ROW_DIM),
-                    numpy.expand_dims(grid_latitudes_deg_n, axis=0)
-                ),
-                satellite_utils.GRID_LONGITUDE_KEY: (
-                    (satellite_utils.TIME_DIM, satellite_utils.GRID_COLUMN_DIM),
-                    numpy.expand_dims(grid_longitudes_deg_e, axis=0)
-                )
-            }
-
-            satellite_table_xarray = xarray.Dataset(
-                data_vars=satellite_data_dict, coords=satellite_metadata_dict
-            )
-            panel_file_names[j] = plot_satellite.plot_one_satellite_image(
-                satellite_table_xarray=satellite_table_xarray, time_index=0,
-                border_latitudes_deg_n=border_latitudes_deg_n,
-                border_longitudes_deg_e=border_longitudes_deg_e,
-                output_dir_name=output_dir_name,
-                info_string=info_strings[i] if lag_times_sec[j] == 0 else None
-            )[-1]
-            imagemagick_utils.resize_image(
-                input_file_name=panel_file_names[j],
-                output_file_name=panel_file_names[j],
-                output_size_pixels=PANEL_SIZE_PX
-            )
-
-        this_time_string = time_conversion.unix_sec_to_string(
-            init_times_unix_sec[i], TIME_FORMAT
+    for k in range(num_model_lag_times):
+        print('Saving figure to file: "{0:s}"...'.format(
+            panel_file_names[k]
+        ))
+        figure_objects[k].savefig(
+            panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
         )
-        concat_figure_file_name = (
-            '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'
-        ).format(output_dir_name, cyclone_id_string, this_time_string)
+        pyplot.close(figure_objects[k])
 
-        _concat_panels(
-            panel_file_names=panel_file_names,
-            concat_figure_file_name=concat_figure_file_name
+        imagemagick_utils.resize_image(
+            input_file_name=panel_file_names[k],
+            output_file_name=panel_file_names[k],
+            output_size_pixels=PANEL_SIZE_PX
         )
 
+    init_time_string = time_conversion.unix_sec_to_string(
+        init_time_unix_sec, TIME_FORMAT
+    )
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'.format(
+        output_dir_name, cyclone_id_string, init_time_string
+    )
+    plotting_utils.concat_panels(
+        panel_file_names=panel_file_names,
+        concat_figure_file_name=concat_figure_file_name
+    )
 
-def _plot_scalar_satellite_predictors(
-        example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, info_strings, output_dir_name):
-    """Plots scalar satellite predictors for each init time and lag time.
+    this_cmap_object, this_cnorm_object = (
+        satellite_plotting.get_colour_scheme()
+    )
+    plotting_utils.add_colour_bar(
+        figure_file_name=concat_figure_file_name,
+        colour_map_object=this_cmap_object,
+        colour_norm_object=this_cnorm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='', tick_label_format_string='{0:d}'
+    )
 
-    :param example_table_xarray: See doc for `_plot_brightness_temps`.
-    :param model_metadata_dict: Same.
-    :param predictor_matrices: Same.
-    :param init_times_unix_sec: Same.
-    :param info_strings: Same.
+
+def _finish_figure_lagged_ships(
+        figure_objects, pathless_panel_file_names, output_dir_name,
+        init_time_unix_sec, cyclone_id_string):
+    """Finishes one figure for lagged SHIPS predictors.
+
+    One figure corresponds to one forecast-initialization time.
+
+    :param figure_objects: See doc for `_finish_figure_brightness_temp`.
+    :param pathless_panel_file_names: Same.
     :param output_dir_name: Same.
+    :param init_time_unix_sec: Same.
+    :param cyclone_id_string: Same.
     """
 
-    # Housekeeping.
-    xt = example_table_xarray
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
-    )
+    num_model_lag_times = len(figure_objects)
+    panel_file_names = [
+        '{0:s}/{1:s}'.format(output_dir_name, p)
+        for p in pathless_panel_file_names
+    ]
 
-    num_init_times = len(init_times_unix_sec)
-    lag_times_sec = (
-        MINUTES_TO_SECONDS *
-        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
-    )
-    num_lag_times = len(lag_times_sec)
-
-    num_predictors = predictor_matrices[1].shape[-1]
-    predictor_indices = numpy.linspace(
-        0, num_predictors - 1, num=num_predictors, dtype=int
-    )
-
-    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    # Do actual stuff (plot bar graphs with normalized predictors).
-    for i in range(num_init_times):
-        panel_file_names = [''] * num_lag_times
-
-        for j in range(num_lag_times):
-            valid_time_unix_sec = init_times_unix_sec[i] - lag_times_sec[j]
-
-            metadata_dict = {
-                example_utils.SATELLITE_TIME_DIM:
-                    numpy.array([valid_time_unix_sec], dtype=int),
-                example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM:
-                    validation_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
-            }
-
-            these_dim_2d = (
-                example_utils.SATELLITE_TIME_DIM,
-                example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
-            )
-            main_data_dict = {
-                example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY: (
-                    these_dim_2d,
-                    numpy.expand_dims(predictor_matrices[1][i, j, :], axis=0)
-                ),
-                satellite_utils.CYCLONE_ID_KEY: (
-                    (example_utils.SATELLITE_TIME_DIM,),
-                    [cyclone_id_string]
-                )
-            }
-
-            this_table_xarray = xarray.Dataset(
-                data_vars=main_data_dict, coords=metadata_dict
-            )
-            figure_object, _, pathless_output_file_name = (
-                scalar_satellite_plotting.plot_bar_graph_one_time(
-                    example_table_xarray=this_table_xarray, time_index=0,
-                    predictor_indices=predictor_indices,
-                    info_string=(
-                        info_strings[i] if lag_times_sec[j] == 0 else None
-                    )
-                )
-            )
-
-            panel_file_names[j] = '{0:s}/{1:s}'.format(
-                output_dir_name, pathless_output_file_name
-            )
-            print('Saving figure to file: "{0:s}"...'.format(
-                panel_file_names[j]
-            ))
-            figure_object.savefig(
-                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
-                pad_inches=0, bbox_inches='tight'
-            )
-            pyplot.close(figure_object)
-
-            imagemagick_utils.resize_image(
-                input_file_name=panel_file_names[j],
-                output_file_name=panel_file_names[j],
-                output_size_pixels=PANEL_SIZE_PX
-            )
-
-        this_time_string = time_conversion.unix_sec_to_string(
-            init_times_unix_sec[i], TIME_FORMAT
+    for k in range(num_model_lag_times):
+        print('Saving figure to file: "{0:s}"...'.format(
+            panel_file_names[k]
+        ))
+        figure_objects[k].savefig(
+            panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
         )
-        concat_figure_file_name = (
-            '{0:s}/{1:s}_{2:s}_scalar_satellite.jpg'
-        ).format(output_dir_name, cyclone_id_string, this_time_string)
+        pyplot.close(figure_objects[k])
 
-        _concat_panels(
-            panel_file_names=panel_file_names,
-            concat_figure_file_name=concat_figure_file_name
+        imagemagick_utils.resize_image(
+            input_file_name=panel_file_names[k],
+            output_file_name=panel_file_names[k],
+            output_size_pixels=PANEL_SIZE_PX
         )
 
+    init_time_string = time_conversion.unix_sec_to_string(
+        init_time_unix_sec, TIME_FORMAT
+    )
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_lagged.jpg'.format(
+        output_dir_name, cyclone_id_string, init_time_string
+    )
+    plotting_utils.concat_panels(
+        panel_file_names=panel_file_names,
+        concat_figure_file_name=concat_figure_file_name
+    )
 
-def _plot_lagged_ships_predictors(
-        example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, info_strings, output_dir_name):
-    """Plots lagged SHIPS predictors for each init time and model lag time.
+    colour_norm_object = pyplot.Normalize(
+        vmin=ships_plotting.MIN_NORMALIZED_VALUE,
+        vmax=ships_plotting.MAX_NORMALIZED_VALUE
+    )
+    plotting_utils.add_colour_bar(
+        figure_file_name=concat_figure_file_name,
+        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+        colour_norm_object=colour_norm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='', tick_label_format_string='{0:.2g}'
+    )
 
-    :param example_table_xarray: See doc for `_plot_brightness_temps`.
-    :param model_metadata_dict: Same.
-    :param predictor_matrices: Same.
-    :param init_times_unix_sec: Same.
-    :param info_strings: Same.
+
+def _finish_figure_forecast_ships(
+        figure_objects, pathless_panel_file_names, output_dir_name,
+        init_time_unix_sec, cyclone_id_string):
+    """Finishes one figure for forecast SHIPS predictors.
+
+    One figure corresponds to one forecast-initialization time.
+
+    :param figure_objects: See doc for `_finish_figure_brightness_temp`.
+    :param pathless_panel_file_names: Same.
     :param output_dir_name: Same.
+    :param init_time_unix_sec: Same.
+    :param cyclone_id_string: Same.
     """
 
-    # Housekeeping.
-    xt = example_table_xarray
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
-    )
+    num_model_lag_times = len(figure_objects)
+    panel_file_names = [
+        '{0:s}/{1:s}'.format(output_dir_name, p)
+        for p in pathless_panel_file_names
+    ]
 
-    num_init_times = len(init_times_unix_sec)
-    model_lag_times_sec = (
-        HOURS_TO_SECONDS *
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
-    )
-    num_model_lag_times = len(model_lag_times_sec)
-
-    lagged_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
-    )
-    builtin_lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    num_forecast_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
-    num_forecast_hours = len(
-        xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
-    )
-
-    num_lagged_predictors = len(lagged_predictor_names)
-    num_builtin_lag_times = len(builtin_lag_times_hours)
-    lagged_predictor_indices = numpy.linspace(
-        0, num_lagged_predictors - 1, num=num_lagged_predictors, dtype=int
-    )
-
-    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    # Do actual stuff (plot 2-D colour maps with normalized predictors).
-    for i in range(num_init_times):
-        panel_file_names = [''] * num_model_lag_times
-
-        for j in range(num_model_lag_times):
-            valid_time_unix_sec = (
-                init_times_unix_sec[i] - model_lag_times_sec[j]
-            )
-
-            metadata_dict = {
-                example_utils.SHIPS_LAG_TIME_DIM: builtin_lag_times_hours,
-                example_utils.SHIPS_VALID_TIME_DIM:
-                    numpy.array([valid_time_unix_sec], dtype=int),
-                example_utils.SHIPS_PREDICTOR_LAGGED_DIM: lagged_predictor_names
-            }
-
-            predictor_matrix = predictor_matrices[2][i, j, :]
-            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-
-            predictor_matrix = neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=predictor_matrix,
-                num_lagged_predictors=num_lagged_predictors,
-                num_builtin_lag_times=num_builtin_lag_times,
-                num_forecast_predictors=num_forecast_predictors,
-                num_forecast_hours=num_forecast_hours
-            )[0]
-
-            predictor_matrix = predictor_matrix[:, 0, ...]
-
-            these_dim_3d = (
-                example_utils.SHIPS_VALID_TIME_DIM,
-                example_utils.SHIPS_LAG_TIME_DIM,
-                example_utils.SHIPS_PREDICTOR_LAGGED_DIM
-            )
-            main_data_dict = {
-                example_utils.SHIPS_PREDICTORS_LAGGED_KEY: (
-                    these_dim_3d, predictor_matrix
-                ),
-                ships_io.CYCLONE_ID_KEY: (
-                    (example_utils.SHIPS_VALID_TIME_DIM,),
-                    [cyclone_id_string]
-                )
-            }
-
-            this_table_xarray = xarray.Dataset(
-                data_vars=main_data_dict, coords=metadata_dict
-            )
-            figure_object, _, pathless_output_file_name = (
-                ships_plotting.plot_lagged_predictors_one_init_time(
-                    example_table_xarray=this_table_xarray, init_time_index=0,
-                    predictor_indices=lagged_predictor_indices,
-                    info_string=(
-                        info_strings[i] if model_lag_times_sec[j] == 0 else None
-                    )
-                )
-            )
-
-            panel_file_names[j] = '{0:s}/{1:s}'.format(
-                output_dir_name, pathless_output_file_name
-            )
-            print('Saving figure to file: "{0:s}"...'.format(
-                panel_file_names[j]
-            ))
-            figure_object.savefig(
-                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
-                pad_inches=0, bbox_inches='tight'
-            )
-            pyplot.close(figure_object)
-
-            imagemagick_utils.resize_image(
-                input_file_name=panel_file_names[j],
-                output_file_name=panel_file_names[j],
-                output_size_pixels=PANEL_SIZE_PX
-            )
-
-        this_time_string = time_conversion.unix_sec_to_string(
-            init_times_unix_sec[i], TIME_FORMAT
+    for k in range(num_model_lag_times):
+        print('Saving figure to file: "{0:s}"...'.format(
+            panel_file_names[k]
+        ))
+        figure_objects[k].savefig(
+            panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
         )
-        concat_figure_file_name = (
-            '{0:s}/{1:s}_{2:s}_ships_lagged.jpg'
-        ).format(output_dir_name, cyclone_id_string, this_time_string)
+        pyplot.close(figure_objects[k])
 
-        _concat_panels(
-            panel_file_names=panel_file_names,
-            concat_figure_file_name=concat_figure_file_name
+        imagemagick_utils.resize_image(
+            input_file_name=panel_file_names[k],
+            output_file_name=panel_file_names[k],
+            output_size_pixels=PANEL_SIZE_PX
         )
 
-
-def _plot_forecast_ships_predictors(
-        example_table_xarray, model_metadata_dict, predictor_matrices,
-        init_times_unix_sec, info_strings, output_dir_name):
-    """Plots lagged SHIPS predictors for each init time and lag time.
-
-    :param example_table_xarray: See doc for `_plot_brightness_temps`.
-    :param model_metadata_dict: Same.
-    :param predictor_matrices: Same.
-    :param init_times_unix_sec: Same.
-    :param info_strings: Same.
-    :param output_dir_name: Same.
-    """
-
-    # Housekeeping.
-    xt = example_table_xarray
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    init_time_string = time_conversion.unix_sec_to_string(
+        init_time_unix_sec, TIME_FORMAT
+    )
+    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_forecast.jpg'.format(
+        output_dir_name, cyclone_id_string, init_time_string
+    )
+    plotting_utils.concat_panels(
+        panel_file_names=panel_file_names,
+        concat_figure_file_name=concat_figure_file_name
     )
 
-    num_init_times = len(init_times_unix_sec)
-    model_lag_times_sec = (
-        HOURS_TO_SECONDS *
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    colour_norm_object = pyplot.Normalize(
+        vmin=ships_plotting.MIN_NORMALIZED_VALUE,
+        vmax=ships_plotting.MAX_NORMALIZED_VALUE
     )
-    num_model_lag_times = len(model_lag_times_sec)
-
-    num_lagged_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+    plotting_utils.add_colour_bar(
+        figure_file_name=concat_figure_file_name,
+        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+        colour_norm_object=colour_norm_object,
+        orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+        cbar_label_string='', tick_label_format_string='{0:.2g}'
     )
-    num_builtin_lag_times = len(
-        xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    )
-    forecast_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
-    forecast_hours = xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
-
-    num_forecast_predictors = len(forecast_predictor_names)
-    num_forecast_hours = len(forecast_hours)
-    forecast_predictor_indices = numpy.linspace(
-        0, num_forecast_predictors - 1, num=num_forecast_predictors, dtype=int
-    )
-
-    cyclone_id_string = xt[satellite_utils.CYCLONE_ID_KEY].values[0]
-    if not isinstance(cyclone_id_string, str):
-        cyclone_id_string = cyclone_id_string.decode('utf-8')
-
-    # Do actual stuff (plot 2-D colour maps with normalized predictors).
-    for i in range(num_init_times):
-        panel_file_names = [''] * num_model_lag_times
-
-        for j in range(num_model_lag_times):
-            valid_time_unix_sec = (
-                init_times_unix_sec[i] - model_lag_times_sec[j]
-            )
-
-            metadata_dict = {
-                example_utils.SHIPS_FORECAST_HOUR_DIM: forecast_hours,
-                example_utils.SHIPS_VALID_TIME_DIM:
-                    numpy.array([valid_time_unix_sec], dtype=int),
-                example_utils.SHIPS_PREDICTOR_FORECAST_DIM:
-                    forecast_predictor_names
-            }
-
-            predictor_matrix = predictor_matrices[2][i, j, :]
-            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-            predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-
-            predictor_matrix = neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=predictor_matrix,
-                num_lagged_predictors=num_lagged_predictors,
-                num_builtin_lag_times=num_builtin_lag_times,
-                num_forecast_predictors=num_forecast_predictors,
-                num_forecast_hours=num_forecast_hours
-            )[1]
-
-            predictor_matrix = predictor_matrix[:, 0, ...]
-
-            these_dim_3d = (
-                example_utils.SHIPS_VALID_TIME_DIM,
-                example_utils.SHIPS_FORECAST_HOUR_DIM,
-                example_utils.SHIPS_PREDICTOR_FORECAST_DIM
-            )
-            main_data_dict = {
-                example_utils.SHIPS_PREDICTORS_FORECAST_KEY: (
-                    these_dim_3d, predictor_matrix
-                ),
-                ships_io.CYCLONE_ID_KEY: (
-                    (example_utils.SHIPS_VALID_TIME_DIM,),
-                    [cyclone_id_string]
-                )
-            }
-
-            this_table_xarray = xarray.Dataset(
-                data_vars=main_data_dict, coords=metadata_dict
-            )
-            figure_object, _, pathless_output_file_name = (
-                ships_plotting.plot_fcst_predictors_one_init_time(
-                    example_table_xarray=this_table_xarray, init_time_index=0,
-                    predictor_indices=forecast_predictor_indices,
-                    info_string=(
-                        info_strings[i] if model_lag_times_sec[j] == 0 else None
-                    )
-                )
-            )
-
-            panel_file_names[j] = '{0:s}/{1:s}'.format(
-                output_dir_name, pathless_output_file_name
-            )
-            print('Saving figure to file: "{0:s}"...'.format(
-                panel_file_names[j]
-            ))
-            figure_object.savefig(
-                panel_file_names[j], dpi=FIGURE_RESOLUTION_DPI,
-                pad_inches=0, bbox_inches='tight'
-            )
-            pyplot.close(figure_object)
-
-            imagemagick_utils.resize_image(
-                input_file_name=panel_file_names[j],
-                output_file_name=panel_file_names[j],
-                output_size_pixels=PANEL_SIZE_PX
-            )
-
-        this_time_string = time_conversion.unix_sec_to_string(
-            init_times_unix_sec[i], TIME_FORMAT
-        )
-        concat_figure_file_name = (
-            '{0:s}/{1:s}_{2:s}_ships_forecast.jpg'
-        ).format(output_dir_name, cyclone_id_string, this_time_string)
-
-        _concat_panels(
-            panel_file_names=panel_file_names,
-            concat_figure_file_name=concat_figure_file_name
-        )
 
 
 def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
@@ -837,6 +493,10 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     data_dict = neural_net.create_inputs(validation_option_dict)
     predictor_matrices = data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     all_init_times_unix_sec = data_dict[neural_net.INIT_TIMES_KEY]
+    grid_latitude_matrix_deg_n = data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY]
+    grid_longitude_matrix_deg_e = (
+        data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY]
+    )
     print(SEPARATOR_STRING)
 
     if len(init_time_strings) == 1 and init_time_strings[0] == '':
@@ -864,10 +524,14 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
     predictor_matrices = [a[time_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
+    grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[time_indices, ...]
+    grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[time_indices, ...]
 
     sort_indices = numpy.argsort(init_times_unix_sec)
     predictor_matrices = [a[sort_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = init_times_unix_sec[sort_indices]
+    grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[sort_indices, ...]
+    grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[sort_indices, ...]
 
     current_intensities_kt, future_intensities_kt = _get_intensities(
         example_table_xarray=example_table_xarray,
@@ -879,7 +543,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     info_strings = [''] * num_init_times
 
     for i in range(num_init_times):
-        info_strings[i] = 'I = {0:d} to {1:d} kt'.format(
+        info_strings[i] = r'$I$ = {0:d} to {1:d} kt'.format(
             current_intensities_kt[i], future_intensities_kt[i]
         )
 
@@ -892,53 +556,113 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
         for i in range(num_init_times):
             info_strings[i] += (
-                '; class = {0:d} of {1:d}; prob = {2:.2f}'
+                '; class = {0:d} of {1:d}; score = {2:.2f}'
             ).format(
                 target_classes[i] + 1, forecast_prob_matrix.shape[1],
                 forecast_prob_matrix[i, target_classes[i]]
             )
 
-    _plot_brightness_temps(
-        example_table_xarray=example_table_xarray,
-        normalization_table_xarray=normalization_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        info_strings=info_strings,
-        init_times_unix_sec=init_times_unix_sec,
-        border_latitudes_deg_n=border_latitudes_deg_n,
-        border_longitudes_deg_e=border_longitudes_deg_e,
-        output_dir_name=output_dir_name
-    )
-    print(SEPARATOR_STRING)
+    for i in range(num_init_times):
+        figure_object, axes_object = (
+            predictor_plotting.plot_scalar_satellite_one_example(
+                predictor_matrices_one_example=
+                [a[[i], ...] for a in predictor_matrices],
+                model_metadata_dict=model_metadata_dict,
+                cyclone_id_string=cyclone_id_string,
+                init_time_unix_sec=init_times_unix_sec[i]
+            )[:2]
+        )
 
-    _plot_scalar_satellite_predictors(
-        example_table_xarray=example_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        info_strings=info_strings,
-        init_times_unix_sec=init_times_unix_sec,
-        output_dir_name=output_dir_name
-    )
-    print(SEPARATOR_STRING)
+        title_string = '{0:s}; {1:s}'.format(
+            axes_object.get_title(), info_strings[i]
+        )
+        axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
 
-    _plot_lagged_ships_predictors(
-        example_table_xarray=example_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        info_strings=info_strings,
-        init_times_unix_sec=init_times_unix_sec,
-        output_dir_name=output_dir_name
-    )
-    print(SEPARATOR_STRING)
+        _finish_figure_scalar_satellite(
+            figure_object=figure_object, output_dir_name=output_dir_name,
+            init_time_unix_sec=init_times_unix_sec[i],
+            cyclone_id_string=cyclone_id_string
+        )
 
-    _plot_forecast_ships_predictors(
-        example_table_xarray=example_table_xarray,
-        model_metadata_dict=model_metadata_dict,
-        predictor_matrices=predictor_matrices,
-        info_strings=info_strings,
-        init_times_unix_sec=init_times_unix_sec,
-        output_dir_name=output_dir_name
-    )
+        figure_objects, axes_objects, pathless_panel_file_names = (
+            predictor_plotting.plot_brightness_temp_one_example(
+                predictor_matrices_one_example=
+                [a[[i], ...] for a in predictor_matrices],
+                model_metadata_dict=model_metadata_dict,
+                cyclone_id_string=cyclone_id_string,
+                init_time_unix_sec=init_times_unix_sec[i],
+                normalization_table_xarray=normalization_table_xarray,
+                grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n[i, ...],
+                grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e[i, ...],
+                border_latitudes_deg_n=border_latitudes_deg_n,
+                border_longitudes_deg_e=border_longitudes_deg_e
+            )
+        )
+
+        title_string = '{0:s}; {1:s}'.format(
+            axes_objects[0].get_title(), info_strings[i]
+        )
+        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+
+        _finish_figure_brightness_temp(
+            figure_objects=figure_objects,
+            pathless_panel_file_names=pathless_panel_file_names,
+            output_dir_name=output_dir_name,
+            init_time_unix_sec=init_times_unix_sec[i],
+            cyclone_id_string=cyclone_id_string
+        )
+
+        figure_objects, axes_objects, pathless_panel_file_names = (
+            predictor_plotting.plot_lagged_ships_one_example(
+                predictor_matrices_one_example=
+                [a[[i], ...] for a in predictor_matrices],
+                model_metadata_dict=model_metadata_dict,
+                cyclone_id_string=cyclone_id_string,
+                builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+                forecast_hours=SHIPS_FORECAST_HOURS,
+                init_time_unix_sec=init_times_unix_sec[i]
+            )
+        )
+
+        title_string = '{0:s}; {1:s}'.format(
+            axes_objects[0].get_title(), info_strings[i]
+        )
+        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+
+        _finish_figure_lagged_ships(
+            figure_objects=figure_objects,
+            pathless_panel_file_names=pathless_panel_file_names,
+            output_dir_name=output_dir_name,
+            init_time_unix_sec=init_times_unix_sec[i],
+            cyclone_id_string=cyclone_id_string
+        )
+
+        figure_objects, axes_objects, pathless_panel_file_names = (
+            predictor_plotting.plot_forecast_ships_one_example(
+                predictor_matrices_one_example=
+                [a[[i], ...] for a in predictor_matrices],
+                model_metadata_dict=model_metadata_dict,
+                cyclone_id_string=cyclone_id_string,
+                builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+                forecast_hours=SHIPS_FORECAST_HOURS,
+                init_time_unix_sec=init_times_unix_sec[i]
+            )
+        )
+
+        title_string = '{0:s}; {1:s}'.format(
+            axes_objects[0].get_title(), info_strings[i]
+        )
+        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+
+        _finish_figure_forecast_ships(
+            figure_objects=figure_objects,
+            pathless_panel_file_names=pathless_panel_file_names,
+            output_dir_name=output_dir_name,
+            init_time_unix_sec=init_times_unix_sec[i],
+            cyclone_id_string=cyclone_id_string
+        )
+
+        print(SEPARATOR_STRING)
 
 
 if __name__ == '__main__':
