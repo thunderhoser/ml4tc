@@ -112,6 +112,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
         )
     )
 
+    print(grid_longitudes_deg_e)
+
     num_grid_rows = len(grid_latitudes_deg_n)
     num_grid_columns = len(grid_longitudes_deg_e)
 
@@ -124,6 +126,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
             num_rows=num_grid_rows, num_columns=num_grid_columns
         )
     )
+
+    print(grid_edge_longitudes_deg)
 
     print(SEPARATOR_STRING)
     num_examples_written = 0
