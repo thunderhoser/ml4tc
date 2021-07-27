@@ -98,11 +98,14 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
             min_latitude_deg_n=MIN_LATITUDE_DEG_N,
             max_latitude_deg_n=MAX_LATITUDE_DEG_N,
             latitude_spacing_deg=latitude_spacing_deg,
-            min_longitude_deg_e=MIN_LONGITUDE_DEG_E + longitude_spacing_deg / 2,
-            max_longitude_deg_e=MAX_LONGITUDE_DEG_E - longitude_spacing_deg / 2,
+            min_longitude_deg_e=MIN_LONGITUDE_DEG_E,
+            max_longitude_deg_e=MAX_LONGITUDE_DEG_E - longitude_spacing_deg,
             longitude_spacing_deg=longitude_spacing_deg
         )
     )
+
+    grid_longitudes_deg_e += longitude_spacing_deg / 2
+    print(grid_longitudes_deg_e)
 
     num_grid_rows = len(grid_latitudes_deg_n)
     num_grid_columns = len(grid_longitudes_deg_e)
@@ -116,6 +119,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
             num_rows=num_grid_rows, num_columns=num_grid_columns
         )
     )
+
+    print(grid_edge_longitudes_deg)
 
     print(SEPARATOR_STRING)
 
