@@ -484,6 +484,8 @@ def plot_latlng_grid(
         lng_spacing_deg=longitude_spacing_deg)
 
     grid_cell_edge_longitudes_deg[grid_cell_edge_longitudes_deg > 180.] -= 360.
+    if numpy.isclose(grid_cell_edge_longitudes_deg[0], 180., atol=1e-6):
+        grid_cell_edge_longitudes_deg[0] = -180.
 
     field_matrix_at_edges = numpy.ma.masked_where(
         numpy.isnan(field_matrix_at_edges), field_matrix_at_edges)
