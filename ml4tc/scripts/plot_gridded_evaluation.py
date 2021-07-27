@@ -125,6 +125,7 @@ def _get_bias_colour_scheme(colour_map_name, max_colour_value):
     rgb_matrix = orig_colour_map_object(normalized_values)[:, :-1]
 
     colour_map_object = matplotlib.colors.ListedColormap(rgb_matrix)
+    colour_map_object.set_under(numpy.full(3, 1.))
     colour_norm_object = matplotlib.colors.BoundaryNorm(
         bias_values, colour_map_object.N
     )
@@ -185,6 +186,7 @@ def _plot_one_score(
         )
     else:
         colour_map_object = pyplot.get_cmap(colour_map_name)
+        colour_map_object.set_bad(numpy.full(3, 1.))
 
         if is_bss:
             max_colour_value = numpy.nanpercentile(
@@ -204,13 +206,17 @@ def _plot_one_score(
             vmin=min_colour_value, vmax=max_colour_value
         )
 
+    sort_indices = numpy.argsort(grid_longitudes_deg_e)
+    sorted_grid_longitudes_deg_e = grid_longitudes_deg_e[sort_indices]
+    sorted_score_matrix = score_matrix[:, sort_indices]
+
     radar_plotting.plot_latlng_grid(
-        field_matrix=score_matrix, field_name=DUMMY_FIELD_NAME,
+        field_matrix=sorted_score_matrix, field_name=DUMMY_FIELD_NAME,
         axes_object=axes_object,
         min_grid_point_latitude_deg=numpy.min(grid_latitudes_deg_n),
-        min_grid_point_longitude_deg=numpy.min(grid_longitudes_deg_e),
+        min_grid_point_longitude_deg=numpy.min(sorted_grid_longitudes_deg_e),
         latitude_spacing_deg=numpy.diff(grid_latitudes_deg_n[:2])[0],
-        longitude_spacing_deg=numpy.diff(grid_longitudes_deg_e[:2])[0],
+        longitude_spacing_deg=numpy.diff(sorted_grid_longitudes_deg_e[:2])[0],
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object
     )
@@ -221,7 +227,7 @@ def _plot_one_score(
             colour_map_object=colour_map_object,
             colour_norm_object=colour_norm_object,
             orientation_string='vertical', extend_min=False, extend_max=True,
-            font_size=FONT_SIZE
+            padding=0.01, font_size=FONT_SIZE
         )
 
         tick_values = colour_bar_object.get_ticks()
@@ -234,7 +240,7 @@ def _plot_one_score(
             orientation_string='vertical',
             extend_min=is_bss or min_colour_value > TOLERANCE,
             extend_max=max_colour_value < 1. - TOLERANCE,
-            font_size=FONT_SIZE
+            padding=0.01, font_size=FONT_SIZE
         )
 
         tick_values = colour_bar_object.get_ticks()
@@ -245,9 +251,35 @@ def _plot_one_score(
 
     plotting_utils.plot_grid_lines(
         plot_latitudes_deg_n=grid_latitudes_deg_n,
-        plot_longitudes_deg_e=grid_longitudes_deg_e, axes_object=axes_object,
+        plot_longitudes_deg_e=sorted_grid_longitudes_deg_e,
+        axes_object=axes_object,
         parallel_spacing_deg=10., meridian_spacing_deg=20., font_size=FONT_SIZE
     )
+
+    latitude_spacing_deg = numpy.diff(grid_latitudes_deg_n[:2])[0]
+    min_plot_latitude_deg_n = max([
+        grid_latitudes_deg_n[0] - latitude_spacing_deg / 2,
+        -90.
+    ])
+    max_plot_latitude_deg_n = min([
+        grid_latitudes_deg_n[-1] + latitude_spacing_deg / 2,
+        90.
+    ])
+
+    longitude_spacing_deg = numpy.diff(sorted_grid_longitudes_deg_e[:2])[0]
+    min_plot_longitude_deg_e = (
+        sorted_grid_longitudes_deg_e[0] - longitude_spacing_deg / 2
+    )
+    max_plot_longitude_deg_e = (
+        sorted_grid_longitudes_deg_e[-1] + longitude_spacing_deg / 2
+    )
+
+    if min_plot_longitude_deg_e < -180 or max_plot_longitude_deg_e > 180:
+        min_plot_longitude_deg_e = -180.
+        max_plot_longitude_deg_e = 180.
+
+    axes_object.set_xlim(min_plot_longitude_deg_e, max_plot_longitude_deg_e)
+    axes_object.set_ylim(min_plot_latitude_deg_n, max_plot_latitude_deg_n)
 
     if title_string is not None:
         axes_object.set_title(title_string)
@@ -298,10 +330,10 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         prediction_io.read_grid_metafile(grid_metafile_name)
     )
 
-    border_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+    border_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
         border_longitudes_deg_e
     )
-    grid_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+    grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
         grid_longitudes_deg_e
     )
 

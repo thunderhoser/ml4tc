@@ -119,7 +119,7 @@ def get_occlusion_maps(
                 predictor_matrices=
                 [new_brightness_temp_matrix] + predictor_matrices[1:],
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-                verbose=False
+                verbose=True
             )
             this_prob_array = numpy.squeeze(this_prob_array)
 
@@ -171,7 +171,7 @@ def get_occlusion_maps(
         model_object=model_object,
         predictor_matrices=predictor_matrices,
         num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-        verbose=False
+        verbose=True
     )
 
     if len(original_prob_array.shape) == 1:
