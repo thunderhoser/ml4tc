@@ -571,7 +571,7 @@ def _run_forward_test_one_step(
         variable_index=best_variable_index,
         model_metadata_dict=model_metadata_dict,
         permuted_value_matrix=best_permuted_value_matrix
-    )
+    )[0]
     predictor_matrices = [
         this_predictor_matrix if k == best_matrix_index
         else predictor_matrices[k]
