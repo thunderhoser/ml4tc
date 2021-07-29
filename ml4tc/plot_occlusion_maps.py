@@ -185,6 +185,8 @@ def _plot_occlusion_map_one_example(
         occlusion_dict[this_key][[occlusion_example_index], ...]
     )
 
+    print(numpy.percentile(occlusion_matrix_one_example, numpy.array([0, 1, 5, 25, 50, 75, 95, 99, 100])))
+
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
     ][predictor_example_index, ...]
