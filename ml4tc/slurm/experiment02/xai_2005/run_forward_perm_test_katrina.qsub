@@ -38,7 +38,7 @@ set output_file_name="${model_dir_name}/xai_katrina/forward_perm_test.nc"
 python3 -u "${CODE_DIR_NAME}/run_permutation.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
---cyclone_id_strings "2005AL12" \
+--cyclone_id_strings "2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "2005AL06" "2005AL07" "2005AL08" "2005AL09" "2005AL10" "2005AL11" "2005AL12" \
 --do_backwards_test=0 \
 --num_bootstrap_reps=1 \
 --num_steps=10 \
