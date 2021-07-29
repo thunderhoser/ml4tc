@@ -167,6 +167,9 @@ def get_occlusion_maps(
                 )
             )
 
+        occlusion_prob_matrix = numpy.maximum(occlusion_prob_matrix, 0.)
+        occlusion_prob_matrix = numpy.minimum(occlusion_prob_matrix, 1.)
+
         print((
             'Have upsampled all {0:d} occlusion maps to predictor resolution!'
         ).format(
