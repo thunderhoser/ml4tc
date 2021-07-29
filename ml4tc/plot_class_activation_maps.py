@@ -170,8 +170,9 @@ def _plot_cam_one_example(
             [cam_example_index], ...
         ]
     )
-
-    print(numpy.percentile(cam_matrix_one_example, numpy.array([0, 1, 5, 25, 50, 75, 95, 99, 100])))
+    cam_matrix_one_example_log10 = numpy.log10(
+        numpy.maximum(cam_matrix_one_example, 1e-6)
+    )
 
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
@@ -202,17 +203,17 @@ def _plot_cam_one_example(
         validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
     )
     max_contour_value = numpy.percentile(
-        cam_matrix_one_example, MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example_log10, MAX_COLOUR_PERCENTILE
     )
     min_contour_value = numpy.percentile(
-        cam_matrix_one_example, 100 - MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example_log10, 100 - MAX_COLOUR_PERCENTILE
     )
 
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         satellite_plotting.plot_class_activation(
-            class_activation_matrix=cam_matrix_one_example[0, ...],
+            class_activation_matrix=cam_matrix_one_example_log10[0, ...],
             axes_object=axes_objects[k],
             latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
             longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
@@ -270,7 +271,8 @@ def _plot_cam_one_example(
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string='Class activation', tick_label_format_string='{0:.2g}'
+        cbar_label_string=r'log$_{10}$(class activation)',
+        tick_label_format_string='{0:.2g}'
     )
 
 
