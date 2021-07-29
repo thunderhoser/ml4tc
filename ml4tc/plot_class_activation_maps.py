@@ -171,6 +171,8 @@ def _plot_cam_one_example(
         ]
     )
 
+    print(numpy.percentile(cam_matrix_one_example), numpy.array([0, 1, 5, 25, 50, 75, 95, 99, 100]))
+
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
     ][predictor_example_index, ...]
