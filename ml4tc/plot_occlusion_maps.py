@@ -224,6 +224,11 @@ def _plot_occlusion_map_one_example(
             numpy.absolute(occlusion_matrix_one_example),
             100. - MAX_COLOUR_PERCENTILE
         )
+
+        print(numpy.percentile(numpy.absolute(occlusion_matrix_one_example), numpy.array([0, 1, 5, 25, 50, 75, 95, 99, 100])))
+        print(min_contour_value)
+        print(max_contour_value)
+        print('\n\n\n*************************\n\n\n')
     else:
         max_contour_value = numpy.percentile(
             occlusion_matrix_one_example, MAX_COLOUR_PERCENTILE
@@ -299,7 +304,7 @@ def _plot_occlusion_map_one_example(
         vmin=min_contour_value, vmax=max_contour_value
     )
     label_string = (
-        'Normalized probability decrease' if plot_normalized_occlusion
+        'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
     )
     plotting_utils.add_colour_bar(
