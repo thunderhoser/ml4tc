@@ -776,16 +776,30 @@ def _read_one_example_file(
                 grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
                 continue
 
+            try:
+                these_latitudes_deg_n = (
+                    xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
+                )
+                these_longitudes_deg_e = (
+                    xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
+                )
+
+                error_checking.assert_is_valid_lat_numpy_array(
+                    these_latitudes_deg_n, allow_nan=False
+                )
+                error_checking.assert_is_valid_lng_numpy_array(
+                    these_longitudes_deg_e, allow_nan=False
+                )
+            except:
+                these_latitudes_deg_n = DUMMY_LATITUDES_DEG_N + 0.
+                these_longitudes_deg_e = DUMMY_LONGITUDES_DEG_E + 0.
+
+            grid_latitude_matrix_deg_n[i, :, j] = these_latitudes_deg_n
+            grid_longitude_matrix_deg_e[i, :, j] = these_longitudes_deg_e
+
             brightness_temp_matrix[i, ..., j, 0] = xt[
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
             ].values[k, ..., 0]
-
-            grid_latitude_matrix_deg_n[i, :, j] = (
-                xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
-            )
-            grid_longitude_matrix_deg_e[i, :, j] = (
-                xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
-            )
 
             satellite_predictor_matrix[i, j, :] = xt[
                 example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
