@@ -7,7 +7,7 @@ matplotlib.use('agg')
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.deep_learning import permutation_utils as gg_permutation
-from gewittergefahr.plotting import plotting_utils
+from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 from gewittergefahr.plotting import permutation_plotting
 from ml4tc.machine_learning import permutation
 
@@ -100,7 +100,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
 
     permutation_dict = _results_to_gg_format(permutation_dict)
 
-    figure_object, axes_object_matrix = plotting_utils.create_paneled_figure(
+    figure_object, axes_object_matrix = gg_plotting_utils.create_paneled_figure(
         num_rows=1, num_columns=2, shared_x_axis=False, shared_y_axis=True,
         keep_aspect_ratio=False, horizontal_spacing=0.1, vertical_spacing=0.05
     )
@@ -138,7 +138,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
     )
     pyplot.close(figure_object)
 
-    figure_object, axes_object_matrix = plotting_utils.create_paneled_figure(
+    figure_object, axes_object_matrix = gg_plotting_utils.create_paneled_figure(
         num_rows=1, num_columns=2, shared_x_axis=False, shared_y_axis=True,
         keep_aspect_ratio=False, horizontal_spacing=0.1, vertical_spacing=0.05
     )
