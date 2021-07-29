@@ -249,7 +249,7 @@ def write_file(
     )
     dataset_object.createVariable(
         GRIDDED_SATELLITE_SALIENCY_KEY,
-        datatype=numpy.float16, dimensions=these_dim
+        datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:] = (
         saliency_matrices[0]
@@ -257,7 +257,7 @@ def write_file(
 
     dataset_object.createVariable(
         GRIDDED_SATELLITE_INPUT_GRAD_KEY,
-        datatype=numpy.float16, dimensions=these_dim
+        datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
         input_times_grad_matrices[0]
@@ -269,7 +269,7 @@ def write_file(
     )
     dataset_object.createVariable(
         UNGRIDDED_SATELLITE_SALIENCY_KEY,
-        datatype=numpy.float16, dimensions=these_dim
+        datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:] = (
         saliency_matrices[1]
@@ -277,7 +277,7 @@ def write_file(
 
     dataset_object.createVariable(
         UNGRIDDED_SATELLITE_INPUT_GRAD_KEY,
-        datatype=numpy.float16, dimensions=these_dim
+        datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
         input_times_grad_matrices[1]
@@ -287,12 +287,12 @@ def write_file(
         EXAMPLE_DIMENSION_KEY, SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY
     )
     dataset_object.createVariable(
-        SHIPS_SALIENCY_KEY, datatype=numpy.float16, dimensions=these_dim
+        SHIPS_SALIENCY_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[SHIPS_SALIENCY_KEY][:] = saliency_matrices[2]
 
     dataset_object.createVariable(
-        SHIPS_INPUT_GRAD_KEY, datatype=numpy.float16, dimensions=these_dim
+        SHIPS_INPUT_GRAD_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:] = (
         input_times_grad_matrices[2]

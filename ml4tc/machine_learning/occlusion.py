@@ -159,6 +159,9 @@ def get_occlusion_maps(
                 )
             )
 
+        occlusion_prob_matrix = numpy.maximum(occlusion_prob_matrix, 0.)
+        occlusion_prob_matrix = numpy.minimum(occlusion_prob_matrix, 1.)
+
         print((
             'Have upsampled all {0:d} occlusion maps to predictor resolution!'
         ).format(
@@ -342,12 +345,12 @@ def write_file(
         GRID_COLUMN_DIMENSION_KEY
     )
     dataset_object.createVariable(
-        OCCLUSION_PROBS_KEY, datatype=numpy.float16, dimensions=these_dim
+        OCCLUSION_PROBS_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[OCCLUSION_PROBS_KEY][:] = occlusion_prob_matrix
 
     dataset_object.createVariable(
-        NORMALIZED_OCCLUSION_KEY, datatype=numpy.float16, dimensions=these_dim
+        NORMALIZED_OCCLUSION_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[NORMALIZED_OCCLUSION_KEY][:] = (
         normalized_occlusion_matrix
