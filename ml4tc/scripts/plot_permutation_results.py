@@ -113,7 +113,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
     axes_object_matrix[0, 0].set_title(
         'Single-pass {0:s}'.format(direction_string)
     )
-    axes_object_matrix[0, 0].set_xlabel('Cost')
+    axes_object_matrix[0, 0].set_xlabel('AUC')
 
     permutation_plotting.plot_multipass_test(
         permutation_dict=permutation_dict, axes_object=axes_object_matrix[0, 1],
@@ -124,7 +124,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
     axes_object_matrix[0, 1].set_title(
         'Multi-pass {0:s}'.format(direction_string)
     )
-    axes_object_matrix[0, 1].set_xlabel('Cost')
+    axes_object_matrix[0, 1].set_xlabel('AUC')
     axes_object_matrix[0, 1].set_ylabel('')
 
     figure_file_name = '{0:s}/permutation_test_abs-values.jpg'.format(
@@ -151,7 +151,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
     axes_object_matrix[0, 0].set_title(
         'Single-pass {0:s}'.format(direction_string)
     )
-    axes_object_matrix[0, 0].set_xlabel('Fraction of original cost')
+    axes_object_matrix[0, 0].set_xlabel('Fraction of original (AUC - 0.5)')
 
     permutation_plotting.plot_multipass_test(
         permutation_dict=permutation_dict, axes_object=axes_object_matrix[0, 1],
@@ -162,7 +162,7 @@ def _run(input_file_name, num_predictors_to_plot, confidence_level,
     axes_object_matrix[0, 1].set_title(
         'Multi-pass {0:s}'.format(direction_string)
     )
-    axes_object_matrix[0, 1].set_xlabel('Fraction of original cost')
+    axes_object_matrix[0, 1].set_xlabel('Fraction of original (AUC - 0.5)')
     axes_object_matrix[0, 1].set_ylabel('')
 
     figure_file_name = '{0:s}/permutation_test_percentage.jpg'.format(

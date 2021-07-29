@@ -769,6 +769,20 @@ def _read_one_example_file(
                 grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
                 continue
 
+            try:
+                error_checking.assert_is_valid_lat_numpy_array(
+                    xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :],
+                    allow_nan=False
+                )
+                error_checking.assert_is_valid_lng_numpy_array(
+                    xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :],
+                    allow_nan=False
+                )
+            except:
+                grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
+                grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
+                continue
+
             brightness_temp_matrix[i, ..., j, 0] = xt[
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
             ].values[k, ..., 0]
