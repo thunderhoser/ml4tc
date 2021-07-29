@@ -32,6 +32,9 @@ MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
+DUMMY_LATITUDES_DEG_N = numpy.linspace(50, 60, num=480, dtype=float)
+DUMMY_LONGITUDES_DEG_E = numpy.linspace(-120, -110, num=640, dtype=float)
+
 METRIC_DICT = {
     'accuracy': custom_metrics.accuracy,
     'binary_accuracy': custom_metrics.binary_accuracy,
@@ -761,10 +764,16 @@ def _read_one_example_file(
             if satellite_time_indices_by_example[i] is None:
                 brightness_temp_matrix[i, ..., j, 0] = 0.
                 satellite_predictor_matrix[i, j, :] = 0.
+                grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
+                grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
+
                 continue
 
             k = satellite_time_indices_by_example[i][j]
+
             if k == MISSING_INDEX:
+                grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
+                grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
                 continue
 
             brightness_temp_matrix[i, ..., j, 0] = xt[
