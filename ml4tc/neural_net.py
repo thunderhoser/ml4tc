@@ -790,6 +790,12 @@ def _read_one_example_file(
                 error_checking.assert_is_valid_lng_numpy_array(
                     these_longitudes_deg_e, allow_nan=False
                 )
+                error_checking.assert_is_greater_numpy_array(
+                    numpy.diff(these_latitudes_deg_n), 0.
+                )
+                error_checking.assert_is_greater_numpy_array(
+                    numpy.diff(these_longitudes_deg_e), 0.
+                )
             except:
                 these_latitudes_deg_n = DUMMY_LATITUDES_DEG_N + 0.
                 these_longitudes_deg_e = DUMMY_LONGITUDES_DEG_E + 0.
