@@ -215,34 +215,35 @@ def _plot_occlusion_map_one_example(
     )
     panel_file_names = [''] * num_model_lag_times
 
+    if plot_normalized_occlusion:
+        max_contour_value = numpy.percentile(
+            numpy.absolute(occlusion_matrix_one_example),
+            MAX_COLOUR_PERCENTILE
+        )
+        min_contour_value = numpy.percentile(
+            numpy.absolute(occlusion_matrix_one_example),
+            100. - MAX_COLOUR_PERCENTILE
+        )
+    else:
+        max_contour_value = numpy.percentile(
+            occlusion_matrix_one_example, MAX_COLOUR_PERCENTILE
+        )
+        min_contour_value = numpy.percentile(
+            occlusion_matrix_one_example, 100. - MAX_COLOUR_PERCENTILE
+        )
+
     for k in range(num_model_lag_times):
         if plot_normalized_occlusion:
-            max_abs_contour_value = numpy.percentile(
-                numpy.absolute(occlusion_matrix_one_example),
-                MAX_COLOUR_PERCENTILE
-            )
-            min_abs_contour_value = numpy.percentile(
-                numpy.absolute(occlusion_matrix_one_example),
-                100. - MAX_COLOUR_PERCENTILE
-            )
-
             satellite_plotting.plot_saliency(
                 saliency_matrix=occlusion_matrix_one_example[0, ...],
                 axes_object=axes_objects[k],
                 latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
                 longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-                min_abs_contour_value=min_abs_contour_value,
-                max_abs_contour_value=max_abs_contour_value,
+                min_abs_contour_value=min_contour_value,
+                max_abs_contour_value=max_contour_value,
                 half_num_contours=10, colour_map_object=colour_map_object
             )
         else:
-            max_contour_value = numpy.percentile(
-                occlusion_matrix_one_example, MAX_COLOUR_PERCENTILE
-            )
-            min_contour_value = numpy.percentile(
-                occlusion_matrix_one_example, 100. - MAX_COLOUR_PERCENTILE
-            )
-
             satellite_plotting.plot_class_activation(
                 class_activation_matrix=occlusion_matrix_one_example[0, ...],
                 axes_object=axes_objects[k],
@@ -294,7 +295,9 @@ def _plot_occlusion_map_one_example(
         tick_label_format_string='{0:d}'
     )
 
-    colour_norm_object = pyplot.Normalize(vmin=0.05, vmax=0.95)
+    colour_norm_object = pyplot.Normalize(
+        vmin=min_contour_value, vmax=max_contour_value
+    )
     label_string = (
         'Normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
