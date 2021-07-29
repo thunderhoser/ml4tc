@@ -44,6 +44,7 @@ STEP1_COSTS_KEY = 'step1_cost_matrix'
 BACKWARDS_FLAG_KEY = 'is_backwards_test'
 
 PREDICTOR_DIM_KEY = 'predictor'
+STEP_DIM_KEY = 'step'
 BOOTSTRAP_REPLICATE_DIM_KEY = 'bootstrap_replicate'
 PREDICTOR_CHAR_DIM_KEY = 'predictor_name_char'
 
@@ -1093,10 +1094,12 @@ def write_file(result_dict, netcdf_file_name):
         BACKWARDS_FLAG_KEY, int(result_dict[BACKWARDS_FLAG_KEY])
     )
 
-    num_predictors = result_dict[BEST_COSTS_KEY].shape[0]
+    num_predictors = result_dict[STEP1_COSTS_KEY].shape[0]
+    num_steps = result_dict[BEST_COSTS_KEY].shape[0]
     num_bootstrap_reps = result_dict[BEST_COSTS_KEY].shape[1]
 
     dataset_object.createDimension(PREDICTOR_DIM_KEY, num_predictors)
+    dataset_object.createDimension(STEP_DIM_KEY, num_steps)
     dataset_object.createDimension(
         BOOTSTRAP_REPLICATE_DIM_KEY, num_bootstrap_reps
     )
@@ -1116,7 +1119,7 @@ def write_file(result_dict, netcdf_file_name):
 
     dataset_object.createVariable(
         BEST_PREDICTORS_KEY, datatype='S1',
-        dimensions=(PREDICTOR_DIM_KEY, PREDICTOR_CHAR_DIM_KEY)
+        dimensions=(STEP_DIM_KEY, PREDICTOR_CHAR_DIM_KEY)
     )
     dataset_object.variables[BEST_PREDICTORS_KEY][:] = numpy.array(
         best_predictor_names_char_array
@@ -1129,13 +1132,13 @@ def write_file(result_dict, netcdf_file_name):
     #
     #     dataset_object.createVariable(
     #         BEST_LAG_TIMES_KEY, datatype=numpy.int32,
-    #         dimensions=PREDICTOR_DIM_KEY
+    #         dimensions=STEP_DIM_KEY
     #     )
     #     dataset_object.variables[BEST_LAG_TIMES_KEY][:] = best_lag_times_sec
 
     dataset_object.createVariable(
         BEST_COSTS_KEY, datatype=numpy.float32,
-        dimensions=(PREDICTOR_DIM_KEY, BOOTSTRAP_REPLICATE_DIM_KEY)
+        dimensions=(STEP_DIM_KEY, BOOTSTRAP_REPLICATE_DIM_KEY)
     )
     dataset_object.variables[BEST_COSTS_KEY][:] = result_dict[BEST_COSTS_KEY]
 
