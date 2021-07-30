@@ -54,17 +54,28 @@ TRAINING_YEARS_HELP_STRING = 'List of training years.'
 VALIDATION_YEARS_HELP_STRING = 'List of validation years.'
 LEAD_TIME_HELP_STRING = 'Lead time for predicting storm intensity.'
 SATELLITE_LAG_TIMES_HELP_STRING = (
-    'List of lag times for satellite-based predictors.'
+    'List of lag times for satellite predictors.  If you do not want satellite '
+    'predictors (brightness-temperature grids or scalars), make this a one-item'
+    ' list with a negative value.'
 )
-SHIPS_LAG_TIMES_HELP_STRING = 'List of lag times for SHIPS predictors.'
+SHIPS_LAG_TIMES_HELP_STRING = (
+    'List of lag times for SHIPS predictors.  If you do not want SHIPS '
+    'predictors, make this a one-item list with a negative value.'
+)
 SATELLITE_PREDICTORS_HELP_STRING = (
-    'List with names of satellite-based predictors to use.'
+    'List with names of scalar satellite predictors to use.  If you do not want'
+    ' scalar satellite predictors, make this a one-item list with the empty '
+    'string, "".'
 )
 SHIPS_PREDICTORS_LAGGED_HELP_STRING = (
-    'List with names of lagged SHIPS predictors to use.'
+    'List with names of lagged SHIPS predictors to use.  If you do not want '
+    'lagged SHIPS predictors, make this a one-item list with the empty '
+    'string, "".'
 )
 SHIPS_PREDICTORS_FORECAST_HELP_STRING = (
-    'List with names of forecast SHIPS predictors to use.'
+    'List with names of forecast SHIPS predictors to use.  If you do not want '
+    'forecast SHIPS predictors, make this a one-item list with the empty '
+    'string, "".'
 )
 
 TRAINING_SAT_TIME_TOLERANCE_HELP_STRING = (

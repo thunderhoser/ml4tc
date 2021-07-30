@@ -129,10 +129,13 @@ def _run(model_file_name, example_dir_name, years, output_dir_name):
                 this_data_dict[neural_net.TARGET_ARRAY_KEY], axis=1
             )
 
+        these_predictor_matrices = [
+            m for m in this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+            if m is not None
+        ]
         this_prob_array = neural_net.apply_model(
             model_object=model_object,
-            predictor_matrices=
-            this_data_dict[neural_net.PREDICTOR_MATRICES_KEY],
+            predictor_matrices=these_predictor_matrices,
             num_examples_per_batch=NUM_EXAMPLES_PER_BATCH, verbose=True
         )
 

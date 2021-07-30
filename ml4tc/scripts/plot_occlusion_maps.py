@@ -203,7 +203,7 @@ def _plot_occlusion_map_one_example(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     panel_file_names = [''] * num_model_lag_times
 

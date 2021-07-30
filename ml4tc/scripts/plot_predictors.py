@@ -514,16 +514,32 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
             desired_times_unix_sec=init_times_unix_sec
         )
 
-    predictor_matrices = [a[time_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = all_init_times_unix_sec[time_indices]
-    grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[time_indices, ...]
-    grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[time_indices, ...]
+    predictor_matrices = [
+        None if m is None else m[time_indices, ...] for m in predictor_matrices
+    ]
+
+    if grid_latitude_matrix_deg_n is not None:
+        grid_latitude_matrix_deg_n = (
+            grid_latitude_matrix_deg_n[time_indices, ...]
+        )
+        grid_longitude_matrix_deg_e = (
+            grid_longitude_matrix_deg_e[time_indices, ...]
+        )
 
     sort_indices = numpy.argsort(init_times_unix_sec)
-    predictor_matrices = [a[sort_indices, ...] for a in predictor_matrices]
     init_times_unix_sec = init_times_unix_sec[sort_indices]
-    grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[sort_indices, ...]
-    grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[sort_indices, ...]
+    predictor_matrices = [
+        None if m is None else m[sort_indices, ...] for m in predictor_matrices
+    ]
+
+    if grid_latitude_matrix_deg_n is not None:
+        grid_latitude_matrix_deg_n = (
+            grid_latitude_matrix_deg_n[sort_indices, ...]
+        )
+        grid_longitude_matrix_deg_e = (
+            grid_longitude_matrix_deg_e[sort_indices, ...]
+        )
 
     current_intensities_kt, future_intensities_kt = _get_intensities(
         example_table_xarray=example_table_xarray,
@@ -555,104 +571,128 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
             )
 
     for i in range(num_init_times):
-        figure_object, axes_object = (
-            predictor_plotting.plot_scalar_satellite_one_example(
-                predictor_matrices_one_example=
-                [a[[i], ...] for a in predictor_matrices],
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=cyclone_id_string,
-                init_time_unix_sec=init_times_unix_sec[i]
-            )[:2]
-        )
+        if predictor_matrices[1] is not None:
+            these_predictor_matrices = [
+                None if m is None else m[[i], ...] for m in predictor_matrices
+            ]
 
-        title_string = '{0:s}; {1:s}'.format(
-            axes_object.get_title(), info_strings[i]
-        )
-        axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
+            figure_object, axes_object = (
+                predictor_plotting.plot_scalar_satellite_one_example(
+                    predictor_matrices_one_example=these_predictor_matrices,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=cyclone_id_string,
+                    init_time_unix_sec=init_times_unix_sec[i]
+                )[:2]
+            )
 
-        _finish_figure_scalar_satellite(
-            figure_object=figure_object, output_dir_name=output_dir_name,
-            init_time_unix_sec=init_times_unix_sec[i],
-            cyclone_id_string=cyclone_id_string
-        )
+            title_string = '{0:s}; {1:s}'.format(
+                axes_object.get_title(), info_strings[i]
+            )
+            axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
 
-        figure_objects, axes_objects, pathless_panel_file_names = (
-            predictor_plotting.plot_brightness_temp_one_example(
-                predictor_matrices_one_example=
-                [a[[i], ...] for a in predictor_matrices],
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=cyclone_id_string,
+            _finish_figure_scalar_satellite(
+                figure_object=figure_object, output_dir_name=output_dir_name,
                 init_time_unix_sec=init_times_unix_sec[i],
-                normalization_table_xarray=normalization_table_xarray,
-                grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n[i, ...],
-                grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e[i, ...],
-                border_latitudes_deg_n=border_latitudes_deg_n,
-                border_longitudes_deg_e=border_longitudes_deg_e
+                cyclone_id_string=cyclone_id_string
             )
-        )
 
-        title_string = '{0:s}; {1:s}'.format(
-            axes_objects[0].get_title(), info_strings[i]
-        )
-        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+        if predictor_matrices[0] is not None:
+            these_predictor_matrices = [
+                None if m is None else m[[i], ...] for m in predictor_matrices
+            ]
 
-        _finish_figure_brightness_temp(
-            figure_objects=figure_objects,
-            pathless_panel_file_names=pathless_panel_file_names,
-            output_dir_name=output_dir_name,
-            init_time_unix_sec=init_times_unix_sec[i],
-            cyclone_id_string=cyclone_id_string
-        )
-
-        figure_objects, axes_objects, pathless_panel_file_names = (
-            predictor_plotting.plot_lagged_ships_one_example(
-                predictor_matrices_one_example=
-                [a[[i], ...] for a in predictor_matrices],
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=cyclone_id_string,
-                builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-                forecast_hours=SHIPS_FORECAST_HOURS,
-                init_time_unix_sec=init_times_unix_sec[i]
+            figure_objects, axes_objects, pathless_panel_file_names = (
+                predictor_plotting.plot_brightness_temp_one_example(
+                    predictor_matrices_one_example=these_predictor_matrices,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=cyclone_id_string,
+                    init_time_unix_sec=init_times_unix_sec[i],
+                    normalization_table_xarray=normalization_table_xarray,
+                    grid_latitude_matrix_deg_n=
+                    grid_latitude_matrix_deg_n[i, ...],
+                    grid_longitude_matrix_deg_e=
+                    grid_longitude_matrix_deg_e[i, ...],
+                    border_latitudes_deg_n=border_latitudes_deg_n,
+                    border_longitudes_deg_e=border_longitudes_deg_e
+                )
             )
-        )
 
-        title_string = '{0:s}; {1:s}'.format(
-            axes_objects[0].get_title(), info_strings[i]
-        )
-        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
-
-        _finish_figure_lagged_ships(
-            figure_objects=figure_objects,
-            pathless_panel_file_names=pathless_panel_file_names,
-            output_dir_name=output_dir_name,
-            init_time_unix_sec=init_times_unix_sec[i],
-            cyclone_id_string=cyclone_id_string
-        )
-
-        figure_objects, axes_objects, pathless_panel_file_names = (
-            predictor_plotting.plot_forecast_ships_one_example(
-                predictor_matrices_one_example=
-                [a[[i], ...] for a in predictor_matrices],
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=cyclone_id_string,
-                builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-                forecast_hours=SHIPS_FORECAST_HOURS,
-                init_time_unix_sec=init_times_unix_sec[i]
+            title_string = '{0:s}; {1:s}'.format(
+                axes_objects[0].get_title(), info_strings[i]
             )
-        )
+            axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
 
-        title_string = '{0:s}; {1:s}'.format(
-            axes_objects[0].get_title(), info_strings[i]
-        )
-        axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+            _finish_figure_brightness_temp(
+                figure_objects=figure_objects,
+                pathless_panel_file_names=pathless_panel_file_names,
+                output_dir_name=output_dir_name,
+                init_time_unix_sec=init_times_unix_sec[i],
+                cyclone_id_string=cyclone_id_string
+            )
 
-        _finish_figure_forecast_ships(
-            figure_objects=figure_objects,
-            pathless_panel_file_names=pathless_panel_file_names,
-            output_dir_name=output_dir_name,
-            init_time_unix_sec=init_times_unix_sec[i],
-            cyclone_id_string=cyclone_id_string
-        )
+        if (
+                validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+                is not None
+        ):
+            these_predictor_matrices = [
+                None if m is None else m[[i], ...] for m in predictor_matrices
+            ]
+
+            figure_objects, axes_objects, pathless_panel_file_names = (
+                predictor_plotting.plot_lagged_ships_one_example(
+                    predictor_matrices_one_example=these_predictor_matrices,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=cyclone_id_string,
+                    builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+                    forecast_hours=SHIPS_FORECAST_HOURS,
+                    init_time_unix_sec=init_times_unix_sec[i]
+                )
+            )
+
+            title_string = '{0:s}; {1:s}'.format(
+                axes_objects[0].get_title(), info_strings[i]
+            )
+            axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+
+            _finish_figure_lagged_ships(
+                figure_objects=figure_objects,
+                pathless_panel_file_names=pathless_panel_file_names,
+                output_dir_name=output_dir_name,
+                init_time_unix_sec=init_times_unix_sec[i],
+                cyclone_id_string=cyclone_id_string
+            )
+
+        if (
+                validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                is not None
+        ):
+            these_predictor_matrices = [
+                None if m is None else m[[i], ...] for m in predictor_matrices
+            ]
+
+            figure_objects, axes_objects, pathless_panel_file_names = (
+                predictor_plotting.plot_forecast_ships_one_example(
+                    predictor_matrices_one_example=these_predictor_matrices,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=cyclone_id_string,
+                    builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+                    forecast_hours=SHIPS_FORECAST_HOURS,
+                    init_time_unix_sec=init_times_unix_sec[i]
+                )
+            )
+
+            title_string = '{0:s}; {1:s}'.format(
+                axes_objects[0].get_title(), info_strings[i]
+            )
+            axes_objects[0].set_title(title_string, fontsize=TITLE_FONT_SIZE)
+
+            _finish_figure_forecast_ships(
+                figure_objects=figure_objects,
+                pathless_panel_file_names=pathless_panel_file_names,
+                output_dir_name=output_dir_name,
+                init_time_unix_sec=init_times_unix_sec[i],
+                cyclone_id_string=cyclone_id_string
+            )
 
         print(SEPARATOR_STRING)
 
