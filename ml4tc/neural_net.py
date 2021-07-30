@@ -138,10 +138,6 @@ METADATA_KEYS = [
     PLATEAU_LR_MUTIPLIER_KEY
 ]
 
-GRIDDED_SATELLITE_ENUM = 0
-UNGRIDDED_SATELLITE_ENUM = 1
-SHIPS_ENUM = 2
-
 
 def _find_desired_times(
         all_times_unix_sec, desired_times_unix_sec, tolerance_sec,

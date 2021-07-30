@@ -166,7 +166,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         for c in unique_cyclone_id_strings
     ]
 
-    # Create saliency maps.
+    # Create occlusion maps.
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )

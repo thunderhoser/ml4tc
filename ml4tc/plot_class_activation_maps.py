@@ -136,7 +136,7 @@ def _plot_cam_one_example(
     P = number of points in border set
 
     :param data_dict: Dictionary returned by `neural_net.create_inputs`.
-    :param class_activation_dict: Dictionary returned by `saliency.read_file`.
+    :param class_activation_dict: Dictionary returned by `gradcam.read_file`.
     :param model_metadata_dict: Dictionary returned by
         `neural_net.read_metafile`.
     :param cyclone_id_string: Cyclone ID (must be accepted by

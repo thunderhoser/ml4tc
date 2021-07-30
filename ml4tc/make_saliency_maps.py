@@ -165,8 +165,8 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    saliency_matrices = [None]
-    input_times_grad_matrices = [None]
+    three_saliency_matrices = [None]
+    three_input_grad_matrices = [None]
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -176,7 +176,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         this_data_dict = neural_net.create_inputs(this_option_dict)
         print(SEPARATOR_STRING)
 
-        these_predictor_matrices = (
+        new_predictor_matrices = (
             this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
         )
         this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
@@ -184,45 +184,48 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         if this_target_array.size == 0:
             continue
 
-        this_num_examples = these_predictor_matrices[0].shape[0]
+        this_num_examples = new_predictor_matrices[0].shape[0]
         cyclone_id_strings += [unique_cyclone_id_strings[i]] * this_num_examples
         init_times_unix_sec = numpy.concatenate((
             init_times_unix_sec,
             this_data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        these_saliency_matrices = saliency.get_saliency_one_neuron(
+        new_saliency_matrices = saliency.get_saliency_one_neuron(
             model_object=model_object,
-            predictor_matrices=these_predictor_matrices,
+            three_predictor_matrices=new_predictor_matrices,
             layer_name=layer_name, neuron_indices=neuron_indices,
             ideal_activation=ideal_activation
         )
-        these_input_times_grad_matrices = [
-            p * s for p, s in
-            zip(these_predictor_matrices, these_saliency_matrices)
+        new_input_grad_matrices = [
+            None if p is None
+            else p * s
+            for p, s in zip(new_predictor_matrices, new_saliency_matrices)
         ]
         print(SEPARATOR_STRING)
 
-        if saliency_matrices[0] is None:
-            saliency_matrices = copy.deepcopy(these_saliency_matrices)
-            input_times_grad_matrices = copy.deepcopy(
-                these_input_times_grad_matrices
-            )
+        if all([m is None for m in three_saliency_matrices]):
+            three_saliency_matrices = copy.deepcopy(new_saliency_matrices)
+            three_input_grad_matrices = copy.deepcopy(new_input_grad_matrices)
         else:
-            for j in range(len(saliency_matrices)):
-                saliency_matrices[j] = numpy.concatenate(
-                    (saliency_matrices[j], these_saliency_matrices[j]), axis=0
-                )
-                input_times_grad_matrices[j] = numpy.concatenate((
-                    input_times_grad_matrices[j],
-                    these_input_times_grad_matrices[j]
+            for j in range(len(three_saliency_matrices)):
+                if three_saliency_matrices[j] is None:
+                    continue
+
+                three_saliency_matrices[j] = numpy.concatenate((
+                    three_saliency_matrices[j], new_saliency_matrices[j]
+                ), axis=0)
+
+                three_input_grad_matrices[j] = numpy.concatenate((
+                    three_input_grad_matrices[j],
+                    new_input_grad_matrices[j]
                 ), axis=0)
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
         netcdf_file_name=output_file_name,
-        saliency_matrices=saliency_matrices,
-        input_times_grad_matrices=input_times_grad_matrices,
+        three_saliency_matrices=three_saliency_matrices,
+        three_input_grad_matrices=three_input_grad_matrices,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,

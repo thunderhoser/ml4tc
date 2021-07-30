@@ -126,6 +126,15 @@ def _smooth_maps(saliency_dict, smoothing_radius_px, plot_input_times_grad):
     :return: saliency_dict: Same as input but with smoothed maps.
     """
 
+    if plot_input_times_grad:
+        this_key = saliency.THREE_INPUT_GRAD_KEY
+    else:
+        this_key = saliency.THREE_SALIENCY_KEY
+
+    brightness_temp_saliency_matrix = saliency_dict[this_key][0]
+    if brightness_temp_saliency_matrix is None:
+        return saliency_dict
+
     print((
         'Smoothing maps with Gaussian filter (e-folding radius of {0:.1f} grid '
         'cells)...'
@@ -133,12 +142,6 @@ def _smooth_maps(saliency_dict, smoothing_radius_px, plot_input_times_grad):
         smoothing_radius_px
     ))
 
-    if plot_input_times_grad:
-        this_key = saliency.INPUT_TIMES_GRAD_KEY
-    else:
-        this_key = saliency.SALIENCY_KEY
-
-    brightness_temp_saliency_matrix = saliency_dict[this_key][0]
     num_examples = brightness_temp_saliency_matrix.shape[0]
     num_model_lag_times = brightness_temp_saliency_matrix.shape[-2]
 
@@ -183,28 +186,31 @@ def _plot_scalar_satellite_saliency(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 
     if plot_input_times_grad:
-        this_key = saliency.INPUT_TIMES_GRAD_KEY
+        this_key = saliency.THREE_INPUT_GRAD_KEY
     else:
-        this_key = saliency.SALIENCY_KEY
+        this_key = saliency.THREE_SALIENCY_KEY
 
     saliency_matrices_one_example = [
-        s[[saliency_example_index], ...] for s in saliency_dict[this_key]
+        None if s is None else s[[saliency_example_index], ...]
+        for s in saliency_dict[this_key]
     ]
 
-    figure_object, axes_object = predictor_plotting.plot_scalar_satellite_one_example(
-        predictor_matrices_one_example=predictor_matrices_one_example,
-        model_metadata_dict=model_metadata_dict,
-        cyclone_id_string=cyclone_id_string,
-        init_time_unix_sec=init_time_unix_sec
-    )[:2]
+    figure_object, axes_object = (
+        predictor_plotting.plot_scalar_satellite_one_example(
+            predictor_matrices_one_example=predictor_matrices_one_example,
+            model_metadata_dict=model_metadata_dict,
+            cyclone_id_string=cyclone_id_string,
+            init_time_unix_sec=init_time_unix_sec
+        )[:2]
+    )
 
     all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example
+        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
     ])
     max_absolute_colour_value = numpy.percentile(
         numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
@@ -291,17 +297,18 @@ def _plot_brightness_temp_saliency(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 
     if plot_input_times_grad:
-        this_key = saliency.INPUT_TIMES_GRAD_KEY
+        this_key = saliency.THREE_INPUT_GRAD_KEY
     else:
-        this_key = saliency.SALIENCY_KEY
+        this_key = saliency.THREE_SALIENCY_KEY
 
     saliency_matrices_one_example = [
-        s[[saliency_example_index], ...] for s in saliency_dict[this_key]
+        None if s is None else s[[saliency_example_index], ...]
+        for s in saliency_dict[this_key]
     ]
 
     grid_latitude_matrix_deg_n = data_dict[
@@ -330,11 +337,11 @@ def _plot_brightness_temp_saliency(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
 
     all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example
+        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
     ])
     max_abs_contour_value = numpy.percentile(
         numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
@@ -434,17 +441,18 @@ def _plot_lagged_ships_saliency(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 
     if plot_input_times_grad:
-        this_key = saliency.INPUT_TIMES_GRAD_KEY
+        this_key = saliency.THREE_INPUT_GRAD_KEY
     else:
-        this_key = saliency.SALIENCY_KEY
+        this_key = saliency.THREE_SALIENCY_KEY
 
     saliency_matrices_one_example = [
-        s[[saliency_example_index], ...] for s in saliency_dict[this_key]
+        None if s is None else s[[saliency_example_index], ...]
+        for s in saliency_dict[this_key]
     ]
 
     figure_objects, axes_objects, pathless_output_file_names = (
@@ -464,11 +472,15 @@ def _plot_lagged_ships_saliency(
     num_lagged_predictors = len(
         validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
     )
-    num_forecast_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
     num_model_lag_times = len(
         validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    )
+
+    forecast_predictor_names = (
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+    )
+    num_forecast_predictors = (
+        0 if forecast_predictor_names is None else len(forecast_predictor_names)
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
@@ -480,7 +492,7 @@ def _plot_lagged_ships_saliency(
     )[0][0, ...]
 
     all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example
+        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
     ])
     max_absolute_colour_value = numpy.percentile(
         numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
@@ -575,17 +587,18 @@ def _plot_forecast_ships_saliency(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 
     if plot_input_times_grad:
-        this_key = saliency.INPUT_TIMES_GRAD_KEY
+        this_key = saliency.THREE_INPUT_GRAD_KEY
     else:
-        this_key = saliency.SALIENCY_KEY
+        this_key = saliency.THREE_SALIENCY_KEY
 
     saliency_matrices_one_example = [
-        s[[saliency_example_index], ...] for s in saliency_dict[this_key]
+        None if s is None else s[[saliency_example_index], ...]
+        for s in saliency_dict[this_key]
     ]
 
     figure_objects, axes_objects, pathless_output_file_names = (
@@ -602,14 +615,18 @@ def _plot_forecast_ships_saliency(
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    num_lagged_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
-    )
     num_forecast_predictors = len(
         validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
     )
     num_model_lag_times = len(
         validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+    )
+
+    lagged_predictor_names = (
+        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+    )
+    num_lagged_predictors = (
+        0 if lagged_predictor_names is None else len(lagged_predictor_names)
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
@@ -621,7 +638,7 @@ def _plot_forecast_ships_saliency(
     )[1][0, ...]
 
     all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example
+        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
     ])
     max_absolute_colour_value = numpy.percentile(
         numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE

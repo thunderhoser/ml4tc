@@ -266,8 +266,8 @@ def write_file(
         `normalize_occlusion_maps`.
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_times_unix_sec: length-E numpy array of forecast-init times.
-    :param model_file_name: Path to file with neural net used to create saliency
-        maps (readable by `neural_net.read_model`).
+    :param model_file_name: Path to file with neural net used to create
+        occlusion maps (readable by `neural_net.read_model`).
     :param target_class: See doc for `get_occlusion_maps`.
     :param half_window_size_px: Same.
     :param stride_length_px: Same.
