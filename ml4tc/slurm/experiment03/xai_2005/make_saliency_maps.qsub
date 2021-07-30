@@ -23,8 +23,8 @@ set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/m
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment03"
 
-set DENSE_LAYER_DROPOUT_RATE=0.2
-set CONV_LAYER_L2_WEIGHT=0.001
+set DENSE_LAYER_DROPOUT_RATE=0.3
+set CONV_LAYER_L2_WEIGHT=0.00001
 set DENSE_LAYER_COUNT=3
 
 set dense_layer_dropout_rate_string=`printf "%.1f" $DENSE_LAYER_DROPOUT_RATE`
@@ -39,7 +39,7 @@ python3 -u "${CODE_DIR_NAME}/make_saliency_maps.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --years 2005 \
---layer_name="activation_60" \
+--layer_name="activation_69" \
 --neuron_indices 0 \
 --ideal_activation=1 \
 --output_file_name="${output_file_name}"
