@@ -333,6 +333,9 @@ def _run(experiment_dir_name, output_dir_name):
                     CONV_LAYER_L2_WEIGHTS[j], DENSE_LAYER_COUNTS[k]
                 )
 
+                if not os.path.isfile(this_score_file_name):
+                    continue
+
                 print('Reading data from: "{0:s}"...'.format(
                     this_score_file_name
                 ))
