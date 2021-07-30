@@ -379,19 +379,19 @@ def _run(experiment_dir_name, output_dir_name):
     )
     print(SEPARATOR_STRING)
 
-    this_index = numpy.argmax(numpy.ravel(auc_matrix))
+    this_index = numpy.nanargmax(numpy.ravel(auc_matrix))
     best_auc_indices = numpy.unravel_index(this_index, auc_matrix.shape)
 
-    this_index = numpy.argmax(numpy.ravel(aupd_matrix))
+    this_index = numpy.nanargmax(numpy.ravel(aupd_matrix))
     best_aupd_indices = numpy.unravel_index(this_index, aupd_matrix.shape)
 
-    this_index = numpy.argmax(numpy.ravel(bss_matrix))
+    this_index = numpy.nanargmax(numpy.ravel(bss_matrix))
     best_bss_indices = numpy.unravel_index(this_index, bss_matrix.shape)
 
-    this_index = numpy.argmax(numpy.ravel(csi_matrix))
+    this_index = numpy.nanargmax(numpy.ravel(csi_matrix))
     best_csi_indices = numpy.unravel_index(this_index, csi_matrix.shape)
 
-    this_index = numpy.argmin(numpy.ravel(
+    this_index = numpy.nanargmin(numpy.ravel(
         numpy.absolute(1. - frequency_bias_matrix)
     ))
     best_bias_indices = numpy.unravel_index(
@@ -408,8 +408,8 @@ def _run(experiment_dir_name, output_dir_name):
 
         # Plot AUC.
         colour_norm_object = pyplot.Normalize(
-            vmin=numpy.percentile(auc_matrix, 1),
-            vmax=numpy.percentile(auc_matrix, 99)
+            vmin=numpy.nanpercentile(auc_matrix, 1),
+            vmax=numpy.nanpercentile(auc_matrix, 99)
         )
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=auc_matrix[..., k],
@@ -443,8 +443,8 @@ def _run(experiment_dir_name, output_dir_name):
 
         # Plot AUPD.
         colour_norm_object = pyplot.Normalize(
-            vmin=numpy.percentile(aupd_matrix, 1),
-            vmax=numpy.percentile(aupd_matrix, 99)
+            vmin=numpy.nanpercentile(aupd_matrix, 1),
+            vmax=numpy.nanpercentile(aupd_matrix, 99)
         )
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=aupd_matrix[..., k],
@@ -477,7 +477,7 @@ def _run(experiment_dir_name, output_dir_name):
         pyplot.close(figure_object)
 
         # Plot BSS.
-        this_max_value = numpy.percentile(numpy.absolute(bss_matrix), 99.)
+        this_max_value = numpy.nanpercentile(numpy.absolute(bss_matrix), 99.)
         this_max_value = min([this_max_value, 1.])
         colour_norm_object = pyplot.Normalize(
             vmin=-1 * this_max_value, vmax=this_max_value
@@ -517,8 +517,8 @@ def _run(experiment_dir_name, output_dir_name):
 
         # Plot CSI.
         colour_norm_object = pyplot.Normalize(
-            vmin=numpy.percentile(csi_matrix, 1),
-            vmax=numpy.percentile(csi_matrix, 99)
+            vmin=numpy.nanpercentile(csi_matrix, 1),
+            vmax=numpy.nanpercentile(csi_matrix, 99)
         )
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=csi_matrix[..., k],
@@ -551,7 +551,7 @@ def _run(experiment_dir_name, output_dir_name):
         pyplot.close(figure_object)
 
         # Plot frequency bias.
-        this_offset = numpy.percentile(
+        this_offset = numpy.nanpercentile(
             numpy.absolute(1. - frequency_bias_matrix), 99.
         )
         colour_map_object, colour_norm_object = _get_bias_colour_scheme(
@@ -604,8 +604,8 @@ def _run(experiment_dir_name, output_dir_name):
         output_file_name=auc_figure_file_name
     )
     colour_norm_object = pyplot.Normalize(
-        vmin=numpy.percentile(auc_matrix, 1),
-        vmax=numpy.percentile(auc_matrix, 99)
+        vmin=numpy.nanpercentile(auc_matrix, 1),
+        vmax=numpy.nanpercentile(auc_matrix, 99)
     )
     _add_colour_bar(
         figure_file_name=auc_figure_file_name,
@@ -630,8 +630,8 @@ def _run(experiment_dir_name, output_dir_name):
         output_file_name=aupd_figure_file_name
     )
     colour_norm_object = pyplot.Normalize(
-        vmin=numpy.percentile(aupd_matrix, 1),
-        vmax=numpy.percentile(aupd_matrix, 99)
+        vmin=numpy.nanpercentile(aupd_matrix, 1),
+        vmax=numpy.nanpercentile(aupd_matrix, 99)
     )
     _add_colour_bar(
         figure_file_name=aupd_figure_file_name,
@@ -655,7 +655,7 @@ def _run(experiment_dir_name, output_dir_name):
         input_file_name=bss_figure_file_name,
         output_file_name=bss_figure_file_name
     )
-    this_max_value = numpy.percentile(numpy.absolute(bss_matrix), 99.)
+    this_max_value = numpy.nanpercentile(numpy.absolute(bss_matrix), 99.)
     this_max_value = min([this_max_value, 1.])
     colour_norm_object = pyplot.Normalize(
         vmin=-1 * this_max_value, vmax=this_max_value
@@ -683,8 +683,8 @@ def _run(experiment_dir_name, output_dir_name):
         output_file_name=csi_figure_file_name
     )
     colour_norm_object = pyplot.Normalize(
-        vmin=numpy.percentile(csi_matrix, 1),
-        vmax=numpy.percentile(csi_matrix, 99)
+        vmin=numpy.nanpercentile(csi_matrix, 1),
+        vmax=numpy.nanpercentile(csi_matrix, 99)
     )
     _add_colour_bar(
         figure_file_name=csi_figure_file_name,
@@ -708,7 +708,7 @@ def _run(experiment_dir_name, output_dir_name):
         input_file_name=bias_figure_file_name,
         output_file_name=bias_figure_file_name
     )
-    this_offset = numpy.percentile(
+    this_offset = numpy.nanpercentile(
         numpy.absolute(1. - frequency_bias_matrix), 99.
     )
     colour_map_object, colour_norm_object = _get_bias_colour_scheme(
