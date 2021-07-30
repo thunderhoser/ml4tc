@@ -1593,7 +1593,8 @@ def create_inputs(option_dict):
     )
 
     data_dict[PREDICTOR_MATRICES_KEY] = [
-        p.astype('float16') for p in data_dict[PREDICTOR_MATRICES_KEY]
+        None if m is None else m.astype('float16')
+        for m in data_dict[PREDICTOR_MATRICES_KEY]
     ]
 
     return data_dict
