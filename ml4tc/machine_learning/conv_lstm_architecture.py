@@ -476,7 +476,11 @@ def create_model(
     option_dict_dense = DEFAULT_OPTION_DICT_DENSE.copy()
     option_dict_dense.update(option_dict_dense_orig)
 
-    layer_object = keras.layers.concatenate(flattening_layer_objects)
+    if len(flattening_layer_objects) > 1:
+        layer_object = keras.layers.concatenate(flattening_layer_objects)
+    else:
+        layer_object = flattening_layer_objects[0]
+
     layer_object = cnn_architecture.create_dense_layers(
         input_layer_object=layer_object, option_dict=option_dict_dense
     )
