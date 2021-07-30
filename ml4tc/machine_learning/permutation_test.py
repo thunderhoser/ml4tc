@@ -27,6 +27,7 @@ PREDICTOR_MATRIX_SHIPS = numpy.random.normal(
 )
 
 TRAINING_OPTION_DICT = {
+    neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
     neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ['a'] * NUM_LAGGED_PREDICTORS,
     neural_net.SHIPS_PREDICTORS_FORECAST_KEY: ['b'] * NUM_FORECAST_PREDICTORS,
     neural_net.SATELLITE_PREDICTORS_KEY: ['c'] * NUM_UNGRIDDED_SAT_PREDICTORS
@@ -62,7 +63,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT + 0.,
-                predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+                predictor_type_enum=0,
                 variable_index=0, model_lag_time_index=None,
                 permuted_value_matrix=None
             )
@@ -74,7 +75,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=None,
             permuted_value_matrix=permuted_value_matrix
         )[0]
@@ -93,7 +94,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT + 0.,
-                predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+                predictor_type_enum=0,
                 variable_index=0, model_lag_time_index=1,
                 permuted_value_matrix=None
             )
@@ -114,7 +115,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=1,
             permuted_value_matrix=permuted_value_matrix
         )[0]
@@ -133,7 +134,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT + 0.,
-                predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+                predictor_type_enum=1,
                 variable_index=0, model_lag_time_index=None,
                 permuted_value_matrix=None
             )
@@ -154,7 +155,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=None,
             permuted_value_matrix=permuted_value_matrix
         )[0]
@@ -173,7 +174,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT + 0.,
-                predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+                predictor_type_enum=1,
                 variable_index=0, model_lag_time_index=1,
                 permuted_value_matrix=None
             )
@@ -199,7 +200,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=1,
             permuted_value_matrix=permuted_value_matrix
         )[0]
@@ -218,7 +219,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-                predictor_type_enum=permutation.SHIPS_ENUM,
+                predictor_type_enum=2,
                 variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=None, permuted_value_matrix=None
             )
@@ -263,7 +264,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None,
             permuted_value_matrix=permuted_value_matrix
@@ -283,7 +284,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-                predictor_type_enum=permutation.SHIPS_ENUM,
+                predictor_type_enum=2,
                 variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=1, permuted_value_matrix=None
             )
@@ -331,7 +332,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1,
             permuted_value_matrix=permuted_value_matrix
@@ -352,7 +353,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-                predictor_type_enum=permutation.SHIPS_ENUM,
+                predictor_type_enum=2,
                 variable_index=NUM_LAGGED_PREDICTORS,
                 model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=None, permuted_value_matrix=None
@@ -398,7 +399,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None,
@@ -420,7 +421,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-                predictor_type_enum=permutation.SHIPS_ENUM,
+                predictor_type_enum=2,
                 variable_index=NUM_LAGGED_PREDICTORS,
                 model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=1, permuted_value_matrix=None
@@ -469,7 +470,7 @@ class PermutationTests(unittest.TestCase):
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1,
@@ -489,7 +490,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT + 0.,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=None,
             permuted_value_matrix=None
         )[0]
@@ -497,7 +498,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=None
         )
 
@@ -514,7 +515,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT + 0.,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=1,
             permuted_value_matrix=None
         )[0]
@@ -522,7 +523,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_GRIDDED_SAT,
-            predictor_type_enum=permutation.GRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=0,
             variable_index=0, model_lag_time_index=1
         )
 
@@ -539,7 +540,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT + 0.,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=None,
             permuted_value_matrix=None
         )[0]
@@ -547,7 +548,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=None
         )
 
@@ -564,7 +565,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT + 0.,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=1,
             permuted_value_matrix=None
         )[0]
@@ -572,7 +573,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_UNGRIDDED_SAT,
-            predictor_type_enum=permutation.UNGRIDDED_SATELLITE_ENUM,
+            predictor_type_enum=1,
             variable_index=0, model_lag_time_index=1
         )
 
@@ -589,7 +590,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None, permuted_value_matrix=None
         )[0]
@@ -597,7 +598,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None
         )
@@ -615,7 +616,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1, permuted_value_matrix=None
         )[0]
@@ -623,7 +624,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=0, model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1
         )
@@ -642,7 +643,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None, permuted_value_matrix=None
@@ -651,7 +652,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None
@@ -671,7 +672,7 @@ class PermutationTests(unittest.TestCase):
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1, permuted_value_matrix=None
@@ -680,7 +681,7 @@ class PermutationTests(unittest.TestCase):
         new_predictor_matrix = permutation._depermute_values(
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
-            predictor_type_enum=permutation.SHIPS_ENUM,
+            predictor_type_enum=2,
             variable_index=NUM_LAGGED_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1

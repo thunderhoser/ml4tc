@@ -152,7 +152,7 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    predictor_matrices = [None]
+    three_predictor_matrices = [None]
     target_array = None
 
     for i in range(len(example_file_names)):
@@ -160,7 +160,7 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
         this_option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_names[i]
         this_data_dict = neural_net.create_inputs(this_option_dict)
 
-        these_predictor_matrices = (
+        new_predictor_matrices = (
             this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
         )
         this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
@@ -169,13 +169,16 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
             continue
 
         if target_array is None:
-            predictor_matrices = copy.deepcopy(these_predictor_matrices)
+            three_predictor_matrices = copy.deepcopy(new_predictor_matrices)
             target_array = this_target_array + 0
         else:
-            for j in range(len(predictor_matrices)):
-                predictor_matrices[j] = numpy.concatenate(
-                    (predictor_matrices[j], these_predictor_matrices[j]), axis=0
-                )
+            for j in range(len(three_predictor_matrices)):
+                if three_predictor_matrices[j] is None:
+                    continue
+
+                three_predictor_matrices[j] = numpy.concatenate((
+                    three_predictor_matrices[j], new_predictor_matrices[j]
+                ), axis=0)
 
             target_array = numpy.concatenate(
                 (target_array, this_target_array), axis=0
@@ -185,14 +188,16 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
 
     if do_backwards_test:
         result_dict = permutation.run_backwards_test(
-            predictor_matrices=predictor_matrices, target_array=target_array,
+            three_predictor_matrices=three_predictor_matrices,
+            target_array=target_array,
             model_object=model_object, model_metadata_dict=model_metadata_dict,
             cost_function=permutation.make_auc_cost_function(),
             num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
         )
     else:
         result_dict = permutation.run_forward_test(
-            predictor_matrices=predictor_matrices, target_array=target_array,
+            three_predictor_matrices=three_predictor_matrices,
+            target_array=target_array,
             model_object=model_object, model_metadata_dict=model_metadata_dict,
             cost_function=permutation.make_auc_cost_function(),
             num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps

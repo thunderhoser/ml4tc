@@ -209,8 +209,8 @@ def write_file(
         activations.
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_times_unix_sec: length-E numpy array of forecast-init times.
-    :param model_file_name: Path to file with neural net used to create saliency
-        maps (readable by `neural_net.read_model`).
+    :param model_file_name: Path to file with neural net used to create
+        class-activation maps (readable by `neural_net.read_model`).
     :param target_class: See doc for `run_gradcam`.
     :param target_layer_name: Same.
     """

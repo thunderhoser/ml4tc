@@ -15,11 +15,7 @@ NUM_BUILTIN_SHIPS_LAG_TIMES = 4
 NUM_SHIPS_FORECAST_HOURS = 23
 DEFAULT_NUM_BOOTSTRAP_REPS = 1000
 
-GRIDDED_SATELLITE_ENUM = neural_net.GRIDDED_SATELLITE_ENUM
-UNGRIDDED_SATELLITE_ENUM = neural_net.UNGRIDDED_SATELLITE_ENUM
-SHIPS_ENUM = neural_net.SHIPS_ENUM
-
-PREDICTOR_MATRICES_KEY = 'predictor_matrices'
+THREE_PREDICTOR_MATRICES_KEY = 'three_predictor_matrices'
 PERMUTED_FLAGS_KEY = 'permuted_flag_arrays'
 PERMUTED_MATRICES_KEY = 'permuted_matrix_indices'
 PERMUTED_VARIABLES_KEY = 'permuted_variable_indices'
@@ -41,11 +37,11 @@ BOOTSTRAP_REPLICATE_DIM_KEY = 'bootstrap_replicate'
 PREDICTOR_CHAR_DIM_KEY = 'predictor_name_char'
 
 
-def _check_args(predictor_matrices, target_array, num_bootstrap_reps,
+def _check_args(three_predictor_matrices, target_array, num_bootstrap_reps,
                 num_steps):
     """Checks arguments for run_forward_test or run_backwards_test.
 
-    :param predictor_matrices: See doc for `run_forward_test` or
+    :param three_predictor_matrices: See doc for `run_forward_test` or
         `run_backwards_test`.
     :param target_array: Same.
     :param num_bootstrap_reps: Same.
@@ -60,20 +56,27 @@ def _check_args(predictor_matrices, target_array, num_bootstrap_reps,
     error_checking.assert_is_integer(num_steps)
     error_checking.assert_is_greater(num_steps, 0)
 
-    error_checking.assert_is_list(predictor_matrices)
-    num_matrices = len(predictor_matrices)
+    error_checking.assert_is_list(three_predictor_matrices)
+    assert len(three_predictor_matrices) == 3
+
+    num_matrices = len(three_predictor_matrices)
     num_examples = -1
 
     for i in range(num_matrices):
-        error_checking.assert_is_numpy_array_without_nan(predictor_matrices[i])
-        if i == 0:
-            num_examples = predictor_matrices[i].shape[0]
+        if three_predictor_matrices[i] is None:
+            continue
+
+        error_checking.assert_is_numpy_array_without_nan(
+            three_predictor_matrices[i]
+        )
+        if num_examples == -1:
+            num_examples = three_predictor_matrices[i].shape[0]
 
         expected_dim = numpy.array(
-            (num_examples,) + predictor_matrices[i].shape[1:], dtype=int
+            (num_examples,) + three_predictor_matrices[i].shape[1:], dtype=int
         )
         error_checking.assert_is_numpy_array(
-            predictor_matrices[i], exact_dimensions=expected_dim
+            three_predictor_matrices[i], exact_dimensions=expected_dim
         )
 
     error_checking.assert_is_integer_numpy_array(target_array)
@@ -121,7 +124,7 @@ def _permute_values(
     else:
         random_indices = []
 
-    if predictor_type_enum != SHIPS_ENUM:
+    if predictor_type_enum != 2:
         if model_lag_time_index is None:
             if permuted_value_matrix is None:
                 permuted_value_matrix = predictor_matrix[..., variable_index][
@@ -144,12 +147,19 @@ def _permute_values(
         return predictor_matrix, permuted_value_matrix
 
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
-    num_lagged_predictors = len(
-        training_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
-    )
-    num_forecast_predictors = len(
-        training_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
+    t = training_option_dict
+
+    if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is None:
+        num_lagged_predictors = 0
+    else:
+        num_lagged_predictors = len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+
+    if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is None:
+        num_forecast_predictors = 0
+    else:
+        num_forecast_predictors = len(
+            t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        )
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
@@ -227,7 +237,7 @@ def _depermute_values(
     :return: predictor_matrix: Same.
     """
 
-    if predictor_type_enum != SHIPS_ENUM:
+    if predictor_type_enum != 2:
         if model_lag_time_index is None:
             predictor_matrix[..., variable_index] = (
                 clean_predictor_matrix[..., variable_index]
@@ -242,12 +252,19 @@ def _depermute_values(
         return predictor_matrix
 
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
-    num_lagged_predictors = len(
-        training_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
-    )
-    num_forecast_predictors = len(
-        training_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
+    t = training_option_dict
+
+    if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is None:
+        num_lagged_predictors = 0
+    else:
+        num_lagged_predictors = len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+
+    if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is None:
+        num_forecast_predictors = 0
+    else:
+        num_forecast_predictors = len(
+            t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        )
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
@@ -372,24 +389,36 @@ def _predictor_indices_to_metadata(model_metadata_dict, one_step_result_dict):
     # TODO(thunderhoser): Incorporate lag times.
 
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
+    t = training_option_dict
+
     num_matrices = 3
     predictor_names_by_matrix = [[]] * num_matrices
 
     for i in range(num_matrices):
-        if i == GRIDDED_SATELLITE_ENUM:
+        if i == 0:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
+                continue
+
             predictor_names_by_matrix[i] = [
                 satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
             ]
-        elif i == UNGRIDDED_SATELLITE_ENUM:
+        elif i == 1:
+            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+                continue
+
             predictor_names_by_matrix[i] = (
-                training_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
+                t[neural_net.SATELLITE_PREDICTORS_KEY]
             )
         else:
-            t = training_option_dict
-            predictor_names_by_matrix[i] = (
-                t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] +
-                t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-            )
+            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                predictor_names_by_matrix[i] += (
+                    t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+                )
+
+            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+                predictor_names_by_matrix[i] += (
+                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                )
 
     if PERMUTED_MATRICES_KEY in one_step_result_dict:
         matrix_indices = one_step_result_dict[PERMUTED_MATRICES_KEY]
@@ -413,13 +442,13 @@ def _make_prediction_function(model_object):
     :return: prediction_function: Function defined below.
     """
 
-    def prediction_function(predictor_matrices):
+    def prediction_function(three_predictor_matrices):
         """Prediction function itself.
 
         E = number of examples
         K = number of classes
 
-        :param predictor_matrices: See doc for `run_forward_test`.
+        :param three_predictor_matrices: See doc for `run_forward_test`.
         :return: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
             class probabilities.  If K = 2, this is a length-E numpy array of
             positive-class probabilities.
@@ -427,7 +456,10 @@ def _make_prediction_function(model_object):
 
         print('\n')
         forecast_prob_array = neural_net.apply_model(
-            model_object=model_object, predictor_matrices=predictor_matrices,
+            model_object=model_object,
+            predictor_matrices=[
+                m for m in three_predictor_matrices if m is not None
+            ],
             num_examples_per_batch=32, verbose=True
         )
         print('\n')
@@ -438,7 +470,7 @@ def _make_prediction_function(model_object):
 
 
 def _run_forward_test_one_step(
-        predictor_matrices, target_array, model_metadata_dict,
+        three_predictor_matrices, target_array, model_metadata_dict,
         prediction_function, cost_function, permuted_flag_arrays,
         num_bootstrap_reps):
     """Runs one step of the forward permutation test.
@@ -449,11 +481,11 @@ def _run_forward_test_one_step(
     B = number of replicates for bootstrapping
     K = number of classes
 
-    :param predictor_matrices: See doc for `run_forward_test`.
+    :param three_predictor_matrices: See doc for `run_forward_test`.
     :param target_array: Same.
     :param model_metadata_dict: Same.
     :param prediction_function: Function with the following inputs and outputs.
-    Input: predictor_matrices: See above.
+    Input: three_predictor_matrices: See above.
     Output: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
         class probabilities.  If K = 2, this is a length-E numpy array of
         positive-class probabilities.
@@ -468,7 +500,7 @@ def _run_forward_test_one_step(
     :param num_bootstrap_reps: Number of replicates for bootstrapping.
     :return: result_dict: Dictionary with the following keys, where P = number
         of permutations done in this step.
-    result_dict['predictor_matrices']: Same as input but with more values
+    result_dict['three_predictor_matrices']: Same as input but with more values
         permuted.
     result_dict['permuted_flag_arrays']: Same as input but with more `True`
         flags.
@@ -494,22 +526,30 @@ def _run_forward_test_one_step(
     best_variable_index = -1
     best_permuted_value_matrix = None
 
-    num_matrices = len(predictor_matrices)
+    num_matrices = len(three_predictor_matrices)
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
 
     for i in range(num_matrices):
-        if i == GRIDDED_SATELLITE_ENUM:
-            num_variables = predictor_matrices[i].shape[-1]
-        elif i == UNGRIDDED_SATELLITE_ENUM:
-            num_variables = len(
-                training_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
-            )
+        t = training_option_dict
+
+        if i == 0:
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+                continue
+
+            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
         else:
-            t = training_option_dict
-            num_variables = (
-                len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]) +
-                len(t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY])
-            )
+            num_variables = 0
+            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+                num_variables += len(
+                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                )
+
+            if num_variables == 0:
+                continue
 
         for j in range(num_variables):
             if permuted_flag_arrays[i][j]:
@@ -526,12 +566,12 @@ def _run_forward_test_one_step(
             ))
 
             this_predictor_matrix, this_permuted_value_matrix = _permute_values(
-                predictor_matrix=predictor_matrices[i] + 0.,
+                predictor_matrix=three_predictor_matrices[i] + 0.,
                 predictor_type_enum=i,
                 variable_index=j, model_metadata_dict=model_metadata_dict
             )
             these_predictor_matrices = [
-                this_predictor_matrix if k == i else predictor_matrices[k]
+                this_predictor_matrix if k == i else three_predictor_matrices[k]
                 for k in range(num_matrices)
             ]
             this_forecast_prob_array = prediction_function(
@@ -559,15 +599,15 @@ def _run_forward_test_one_step(
             best_permuted_value_matrix = this_permuted_value_matrix + 0.
 
     this_predictor_matrix = _permute_values(
-        predictor_matrix=predictor_matrices[best_matrix_index],
+        predictor_matrix=three_predictor_matrices[best_matrix_index],
         predictor_type_enum=best_matrix_index,
         variable_index=best_variable_index,
         model_metadata_dict=model_metadata_dict,
         permuted_value_matrix=best_permuted_value_matrix
     )[0]
-    predictor_matrices = [
+    three_predictor_matrices = [
         this_predictor_matrix if k == best_matrix_index
-        else predictor_matrices[k]
+        else three_predictor_matrices[k]
         for k in range(num_matrices)
     ]
 
@@ -584,7 +624,7 @@ def _run_forward_test_one_step(
     )
 
     return {
-        PREDICTOR_MATRICES_KEY: predictor_matrices,
+        THREE_PREDICTOR_MATRICES_KEY: three_predictor_matrices,
         PERMUTED_FLAGS_KEY: permuted_flag_arrays,
         PERMUTED_MATRICES_KEY: permuted_matrix_indices,
         PERMUTED_VARIABLES_KEY: permuted_variable_indices,
@@ -593,14 +633,14 @@ def _run_forward_test_one_step(
 
 
 def _run_backwards_test_one_step(
-        predictor_matrices, clean_predictor_matrices, target_array,
+        three_predictor_matrices, clean_predictor_matrices, target_array,
         model_metadata_dict, prediction_function, cost_function,
         permuted_flag_arrays, num_bootstrap_reps):
     """Runs one step of the backwards permutation test.
 
-    :param predictor_matrices: See doc for `_run_forward_test_one_step`.
-    :param clean_predictor_matrices: Clean version of `predictor_matrices`, with
-        no permutation.
+    :param three_predictor_matrices: See doc for `_run_forward_test_one_step`.
+    :param clean_predictor_matrices: Clean version of
+        `three_predictor_matrices`, with no permutation.
     :param target_array: See doc for `_run_forward_test_one_step`.
     :param model_metadata_dict: Same.
     :param prediction_function: Same.
@@ -609,7 +649,7 @@ def _run_backwards_test_one_step(
     :param num_bootstrap_reps: Same.
     :return: result_dict: Dictionary with the following keys, where P = number
         of depermutations done in this step.
-    result_dict['predictor_matrices']: Same as input but with fewer values
+    result_dict['three_predictor_matrices']: Same as input but with fewer values
         permuted.
     result_dict['permuted_flag_arrays']: Same as input but with more `False`
         flags.
@@ -632,22 +672,30 @@ def _run_backwards_test_one_step(
     best_matrix_index = -1
     best_variable_index = -1
 
-    num_matrices = len(predictor_matrices)
+    num_matrices = len(three_predictor_matrices)
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
 
     for i in range(num_matrices):
-        if i == GRIDDED_SATELLITE_ENUM:
-            num_variables = predictor_matrices[i].shape[-1]
-        elif i == UNGRIDDED_SATELLITE_ENUM:
-            num_variables = len(
-                training_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
-            )
+        t = training_option_dict
+
+        if i == 0:
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+                continue
+
+            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
         else:
-            t = training_option_dict
-            num_variables = (
-                len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]) +
-                len(t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY])
-            )
+            num_variables = 0
+            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+                num_variables += len(
+                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                )
+
+            if num_variables == 0:
+                continue
 
         for j in range(num_variables):
             if not permuted_flag_arrays[i][j]:
@@ -664,13 +712,13 @@ def _run_backwards_test_one_step(
             ))
 
             this_predictor_matrix = _depermute_values(
-                predictor_matrix=predictor_matrices[i] + 0.,
+                predictor_matrix=three_predictor_matrices[i] + 0.,
                 clean_predictor_matrix=clean_predictor_matrices[i],
                 predictor_type_enum=i, variable_index=j,
                 model_metadata_dict=model_metadata_dict
             )
             these_predictor_matrices = [
-                this_predictor_matrix if k == i else predictor_matrices[k]
+                this_predictor_matrix if k == i else three_predictor_matrices[k]
                 for k in range(num_matrices)
             ]
             this_forecast_prob_array = prediction_function(
@@ -697,15 +745,15 @@ def _run_backwards_test_one_step(
             best_variable_index = j
 
     this_predictor_matrix = _depermute_values(
-        predictor_matrix=predictor_matrices[best_matrix_index],
+        predictor_matrix=three_predictor_matrices[best_matrix_index],
         clean_predictor_matrix=clean_predictor_matrices[best_matrix_index],
         predictor_type_enum=best_matrix_index,
         variable_index=best_variable_index,
         model_metadata_dict=model_metadata_dict
     )
-    predictor_matrices = [
+    three_predictor_matrices = [
         this_predictor_matrix if k == best_matrix_index
-        else predictor_matrices[k]
+        else three_predictor_matrices[k]
         for k in range(num_matrices)
     ]
 
@@ -724,7 +772,7 @@ def _run_backwards_test_one_step(
     )
 
     return {
-        PREDICTOR_MATRICES_KEY: predictor_matrices,
+        THREE_PREDICTOR_MATRICES_KEY: three_predictor_matrices,
         PERMUTED_FLAGS_KEY: permuted_flag_arrays,
         DEPERMUTED_MATRICES_KEY: depermuted_matrix_indices,
         DEPERMUTED_VARIABLES_KEY: depermuted_variable_indices,
@@ -758,9 +806,9 @@ def make_auc_cost_function():
 
 
 def run_forward_test(
-        predictor_matrices, target_array, model_object, model_metadata_dict,
-        cost_function, num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS,
-        num_steps=None):
+        three_predictor_matrices, target_array, model_object,
+        model_metadata_dict, cost_function,
+        num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS, num_steps=None):
     """Runs forward version of permutation test (both single- and multi-pass).
 
     E = number of examples
@@ -769,7 +817,8 @@ def run_forward_test(
     N = number of predictors (either physical variables or
         lag-time/physical-variable pairs) available to permute
 
-    :param predictor_matrices: See output doc for `neural_net.create_inputs`.
+    :param three_predictor_matrices: See output doc for
+        `neural_net.create_inputs`.
     :param target_array: If K > 2, this is an E-by-K numpy array of integers
         (0 or 1), indicating true classes.  If K = 2, this is a length-E numpy
         array of integers (0 or 1).
@@ -812,15 +861,16 @@ def run_forward_test(
     # TODO(thunderhoser): Allow split by lag time.
 
     num_bootstrap_reps, num_steps = _check_args(
-        predictor_matrices=predictor_matrices, target_array=target_array,
+        three_predictor_matrices=three_predictor_matrices,
+        target_array=target_array,
         num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
     )
-    num_matrices = len(predictor_matrices)
+    num_matrices = len(three_predictor_matrices)
     prediction_function = _make_prediction_function(model_object)
 
     # Find original cost (before permutation).
     print('Finding original cost (before permutation)...')
-    forecast_prob_array = prediction_function(predictor_matrices)
+    forecast_prob_array = prediction_function(three_predictor_matrices)
 
     orig_cost_estimates = _bootstrap_cost(
         target_array=target_array, forecast_prob_array=forecast_prob_array,
@@ -832,18 +882,26 @@ def run_forward_test(
     permuted_flag_arrays = [numpy.array([], dtype=bool)] * num_matrices
 
     for i in range(num_matrices):
-        if i == GRIDDED_SATELLITE_ENUM:
-            num_variables = predictor_matrices[i].shape[-1]
-        elif i == UNGRIDDED_SATELLITE_ENUM:
-            num_variables = len(
-                training_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
-            )
+        t = training_option_dict
+
+        if i == 0:
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+                continue
+
+            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
         else:
-            t = training_option_dict
-            num_variables = (
-                len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]) +
-                len(t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY])
-            )
+            num_variables = 0
+            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+                num_variables += len(
+                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                )
+
+            if num_variables == 0:
+                continue
 
         permuted_flag_arrays[i] = numpy.full(num_variables, 0, dtype=bool)
 
@@ -863,7 +921,7 @@ def run_forward_test(
             break
 
         this_result_dict = _run_forward_test_one_step(
-            predictor_matrices=predictor_matrices,
+            three_predictor_matrices=three_predictor_matrices,
             target_array=target_array,
             model_metadata_dict=model_metadata_dict,
             prediction_function=prediction_function,
@@ -875,7 +933,9 @@ def run_forward_test(
         if this_result_dict is None:
             break
 
-        predictor_matrices = this_result_dict[PREDICTOR_MATRICES_KEY]
+        three_predictor_matrices = (
+            this_result_dict[THREE_PREDICTOR_MATRICES_KEY]
+        )
         permuted_flag_arrays = this_result_dict[PERMUTED_FLAGS_KEY]
 
         these_predictor_names = _predictor_indices_to_metadata(
@@ -916,16 +976,16 @@ def run_forward_test(
 
 
 def run_backwards_test(
-        predictor_matrices, target_array, model_object, model_metadata_dict,
-        cost_function, num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS,
-        num_steps=None):
+        three_predictor_matrices, target_array, model_object,
+        model_metadata_dict, cost_function,
+        num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS, num_steps=None):
     """Runs backwards version of permutation test (both single- and multi-pass).
 
     E = number of examples
     N = number of predictors (either physical variables or
         lag-time/physical-variable pairs) available to permute
 
-    :param predictor_matrices: See doc for `run_forward_test`.
+    :param three_predictor_matrices: See doc for `run_forward_test`.
     :param target_array: Same.
     :param model_object: Same.
     :param model_metadata_dict: Same.
@@ -956,43 +1016,53 @@ def run_backwards_test(
     # TODO(thunderhoser): Allow split by lag time.
 
     num_bootstrap_reps, num_steps = _check_args(
-        predictor_matrices=predictor_matrices, target_array=target_array,
+        three_predictor_matrices=three_predictor_matrices,
+        target_array=target_array,
         num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
     )
-    num_matrices = len(predictor_matrices)
+    num_matrices = len(three_predictor_matrices)
     prediction_function = _make_prediction_function(model_object)
 
     # Housekeeping.
-    clean_predictor_matrices = copy.deepcopy(predictor_matrices)
+    clean_predictor_matrices = copy.deepcopy(three_predictor_matrices)
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
     permuted_flag_arrays = [numpy.array([], dtype=bool)] * num_matrices
 
     for i in range(num_matrices):
-        if i == GRIDDED_SATELLITE_ENUM:
-            num_variables = predictor_matrices[i].shape[-1]
-        elif i == UNGRIDDED_SATELLITE_ENUM:
-            num_variables = len(
-                training_option_dict[neural_net.SATELLITE_PREDICTORS_KEY]
-            )
+        t = training_option_dict
+
+        if i == 0:
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+                continue
+
+            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
         else:
-            t = training_option_dict
-            num_variables = (
-                len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]) +
-                len(t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY])
-            )
+            num_variables = 0
+            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+                num_variables += len(
+                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                )
+
+            if num_variables == 0:
+                continue
 
         permuted_flag_arrays[i] = numpy.full(num_variables, 1, dtype=bool)
 
         for j in range(num_variables):
-            predictor_matrices[i] = _permute_values(
-                predictor_matrix=predictor_matrices[i], predictor_type_enum=i,
-                variable_index=j, model_metadata_dict=model_metadata_dict,
+            three_predictor_matrices[i] = _permute_values(
+                predictor_matrix=three_predictor_matrices[i],
+                predictor_type_enum=i, variable_index=j,
+                model_metadata_dict=model_metadata_dict,
                 model_lag_time_index=None
             )[0]
 
     # Find original cost (before *de*permutation).
     print('Finding original cost (before *de*permutation)...')
-    forecast_prob_array = prediction_function(predictor_matrices)
+    forecast_prob_array = prediction_function(three_predictor_matrices)
 
     orig_cost_estimates = _bootstrap_cost(
         target_array=target_array, forecast_prob_array=forecast_prob_array,
@@ -1015,7 +1085,7 @@ def run_backwards_test(
             break
 
         this_result_dict = _run_backwards_test_one_step(
-            predictor_matrices=predictor_matrices,
+            three_predictor_matrices=three_predictor_matrices,
             clean_predictor_matrices=clean_predictor_matrices,
             target_array=target_array,
             model_metadata_dict=model_metadata_dict,
@@ -1028,7 +1098,9 @@ def run_backwards_test(
         if this_result_dict is None:
             break
 
-        predictor_matrices = this_result_dict[PREDICTOR_MATRICES_KEY]
+        three_predictor_matrices = (
+            this_result_dict[THREE_PREDICTOR_MATRICES_KEY]
+        )
         permuted_flag_arrays = this_result_dict[PERMUTED_FLAGS_KEY]
 
         these_predictor_names = _predictor_indices_to_metadata(

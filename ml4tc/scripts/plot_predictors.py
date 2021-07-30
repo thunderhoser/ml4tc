@@ -630,10 +630,9 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 cyclone_id_string=cyclone_id_string
             )
 
-        if (
-                validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
-                is not None
-        ):
+        v = validation_option_dict
+
+        if v[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
             these_predictor_matrices = [
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
@@ -662,10 +661,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 cyclone_id_string=cyclone_id_string
             )
 
-        if (
-                validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-                is not None
-        ):
+        if v[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
             these_predictor_matrices = [
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
