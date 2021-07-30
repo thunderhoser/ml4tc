@@ -47,6 +47,9 @@ METRIC_DICT = {
     'binary_focn': custom_metrics.binary_focn
 }
 
+SATELLITE_ROWS_KEY = 'satellite_rows_by_example'
+SHIPS_ROWS_KEY = 'ships_rows_by_example'
+
 PREDICTOR_MATRICES_KEY = 'predictor_matrices'
 TARGET_ARRAY_KEY = 'target_array'
 INIT_TIMES_KEY = 'init_times_unix_sec'
@@ -434,15 +437,22 @@ def _find_all_desired_times(
 
     xt = example_table_xarray
 
-    satellite_indices = _find_desired_times(
-        all_times_unix_sec=
-        xt.coords[example_utils.SATELLITE_TIME_DIM].values,
-        desired_times_unix_sec=init_time_unix_sec - satellite_lag_times_sec,
-        tolerance_sec=satellite_time_tolerance_sec,
-        max_num_missing_times=satellite_max_missing_times
-    )
+    if satellite_lag_times_sec is None:
+        satellite_indices = None
+    else:
+        satellite_indices = _find_desired_times(
+            all_times_unix_sec=
+            xt.coords[example_utils.SATELLITE_TIME_DIM].values,
+            desired_times_unix_sec=init_time_unix_sec - satellite_lag_times_sec,
+            tolerance_sec=satellite_time_tolerance_sec,
+            max_num_missing_times=satellite_max_missing_times
+        )
 
-    if satellite_indices is None and not use_climo_as_backup:
+    if (
+            satellite_indices is None
+            and satellite_lag_times_sec is not None
+            and not use_climo_as_backup
+    ):
         desired_time_strings = [
             time_conversion.unix_sec_to_string(
                 init_time_unix_sec - t, TIME_FORMAT_FOR_LOG
@@ -458,15 +468,22 @@ def _find_all_desired_times(
         warnings.warn(warning_string)
         return None, None, None
 
-    ships_indices = _find_desired_times(
-        all_times_unix_sec=
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
-        desired_times_unix_sec=init_time_unix_sec - ships_lag_times_sec,
-        tolerance_sec=ships_time_tolerance_sec,
-        max_num_missing_times=ships_max_missing_times
-    )
+    if ships_lag_times_sec is None:
+        ships_indices = None
+    else:
+        ships_indices = _find_desired_times(
+            all_times_unix_sec=
+            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
+            desired_times_unix_sec=init_time_unix_sec - ships_lag_times_sec,
+            tolerance_sec=ships_time_tolerance_sec,
+            max_num_missing_times=ships_max_missing_times
+        )
 
-    if ships_indices is None and not use_climo_as_backup:
+    if (
+            ships_indices is None
+            and ships_lag_times_sec is not None
+            and not use_climo_as_backup
+    ):
         desired_time_strings = [
             time_conversion.unix_sec_to_string(
                 init_time_unix_sec - t, TIME_FORMAT_FOR_LOG
@@ -501,13 +518,23 @@ def _find_all_desired_times(
             -1 * xt[example_utils.STORM_INTENSITY_KEY].values[target_indices[0]]
         )
     else:
+        desired_times_unix_sec = numpy.array(
+            [init_time_unix_sec, init_time_unix_sec + lead_time_sec],
+            dtype=int
+        )
+
+        # num_desired_times = 1 + int(numpy.round(
+        #     float(lead_time_sec) / 6 * (HOURS_TO_SECONDS)
+        # ))
+        # desired_times_unix_sec = numpy.linspace(
+        #     init_time_unix_sec, init_time_unix_sec + lead_time_sec,
+        #     num=num_desired_times, dtype=int
+        # )
+
         target_indices = _find_desired_times(
             all_times_unix_sec=
             xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
-            desired_times_unix_sec=numpy.array(
-                [init_time_unix_sec, init_time_unix_sec + lead_time_sec],
-                dtype=int
-            ),
+            desired_times_unix_sec=desired_times_unix_sec,
             tolerance_sec=0, max_num_missing_times=0
         )
 
@@ -539,35 +566,25 @@ def _find_all_desired_times(
     return satellite_indices, ships_indices, target_flags
 
 
-def _read_one_example_file(
-        example_file_name, num_examples_desired, num_positive_examples_desired,
-        num_negative_examples_desired, lead_time_hours,
-        satellite_lag_times_minutes, ships_lag_times_hours,
-        satellite_predictor_names, ships_predictor_names_lagged,
-        ships_predictor_names_forecast, class_cutoffs_m_s01,
-        satellite_time_tolerance_sec, satellite_max_missing_times,
-        ships_time_tolerance_sec, ships_max_missing_times,
-        use_climo_as_backup):
-    """Reads one example file for generator.
+def _read_non_predictors_one_file(
+        example_table_xarray, num_examples_desired,
+        num_positive_examples_desired, num_negative_examples_desired,
+        lead_time_sec, satellite_lag_times_sec, ships_lag_times_sec,
+        class_cutoffs_m_s01, satellite_time_tolerance_sec,
+        satellite_max_missing_times, ships_time_tolerance_sec,
+        ships_max_missing_times, use_climo_as_backup):
+    """Reads all but predictors from one example file.
 
-    E = number of examples returned
-    M = number of rows in satellite grid
-    N = number of columns in satellite grid
-    T = number of lag times
+    E = number of examples
 
-    :param example_file_name: Path to input file.  Will be read by
+    :param example_table_xarray: xarray table returned by
         `example_io.read_file`.
-    :param num_examples_desired: Number of total example desired.
-    :param num_positive_examples_desired: Number of positive examples (in
-        highest class) desired.
-    :param num_negative_examples_desired: Number of negative examples (not in
-        highest class) desired.
-    :param lead_time_hours: See doc for `input_generator`.
-    :param satellite_lag_times_minutes: Same.
-    :param ships_lag_times_hours: Same.
-    :param satellite_predictor_names: Same.
-    :param ships_predictor_names_lagged: Same.
-    :param ships_predictor_names_forecast: Same.
+    :param num_examples_desired: See doc for `_read_one_example_file`.
+    :param num_positive_examples_desired: Same.
+    :param num_negative_examples_desired: Same.
+    :param lead_time_sec: Same.
+    :param satellite_lag_times_sec: Same.
+    :param ships_lag_times_sec: Same.
     :param class_cutoffs_m_s01: Same.
     :param satellite_time_tolerance_sec: Same.
     :param satellite_max_missing_times: Same.
@@ -576,38 +593,29 @@ def _read_one_example_file(
     :param use_climo_as_backup: Same.
 
     :return: data_dict: Dictionary with the following keys.
-    data_dict['predictor_matrices']: See output doc for `input_generator`.
-    data_dict['target_array']: Same.
-    data_dict['init_times_unix_sec']: length-E numpy array of forecast-
-        initialization times.
-    data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
-        (deg N).
-    data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
-        longitudes (deg E).
-    data_dict['grid_latitude_matrix_deg_n']: E-by-M-by-T numpy array of grid
-        latitudes (deg N).
-    data_dict['grid_longitude_matrix_deg_e']: E-by-N-by-T numpy array of grid
-        longitudes (deg E).
+    data_dict['satellite_rows_by_example']: length-E list, where each element is
+        either None or a 1-D numpy array of indices to satellite times needed
+        for the given example.  These are row indices into
+        `example_table_xarray`.
+    data_dict['ships_rows_by_example']: Same but for SHIPS times.
+    data_dict['target_array']: See doc for `_read_one_example_file`.
+    data_dict['init_times_unix_sec']: Same.
+    data_dict['storm_latitudes_deg_n']: Same.
+    data_dict['storm_longitudes_deg_e']: Same.
     """
 
-    print('Reading data from: "{0:s}"...'.format(example_file_name))
-    xt = example_io.read_file(example_file_name)
-
+    xt = example_table_xarray
     all_init_times_unix_sec = (
         xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
     )
     numpy.random.shuffle(all_init_times_unix_sec)
 
-    satellite_lag_times_sec = satellite_lag_times_minutes * MINUTES_TO_SECONDS
-    ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
-    lead_time_sec = lead_time_hours * HOURS_TO_SECONDS
-
     num_classes = len(class_cutoffs_m_s01) + 1
     num_positive_examples_found = 0
     num_negative_examples_found = 0
 
-    satellite_time_indices_by_example = []
-    ships_time_indices_by_example = []
+    satellite_rows_by_example = []
+    ships_rows_by_example = []
     init_times_unix_sec = []
     storm_latitudes_deg_n = []
     storm_longitudes_deg_e = []
@@ -635,7 +643,12 @@ def _read_one_example_file(
 
         if these_flags is None:
             continue
-        if these_satellite_indices is None and not use_climo_as_backup:
+
+        if (
+                these_satellite_indices is None
+                and these_ships_indices is None
+                and not use_climo_as_backup
+        ):
             continue
 
         if these_flags[-1] == 1:
@@ -655,13 +668,9 @@ def _read_one_example_file(
         else:
             these_flags = numpy.array([numpy.argmax(these_flags)], dtype=int)
 
-        target_array = numpy.concatenate(
-            (target_array, these_flags), axis=0
-        )
-        satellite_time_indices_by_example.append(
-            these_satellite_indices
-        )
-        ships_time_indices_by_example.append(these_ships_indices)
+        target_array = numpy.concatenate((target_array, these_flags), axis=0)
+        satellite_rows_by_example.append(these_satellite_indices)
+        ships_rows_by_example.append(these_ships_indices)
         init_times_unix_sec.append(t)
 
         this_index = numpy.where(
@@ -690,86 +699,68 @@ def _read_one_example_file(
     storm_latitudes_deg_n = numpy.array(storm_latitudes_deg_n)
     storm_longitudes_deg_e = numpy.array(storm_longitudes_deg_e)
 
-    num_examples = len(ships_time_indices_by_example)
+    return {
+        SATELLITE_ROWS_KEY: satellite_rows_by_example,
+        SHIPS_ROWS_KEY: ships_rows_by_example,
+        TARGET_ARRAY_KEY: target_array,
+        INIT_TIMES_KEY: init_times_unix_sec,
+        STORM_LATITUDES_KEY: storm_latitudes_deg_n,
+        STORM_LONGITUDES_KEY: storm_longitudes_deg_e
+    }
+
+
+def _read_brightness_temp_one_file(
+        example_table_xarray, table_rows_by_example, lag_times_sec):
+    """Reads brightness-temperature grids from one example file.
+
+    E = number of examples
+
+    :param example_table_xarray: xarray table returned by
+        `example_io.read_file`.
+    :param table_rows_by_example: length-E list, where each element is either
+        None or a 1-D numpy array of indices to satellite times needed for the
+        given example.  These are row indices into `example_table_xarray`.
+    :param lag_times_sec: 1-D numpy array of lag times for model.
+    :return: brightness_temp_matrix: See output doc for
+        `_read_one_example_file`.
+    :return: grid_latitude_matrix_deg_n: Same.
+    :return: grid_longitude_matrix_deg_e: Same.
+    """
+
+    xt = example_table_xarray
+
+    num_examples = len(table_rows_by_example)
+    num_lag_times = len(lag_times_sec)
     num_grid_rows = (
         xt[example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY].values.shape[1]
     )
     num_grid_columns = (
         xt[example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY].values.shape[2]
     )
+
     these_dim = (
         num_examples, num_grid_rows, num_grid_columns,
-        len(satellite_lag_times_sec), 1
+        num_lag_times, 1
     )
     brightness_temp_matrix = numpy.full(these_dim, numpy.nan)
 
     grid_latitude_matrix_deg_n = numpy.full(
-        (num_examples, num_grid_rows, len(satellite_lag_times_sec)), numpy.nan
+        (num_examples, num_grid_rows, num_lag_times), numpy.nan
     )
     grid_longitude_matrix_deg_e = numpy.full(
-        (num_examples, num_grid_columns, len(satellite_lag_times_sec)), numpy.nan
+        (num_examples, num_grid_columns, num_lag_times), numpy.nan
     )
-
-    these_dim = (
-        num_examples, len(satellite_lag_times_sec),
-        len(satellite_predictor_names)
-    )
-    satellite_predictor_matrix = numpy.full(these_dim, numpy.nan)
-
-    num_ships_lag_times = len(
-        xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    )
-    num_ships_forecast_hours = len(
-        xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
-    )
-    num_ships_channels_lagged = (
-        num_ships_lag_times * len(ships_predictor_names_lagged)
-    )
-    num_ships_channels = (
-        num_ships_channels_lagged +
-        num_ships_forecast_hours * len(ships_predictor_names_forecast)
-    )
-
-    these_dim = (num_examples, len(ships_lag_times_sec), num_ships_channels)
-    ships_predictor_matrix = numpy.full(these_dim, numpy.nan)
-
-    all_satellite_predictor_names = (
-        xt.coords[
-            example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
-        ].values.tolist()
-    )
-    satellite_predictor_indices = numpy.array([
-        all_satellite_predictor_names.index(n)
-        for n in satellite_predictor_names
-    ], dtype=int)
-
-    all_ships_predictor_names_lagged = (
-        xt.coords[example_utils.SHIPS_PREDICTOR_LAGGED_DIM].values.tolist()
-    )
-    ships_predictor_indices_lagged = numpy.array([
-        all_ships_predictor_names_lagged.index(n)
-        for n in ships_predictor_names_lagged
-    ], dtype=int)
-
-    all_ships_predictor_names_forecast = (
-        xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values.tolist()
-    )
-    ships_predictor_indices_forecast = numpy.array([
-        all_ships_predictor_names_forecast.index(n)
-        for n in ships_predictor_names_forecast
-    ], dtype=int)
 
     for i in range(num_examples):
-        for j in range(len(satellite_lag_times_sec)):
-            if satellite_time_indices_by_example[i] is None:
+        for j in range(len(lag_times_sec)):
+            if table_rows_by_example[i] is None:
                 brightness_temp_matrix[i, ..., j, 0] = 0.
-                satellite_predictor_matrix[i, j, :] = 0.
                 grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
                 grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
 
                 continue
 
-            k = satellite_time_indices_by_example[i][j]
+            k = table_rows_by_example[i][j]
 
             if k == MISSING_INDEX:
                 grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
@@ -807,52 +798,305 @@ def _read_one_example_file(
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
             ].values[k, ..., 0]
 
-            satellite_predictor_matrix[i, j, :] = xt[
-                example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
-            ].values[k, satellite_predictor_indices]
+    brightness_temp_matrix = _interp_missing_times(
+        data_matrix=brightness_temp_matrix, times_sec=-1 * lag_times_sec
+    )
 
-        for j in range(len(ships_lag_times_sec)):
-            if ships_time_indices_by_example[i] is None:
-                ships_predictor_matrix[i, j, :] = 0.
+    return (
+        brightness_temp_matrix, grid_latitude_matrix_deg_n,
+        grid_longitude_matrix_deg_e
+    )
+
+
+def _read_scalar_satellite_one_file(
+        example_table_xarray, table_rows_by_example, lag_times_sec,
+        predictor_names):
+    """Reads scalar satellite predictors from one example file.
+
+    :param example_table_xarray: See doc for `_read_brightness_temp_one_file`.
+    :param table_rows_by_example: Same.
+    :param lag_times_sec: Same.
+    :param predictor_names: 1-D list of predictors to read.
+    :return: satellite_predictor_matrix: See output doc for
+        `_read_one_example_file`.
+    """
+
+    num_examples = len(table_rows_by_example)
+    num_lag_times = len(lag_times_sec)
+    num_channels = len(predictor_names)
+    predictor_matrix = numpy.full(
+        (num_examples, num_lag_times, num_channels), numpy.nan
+    )
+
+    xt = example_table_xarray
+
+    all_predictor_names = (
+        xt.coords[
+            example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
+        ].values.tolist()
+    )
+    predictor_indices = numpy.array([
+        all_predictor_names.index(n) for n in predictor_names
+    ], dtype=int)
+
+    for i in range(num_examples):
+        for j in range(num_lag_times):
+            if table_rows_by_example[i] is None:
+                predictor_matrix[i, j, :] = 0.
                 continue
 
-            k = ships_time_indices_by_example[i][j]
+            k = table_rows_by_example[i][j]
             if k == MISSING_INDEX:
                 continue
 
-            ships_predictor_matrix[i, j, :] = _ships_predictors_xarray_to_keras(
+            predictor_matrix[i, j, :] = xt[
+                example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
+            ].values[k, predictor_indices]
+
+    return _interp_missing_times(
+        data_matrix=predictor_matrix, times_sec=-1 * lag_times_sec
+    )
+
+
+def _read_ships_one_file(
+        example_table_xarray, table_rows_by_example, model_lag_times_sec,
+        predictor_names_lagged, predictor_names_forecast):
+    """Reads SHIPS predictors from one example file.
+
+    :param example_table_xarray: See doc for `_read_brightness_temp_one_file`.
+    :param table_rows_by_example: Same.
+    :param model_lag_times_sec: Same.
+    :param predictor_names_lagged: 1-D list of lagged predictors to read.
+    :param predictor_names_forecast: 1-D list of forecast predictors to read.
+    :return: ships_predictor_matrix: See output doc for
+        `_read_one_example_file`.
+    """
+
+    if predictor_names_lagged is None:
+        num_lagged_predictors = 0
+    else:
+        num_lagged_predictors = len(predictor_names_lagged)
+
+    if predictor_names_forecast is None:
+        num_forecast_predictors = 0
+    else:
+        num_forecast_predictors = len(predictor_names_forecast)
+
+    num_examples = len(table_rows_by_example)
+    num_model_lag_times = len(model_lag_times_sec)
+
+    xt = example_table_xarray
+
+    num_builtin_lag_times = len(
+        xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
+    )
+    num_forecast_hours = len(
+        xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
+    )
+    num_channels = (
+        num_builtin_lag_times * num_lagged_predictors +
+        num_forecast_hours * num_forecast_predictors
+    )
+    predictor_matrix = numpy.full(
+        (num_examples, num_model_lag_times, num_channels), numpy.nan
+    )
+
+    if num_lagged_predictors == 0:
+        predictor_indices_lagged = None
+    else:
+        all_predictor_names_lagged = (
+            xt.coords[example_utils.SHIPS_PREDICTOR_LAGGED_DIM].values.tolist()
+        )
+        predictor_indices_lagged = numpy.array([
+            all_predictor_names_lagged.index(n) for n in predictor_names_lagged
+        ], dtype=int)
+
+    if num_forecast_predictors == 0:
+        predictor_indices_forecast = None
+    else:
+        all_predictor_names_forecast = (
+            xt.coords[
+                example_utils.SHIPS_PREDICTOR_FORECAST_DIM
+            ].values.tolist()
+        )
+        predictor_indices_forecast = numpy.array([
+            all_predictor_names_forecast.index(n)
+            for n in predictor_names_forecast
+        ], dtype=int)
+
+    for i in range(num_examples):
+        for j in range(num_model_lag_times):
+            if table_rows_by_example[i] is None:
+                predictor_matrix[i, j, :] = 0.
+                continue
+
+            k = table_rows_by_example[i][j]
+            if k == MISSING_INDEX:
+                continue
+
+            predictor_matrix[i, j, :] = _ships_predictors_xarray_to_keras(
                 example_table_xarray=xt, init_time_index=k,
-                lagged_predictor_indices=ships_predictor_indices_lagged,
-                forecast_predictor_indices=ships_predictor_indices_forecast
+                lagged_predictor_indices=predictor_indices_lagged,
+                forecast_predictor_indices=predictor_indices_forecast
             )
 
-    brightness_temp_matrix = _interp_missing_times(
-        data_matrix=brightness_temp_matrix,
-        times_sec=-1 * satellite_lag_times_sec
+    return _interp_missing_times(
+        data_matrix=predictor_matrix, times_sec=-1 * model_lag_times_sec
     )
-    satellite_predictor_matrix = _interp_missing_times(
-        data_matrix=satellite_predictor_matrix,
-        times_sec=-1 * satellite_lag_times_sec
+
+
+def _read_one_example_file(
+        example_file_name, num_examples_desired, num_positive_examples_desired,
+        num_negative_examples_desired, lead_time_hours,
+        satellite_lag_times_minutes, ships_lag_times_hours,
+        satellite_predictor_names, ships_predictor_names_lagged,
+        ships_predictor_names_forecast, class_cutoffs_m_s01,
+        satellite_time_tolerance_sec, satellite_max_missing_times,
+        ships_time_tolerance_sec, ships_max_missing_times,
+        use_climo_as_backup):
+    """Reads one example file for generator.
+
+    E = number of examples per batch
+    M = number of rows in satellite grid
+    N = number of columns in satellite grid
+    T_sat = number of lag times for satellite-based predictors
+    T_ships = number of lag times for SHIPS predictors
+    C_sat = number of channels for ungridded satellite-based predictors
+    C_ships = number of channels for SHIPS predictors
+    K = number of classes
+
+    :param example_file_name: Path to input file.  Will be read by
+        `example_io.read_file`.
+    :param num_examples_desired: Number of total example desired.
+    :param num_positive_examples_desired: Number of positive examples (in
+        highest class) desired.
+    :param num_negative_examples_desired: Number of negative examples (not in
+        highest class) desired.
+    :param lead_time_hours: See doc for `input_generator`.
+    :param satellite_lag_times_minutes: Same.
+    :param ships_lag_times_hours: Same.
+    :param satellite_predictor_names: Same.
+    :param ships_predictor_names_lagged: Same.
+    :param ships_predictor_names_forecast: Same.
+    :param class_cutoffs_m_s01: Same.
+    :param satellite_time_tolerance_sec: Same.
+    :param satellite_max_missing_times: Same.
+    :param ships_time_tolerance_sec: Same.
+    :param ships_max_missing_times: Same.
+    :param use_climo_as_backup: Same.
+
+    :return: data_dict: Dictionary with the following keys.
+    data_dict['predictor_matrices']: 1-D list with one or more of the following
+        elements.
+
+        brightness_temp_matrix: numpy array (E x M x N x T_sat x 1) of
+        brightness temperatures.
+
+        satellite_predictor_matrix: numpy array (E x T_sat x C_sat) of
+        satellite-based predictors.
+
+        ships_predictor_matrix: numpy array (E x T_ships x C_ships) of
+        SHIPS predictors.
+
+    data_dict['target_array']: If K > 2, this is an E-by-K numpy array of
+        integers (0 or 1), indicating true classes.  If K = 2, this is a
+        length-E numpy array of integers (0 or 1).
+    data_dict['init_times_unix_sec']: length-E numpy array of forecast-
+        initialization times.
+    data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
+        (deg N).
+    data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
+        longitudes (deg E).
+    data_dict['grid_latitude_matrix_deg_n']: numpy array (E x M x T_sat) of grid
+        latitudes (deg N).
+    data_dict['grid_longitude_matrix_deg_e']: numpy array (E x N x T_sat) of
+        grid longitudes (deg E).
+    """
+
+    if satellite_lag_times_minutes is None:
+        satellite_lag_times_sec = None
+    else:
+        satellite_lag_times_sec = (
+            satellite_lag_times_minutes * MINUTES_TO_SECONDS
+        )
+
+    if ships_lag_times_hours is None:
+        ships_lag_times_sec = None
+    else:
+        ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
+
+    lead_time_sec = lead_time_hours * HOURS_TO_SECONDS
+
+    print('Reading data from: "{0:s}"...'.format(example_file_name))
+    xt = example_io.read_file(example_file_name)
+
+    data_dict = _read_non_predictors_one_file(
+        example_table_xarray=xt,
+        num_examples_desired=num_examples_desired,
+        num_positive_examples_desired=num_positive_examples_desired,
+        num_negative_examples_desired=num_negative_examples_desired,
+        lead_time_sec=lead_time_sec,
+        satellite_lag_times_sec=satellite_lag_times_sec,
+        ships_lag_times_sec=ships_lag_times_sec,
+        class_cutoffs_m_s01=class_cutoffs_m_s01,
+        satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+        satellite_max_missing_times=satellite_max_missing_times,
+        ships_time_tolerance_sec=ships_time_tolerance_sec,
+        ships_max_missing_times=ships_max_missing_times,
+        use_climo_as_backup=use_climo_as_backup
     )
-    ships_predictor_matrix = _interp_missing_times(
-        data_matrix=ships_predictor_matrix,
-        times_sec=-1 * ships_lag_times_sec
-    )
+
+    satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
+    ships_rows_by_example = data_dict.pop(SHIPS_ROWS_KEY)
+
+    if satellite_lag_times_sec is None:
+        brightness_temp_matrix = None
+        grid_latitude_matrix_deg_n = None
+        grid_longitude_matrix_deg_e = None
+    else:
+        (
+            brightness_temp_matrix,
+            grid_latitude_matrix_deg_n,
+            grid_longitude_matrix_deg_e
+        ) = _read_brightness_temp_one_file(
+            example_table_xarray=xt,
+            table_rows_by_example=satellite_rows_by_example,
+            lag_times_sec=satellite_lag_times_sec
+        )
+
+    if satellite_predictor_names is None:
+        satellite_predictor_matrix = None
+    else:
+        satellite_predictor_matrix = _read_scalar_satellite_one_file(
+            example_table_xarray=xt,
+            table_rows_by_example=satellite_rows_by_example,
+            lag_times_sec=satellite_lag_times_sec,
+            predictor_names=satellite_predictor_names
+        )
+
+    if ships_lag_times_sec is None:
+        ships_predictor_matrix = None
+    else:
+        ships_predictor_matrix = _read_ships_one_file(
+            example_table_xarray=xt,
+            table_rows_by_example=ships_rows_by_example,
+            model_lag_times_sec=ships_lag_times_sec,
+            predictor_names_lagged=ships_predictor_names_lagged,
+            predictor_names_forecast=ships_predictor_names_forecast
+        )
 
     predictor_matrices = [
         brightness_temp_matrix, satellite_predictor_matrix,
         ships_predictor_matrix
     ]
 
-    return {
+    data_dict.update({
         PREDICTOR_MATRICES_KEY: predictor_matrices,
-        TARGET_ARRAY_KEY: target_array,
-        INIT_TIMES_KEY: init_times_unix_sec,
-        STORM_LATITUDES_KEY: storm_latitudes_deg_n,
-        STORM_LONGITUDES_KEY: storm_longitudes_deg_e,
         GRID_LATITUDE_MATRIX_KEY: grid_latitude_matrix_deg_n,
         GRID_LONGITUDE_MATRIX_KEY: grid_longitude_matrix_deg_e
-    }
+    })
+
+    return data_dict
 
 
 def _check_generator_args(option_dict):
@@ -874,41 +1118,66 @@ def _check_generator_args(option_dict):
     error_checking.assert_is_integer(option_dict[LEAD_TIME_KEY])
     assert numpy.mod(option_dict[LEAD_TIME_KEY], 6) == 0
 
-    error_checking.assert_is_integer_numpy_array(
-        option_dict[SATELLITE_LAG_TIMES_KEY]
-    )
-    error_checking.assert_is_geq_numpy_array(
-        option_dict[SATELLITE_LAG_TIMES_KEY], 0
-    )
-    error_checking.assert_is_numpy_array(
-        option_dict[SATELLITE_LAG_TIMES_KEY], num_dimensions=1
-    )
-    option_dict[SATELLITE_LAG_TIMES_KEY] = numpy.sort(
-        option_dict[SATELLITE_LAG_TIMES_KEY]
-    )[::-1]
+    if option_dict[SATELLITE_LAG_TIMES_KEY] is None:
+        option_dict[SATELLITE_PREDICTORS_KEY] = None
+    else:
+        error_checking.assert_is_integer_numpy_array(
+            option_dict[SATELLITE_LAG_TIMES_KEY]
+        )
+        error_checking.assert_is_geq_numpy_array(
+            option_dict[SATELLITE_LAG_TIMES_KEY], 0
+        )
+        error_checking.assert_is_numpy_array(
+            option_dict[SATELLITE_LAG_TIMES_KEY], num_dimensions=1
+        )
+        option_dict[SATELLITE_LAG_TIMES_KEY] = numpy.sort(
+            option_dict[SATELLITE_LAG_TIMES_KEY]
+        )[::-1]
 
-    error_checking.assert_is_integer_numpy_array(
-        option_dict[SHIPS_LAG_TIMES_KEY]
-    )
-    error_checking.assert_is_geq_numpy_array(
-        option_dict[SHIPS_LAG_TIMES_KEY], 0
-    )
-    assert numpy.all(numpy.mod(option_dict[SHIPS_LAG_TIMES_KEY], 6) == 0)
-    error_checking.assert_is_numpy_array(
-        option_dict[SHIPS_LAG_TIMES_KEY], num_dimensions=1
-    )
-    option_dict[SHIPS_LAG_TIMES_KEY] = numpy.sort(
-        option_dict[SHIPS_LAG_TIMES_KEY]
-    )[::-1]
+    if (
+            option_dict[SHIPS_PREDICTORS_LAGGED_KEY] is None and
+            option_dict[SHIPS_PREDICTORS_FORECAST_KEY] is None
+    ):
+        option_dict[SHIPS_LAG_TIMES_KEY] = None
 
-    # TODO(thunderhoser): Allow either list to be empty.
-    error_checking.assert_is_string_list(option_dict[SATELLITE_PREDICTORS_KEY])
-    error_checking.assert_is_string_list(
-        option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
+    assert not (
+        option_dict[SATELLITE_LAG_TIMES_KEY] is None
+        and option_dict[SHIPS_LAG_TIMES_KEY] is None
     )
-    error_checking.assert_is_string_list(
-        option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
-    )
+
+    if option_dict[SHIPS_LAG_TIMES_KEY] is None:
+        option_dict[SHIPS_PREDICTORS_LAGGED_KEY] = None
+        option_dict[SHIPS_PREDICTORS_FORECAST_KEY] = None
+    else:
+        error_checking.assert_is_integer_numpy_array(
+            option_dict[SHIPS_LAG_TIMES_KEY]
+        )
+        error_checking.assert_is_geq_numpy_array(
+            option_dict[SHIPS_LAG_TIMES_KEY], 0
+        )
+        assert numpy.all(numpy.mod(option_dict[SHIPS_LAG_TIMES_KEY], 6) == 0)
+
+        error_checking.assert_is_numpy_array(
+            option_dict[SHIPS_LAG_TIMES_KEY], num_dimensions=1
+        )
+        option_dict[SHIPS_LAG_TIMES_KEY] = numpy.sort(
+            option_dict[SHIPS_LAG_TIMES_KEY]
+        )[::-1]
+
+    if option_dict[SATELLITE_PREDICTORS_KEY] is not None:
+        error_checking.assert_is_string_list(
+            option_dict[SATELLITE_PREDICTORS_KEY]
+        )
+
+    if option_dict[SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+        error_checking.assert_is_string_list(
+            option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
+        )
+
+    if option_dict[SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+        error_checking.assert_is_string_list(
+            option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
+        )
 
     error_checking.assert_is_integer(option_dict[NUM_POSITIVE_EXAMPLES_KEY])
     error_checking.assert_is_geq(option_dict[NUM_POSITIVE_EXAMPLES_KEY], 4)
@@ -965,22 +1234,30 @@ def _ships_predictors_xarray_to_keras(
 
     error_checking.assert_is_integer(init_time_index)
     error_checking.assert_is_geq(init_time_index, 0)
-    error_checking.assert_is_integer_numpy_array(lagged_predictor_indices)
-    error_checking.assert_is_geq_numpy_array(lagged_predictor_indices, 0)
-    error_checking.assert_is_integer_numpy_array(forecast_predictor_indices)
-    error_checking.assert_is_geq_numpy_array(forecast_predictor_indices, 0)
 
-    lagged_values = numpy.ravel(
-        example_table_xarray[
-            example_utils.SHIPS_PREDICTORS_LAGGED_KEY
-        ].values[init_time_index, :, lagged_predictor_indices]
-    )
+    if lagged_predictor_indices is None:
+        lagged_values = numpy.array([])
+    else:
+        error_checking.assert_is_integer_numpy_array(lagged_predictor_indices)
+        error_checking.assert_is_geq_numpy_array(lagged_predictor_indices, 0)
 
-    forecast_values = numpy.ravel(
-        example_table_xarray[
-            example_utils.SHIPS_PREDICTORS_FORECAST_KEY
-        ].values[init_time_index, :, forecast_predictor_indices]
-    )
+        lagged_values = numpy.ravel(
+            example_table_xarray[
+                example_utils.SHIPS_PREDICTORS_LAGGED_KEY
+            ].values[init_time_index, :, lagged_predictor_indices]
+        )
+
+    if forecast_predictor_indices is None:
+        forecast_values = numpy.array([])
+    else:
+        error_checking.assert_is_integer_numpy_array(forecast_predictor_indices)
+        error_checking.assert_is_geq_numpy_array(forecast_predictor_indices, 0)
+
+        forecast_values = numpy.ravel(
+            example_table_xarray[
+                example_utils.SHIPS_PREDICTORS_FORECAST_KEY
+            ].values[init_time_index, :, forecast_predictor_indices]
+        )
 
     return numpy.concatenate((lagged_values, forecast_values))
 
@@ -1131,13 +1408,16 @@ def ships_predictors_3d_to_4d(
     error_checking.assert_is_numpy_array(predictor_matrix_3d, num_dimensions=3)
     error_checking.assert_is_numpy_array_without_nan(predictor_matrix_3d)
     error_checking.assert_is_integer(num_lagged_predictors)
-    error_checking.assert_is_greater(num_lagged_predictors, 0)
+    error_checking.assert_is_geq(num_lagged_predictors, 0)
     error_checking.assert_is_integer(num_builtin_lag_times)
     error_checking.assert_is_greater(num_builtin_lag_times, 0)
     error_checking.assert_is_integer(num_forecast_predictors)
-    error_checking.assert_is_greater(num_forecast_predictors, 0)
+    error_checking.assert_is_geq(num_forecast_predictors, 0)
     error_checking.assert_is_integer(num_forecast_hours)
     error_checking.assert_is_greater(num_forecast_hours, 0)
+    error_checking.assert_is_greater(
+        num_lagged_predictors + num_forecast_predictors, 0
+    )
 
     num_scalar_predictors = (
         num_lagged_predictors * num_builtin_lag_times +
@@ -1148,33 +1428,41 @@ def ships_predictors_3d_to_4d(
     num_examples = predictor_matrix_3d.shape[0]
     num_model_lag_times = predictor_matrix_3d.shape[1]
 
-    lagged_predictor_matrix_3d = predictor_matrix_3d[
-        ..., :(-num_forecast_predictors * num_forecast_hours)
-    ]
     these_dimensions = (
         num_examples, num_model_lag_times, num_lagged_predictors,
         num_builtin_lag_times
     )
-    lagged_predictor_matrix_4d = numpy.reshape(
-        lagged_predictor_matrix_3d, these_dimensions
-    )
-    lagged_predictor_matrix_4d = numpy.swapaxes(
-        lagged_predictor_matrix_4d, 2, 3
-    )
 
-    forecast_predictor_matrix_3d = predictor_matrix_3d[
-        ..., (-num_forecast_predictors * num_forecast_hours):
-    ]
+    if num_lagged_predictors == 0:
+        lagged_predictor_matrix_4d = numpy.full(these_dimensions, 0.)
+    else:
+        lagged_predictor_matrix_3d = predictor_matrix_3d[
+            ..., :(num_lagged_predictors * num_builtin_lag_times)
+        ]
+        lagged_predictor_matrix_4d = numpy.reshape(
+            lagged_predictor_matrix_3d, these_dimensions
+        )
+        lagged_predictor_matrix_4d = numpy.swapaxes(
+            lagged_predictor_matrix_4d, 2, 3
+        )
+
     these_dimensions = (
         num_examples, num_model_lag_times, num_forecast_predictors,
         num_forecast_hours
     )
-    forecast_predictor_matrix_4d = numpy.reshape(
-        forecast_predictor_matrix_3d, these_dimensions
-    )
-    forecast_predictor_matrix_4d = numpy.swapaxes(
-        forecast_predictor_matrix_4d, 2, 3
-    )
+
+    if num_forecast_predictors == 0:
+        forecast_predictor_matrix_4d = numpy.full(these_dimensions, 0.)
+    else:
+        forecast_predictor_matrix_3d = predictor_matrix_3d[
+            ..., (-num_forecast_predictors * num_forecast_hours):
+        ]
+        forecast_predictor_matrix_4d = numpy.reshape(
+            forecast_predictor_matrix_3d, these_dimensions
+        )
+        forecast_predictor_matrix_4d = numpy.swapaxes(
+            forecast_predictor_matrix_4d, 2, 3
+        )
 
     return lagged_predictor_matrix_4d, forecast_predictor_matrix_4d
 
@@ -1209,21 +1497,29 @@ def ships_predictors_4d_to_3d(lagged_predictor_matrix_4d,
         forecast_predictor_matrix_4d
     )
 
-    these_dimensions = (
-        num_examples, num_model_lag_times,
-        lagged_predictor_matrix_4d[0, 0, ...].size
-    )
-    lagged_predictor_matrix_3d = numpy.reshape(
-        numpy.swapaxes(lagged_predictor_matrix_4d, 2, 3), these_dimensions
-    )
+    if lagged_predictor_matrix_4d.size == 0:
+        these_dimensions = (num_examples, num_model_lag_times, 0)
+        lagged_predictor_matrix_3d = numpy.full(these_dimensions, 0.)
+    else:
+        these_dimensions = (
+            num_examples, num_model_lag_times,
+            lagged_predictor_matrix_4d[0, 0, ...].size
+        )
+        lagged_predictor_matrix_3d = numpy.reshape(
+            numpy.swapaxes(lagged_predictor_matrix_4d, 2, 3), these_dimensions
+        )
 
-    these_dimensions = (
-        num_examples, num_model_lag_times,
-        forecast_predictor_matrix_4d[0, 0, ...].size
-    )
-    forecast_predictor_matrix_3d = numpy.reshape(
-        numpy.swapaxes(forecast_predictor_matrix_4d, 2, 3), these_dimensions
-    )
+    if forecast_predictor_matrix_4d.size == 0:
+        these_dimensions = (num_examples, num_model_lag_times, 0)
+        forecast_predictor_matrix_3d = numpy.full(these_dimensions, 0.)
+    else:
+        these_dimensions = (
+            num_examples, num_model_lag_times,
+            forecast_predictor_matrix_4d[0, 0, ...].size
+        )
+        forecast_predictor_matrix_3d = numpy.reshape(
+            numpy.swapaxes(forecast_predictor_matrix_4d, 2, 3), these_dimensions
+        )
 
     return numpy.concatenate(
         (lagged_predictor_matrix_3d, forecast_predictor_matrix_3d), axis=-1
@@ -1306,13 +1602,6 @@ def create_inputs(option_dict):
 def input_generator(option_dict):
     """Generates input data for neural net.
 
-    E = number of examples per batch
-    M = number of rows in satellite grid
-    N = number of columns in satellite grid
-    T_sat = number of lag times for satellite-based predictors
-    T_ships = number of lag times for SHIPS predictors
-    C_sat = number of channels for ungridded satellite-based predictors
-    C_ships = number of channels for SHIPS predictors
     K = number of classes
 
     :param option_dict: Dictionary with the following keys.
@@ -1322,15 +1611,19 @@ def input_generator(option_dict):
     option_dict['years']: 1-D numpy array of training years.
     option_dict['lead_time_hours']: Lead time for predicting storm intensity.
     option_dict['satellite_lag_times_minutes']: 1-D numpy array of lag times for
-        satellite-based predictors.
+        satellite-based predictors.  If you do not want any satellite predictors
+        (brightness-temperature grids or scalars), make this None.
     option_dict['ships_lag_times_hours']: 1-D numpy array of lag times for SHIPS
-        predictors.
-    option_dict['satellite_predictor_names']: 1-D list with names of satellite-
-        based predictors to use.
+        predictors.  If you do not want SHIPS predictors, make this None.
+    option_dict['satellite_predictor_names']: 1-D list with names of scalar
+        satellite predictors to use.  If you do not want scalar satellite
+        predictors, make this None.
     option_dict['ships_predictor_names_lagged']: 1-D list with names of lagged
-        SHIPS predictors to use.
+        SHIPS predictors to use.  If you do not want lagged SHIPS predictors,
+        make this None.
     option_dict['ships_predictor_names_forecast']: 1-D list with names of
-        forecast SHIPS predictors to use.
+        forecast SHIPS predictors to use.  If you do not want forecast SHIPS
+        predictors, make this None.
     option_dict['num_positive_examples_per_batch']: Number of positive examples
         (in highest class) per batch.
     option_dict['num_negative_examples_per_batch']: Number of negative examples
@@ -1355,20 +1648,12 @@ def input_generator(option_dict):
         will assume climatological values.  If False, for examples where a
         certain predictor type is not found, will not use this example.
 
-    :return: predictor_matrices: 1-D list with the following elements.
-
-        brightness_temp_matrix: numpy array (E x M x N x T_sat x 1) of
-        brightness temperatures.
-
-        satellite_predictor_matrix: numpy array (E x T_sat x C_sat) of
-        satellite-based predictors.
-
-        ships_predictor_matrix: numpy array (E x T_ships x C_ships) of
-        SHIPS predictors.
-
-    :return: target_array: If K > 2, this is an E-by-K numpy array of integers
-        (0 or 1), indicating true classes.  If K = 2, this is a length-E numpy
-        array of integers (0 or 1).
+    :return: predictor_matrices: See output doc for `_read_one_example_file`.
+        However, for this generator, any undesired predictor type will be
+        omitted from the list.  For example, if scalar satellite predictors are
+        undesired, the list will contain only
+        [brightness_temperature_matrix, ships_predictor_matrix].
+    :return: target_array: See output doc for `_read_one_example_file`.
     """
 
     option_dict = _check_generator_args(option_dict)
@@ -1468,9 +1753,12 @@ def input_generator(option_dict):
                 ships_time_tolerance_sec=ships_time_tolerance_sec,
                 ships_max_missing_times=ships_max_missing_times,
                 use_climo_as_backup=use_climo_as_backup
-            )[:2]
+            )
 
-            these_predictor_matrices = this_data_dict[PREDICTOR_MATRICES_KEY]
+            these_predictor_matrices = [
+                m for m in this_data_dict[PREDICTOR_MATRICES_KEY]
+                if m is not None
+            ]
             this_target_array = this_data_dict[TARGET_ARRAY_KEY]
             file_index += 1
 

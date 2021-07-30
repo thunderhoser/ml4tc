@@ -122,10 +122,16 @@ def get_occlusion_maps(
                 :, first_row:last_row, first_column:last_column, ...
             ] = fill_value
 
+            if len(predictor_matrices) > 1:
+                new_predictor_matrices = (
+                    [new_brightness_temp_matrix] + predictor_matrices[1:]
+                )
+            else:
+                new_predictor_matrices = [new_brightness_temp_matrix]
+
             this_prob_array = neural_net.apply_model(
                 model_object=model_object,
-                predictor_matrices=
-                [new_brightness_temp_matrix] + predictor_matrices[1:],
+                predictor_matrices=new_predictor_matrices,
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
                 verbose=True
             )

@@ -65,6 +65,33 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param plateau_lr_multiplier: Same.
     """
 
+    if (
+            len(satellite_lag_times_minutes) == 1
+            and satellite_lag_times_minutes[0] < 0
+    ):
+        satellite_lag_times_minutes = None
+
+    if (
+            len(satellite_predictor_names) == 1
+            and satellite_predictor_names[0] == ''
+    ):
+        satellite_predictor_names = None
+
+    if len(ships_lag_times_hours) == 1 and ships_lag_times_hours[0] < 0:
+        ships_lag_times_hours = None
+
+    if (
+            len(ships_predictor_names_lagged) == 1
+            and ships_predictor_names_lagged[0] == ''
+    ):
+        ships_predictor_names_lagged = None
+
+    if (
+            len(ships_predictor_names_forecast) == 1
+            and ships_predictor_names_forecast[0] == ''
+    ):
+        ships_predictor_names_forecast = None
+
     training_option_dict = {
         neural_net.EXAMPLE_DIRECTORY_KEY: training_example_dir_name,
         neural_net.YEARS_KEY: training_years,

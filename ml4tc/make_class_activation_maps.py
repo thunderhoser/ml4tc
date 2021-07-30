@@ -170,7 +170,8 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         print(SEPARATOR_STRING)
 
         these_predictor_matrices = (
-            this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+            m for m in this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+            if m is not None
         )
         this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
 

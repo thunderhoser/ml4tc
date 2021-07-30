@@ -211,7 +211,7 @@ def _plot_occlusion_map_one_example(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     panel_file_names = [''] * num_model_lag_times
 
@@ -224,11 +224,6 @@ def _plot_occlusion_map_one_example(
             numpy.absolute(occlusion_matrix_one_example),
             100. - MAX_COLOUR_PERCENTILE
         )
-
-        print(numpy.percentile(numpy.absolute(occlusion_matrix_one_example), numpy.array([0, 1, 5, 25, 50, 75, 95, 99, 100])))
-        print(min_contour_value)
-        print(max_contour_value)
-        print('\n\n\n*************************\n\n\n')
     else:
         max_contour_value = numpy.percentile(
             occlusion_matrix_one_example, MAX_COLOUR_PERCENTILE

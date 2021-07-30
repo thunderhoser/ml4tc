@@ -35,9 +35,10 @@ def plot_scalar_satellite_one_example(
 
     T = number of input tensors to model
 
-    :param predictor_matrices_one_example: length-T list of numpy arrays,
-        formatted in the same way as the training data.  The first axis (i.e.,
-        the example axis) of each numpy array should have length 1.
+    :param predictor_matrices_one_example: length-3 list, where each element is
+        either None or a numpy array formatted in the same way as the training
+        data.  The first axis (i.e., the example axis) of each numpy array
+        should have length 1.
     :param model_metadata_dict: Dictionary returned by
         `neural_net.read_metafile`.
     :param cyclone_id_string: Cyclone ID (must be accepted by
@@ -312,9 +313,14 @@ def plot_lagged_ships_one_example(
         0, num_lagged_predictors - 1, num=num_lagged_predictors, dtype=int
     )
 
-    num_forecast_predictors = len(
+    forecast_predictor_names = (
         validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
     )
+    num_forecast_predictors = (
+        0 if forecast_predictor_names is None
+        else len(forecast_predictor_names)
+    )
+
     num_forecast_hours = len(forecast_hours)
     num_builtin_lag_times = len(builtin_lag_times_hours)
     num_model_lag_times = len(model_lag_times_sec)
@@ -429,9 +435,14 @@ def plot_forecast_ships_one_example(
         0, num_forecast_predictors - 1, num=num_forecast_predictors, dtype=int
     )
 
-    num_lagged_predictors = len(
+    lagged_predictor_names = (
         validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
     )
+    num_lagged_predictors = (
+        0 if lagged_predictor_names is None
+        else len(lagged_predictor_names)
+    )
+
     num_forecast_hours = len(forecast_hours)
     num_builtin_lag_times = len(builtin_lag_times_hours)
     num_model_lag_times = len(model_lag_times_sec)

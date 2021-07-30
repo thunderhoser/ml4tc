@@ -428,8 +428,11 @@ def create_model(
     """Creates conv-LSTM model.
 
     :param option_dict_gridded_sat: See doc for `_create_layers_gridded_sat`.
+        If you do not want to use gridded satellite data, make this None.
     :param option_dict_ungridded_sat: See doc for `_create_layers_ungridded`.
-    :param option_dict_ships: Same.
+        If you do not want to use ungridded satellite data, make this None.
+    :param option_dict_ships: See doc for `_create_layers_ungridded`.  If you do
+        not want to use SHIPS data, make this None.
     :param option_dict_dense: See doc for
         `cnn_architecture.create_dense_layers`.
     :param loss_function: Loss function.
@@ -438,44 +441,57 @@ def create_model(
         `keras.models.Model`).
     """
 
-    option_dict_gridded_sat_orig = option_dict_gridded_sat.copy()
-    option_dict_gridded_sat = DEFAULT_OPTION_DICT_GRIDDED_SAT.copy()
-    option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
+    input_layer_objects = []
+    flattening_layer_objects = []
 
-    option_dict_ungridded_sat_orig = option_dict_ungridded_sat.copy()
-    option_dict_ungridded_sat = DEFAULT_OPTION_DICT_UNGRIDDED_SAT.copy()
-    option_dict_ungridded_sat.update(option_dict_ungridded_sat_orig)
+    if option_dict_gridded_sat is not None:
+        option_dict_gridded_sat_orig = option_dict_gridded_sat.copy()
+        option_dict_gridded_sat = DEFAULT_OPTION_DICT_GRIDDED_SAT.copy()
+        option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
-    option_dict_ships_orig = option_dict_ships.copy()
-    option_dict_ships = DEFAULT_OPTION_DICT_SHIPS.copy()
-    option_dict_ships.update(option_dict_ships_orig)
+        this_input_layer_object, this_flattening_layer_object = (
+            _create_layers_gridded_sat(option_dict_gridded_sat)
+        )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
+
+    if option_dict_ungridded_sat is not None:
+        option_dict_ungridded_sat_orig = option_dict_ungridded_sat.copy()
+        option_dict_ungridded_sat = DEFAULT_OPTION_DICT_UNGRIDDED_SAT.copy()
+        option_dict_ungridded_sat.update(option_dict_ungridded_sat_orig)
+
+        this_input_layer_object, this_flattening_layer_object = (
+            _create_layers_ungridded(option_dict_ungridded_sat)
+        )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
+
+    if option_dict_ships is not None:
+        option_dict_ships_orig = option_dict_ships.copy()
+        option_dict_ships = DEFAULT_OPTION_DICT_SHIPS.copy()
+        option_dict_ships.update(option_dict_ships_orig)
+
+        this_input_layer_object, this_flattening_layer_object = (
+            _create_layers_ungridded(option_dict_ships)
+        )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
 
     option_dict_dense_orig = option_dict_dense.copy()
     option_dict_dense = DEFAULT_OPTION_DICT_DENSE.copy()
     option_dict_dense.update(option_dict_dense_orig)
 
-    input_layer_object_gridded_sat, gridded_sat_layer_object = (
-        _create_layers_gridded_sat(option_dict_gridded_sat)
-    )
-    input_layer_object_ungridded_sat, ungridded_sat_layer_object = (
-        _create_layers_ungridded(option_dict_ungridded_sat)
-    )
-    input_layer_object_ships, ships_layer_object = (
-        _create_layers_ungridded(option_dict_ships)
-    )
+    if len(flattening_layer_objects) > 1:
+        layer_object = keras.layers.concatenate(flattening_layer_objects)
+    else:
+        layer_object = flattening_layer_objects[0]
 
-    layer_object = keras.layers.concatenate([
-        gridded_sat_layer_object, ungridded_sat_layer_object,
-        ships_layer_object
-    ])
     layer_object = cnn_architecture.create_dense_layers(
         input_layer_object=layer_object, option_dict=option_dict_dense
     )
-
-    input_layer_objects = [
-        input_layer_object_gridded_sat, input_layer_object_ungridded_sat,
-        input_layer_object_ships
-    ]
     model_object = keras.models.Model(
         inputs=input_layer_objects, outputs=layer_object
     )
