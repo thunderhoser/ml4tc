@@ -216,14 +216,16 @@ def _plot_cam_one_example(
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        satellite_plotting.plot_class_activation(
-            class_activation_matrix=cam_matrix_one_example[0, ...],
-            axes_object=axes_objects[k],
-            latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-            longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-            min_contour_value=min_contour_value,
-            max_contour_value=max_contour_value,
-            num_contours=15, colour_map_object=colour_map_object
+        min_contour_value, max_contour_value = (
+            satellite_plotting.plot_class_activation(
+                class_activation_matrix=cam_matrix_one_example[0, ...],
+                axes_object=axes_objects[k],
+                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                min_contour_value=min_contour_value,
+                max_contour_value=max_contour_value,
+                num_contours=15, colour_map_object=colour_map_object
+            )
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -272,12 +274,16 @@ def _plot_cam_one_example(
     colour_norm_object = pyplot.Normalize(
         vmin=min_contour_value, vmax=max_contour_value
     )
+    label_string = (
+        r'log$_{10}$(class activation)' if plot_log_activations
+        else 'Class activation'
+    )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=r'log$_{10}$(class activation)',
+        cbar_label_string=label_string,
         tick_label_format_string='{0:.2g}'
     )
 

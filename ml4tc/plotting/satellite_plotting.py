@@ -10,6 +10,8 @@ from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 
+TOLERANCE = 1e-6
+
 DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
 DEFAULT_CUTOFF_TEMP_KELVINS = 240.
@@ -253,6 +255,8 @@ def plot_saliency(
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
+    :return: min_abs_contour_value: Same as input but maybe changed.
+    :return: max_abs_contour_value: Same as input but maybe changed.
     """
 
     error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
@@ -274,13 +278,15 @@ def plot_saliency(
         saliency_matrix, exact_dimensions=expected_dim
     )
 
-    if min_abs_contour_value < 0.001 or max_abs_contour_value < 0.01:
-        min_abs_contour_value = 0.001
-        max_abs_contour_value = 0.01
+    # if min_abs_contour_value < 0.001 or max_abs_contour_value < 0.01:
+    #     min_abs_contour_value = 0.001
+    #     max_abs_contour_value = 0.01
 
-    error_checking.assert_is_greater(
-        max_abs_contour_value, min_abs_contour_value
-    )
+    min_abs_contour_value = max([min_abs_contour_value, TOLERANCE])
+    max_abs_contour_value = max([
+        max_abs_contour_value, min_abs_contour_value + TOLERANCE
+    ])
+
     error_checking.assert_is_integer(half_num_contours)
     error_checking.assert_is_geq(half_num_contours, 5)
 
@@ -314,6 +320,8 @@ def plot_saliency(
         linewidths=line_width, linestyles='dashed', zorder=1e6
     )
 
+    return min_abs_contour_value, max_abs_contour_value
+
 
 def plot_class_activation(
         class_activation_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
@@ -335,6 +343,8 @@ def plot_class_activation(
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
+    :return: min_contour_value: Same as input but maybe changed.
+    :return: max_contour_value: Same as input but maybe changed.
     """
 
     error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
@@ -356,11 +366,13 @@ def plot_class_activation(
         class_activation_matrix, exact_dimensions=expected_dim
     )
 
-    if min_contour_value < 0.001 or max_contour_value < 0.01:
-        min_contour_value = 0.001
-        max_contour_value = 0.01
+    # if min_contour_value < 0.001 or max_contour_value < 0.01:
+    #     min_contour_value = 0.001
+    #     max_contour_value = 0.01
 
-    error_checking.assert_is_greater(max_contour_value, min_contour_value)
+    min_contour_value = max([min_contour_value, TOLERANCE])
+    max_contour_value = max([max_contour_value, min_contour_value + TOLERANCE])
+
     error_checking.assert_is_integer(num_contours)
     error_checking.assert_is_geq(num_contours, 5)
 
@@ -384,3 +396,5 @@ def plot_class_activation(
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='solid', zorder=1e6
     )
+
+    return min_contour_value, max_contour_value
