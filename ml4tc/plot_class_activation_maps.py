@@ -40,6 +40,7 @@ GRADCAM_FILE_ARG_NAME = 'input_gradcam_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 COLOUR_MAP_ARG_NAME = 'colour_map_name'
+PLOT_LOG_ARG_NAME = 'plot_log_activations'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -58,6 +59,10 @@ NORMALIZATION_FILE_HELP_STRING = (
 COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for class activation.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
+)
+PLOT_LOG_HELP_STRING = (
+    'Boolean flag.  If 1 (0), will plot base-10 logarithm of (actual) class '
+    'activation.'
 )
 SMOOTHING_RADIUS_HELP_STRING = (
     'Smoothing radius (number of pixels) for class-activation maps.  If you do '
@@ -81,6 +86,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + COLOUR_MAP_ARG_NAME, type=str, required=False, default='BuGn',
     help=COLOUR_MAP_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_LOG_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_LOG_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SMOOTHING_RADIUS_ARG_NAME, type=float, required=False, default=-1,
@@ -130,7 +139,7 @@ def _plot_cam_one_example(
         data_dict, class_activation_dict, model_metadata_dict,
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
-        output_dir_name):
+        plot_log_activations, output_dir_name):
     """Plots class-activation map for one example.
 
     P = number of points in border set
@@ -150,6 +159,7 @@ def _plot_cam_one_example(
         (deg east).
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
+    :param plot_log_activations: See documentation at top of file.
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     """
@@ -170,9 +180,11 @@ def _plot_cam_one_example(
             [cam_example_index], ...
         ]
     )
-    cam_matrix_one_example_log10 = numpy.log10(
-        numpy.maximum(cam_matrix_one_example, 1e-6)
-    )
+
+    if plot_log_activations:
+        cam_matrix_one_example = numpy.log10(
+            numpy.maximum(cam_matrix_one_example, 1e-6)
+        )
 
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
@@ -203,17 +215,17 @@ def _plot_cam_one_example(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     max_contour_value = numpy.percentile(
-        cam_matrix_one_example_log10, MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example, MAX_COLOUR_PERCENTILE
     )
     min_contour_value = numpy.percentile(
-        cam_matrix_one_example_log10, 100 - MAX_COLOUR_PERCENTILE
+        cam_matrix_one_example, 100 - MAX_COLOUR_PERCENTILE
     )
 
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         satellite_plotting.plot_class_activation(
-            class_activation_matrix=cam_matrix_one_example_log10[0, ...],
+            class_activation_matrix=cam_matrix_one_example[0, ...],
             axes_object=axes_objects[k],
             latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
             longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
@@ -279,7 +291,8 @@ def _plot_cam_one_example(
 
 
 def _run(gradcam_file_name, example_dir_name, normalization_file_name,
-         colour_map_name, smoothing_radius_px, output_dir_name):
+         colour_map_name, plot_log_activations, smoothing_radius_px,
+         output_dir_name):
     """Plots class-activation maps.
 
     This is effectively the main method.
@@ -288,6 +301,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
     :param colour_map_name: Same.
+    :param plot_log_activations: Same.
     :param smoothing_radius_px: Same.
     :param output_dir_name: Same.
     """
@@ -366,6 +380,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 colour_map_object=colour_map_object,
+                plot_log_activations=plot_log_activations,
                 output_dir_name=output_dir_name
             )
 
@@ -380,6 +395,7 @@ if __name__ == '__main__':
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
         colour_map_name=getattr(INPUT_ARG_OBJECT, COLOUR_MAP_ARG_NAME),
+        plot_log_activations=bool(getattr(INPUT_ARG_OBJECT, PLOT_LOG_ARG_NAME)),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME
         ),
