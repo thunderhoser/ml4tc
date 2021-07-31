@@ -280,12 +280,16 @@ def _plot_cam_one_example(
     colour_norm_object = pyplot.Normalize(
         vmin=min_contour_value, vmax=max_contour_value
     )
+    label_string = (
+        r'log$_{10}$(class activation)' if plot_log_activations
+        else 'Class activation'
+    )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=r'log$_{10}$(class activation)',
+        cbar_label_string=label_string,
         tick_label_format_string='{0:.2g}'
     )
 

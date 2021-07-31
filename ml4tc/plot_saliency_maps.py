@@ -797,48 +797,59 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         )[0]
 
         for j in example_indices:
-            _plot_brightness_temp_saliency(
-                data_dict=data_dict, saliency_dict=saliency_dict,
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=unique_cyclone_id_strings[i],
-                init_time_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY][j],
-                normalization_table_xarray=normalization_table_xarray,
-                border_latitudes_deg_n=border_latitudes_deg_n,
-                border_longitudes_deg_e=border_longitudes_deg_e,
-                colour_map_object=spatial_colour_map_object,
-                plot_input_times_grad=plot_input_times_grad,
-                output_dir_name=output_dir_name
-            )
+            if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
+                _plot_brightness_temp_saliency(
+                    data_dict=data_dict, saliency_dict=saliency_dict,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_time_unix_sec=
+                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    normalization_table_xarray=normalization_table_xarray,
+                    border_latitudes_deg_n=border_latitudes_deg_n,
+                    border_longitudes_deg_e=border_longitudes_deg_e,
+                    colour_map_object=spatial_colour_map_object,
+                    plot_input_times_grad=plot_input_times_grad,
+                    output_dir_name=output_dir_name
+                )
 
-            _plot_scalar_satellite_saliency(
-                data_dict=data_dict, saliency_dict=saliency_dict,
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=unique_cyclone_id_strings[i],
-                init_time_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY][j],
-                colour_map_object=nonspatial_colour_map_object,
-                plot_input_times_grad=plot_input_times_grad,
-                output_dir_name=output_dir_name
-            )
+            if data_dict[neural_net.PREDICTOR_MATRICES_KEY][1] is not None:
+                _plot_scalar_satellite_saliency(
+                    data_dict=data_dict, saliency_dict=saliency_dict,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_time_unix_sec=
+                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    colour_map_object=nonspatial_colour_map_object,
+                    plot_input_times_grad=plot_input_times_grad,
+                    output_dir_name=output_dir_name
+                )
 
-            _plot_lagged_ships_saliency(
-                data_dict=data_dict, saliency_dict=saliency_dict,
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=unique_cyclone_id_strings[i],
-                init_time_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY][j],
-                colour_map_object=nonspatial_colour_map_object,
-                plot_input_times_grad=plot_input_times_grad,
-                output_dir_name=output_dir_name
-            )
+            if option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+                _plot_lagged_ships_saliency(
+                    data_dict=data_dict, saliency_dict=saliency_dict,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_time_unix_sec=
+                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    colour_map_object=nonspatial_colour_map_object,
+                    plot_input_times_grad=plot_input_times_grad,
+                    output_dir_name=output_dir_name
+                )
 
-            _plot_forecast_ships_saliency(
-                data_dict=data_dict, saliency_dict=saliency_dict,
-                model_metadata_dict=model_metadata_dict,
-                cyclone_id_string=unique_cyclone_id_strings[i],
-                init_time_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY][j],
-                colour_map_object=nonspatial_colour_map_object,
-                plot_input_times_grad=plot_input_times_grad,
-                output_dir_name=output_dir_name
-            )
+            if (
+                    option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    is not None
+            ):
+                _plot_forecast_ships_saliency(
+                    data_dict=data_dict, saliency_dict=saliency_dict,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_time_unix_sec=
+                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    colour_map_object=nonspatial_colour_map_object,
+                    plot_input_times_grad=plot_input_times_grad,
+                    output_dir_name=output_dir_name
+                )
 
 
 if __name__ == '__main__':
