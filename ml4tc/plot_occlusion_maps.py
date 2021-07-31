@@ -172,7 +172,7 @@ def _plot_occlusion_map_one_example(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 

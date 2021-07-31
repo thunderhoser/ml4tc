@@ -162,7 +162,7 @@ def _plot_cam_one_example(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
     cam_matrix_one_example = (
