@@ -343,6 +343,9 @@ def _plot_brightness_temp_saliency(
     all_saliency_values = numpy.concatenate([
         numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
     ])
+    min_abs_contour_value = numpy.percentile(
+        numpy.absolute(all_saliency_values), 100. - MAX_COLOUR_PERCENTILE
+    )
     max_abs_contour_value = numpy.percentile(
         numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
     )
@@ -350,15 +353,17 @@ def _plot_brightness_temp_saliency(
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        satellite_plotting.plot_saliency(
-            saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
-            axes_object=axes_objects[k],
-            latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-            longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-            min_abs_contour_value=0.001,
-            max_abs_contour_value=max_abs_contour_value,
-            half_num_contours=10,
-            colour_map_object=colour_map_object
+        min_abs_contour_value, max_abs_contour_value = (
+            satellite_plotting.plot_saliency(
+                saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
+                axes_object=axes_objects[k],
+                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                min_abs_contour_value=min_abs_contour_value,
+                max_abs_contour_value=max_abs_contour_value,
+                half_num_contours=10,
+                colour_map_object=colour_map_object
+            )
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -405,7 +410,7 @@ def _plot_brightness_temp_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=0.001, vmax=max_abs_contour_value
+        vmin=min_abs_contour_value, vmax=max_abs_contour_value
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'

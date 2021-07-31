@@ -216,13 +216,14 @@ def _plot_occlusion_map_one_example(
     panel_file_names = [''] * num_model_lag_times
 
     if plot_normalized_occlusion:
+        finite_values = occlusion_matrix_one_example[
+            numpy.isfinite(occlusion_matrix_one_example)
+        ]
         max_contour_value = numpy.percentile(
-            numpy.absolute(occlusion_matrix_one_example),
-            MAX_COLOUR_PERCENTILE
+            numpy.absolute(finite_values), MAX_COLOUR_PERCENTILE
         )
         min_contour_value = numpy.percentile(
-            numpy.absolute(occlusion_matrix_one_example),
-            100. - MAX_COLOUR_PERCENTILE
+            numpy.absolute(finite_values), 100. - MAX_COLOUR_PERCENTILE
         )
     else:
         max_contour_value = numpy.percentile(
@@ -234,24 +235,29 @@ def _plot_occlusion_map_one_example(
 
     for k in range(num_model_lag_times):
         if plot_normalized_occlusion:
-            satellite_plotting.plot_saliency(
-                saliency_matrix=occlusion_matrix_one_example[0, ...],
-                axes_object=axes_objects[k],
-                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-                min_abs_contour_value=min_contour_value,
-                max_abs_contour_value=max_contour_value,
-                half_num_contours=10, colour_map_object=colour_map_object
+            min_contour_value, max_contour_value = (
+                satellite_plotting.plot_saliency(
+                    saliency_matrix=occlusion_matrix_one_example[0, ...],
+                    axes_object=axes_objects[k],
+                    latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                    longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                    min_abs_contour_value=min_contour_value,
+                    max_abs_contour_value=max_contour_value,
+                    half_num_contours=10, colour_map_object=colour_map_object
+                )
             )
         else:
-            satellite_plotting.plot_class_activation(
-                class_activation_matrix=occlusion_matrix_one_example[0, ...],
-                axes_object=axes_objects[k],
-                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
-                min_contour_value=min_contour_value,
-                max_contour_value=max_contour_value,
-                num_contours=15, colour_map_object=colour_map_object
+            min_contour_value, max_contour_value = (
+                satellite_plotting.plot_class_activation(
+                    class_activation_matrix=occlusion_matrix_one_example[
+                        0, ...],
+                    axes_object=axes_objects[k],
+                    latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
+                    longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                    min_contour_value=min_contour_value,
+                    max_contour_value=max_contour_value,
+                    num_contours=15, colour_map_object=colour_map_object
+                )
             )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
