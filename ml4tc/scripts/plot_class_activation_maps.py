@@ -154,7 +154,7 @@ def _plot_cam_one_example(
     )[0][0]
 
     predictor_matrices_one_example = [
-        p[[predictor_example_index], ...]
+        None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
     cam_matrix_one_example = (
@@ -235,7 +235,9 @@ def _plot_cam_one_example(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'.format(
+    concat_figure_file_name = (
+        '{0:s}/{1:s}_{2:s}_brightness_temp_concat.jpg'
+    ).format(
         output_dir_name, cyclone_id_string, init_time_string
     )
     plotting_utils.concat_panels(
