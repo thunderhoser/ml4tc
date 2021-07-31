@@ -53,7 +53,11 @@ def plot_scalar_satellite_one_example(
 
     # Check input args.
     error_checking.assert_is_list(predictor_matrices_one_example)
+
     for this_predictor_matrix in predictor_matrices_one_example:
+        if this_predictor_matrix is None:
+            continue
+
         error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
@@ -153,7 +157,11 @@ def plot_brightness_temp_one_example(
 
     # Check input args.
     error_checking.assert_is_list(predictor_matrices_one_example)
+
     for this_predictor_matrix in predictor_matrices_one_example:
+        if this_predictor_matrix is None:
+            continue
+
         error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
@@ -285,7 +293,11 @@ def plot_lagged_ships_one_example(
 
     # Check input args.
     error_checking.assert_is_list(predictor_matrices_one_example)
+
     for this_predictor_matrix in predictor_matrices_one_example:
+        if this_predictor_matrix is None:
+            continue
+
         error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
@@ -407,7 +419,11 @@ def plot_forecast_ships_one_example(
 
     # Check input args.
     error_checking.assert_is_list(predictor_matrices_one_example)
+
     for this_predictor_matrix in predictor_matrices_one_example:
+        if this_predictor_matrix is None:
+            continue
+
         error_checking.assert_is_numpy_array_without_nan(this_predictor_matrix)
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
