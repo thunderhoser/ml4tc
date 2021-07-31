@@ -275,7 +275,9 @@ def _plot_occlusion_map_one_example(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'.format(
+    concat_figure_file_name = (
+        '{0:s}/{1:s}_{2:s}_brightness_temp_concat.jpg'
+    ).format(
         output_dir_name, cyclone_id_string, init_time_string
     )
     plotting_utils.concat_panels(

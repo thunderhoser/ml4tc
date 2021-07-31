@@ -382,7 +382,9 @@ def _plot_brightness_temp_saliency(
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
     )
-    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_brightness_temp.jpg'.format(
+    concat_figure_file_name = (
+        '{0:s}/{1:s}_{2:s}_brightness_temp_concat.jpg'
+    ).format(
         output_dir_name, cyclone_id_string, init_time_string
     )
     plotting_utils.concat_panels(
@@ -527,7 +529,9 @@ def _plot_lagged_ships_saliency(
             output_size_pixels=PANEL_SIZE_PX
         )
 
-    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_lagged.jpg'.format(
+    concat_figure_file_name = (
+        '{0:s}/{1:s}_{2:s}_ships_lagged_concat.jpg'
+    ).format(
         output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
@@ -673,7 +677,9 @@ def _plot_forecast_ships_saliency(
             output_size_pixels=PANEL_SIZE_PX
         )
 
-    concat_figure_file_name = '{0:s}/{1:s}_{2:s}_ships_forecast.jpg'.format(
+    concat_figure_file_name = (
+        '{0:s}/{1:s}_{2:s}_ships_forecast_concat.jpg'
+    ).format(
         output_dir_name, cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )

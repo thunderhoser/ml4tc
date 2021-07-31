@@ -287,12 +287,6 @@ def concat_panels(panel_file_names, concat_figure_file_name):
         float(num_panels) / num_panel_rows
     ))
 
-    print('\n\n\n*******\n\n\n')
-    print(num_panels)
-    print(num_panel_rows)
-    print(num_panel_columns)
-    print('\n\n\n*******\n\n\n')
-
     if num_panels == 1:
         shutil.move(panel_file_names[0], concat_figure_file_name)
     else:
