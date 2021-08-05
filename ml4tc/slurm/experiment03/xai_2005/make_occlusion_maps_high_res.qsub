@@ -44,7 +44,7 @@ python3 -u "${CODE_DIR_NAME}/make_occlusion_maps.py" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings ${cyclone_id_string} \
 --target_class=1 \
---half_window_size_px=1 \
---stride_length_px=2 \
+--half_window_size_px=2 \
+--stride_length_px=5 \
 --fill_value=0 \
 --output_file_name="${output_file_name}"
