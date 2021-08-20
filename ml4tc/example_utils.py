@@ -63,6 +63,8 @@ SHIPS_METADATA_KEYS = [
     ships_io.THRESHOLD_EXCEEDANCE_KEY
 ]
 
+SHIPS_METADATA_AND_FORECAST_KEYS = [ships_io.FORECAST_LATITUDE_KEY]
+
 
 def merge_data(satellite_table_xarray, ships_table_xarray):
     """Merges satellite and SHIPS data.
@@ -190,7 +192,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
                 ships_dict[this_key]['data']
             )
 
-            continue
+            if this_key not in SHIPS_METADATA_AND_FORECAST_KEYS:
+                continue
 
         new_matrix = numpy.expand_dims(ships_dict[this_key]['data'], axis=-1)
 

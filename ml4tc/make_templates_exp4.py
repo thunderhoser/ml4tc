@@ -18,7 +18,7 @@ import cnn_architecture
 
 BASE_OPTION_DICT_GRIDDED_SAT = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
-        numpy.array([480, 640, 4, 1], dtype=int),
+        numpy.array([480, 640, 1, 1], dtype=int),
     cnn_architecture.NUM_LAYERS_BY_BLOCK_KEY: numpy.full(7, 2, dtype=int),
     cnn_architecture.NUM_CHANNELS_KEY: numpy.array(
         [8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256, 512, 512], dtype=int
@@ -31,24 +31,9 @@ BASE_OPTION_DICT_GRIDDED_SAT = {
     cnn_architecture.USE_BATCH_NORM_KEY: True
 }
 
-BASE_OPTION_DICT_UNGRIDDED_SAT = {
-    cnn_architecture.INPUT_DIMENSIONS_KEY:
-        numpy.array([4, 4], dtype=int),
-    cnn_architecture.NUM_NEURONS_KEY: numpy.array([50, 100], dtype=int),
-    # cnn_architecture.DROPOUT_RATES_KEY: numpy.array([0.25, 0.25]),
-    cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
-        architecture_utils.RELU_FUNCTION_STRING,
-    cnn_architecture.INNER_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
-    cnn_architecture.OUTPUT_ACTIV_FUNCTION_KEY:
-        architecture_utils.RELU_FUNCTION_STRING,
-    cnn_architecture.OUTPUT_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
-    cnn_architecture.L2_WEIGHT_KEY: 0.,
-    cnn_architecture.USE_BATCH_NORM_KEY: True
-}
-
 BASE_OPTION_DICT_SHIPS = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
-        numpy.array([4, 138], dtype=int),
+        numpy.array([1, 276], dtype=int),
     cnn_architecture.NUM_NEURONS_KEY: numpy.array([500, 1000], dtype=int),
     # cnn_architecture.DROPOUT_RATES_KEY: numpy.array([0.25, 0.25]),
     cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
@@ -105,9 +90,6 @@ def _run():
                 option_dict_gridded_sat = copy.deepcopy(
                     BASE_OPTION_DICT_GRIDDED_SAT
                 )
-                option_dict_ungridded_sat = copy.deepcopy(
-                    BASE_OPTION_DICT_UNGRIDDED_SAT
-                )
                 option_dict_ships = copy.deepcopy(BASE_OPTION_DICT_SHIPS)
                 option_dict_dense = copy.deepcopy(BASE_OPTION_DICT_DENSE)
 
@@ -117,13 +99,10 @@ def _run():
                 option_dict_ships[cnn_architecture.DROPOUT_RATES_KEY] = (
                     numpy.full(2, DENSE_LAYER_DROPOUT_RATES[i])
                 )
-                option_dict_ungridded_sat[
-                    cnn_architecture.DROPOUT_RATES_KEY
-                ] = numpy.full(2, DENSE_LAYER_DROPOUT_RATES[i])
 
                 option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = (
                     architecture_utils.get_dense_layer_dimensions(
-                        num_input_units=8780, num_classes=2,
+                        num_input_units=8680, num_classes=2,
                         num_dense_layers=DENSE_LAYER_COUNTS[k],
                         for_classification=True
                     )[1]
@@ -138,7 +117,7 @@ def _run():
 
                 model_object = cnn_architecture.create_model(
                     option_dict_gridded_sat=option_dict_gridded_sat,
-                    option_dict_ungridded_sat=option_dict_ungridded_sat,
+                    option_dict_ungridded_sat=None,
                     option_dict_ships=option_dict_ships,
                     option_dict_dense=option_dict_dense,
                     loss_function=LOSS_FUNCTION,
