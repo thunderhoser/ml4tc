@@ -55,7 +55,7 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --satellite_predictor_names "" \
 --ships_lag_times_hours 0 \
 --ships_predictor_names_lagged "" \
---ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "ships_reynolds_daily_sst_kelvins" "ships_ohc_climo_and_sst" "ships_forecast_latitude_deg_n" \
+--ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "ships_reynolds_sst_daily_kelvins" "ships_ohc_climo_and_sst_j_m02" "ships_forecast_latitude_deg_n" \
 --satellite_time_tolerance_training_sec=930 \
 --satellite_max_missing_times_training=1 \
 --ships_time_tolerance_training_sec=0 \
