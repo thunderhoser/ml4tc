@@ -55,11 +55,15 @@ FIGURE_RESOLUTION_DPI = 300
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 EXPERIMENT_DIR_ARG_NAME = 'experiment_dir_name'
+USE_TESTING_ARG_NAME = 'use_testing_data'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 EXPERIMENT_DIR_HELP_STRING = (
     'Name of top-level directory with models.  Evaluation scores will be found '
     'therein.'
+)
+USE_TESTING_HELP_STRING = (
+    'Boolean flag.  If 1 (0), will apply to testing (validation) data.'
 )
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Figures will be saved here.'
@@ -69,6 +73,10 @@ INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
     '--' + EXPERIMENT_DIR_ARG_NAME, type=str, required=True,
     help=EXPERIMENT_DIR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + USE_TESTING_ARG_NAME, type=int, required=False, default=0,
+    help=USE_TESTING_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -288,12 +296,13 @@ def _add_colour_bar(
     )
 
 
-def _run(experiment_dir_name, output_dir_name):
+def _run(experiment_dir_name, use_testing_data, output_dir_name):
     """Plots evaluation scores on hyperparameter grid for Experiment 1.
 
     This is effectively the main method.
 
     :param experiment_dir_name: See documentation at top of file.
+    :param use_testing_data: Same.
     :param output_dir_name: Same.
     """
 
@@ -327,10 +336,12 @@ def _run(experiment_dir_name, output_dir_name):
                 this_score_file_name = (
                     '{0:s}/dense-layer-dropout-rate={1:.1f}_'
                     'conv-layer-l2-weight={2:.12f}_dense-layer-count={3:d}/'
-                    'validation_2005-2009/evaluation.nc'
+                    '{4:s}/evaluation.nc'
                 ).format(
                     experiment_dir_name, DENSE_LAYER_DROPOUT_RATES[i],
-                    CONV_LAYER_L2_WEIGHTS[j], DENSE_LAYER_COUNTS[k]
+                    CONV_LAYER_L2_WEIGHTS[j], DENSE_LAYER_COUNTS[k],
+                    'testing_2010-2014' if use_testing_data
+                    else 'validation_2005-2009'
                 )
 
                 if not os.path.isfile(this_score_file_name):
@@ -728,5 +739,6 @@ if __name__ == '__main__':
 
     _run(
         experiment_dir_name=getattr(INPUT_ARG_OBJECT, EXPERIMENT_DIR_ARG_NAME),
+        use_testing_data=bool(getattr(INPUT_ARG_OBJECT, USE_TESTING_ARG_NAME)),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
