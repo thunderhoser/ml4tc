@@ -23,7 +23,7 @@ PREDICTOR_MATRIX_UNGRIDDED_SAT = numpy.random.normal(
     loc=0., scale=1., size=(10, 4, NUM_UNGRIDDED_SAT_PREDICTORS)
 )
 PREDICTOR_MATRIX_SHIPS = numpy.random.normal(
-    loc=0., scale=1., size=(10, 3, 2943)
+    loc=0., scale=1., size=(10, 3, 193)
 )
 
 TRAINING_OPTION_DICT = {

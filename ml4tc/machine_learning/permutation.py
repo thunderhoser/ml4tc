@@ -12,7 +12,7 @@ from ml4tc.machine_learning import neural_net
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 NUM_BUILTIN_SHIPS_LAG_TIMES = 4
-NUM_SHIPS_FORECAST_HOURS = 23
+NUM_SHIPS_FORECAST_HOURS = 1
 DEFAULT_NUM_BOOTSTRAP_REPS = 1000
 
 THREE_PREDICTOR_MATRICES_KEY = 'three_predictor_matrices'

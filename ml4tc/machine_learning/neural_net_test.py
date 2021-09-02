@@ -125,8 +125,8 @@ LAGGED_PRED_MATRIX_STANDARD = numpy.stack((
     LAGGED_PRED_MATRIX_EXAMPLE3
 ), axis=0)
 
-FORECAST_PREDICTORS_EXAMPLE1_HOUR1 = numpy.array([2, 4, 6, 8, 10], dtype=float)
-FORECAST_PREDICTORS_EXAMPLE1_HOUR2 = numpy.array([0, 0, 0, 0, 0], dtype=float)
+FORECAST_PREDICTORS_EXAMPLE1_HOUR1 = numpy.array([0, 0, 0, 0, 0], dtype=float)
+FORECAST_PREDICTORS_EXAMPLE1_HOUR2 = numpy.array([2, 4, 6, 8, 10], dtype=float)
 FORECAST_PREDICTORS_EXAMPLE1_HOUR3 = numpy.array([5, 4, 3, 2, 1], dtype=float)
 FORECAST_PREDICTORS_EXAMPLE1_HOUR4 = numpy.array(
     [-100, -10, 0, 10, 100], dtype=float
@@ -144,6 +144,8 @@ FORECAST_PRED_MATRIX_STANDARD = numpy.stack((
     FORECAST_PRED_MATRIX_EXAMPLE1, FORECAST_PRED_MATRIX_EXAMPLE2,
     FORECAST_PRED_MATRIX_EXAMPLE3
 ), axis=0)
+
+FORECAST_PRED_MATRIX_STANDARD_0HOURS = FORECAST_PRED_MATRIX_STANDARD[:, [1], :]
 
 METADATA_DICT = {
     example_utils.SHIPS_LAG_TIME_DIM: numpy.array([3, 0], dtype=int),
@@ -185,17 +187,17 @@ FORECAST_PREDICTOR_INDICES = numpy.linspace(
 
 SCALAR_PREDICTORS_EXAMPLE1 = numpy.array([
     0, 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5,
-    2, 0, 5, -100, 4, 0, 4, -10, 6, 0, 3, 0, 8, 0, 2, 10, 10, 0, 1, 100
+    2, 4, 6, 8, 10
 ], dtype=float)
 
 SCALAR_PREDICTORS_EXAMPLE2 = numpy.array([
     0, 0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10,
-    10, 0, 25, -500, 20, 0, 20, -50, 30, 0, 15, 0, 40, 0, 10, 50, 50, 0, 5, 500
+    10, 20, 30, 40, 50
 ], dtype=float)
 
 SCALAR_PREDICTORS_EXAMPLE3 = numpy.array([
     0, 0, 3, -3, 6, -6, 9, -9, 12, -12, 15, -15,
-    20, 0, 50, -1000, 40, 0, 40, -100, 60, 0, 30, 0, 80, 0, 20, 100, 100, 0, 10, 1000
+    20, 40, 60, 80, 100
 ], dtype=float)
 
 SCALAR_PREDICTOR_MATRIX = numpy.stack((
@@ -422,8 +424,9 @@ class NeuralNetTests(unittest.TestCase):
                 predictor_matrix_3d=SCALAR_PREDICTOR_MATRIX,
                 num_lagged_predictors=LAGGED_PRED_MATRIX_STANDARD.shape[2],
                 num_builtin_lag_times=LAGGED_PRED_MATRIX_STANDARD.shape[1],
-                num_forecast_predictors=FORECAST_PRED_MATRIX_STANDARD.shape[2],
-                num_forecast_hours=FORECAST_PRED_MATRIX_STANDARD.shape[1]
+                num_forecast_predictors=
+                FORECAST_PRED_MATRIX_STANDARD_0HOURS.shape[2],
+                num_forecast_hours=FORECAST_PRED_MATRIX_STANDARD_0HOURS.shape[1]
             )
         )
 
@@ -432,8 +435,8 @@ class NeuralNetTests(unittest.TestCase):
             atol=TOLERANCE
         ))
         self.assertTrue(numpy.allclose(
-            this_forecast_pred_matrix[0, ...], FORECAST_PRED_MATRIX_STANDARD,
-            atol=TOLERANCE
+            this_forecast_pred_matrix[0, ...],
+            FORECAST_PRED_MATRIX_STANDARD_0HOURS, atol=TOLERANCE
         ))
 
     def test_ships_predictors_4d_to_3d(self):
@@ -443,7 +446,7 @@ class NeuralNetTests(unittest.TestCase):
             lagged_predictor_matrix_4d=
             numpy.expand_dims(LAGGED_PRED_MATRIX_STANDARD, axis=0),
             forecast_predictor_matrix_4d=
-            numpy.expand_dims(FORECAST_PRED_MATRIX_STANDARD, axis=0)
+            numpy.expand_dims(FORECAST_PRED_MATRIX_STANDARD_0HOURS, axis=0)
         )
 
         self.assertTrue(numpy.allclose(
