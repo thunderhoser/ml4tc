@@ -35,7 +35,8 @@ TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 HOURS_TO_SECONDS = 3600
 METRES_PER_SECOND_TO_KT = 3.6 / 1.852
-SHIPS_FORECAST_HOURS = numpy.linspace(-12, 120, num=23, dtype=int)
+# SHIPS_FORECAST_HOURS = numpy.linspace(-12, 120, num=23, dtype=int)
+SHIPS_FORECAST_HOURS = numpy.array([0], dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 TITLE_FONT_SIZE = 16
