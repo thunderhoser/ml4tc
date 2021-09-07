@@ -48,7 +48,7 @@ BASE_OPTION_DICT_UNGRIDDED_SAT = {
 
 BASE_OPTION_DICT_SHIPS = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
-        numpy.array([4, 193], dtype=int),
+        numpy.array([4, 194], dtype=int),
     cnn_architecture.NUM_NEURONS_KEY: numpy.array([500, 1000], dtype=int),
     # cnn_architecture.DROPOUT_RATES_KEY: numpy.array([0.25, 0.25]),
     cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
