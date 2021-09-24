@@ -31,4 +31,6 @@ set year=${YEARS[$SLURM_ARRAY_TASK_ID]}
 python3 -u "${CODE_DIR_NAME}/process_cira_satellite_data.py" \
 --input_dir_name="${INPUT_DIR_NAME}" \
 --year=${year} \
+--num_cropped_rows=380 \
+--num_cropped_columns=540 \
 --output_dir_name="${OUTPUT_DIR_NAME}"

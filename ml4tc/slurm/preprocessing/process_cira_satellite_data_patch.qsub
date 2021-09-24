@@ -32,4 +32,6 @@ python3 -u "${CODE_DIR_NAME}/process_cira_satellite_data_patch.py" \
 --input_dir_name="${INPUT_DIR_NAME}" \
 --year=2019 \
 --cyclone_index=${cyclone_index} \
+--num_cropped_rows=380 \
+--num_cropped_columns=540 \
 --output_dir_name="${OUTPUT_DIR_NAME}"
