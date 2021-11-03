@@ -1,5 +1,6 @@
 """Helper methods for satellite data."""
 
+import sys
 import warnings
 import numpy
 import xarray
@@ -101,9 +102,23 @@ def _find_storm_center_px_space(
         x=grid_latitudes_deg_n, y=row_indices, kind='linear',
         bounds_error=True, assume_sorted=True
     )
-    storm_row = number_rounding.round_to_half_integer(
-        interp_object(storm_latitude_deg_n)
-    )
+
+    try:
+        storm_row = number_rounding.round_to_half_integer(
+            interp_object(storm_latitude_deg_n)
+        )
+    except ValueError:
+        warning_string = (
+            'POTENTIAL ERROR: Cannot find storm center in pixel space.  Storm '
+            'latitude is {0:.4f} deg N, while min and max latitudes in grid '
+            'are {1:.4f} and {2:.4f} deg N.'
+        ).format(
+            storm_latitude_deg_n, numpy.min(grid_latitudes_deg_n),
+            numpy.max(grid_latitudes_deg_n)
+        )
+
+        warnings.warn(warning_string)
+        return None, None
 
     num_columns = len(grid_longitudes_deg_e)
     column_indices = numpy.linspace(
@@ -129,9 +144,25 @@ def _find_storm_center_px_space(
         x=grid_longitudes_deg_e, y=column_indices, kind='linear',
         bounds_error=True, assume_sorted=True
     )
-    storm_column = number_rounding.round_to_half_integer(
-        interp_object(storm_longitude_deg_e)
-    )
+
+    try:
+        storm_column = number_rounding.round_to_half_integer(
+            interp_object(storm_longitude_deg_e)
+        )
+    except ValueError:
+        warning_string = (
+            'POTENTIAL ERROR: Cannot find storm center in pixel space.  Storm '
+            'longitude is {0:.4f} deg E, while longitudes in grid are:'
+        ).format(
+            storm_longitude_deg_e
+        )
+
+        warnings.warn(warning_string)
+
+        numpy.set_printoptions(threshold=sys.maxsize)
+        print(grid_longitudes_deg_e)
+
+        return None, None
 
     return storm_row, storm_column
 
@@ -263,9 +294,9 @@ def _crop_image_around_storm_center(
 
         longitude_spacing_deg = numpy.diff(grid_longitudes_deg_e[-2:])[0]
         end_value_arg = (
+            0,
             grid_longitudes_deg_e[-1]
-            + num_padding_columns * longitude_spacing_deg,
-            0
+            + num_padding_columns * longitude_spacing_deg
         )
         grid_longitudes_deg_e = numpy.pad(
             grid_longitudes_deg_e, pad_width=(0, num_padding_columns),
@@ -446,6 +477,7 @@ def crop_images_around_storm_centers(
     )
 
     t = satellite_table_xarray
+    good_object_indices = []
 
     for i in range(num_storm_objects):
         storm_row, storm_column = _find_storm_center_px_space(
@@ -454,6 +486,11 @@ def crop_images_around_storm_centers(
             grid_latitudes_deg_n=t[GRID_LATITUDE_KEY].values[i, :],
             grid_longitudes_deg_e=t[GRID_LONGITUDE_KEY].values[i, :]
         )
+
+        if storm_row is None:
+            continue
+
+        good_object_indices.append(i)
 
         (
             brightness_temp_matrix_kelvins[i, ...],
@@ -469,6 +506,11 @@ def crop_images_around_storm_centers(
                 num_cropped_columns=num_cropped_columns
             )
         )
+
+    good_object_indices = numpy.array(good_object_indices, dtype=int)
+    satellite_table_xarray = satellite_table_xarray.isel(
+        indexers={TIME_DIM: good_object_indices}
+    )
 
     satellite_table_xarray = satellite_table_xarray.drop(
         [BRIGHTNESS_TEMPERATURE_KEY, GRID_LATITUDE_KEY, GRID_LONGITUDE_KEY]
