@@ -514,11 +514,6 @@ def crop_images_around_storm_centers(
             )
         )
 
-    good_object_indices = numpy.array(good_object_indices, dtype=int)
-    satellite_table_xarray = satellite_table_xarray.isel(
-        indexers={TIME_DIM: good_object_indices}
-    )
-
     satellite_table_xarray = satellite_table_xarray.drop(
         [BRIGHTNESS_TEMPERATURE_KEY, GRID_LATITUDE_KEY, GRID_LONGITUDE_KEY]
     )
@@ -544,6 +539,11 @@ def crop_images_around_storm_centers(
     satellite_table_xarray[GRID_LONGITUDE_KEY] = (
         (TIME_DIM, GRID_COLUMN_DIM),
         grid_longitude_matrix_deg_e
+    )
+
+    good_object_indices = numpy.array(good_object_indices, dtype=int)
+    satellite_table_xarray = satellite_table_xarray.isel(
+        indexers={TIME_DIM: good_object_indices}
     )
 
     return satellite_table_xarray
