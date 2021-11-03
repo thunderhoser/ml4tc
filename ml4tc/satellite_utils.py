@@ -137,9 +137,18 @@ def _find_storm_center_px_space(
         x=grid_longitudes_deg_e, y=column_indices, kind='linear',
         bounds_error=True, assume_sorted=True
     )
-    storm_column = number_rounding.round_to_half_integer(
-        interp_object(storm_longitude_deg_e)
-    )
+
+    try:
+        storm_column = number_rounding.round_to_half_integer(
+            interp_object(storm_longitude_deg_e)
+        )
+    except:
+        numpy.set_printoptions(threshold=sys.maxsize)
+        print('\n\n\n\n**********************************\n\n\n\n')
+        print(grid_longitudes_deg_e)
+        print('\n')
+        print(storm_longitude_deg_e)
+        print('\n\n\n\n**********************************\n\n\n\n')
 
     return storm_row, storm_column
 
@@ -271,9 +280,9 @@ def _crop_image_around_storm_center(
 
         longitude_spacing_deg = numpy.diff(grid_longitudes_deg_e[-2:])[0]
         end_value_arg = (
+            0,
             grid_longitudes_deg_e[-1]
             + num_padding_columns * longitude_spacing_deg,
-            0
         )
         grid_longitudes_deg_e = numpy.pad(
             grid_longitudes_deg_e, pad_width=(0, num_padding_columns),
