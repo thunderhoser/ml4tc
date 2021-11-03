@@ -109,9 +109,18 @@ def _find_storm_center_px_space(
         x=grid_latitudes_deg_n, y=row_indices, kind='linear',
         bounds_error=True, assume_sorted=True
     )
-    storm_row = number_rounding.round_to_half_integer(
-        interp_object(storm_latitude_deg_n)
-    )
+
+    try:
+        storm_row = number_rounding.round_to_half_integer(
+            interp_object(storm_latitude_deg_n)
+        )
+    except:
+        numpy.set_printoptions(threshold=sys.maxsize)
+        print('\n\n\n\nBAD LATITUDES\n\n\n\n')
+        print(grid_latitudes_deg_n)
+        print('\n')
+        print(storm_latitude_deg_n)
+        print('\n\n\n\n**********************************\n\n\n\n')
 
     num_columns = len(grid_longitudes_deg_e)
     column_indices = numpy.linspace(
@@ -144,7 +153,7 @@ def _find_storm_center_px_space(
         )
     except:
         numpy.set_printoptions(threshold=sys.maxsize)
-        print('\n\n\n\n**********************************\n\n\n\n')
+        print('\n\n\n\nBAD LONGITUDES\n\n\n\n')
         print(grid_longitudes_deg_e)
         print('\n')
         print(storm_longitude_deg_e)
