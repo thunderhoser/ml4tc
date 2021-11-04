@@ -206,7 +206,8 @@ def _crop_image_around_storm_center(
         grid_longitudes_deg_e
     )
 
-    if not numpy.all(numpy.diff(grid_longitudes_deg_e) > 0):
+    using_negative_lng = not numpy.all(numpy.diff(grid_longitudes_deg_e) > 0)
+    if using_negative_lng:
         grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
             grid_longitudes_deg_e
         )
@@ -311,6 +312,13 @@ def _crop_image_around_storm_center(
         )
 
         del num_total_columns
+
+    if using_negative_lng:
+        grid_longitudes_deg_e = (
+            numpy.mod(grid_longitudes_deg_e + 180, 360) - 180
+        )
+    else:
+        grid_longitudes_deg_e = numpy.mod(grid_longitudes_deg_e, 360)
 
     return (
         data_matrix[first_row:last_row, first_column:last_column],
