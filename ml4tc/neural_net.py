@@ -531,11 +531,13 @@ def _find_all_desired_times(
             init_time_unix_sec, init_time_unix_sec + lead_time_sec,
             num=num_desired_times, dtype=int
         )
+
         target_indices = _find_desired_times(
             all_times_unix_sec=all_init_times_unix_sec,
             desired_times_unix_sec=desired_times_unix_sec,
             tolerance_sec=0, max_num_missing_times=int(1e10)
         )
+        target_indices = target_indices[target_indices != MISSING_INDEX]
 
         intensities_m_s01 = (
             xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
@@ -559,6 +561,7 @@ def _find_all_desired_times(
         init_time_unix_sec, init_time_unix_sec + lead_time_sec,
         num=num_desired_times, dtype=int
     )
+
     target_indices = _find_desired_times(
         all_times_unix_sec=all_init_times_unix_sec,
         desired_times_unix_sec=desired_times_unix_sec,
@@ -582,6 +585,7 @@ def _find_all_desired_times(
         warnings.warn(warning_string)
         return None, None, None
 
+    target_indices = target_indices[target_indices != MISSING_INDEX]
     intensities_m_s01 = (
         xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
     )
