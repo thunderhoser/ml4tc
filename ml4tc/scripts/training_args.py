@@ -33,6 +33,7 @@ NUM_POSITIVE_EXAMPLES_ARG_NAME = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_ARG_NAME = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_ARG_NAME = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_ARG_NAME = 'class_cutoffs_kt'
+PREDICT_TD_TO_TS_ARG_NAME = 'predict_td_to_ts'
 NUM_EPOCHS_ARG_NAME = 'num_epochs'
 NUM_TRAINING_BATCHES_ARG_NAME = 'num_training_batches_per_epoch'
 NUM_VALIDATION_BATCHES_ARG_NAME = 'num_validation_batches_per_epoch'
@@ -114,6 +115,10 @@ NUM_NEGATIVE_EXAMPLES_HELP_STRING = (
 )
 MAX_EXAMPLES_PER_CYCLONE_HELP_STRING = (
     'Max number of examples (time steps) from one cyclone in a batch.'
+)
+PREDICT_TD_TO_TS_HELP_STRING = (
+    'Boolean flag.  If 1, will predict intensification of tropical depression '
+    'to tropical storm.  If 0, will predict rapid intensification.'
 )
 CLASS_CUTOFFS_HELP_STRING = (
     'List of class cutoffs (intensification in knots).  List must have length '
@@ -226,8 +231,12 @@ def add_input_args(parser_object):
         help=MAX_EXAMPLES_PER_CYCLONE_HELP_STRING
     )
     parser_object.add_argument(
+        '--' + PREDICT_TD_TO_TS_ARG_NAME, type=int, required=False, default=0,
+        help=PREDICT_TD_TO_TS_HELP_STRING
+    )
+    parser_object.add_argument(
         '--' + CLASS_CUTOFFS_ARG_NAME, type=float, nargs='+', required=False,
-        default=[25], help=CLASS_CUTOFFS_HELP_STRING
+        default=[30], help=CLASS_CUTOFFS_HELP_STRING
     )
     parser_object.add_argument(
         '--' + NUM_EPOCHS_ARG_NAME, type=int, required=False, default=1000,

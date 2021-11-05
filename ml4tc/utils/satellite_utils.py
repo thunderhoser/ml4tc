@@ -199,7 +199,8 @@ def _crop_image_around_storm_center(
         grid_longitudes_deg_e
     )
 
-    if not numpy.all(numpy.diff(grid_longitudes_deg_e) > 0):
+    using_negative_lng = not numpy.all(numpy.diff(grid_longitudes_deg_e) > 0)
+    if using_negative_lng:
         grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
             grid_longitudes_deg_e
         )
@@ -304,6 +305,13 @@ def _crop_image_around_storm_center(
         )
 
         del num_total_columns
+
+    if using_negative_lng:
+        grid_longitudes_deg_e = (
+            numpy.mod(grid_longitudes_deg_e + 180, 360) - 180
+        )
+    else:
+        grid_longitudes_deg_e = numpy.mod(grid_longitudes_deg_e, 360)
 
     return (
         data_matrix[first_row:last_row, first_column:last_column],
@@ -507,11 +515,6 @@ def crop_images_around_storm_centers(
             )
         )
 
-    good_object_indices = numpy.array(good_object_indices, dtype=int)
-    satellite_table_xarray = satellite_table_xarray.isel(
-        indexers={TIME_DIM: good_object_indices}
-    )
-
     satellite_table_xarray = satellite_table_xarray.drop(
         [BRIGHTNESS_TEMPERATURE_KEY, GRID_LATITUDE_KEY, GRID_LONGITUDE_KEY]
     )
@@ -537,6 +540,11 @@ def crop_images_around_storm_centers(
     satellite_table_xarray[GRID_LONGITUDE_KEY] = (
         (TIME_DIM, GRID_COLUMN_DIM),
         grid_longitude_matrix_deg_e
+    )
+
+    good_object_indices = numpy.array(good_object_indices, dtype=int)
+    satellite_table_xarray = satellite_table_xarray.isel(
+        indexers={TIME_DIM: good_object_indices}
     )
 
     return satellite_table_xarray

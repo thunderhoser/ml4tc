@@ -23,8 +23,9 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          ships_time_tolerance_validation_sec,
          num_positive_examples_per_batch,
          num_negative_examples_per_batch, max_examples_per_cyclone_in_batch,
-         class_cutoffs_kt, num_epochs, num_training_batches_per_epoch,
-         num_validation_batches_per_epoch, plateau_lr_multiplier):
+         predict_td_to_ts, class_cutoffs_kt, num_epochs,
+         num_training_batches_per_epoch, num_validation_batches_per_epoch,
+         plateau_lr_multiplier):
     """Trains neural net.
 
     This is effectively the main method.
@@ -50,6 +51,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param num_positive_examples_per_batch: Same.
     :param num_negative_examples_per_batch: Same.
     :param max_examples_per_cyclone_in_batch: Same.
+    :param predict_td_to_ts: Same.
     :param class_cutoffs_kt: Same.
     :param num_epochs: Same.
     :param num_training_batches_per_epoch: Same.
@@ -98,6 +100,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.NUM_NEGATIVE_EXAMPLES_KEY: num_negative_examples_per_batch,
         neural_net.MAX_EXAMPLES_PER_CYCLONE_KEY:
             max_examples_per_cyclone_in_batch,
+        neural_net.PREDICT_TD_TO_TS_KEY: predict_td_to_ts,
         neural_net.CLASS_CUTOFFS_KEY:
             class_cutoffs_kt * KT_TO_METRES_PER_SECOND,
         neural_net.SATELLITE_TIME_TOLERANCE_KEY:
@@ -211,6 +214,9 @@ if __name__ == '__main__':
         max_examples_per_cyclone_in_batch=getattr(
             INPUT_ARG_OBJECT, training_args.MAX_EXAMPLES_PER_CYCLONE_ARG_NAME
         ),
+        predict_td_to_ts=bool(getattr(
+            INPUT_ARG_OBJECT, training_args.PREDICT_TD_TO_TS_ARG_NAME
+        )),
         class_cutoffs_kt=numpy.array(
             getattr(INPUT_ARG_OBJECT, training_args.CLASS_CUTOFFS_ARG_NAME),
             dtype=float
