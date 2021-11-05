@@ -31,6 +31,7 @@ MISSING_INDEX = int(1e12)
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
+MIN_TROP_STORM_INTENSITY_M_S01 = 34 * KT_TO_METRES_PER_SECOND
 
 DUMMY_LATITUDES_DEG_N = numpy.linspace(50, 60, num=480, dtype=float)
 DUMMY_LONGITUDES_DEG_E = numpy.linspace(-120, -110, num=640, dtype=float)
@@ -61,7 +62,7 @@ GRID_LONGITUDE_MATRIX_KEY = 'grid_longitude_matrix_deg_e'
 PLATEAU_PATIENCE_EPOCHS = 10
 DEFAULT_LEARNING_RATE_MULTIPLIER = 0.5
 PLATEAU_COOLDOWN_EPOCHS = 0
-EARLY_STOPPING_PATIENCE_EPOCHS = 30
+EARLY_STOPPING_PATIENCE_EPOCHS = 50
 LOSS_PATIENCE = 0.
 
 EXAMPLE_FILE_KEY = 'example_file_name'
@@ -76,6 +77,7 @@ SHIPS_PREDICTORS_FORECAST_KEY = 'ships_predictor_names_forecast'
 NUM_POSITIVE_EXAMPLES_KEY = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_KEY = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_KEY = 'max_examples_per_cyclone_in_batch'
+PREDICT_TD_TO_TS_KEY = 'predict_td_to_ts'
 CLASS_CUTOFFS_KEY = 'class_cutoffs_m_s01'
 SATELLITE_TIME_TOLERANCE_KEY = 'satellite_time_tolerance_sec'
 SATELLITE_MAX_MISSING_TIMES_KEY = 'satellite_max_missing_times'
@@ -125,7 +127,8 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     NUM_POSITIVE_EXAMPLES_KEY: 8,
     NUM_NEGATIVE_EXAMPLES_KEY: 24,
     MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
-    CLASS_CUTOFFS_KEY: numpy.array([25 * KT_TO_METRES_PER_SECOND])
+    CLASS_CUTOFFS_KEY: numpy.array([30 * KT_TO_METRES_PER_SECOND]),
+    PREDICT_TD_TO_TS_KEY: False
 }
 
 NUM_EPOCHS_KEY = 'num_epochs'
@@ -404,10 +407,10 @@ def _discretize_intensity_change(intensity_change_m_s01, class_cutoffs_m_s01):
 
 def _find_all_desired_times(
         example_table_xarray, init_time_unix_sec, lead_time_sec,
-        satellite_lag_times_sec, ships_lag_times_sec, class_cutoffs_m_s01,
+        satellite_lag_times_sec, ships_lag_times_sec, predict_td_to_ts,
         satellite_time_tolerance_sec, satellite_max_missing_times,
         ships_time_tolerance_sec, ships_max_missing_times,
-        use_climo_as_backup):
+        use_climo_as_backup, class_cutoffs_m_s01=None):
     """Finds all desired times (for predictors & target) at one fcst-init time.
 
     T = number of lag times for satellite data
@@ -500,64 +503,91 @@ def _find_all_desired_times(
 
         return None, None, None
 
-    # TODO(thunderhoser): Change list of desired times to all 6-hour steps
-    # between t and t + lead_time_sec.
     all_init_times_unix_sec = (
         xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
     )
 
-    if init_time_unix_sec + lead_time_sec > numpy.max(all_init_times_unix_sec):
-        target_indices = _find_desired_times(
-            all_times_unix_sec=
-            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
-            desired_times_unix_sec=numpy.array([init_time_unix_sec], dtype=int),
-            tolerance_sec=0, max_num_missing_times=0
+    if predict_td_to_ts:
+        init_time_index = numpy.where(
+            all_init_times_unix_sec == init_time_unix_sec
+        )[0][0]
+
+        init_intensity_m_s01 = (
+            xt[example_utils.STORM_INTENSITY_KEY].values[init_time_index]
         )
-
-        intensity_change_m_s01 = (
-            -1 * xt[example_utils.STORM_INTENSITY_KEY].values[target_indices[0]]
-        )
-    else:
-        desired_times_unix_sec = numpy.array(
-            [init_time_unix_sec, init_time_unix_sec + lead_time_sec],
-            dtype=int
-        )
-
-        # num_desired_times = 1 + int(numpy.round(
-        #     float(lead_time_sec) / 6 * (HOURS_TO_SECONDS)
-        # ))
-        # desired_times_unix_sec = numpy.linspace(
-        #     init_time_unix_sec, init_time_unix_sec + lead_time_sec,
-        #     num=num_desired_times, dtype=int
-        # )
-
-        target_indices = _find_desired_times(
-            all_times_unix_sec=
-            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values,
-            desired_times_unix_sec=desired_times_unix_sec,
-            tolerance_sec=0, max_num_missing_times=0
-        )
-
-        if target_indices is None:
-            valid_time_string = time_conversion.unix_sec_to_string(
-                init_time_unix_sec + lead_time_sec, TIME_FORMAT_FOR_LOG
-            )
-            warning_string = (
-                'POTENTIAL ERROR: Cannot find intensity at {0:s}.'
-            ).format(valid_time_string)
-
-            warnings.warn(warning_string)
+        if init_intensity_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01:
             return None, None, None
 
-        intensities_m_s01 = (
-            xt[example_utils.STORM_INTENSITY_KEY].values[
-                target_indices[0]:(target_indices[-1] + 1)
-            ]
+        init_storm_type_enum = (
+            xt[ships_io.STORM_TYPE_KEY].values[init_time_index]
         )
-        intensity_change_m_s01 = numpy.max(
-            intensities_m_s01 - intensities_m_s01[0]
+        if init_storm_type_enum != 1:
+            return None, None, None
+
+        num_desired_times = 1 + int(numpy.round(
+            float(lead_time_sec) / (6 * HOURS_TO_SECONDS)
+        ))
+        desired_times_unix_sec = numpy.linspace(
+            init_time_unix_sec, init_time_unix_sec + lead_time_sec,
+            num=num_desired_times, dtype=int
+        )
+        target_indices = _find_desired_times(
+            all_times_unix_sec=all_init_times_unix_sec,
+            desired_times_unix_sec=desired_times_unix_sec,
+            tolerance_sec=0, max_num_missing_times=int(1e10)
         )
 
+        intensities_m_s01 = (
+            xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
+        )
+        storm_type_enums = xt[ships_io.STORM_TYPE_KEY].values[target_indices]
+
+        target_flag = numpy.any(numpy.logical_and(
+            intensities_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
+            storm_type_enums == 1
+        ))
+        target_flags = numpy.array(
+            [numpy.invert(target_flag), target_flag], dtype=bool
+        )
+
+        return satellite_indices, ships_indices, target_flags
+
+    num_desired_times = 1 + int(numpy.round(
+        float(lead_time_sec) / (6 * HOURS_TO_SECONDS)
+    ))
+    desired_times_unix_sec = numpy.linspace(
+        init_time_unix_sec, init_time_unix_sec + lead_time_sec,
+        num=num_desired_times, dtype=int
+    )
+    target_indices = _find_desired_times(
+        all_times_unix_sec=all_init_times_unix_sec,
+        desired_times_unix_sec=desired_times_unix_sec,
+        tolerance_sec=0,
+        max_num_missing_times=numpy.sum(
+            desired_times_unix_sec > numpy.max(all_init_times_unix_sec)
+        )
+    )
+
+    if target_indices is None:
+        valid_time_strings = [
+            time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_LOG)
+            for t in desired_times_unix_sec
+        ]
+
+        warning_string = (
+            'POTENTIAL ERROR: Cannot find intensity for at least one of '
+            'the following times:\n{0:s}'
+        ).format(str(valid_time_strings))
+
+        warnings.warn(warning_string)
+        return None, None, None
+
+    intensities_m_s01 = (
+        xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
+    )
+    intensity_change_m_s01 = numpy.max(
+        intensities_m_s01 - intensities_m_s01[0]
+    )
     target_flags = _discretize_intensity_change(
         intensity_change_m_s01=intensity_change_m_s01,
         class_cutoffs_m_s01=class_cutoffs_m_s01
@@ -570,9 +600,9 @@ def _read_non_predictors_one_file(
         example_table_xarray, num_examples_desired,
         num_positive_examples_desired, num_negative_examples_desired,
         lead_time_sec, satellite_lag_times_sec, ships_lag_times_sec,
-        class_cutoffs_m_s01, satellite_time_tolerance_sec,
+        predict_td_to_ts, satellite_time_tolerance_sec,
         satellite_max_missing_times, ships_time_tolerance_sec,
-        ships_max_missing_times, use_climo_as_backup):
+        ships_max_missing_times, use_climo_as_backup, class_cutoffs_m_s01=None):
     """Reads all but predictors from one example file.
 
     E = number of examples
@@ -585,12 +615,13 @@ def _read_non_predictors_one_file(
     :param lead_time_sec: Same.
     :param satellite_lag_times_sec: Same.
     :param ships_lag_times_sec: Same.
-    :param class_cutoffs_m_s01: Same.
+    :param predict_td_to_ts: Same.
     :param satellite_time_tolerance_sec: Same.
     :param satellite_max_missing_times: Same.
     :param ships_time_tolerance_sec: Same.
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
+    :param class_cutoffs_m_s01: Same.
 
     :return: data_dict: Dictionary with the following keys.
     data_dict['satellite_rows_by_example']: length-E list, where each element is
@@ -610,7 +641,11 @@ def _read_non_predictors_one_file(
     )
     numpy.random.shuffle(all_init_times_unix_sec)
 
-    num_classes = len(class_cutoffs_m_s01) + 1
+    if predict_td_to_ts:
+        num_classes = 2
+    else:
+        num_classes = len(class_cutoffs_m_s01) + 1
+
     num_positive_examples_found = 0
     num_negative_examples_found = 0
 
@@ -632,12 +667,13 @@ def _read_non_predictors_one_file(
                 lead_time_sec=lead_time_sec,
                 satellite_lag_times_sec=satellite_lag_times_sec,
                 ships_lag_times_sec=ships_lag_times_sec,
-                class_cutoffs_m_s01=class_cutoffs_m_s01,
+                predict_td_to_ts=predict_td_to_ts,
                 satellite_time_tolerance_sec=satellite_time_tolerance_sec,
                 satellite_max_missing_times=satellite_max_missing_times,
                 ships_time_tolerance_sec=ships_time_tolerance_sec,
                 ships_max_missing_times=ships_max_missing_times,
-                use_climo_as_backup=use_climo_as_backup
+                use_climo_as_backup=use_climo_as_backup,
+                class_cutoffs_m_s01=class_cutoffs_m_s01
             )
         )
 
@@ -959,10 +995,10 @@ def _read_one_example_file(
         num_negative_examples_desired, lead_time_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
-        ships_predictor_names_forecast, class_cutoffs_m_s01,
+        ships_predictor_names_forecast, predict_td_to_ts,
         satellite_time_tolerance_sec, satellite_max_missing_times,
         ships_time_tolerance_sec, ships_max_missing_times,
-        use_climo_as_backup):
+        use_climo_as_backup, class_cutoffs_m_s01=None):
     """Reads one example file for generator.
 
     E = number of examples per batch
@@ -987,12 +1023,13 @@ def _read_one_example_file(
     :param satellite_predictor_names: Same.
     :param ships_predictor_names_lagged: Same.
     :param ships_predictor_names_forecast: Same.
-    :param class_cutoffs_m_s01: Same.
+    :param predict_td_to_ts: Same.
     :param satellite_time_tolerance_sec: Same.
     :param satellite_max_missing_times: Same.
     :param ships_time_tolerance_sec: Same.
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
+    :param class_cutoffs_m_s01: Same.
 
     :return: data_dict: Dictionary with the following keys.
     data_dict['predictor_matrices']: 1-D list with one or more of the following
@@ -1047,12 +1084,13 @@ def _read_one_example_file(
         lead_time_sec=lead_time_sec,
         satellite_lag_times_sec=satellite_lag_times_sec,
         ships_lag_times_sec=ships_lag_times_sec,
-        class_cutoffs_m_s01=class_cutoffs_m_s01,
+        predict_td_to_ts=predict_td_to_ts,
         satellite_time_tolerance_sec=satellite_time_tolerance_sec,
         satellite_max_missing_times=satellite_max_missing_times,
         ships_time_tolerance_sec=ships_time_tolerance_sec,
         ships_max_missing_times=ships_max_missing_times,
-        use_climo_as_backup=use_climo_as_backup
+        use_climo_as_backup=use_climo_as_backup,
+        class_cutoffs_m_s01=class_cutoffs_m_s01
     )
 
     satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
@@ -1200,13 +1238,18 @@ def _check_generator_args(option_dict):
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
     )
 
-    error_checking.assert_is_numpy_array(
-        option_dict[CLASS_CUTOFFS_KEY], num_dimensions=1
-    )
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(option_dict[CLASS_CUTOFFS_KEY]), 0.
-    )
-    assert numpy.all(numpy.isfinite(option_dict[CLASS_CUTOFFS_KEY]))
+    error_checking.assert_is_boolean(option_dict[PREDICT_TD_TO_TS_KEY])
+
+    if option_dict[PREDICT_TD_TO_TS_KEY]:
+        option_dict[CLASS_CUTOFFS_KEY] = None
+    else:
+        error_checking.assert_is_numpy_array(
+            option_dict[CLASS_CUTOFFS_KEY], num_dimensions=1
+        )
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(option_dict[CLASS_CUTOFFS_KEY]), 0.
+        )
+        assert numpy.all(numpy.isfinite(option_dict[CLASS_CUTOFFS_KEY]))
 
     error_checking.assert_is_integer(option_dict[SATELLITE_TIME_TOLERANCE_KEY])
     error_checking.assert_is_geq(option_dict[SATELLITE_TIME_TOLERANCE_KEY], 0)
@@ -1375,6 +1418,10 @@ def read_metafile(pickle_file_name):
 
     if validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] == 3630:
         validation_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 22200
+
+    if PREDICT_TD_TO_TS_KEY not in training_option_dict:
+        training_option_dict[PREDICT_TD_TO_TS_KEY] = False
+        validation_option_dict[PREDICT_TD_TO_TS_KEY] = False
 
     training_option_dict[USE_CLIMO_KEY] = False
     validation_option_dict[USE_CLIMO_KEY] = True
@@ -1557,12 +1604,13 @@ def create_inputs(option_dict):
     option_dict['satellite_predictor_names']: Same.
     option_dict['ships_predictor_names_lagged']: Same.
     option_dict['ships_predictor_names_forecast']: Same.
-    option_dict['class_cutoffs_m_s01']: Same.
+    option_dict['predict_td_to_ts']: Same.
     option_dict['satellite_time_tolerance_sec']: Same.
     option_dict['satellite_max_missing_times']: Same.
     option_dict['ships_time_tolerance_sec']: Same.
     option_dict['ships_max_missing_times']: Same.
     option_dict['use_climo_as_backup']: Same.
+    option_dict['class_cutoffs_m_s01']: Same.
 
     :return: data_dict: See doc for `_read_one_example_file`.
     """
@@ -1582,12 +1630,13 @@ def create_inputs(option_dict):
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
     ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
-    class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
     satellite_time_tolerance_sec = option_dict[SATELLITE_TIME_TOLERANCE_KEY]
     satellite_max_missing_times = option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
     ships_time_tolerance_sec = option_dict[SHIPS_TIME_TOLERANCE_KEY]
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
+    class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
 
     data_dict = _read_one_example_file(
         example_file_name=example_file_name,
@@ -1600,12 +1649,13 @@ def create_inputs(option_dict):
         satellite_predictor_names=satellite_predictor_names,
         ships_predictor_names_lagged=ships_predictor_names_lagged,
         ships_predictor_names_forecast=ships_predictor_names_forecast,
-        class_cutoffs_m_s01=class_cutoffs_m_s01,
+        predict_td_to_ts=predict_td_to_ts,
         satellite_time_tolerance_sec=satellite_time_tolerance_sec,
         satellite_max_missing_times=satellite_max_missing_times,
         ships_time_tolerance_sec=ships_time_tolerance_sec,
         ships_max_missing_times=ships_max_missing_times,
-        use_climo_as_backup=use_climo_as_backup
+        use_climo_as_backup=use_climo_as_backup,
+        class_cutoffs_m_s01=class_cutoffs_m_s01
     )
 
     data_dict[PREDICTOR_MATRICES_KEY] = [
@@ -1647,8 +1697,9 @@ def input_generator(option_dict):
         (not in highest class) per batch.
     option_dict['max_examples_per_cyclone_in_batch']: Max number of examples
         (time steps) from one cyclone in a batch.
-    option_dict['class_cutoffs_m_s01']: numpy array (length K - 1) of class
-        cutoffs.
+    option_dict['predict_td_to_ts']: Boolean flag.  If True, will predict
+        transition from tropical depression to tropical storm.  If False, will
+        predict rapid intensification.
     option_dict['satellite_time_tolerance_sec']: Time tolerance (seconds) for
         satellite data.  For desired time t, if no data can be found within
         'satellite_time_tolerance_sec' of t, then missing data will be
@@ -1664,6 +1715,9 @@ def input_generator(option_dict):
         where a certain predictor type (either satellite or SHIPS) is not found,
         will assume climatological values.  If False, for examples where a
         certain predictor type is not found, will not use this example.
+    option_dict['class_cutoffs_m_s01']:
+        [used only if `predict_td_to_ts == False`]
+        numpy array (length K - 1) of class cutoffs.
 
     :return: predictor_matrices: See output doc for `_read_one_example_file`.
         However, for this generator, any undesired predictor type will be
@@ -1688,12 +1742,13 @@ def input_generator(option_dict):
     max_examples_per_cyclone_in_batch = (
         option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY]
     )
-    class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
     satellite_time_tolerance_sec = option_dict[SATELLITE_TIME_TOLERANCE_KEY]
     satellite_max_missing_times = option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
     ships_time_tolerance_sec = option_dict[SHIPS_TIME_TOLERANCE_KEY]
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
+    class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
 
     # TODO(thunderhoser): For SHIPS predictors, all lag times and forecast times
     # are currently flattened along the channel axis.  I might change this in
@@ -1764,12 +1819,13 @@ def input_generator(option_dict):
                 ships_predictor_names_lagged=ships_predictor_names_lagged,
                 ships_predictor_names_forecast=
                 ships_predictor_names_forecast,
-                class_cutoffs_m_s01=class_cutoffs_m_s01,
+                predict_td_to_ts=predict_td_to_ts,
                 satellite_time_tolerance_sec=satellite_time_tolerance_sec,
                 satellite_max_missing_times=satellite_max_missing_times,
                 ships_time_tolerance_sec=ships_time_tolerance_sec,
                 ships_max_missing_times=ships_max_missing_times,
-                use_climo_as_backup=use_climo_as_backup
+                use_climo_as_backup=use_climo_as_backup,
+                class_cutoffs_m_s01=class_cutoffs_m_s01
             )
 
             these_predictor_matrices = [
