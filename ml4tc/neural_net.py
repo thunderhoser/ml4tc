@@ -755,16 +755,24 @@ def _read_brightness_temp_one_file(
         for j in range(len(lag_times_sec)):
             if table_rows_by_example[i] is None:
                 brightness_temp_matrix[i, ..., j, 0] = 0.
-                grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
-                grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
+                grid_latitude_matrix_deg_n[i, :, j] = (
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows]
+                )
+                grid_longitude_matrix_deg_e[i, :, j] = (
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns]
+                )
 
                 continue
 
             k = table_rows_by_example[i][j]
 
             if k == MISSING_INDEX:
-                grid_latitude_matrix_deg_n[i, :, j] = DUMMY_LATITUDES_DEG_N
-                grid_longitude_matrix_deg_e[i, :, j] = DUMMY_LONGITUDES_DEG_E
+                grid_latitude_matrix_deg_n[i, :, j] = (
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows]
+                )
+                grid_longitude_matrix_deg_e[i, :, j] = (
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns]
+                )
                 continue
 
             try:
@@ -788,8 +796,12 @@ def _read_brightness_temp_one_file(
                     numpy.diff(these_longitudes_deg_e), 0.
                 )
             except:
-                these_latitudes_deg_n = DUMMY_LATITUDES_DEG_N + 0.
-                these_longitudes_deg_e = DUMMY_LONGITUDES_DEG_E + 0.
+                these_latitudes_deg_n = (
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows] + 0.
+                )
+                these_longitudes_deg_e = (
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns] + 0.
+                )
 
             grid_latitude_matrix_deg_n[i, :, j] = these_latitudes_deg_n
             grid_longitude_matrix_deg_e[i, :, j] = these_longitudes_deg_e
