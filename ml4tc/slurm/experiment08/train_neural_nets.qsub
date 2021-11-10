@@ -50,7 +50,7 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --output_model_dir_name="${output_dir_name}" \
 --training_example_dir_name="${TRAINING_DIR_NAME}" \
 --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
---lead_time_hours=10000000000 \
+--lead_time_hours=60000 \
 --satellite_lag_times_minutes 0 360 720 1080 \
 --ships_lag_times_hours 0 6 12 18 \
 --satellite_time_tolerance_training_sec=1830 \
