@@ -518,12 +518,12 @@ def _find_all_desired_times(
         if init_intensity_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01:
             return None, None, None
 
+        zero_hour_index = numpy.where(
+            xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values == 0
+        )[0][0]
         init_storm_type_enum = (
-            xt[ships_io.STORM_TYPE_KEY].values[init_time_index]
+            xt[ships_io.STORM_TYPE_KEY].values[init_time_index, zero_hour_index]
         )
-        print('\n\n\n************************\n\n\n')
-        print(init_storm_type_enum)
-        print('\n\n\n************************\n\n\n')
         if init_storm_type_enum != 1:
             return None, None, None
 
@@ -545,7 +545,9 @@ def _find_all_desired_times(
         intensities_m_s01 = (
             xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
         )
-        storm_type_enums = xt[ships_io.STORM_TYPE_KEY].values[target_indices]
+        storm_type_enums = xt[ships_io.STORM_TYPE_KEY].values[
+            target_indices, zero_hour_index
+        ]
 
         target_flag = numpy.any(numpy.logical_and(
             intensities_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
