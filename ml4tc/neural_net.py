@@ -521,6 +521,9 @@ def _find_all_desired_times(
         init_storm_type_enum = (
             xt[ships_io.STORM_TYPE_KEY].values[init_time_index]
         )
+        print('\n\n\n************************\n\n\n')
+        print(init_storm_type_enum)
+        print('\n\n\n************************\n\n\n')
         if init_storm_type_enum != 1:
             return None, None, None
 
