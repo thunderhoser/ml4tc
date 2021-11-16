@@ -39,9 +39,10 @@ set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer
 set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
 set evaluation_file_name="${model_dir_name}/validation_2005-2009/evaluation.nc"
 
+# TODO(thunderhoser): Event frequency based on validation here, not training.
 python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
 --input_prediction_file_name="${prediction_file_name}" \
---event_freq_in_training=-100 \
+--event_freq_in_training=0.48416887 \
 --num_prob_thresholds=1001 \
 --num_reliability_bins=20 \
 --num_bootstrap_reps=1 \
