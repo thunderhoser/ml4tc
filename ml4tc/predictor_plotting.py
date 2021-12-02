@@ -101,7 +101,7 @@ def plot_scalar_satellite_one_example(
         ),
         satellite_utils.CYCLONE_ID_KEY: (
             (example_utils.SATELLITE_TIME_DIM,),
-            [cyclone_id_string]
+            [cyclone_id_string] * len(lag_times_sec)
         )
     }
 
