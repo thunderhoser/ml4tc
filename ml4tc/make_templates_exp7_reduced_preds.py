@@ -80,9 +80,9 @@ def _run():
     This is effectively the main method.
     """
 
-    # file_system_utils.mkdir_recursive_if_necessary(
-    #     directory_name=OUTPUT_DIR_NAME
-    # )
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=OUTPUT_DIR_NAME
+    )
 
     for i in range(len(DENSE_LAYER_DROPOUT_RATES)):
         for j in range(len(CONV_LAYER_L2_WEIGHTS)):
