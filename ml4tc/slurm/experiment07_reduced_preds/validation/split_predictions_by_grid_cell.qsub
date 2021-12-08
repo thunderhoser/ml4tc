@@ -23,9 +23,9 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment07_reduced_preds"
 
-set DENSE_LAYER_DROPOUT_RATES=(0.4)
+set DENSE_LAYER_DROPOUT_RATES=(0.5)
 set CONV_LAYER_L2_WEIGHTS=(0.001)
-set DENSE_LAYER_COUNTS=(3)
+set DENSE_LAYER_COUNTS=(5)
 
 set dense_layer_dropout_rate=${DENSE_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set conv_layer_l2_weight=${CONV_LAYER_L2_WEIGHTS[$SLURM_ARRAY_TASK_ID]}

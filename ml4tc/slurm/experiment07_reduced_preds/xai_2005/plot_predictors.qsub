@@ -24,9 +24,9 @@ set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/m
 set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/normalization_params_1993-2004_2015-2019.nc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment07_reduced_preds"
 
-# set DENSE_LAYER_DROPOUT_RATE=0.4
-# set CONV_LAYER_L2_WEIGHT=0.001
-# set DENSE_LAYER_COUNT=3
+set DENSE_LAYER_DROPOUT_RATE=0.5
+set CONV_LAYER_L2_WEIGHT=0.001
+set DENSE_LAYER_COUNT=5
 
 set dense_layer_dropout_rate_string=`printf "%.1f" $DENSE_LAYER_DROPOUT_RATE`
 set conv_layer_l2_weight_string=`printf "%.12f" $CONV_LAYER_L2_WEIGHT`
