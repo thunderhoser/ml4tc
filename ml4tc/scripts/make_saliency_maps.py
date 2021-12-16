@@ -4,6 +4,7 @@ import copy
 import argparse
 import numpy
 import tensorflow
+from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import example_io
 from ml4tc.utils import satellite_utils
 from ml4tc.machine_learning import neural_net
@@ -20,6 +21,8 @@ CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
 LAYER_NAME_ARG_NAME = 'layer_name'
 NEURON_INDICES_ARG_NAME = 'neuron_indices'
 IDEAL_ACTIVATION_ARG_NAME = 'ideal_activation'
+NUM_SMOOTHGRAD_SAMPLES_ARG_NAME = 'num_smoothgrad_samples'
+SMOOTHGRAD_STDEV_ARG_NAME = 'smoothgrad_noise_stdev'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 MODEL_FILE_HELP_STRING = (
@@ -46,6 +49,14 @@ NEURON_INDICES_HELP_STRING = (
 IDEAL_ACTIVATION_HELP_STRING = (
     'Ideal neuron activation, used to define loss function.  The loss function '
     'will be (neuron_activation - ideal_activation)**2.'
+)
+NUM_SMOOTHGRAD_SAMPLES_HELP_STRING = (
+    'Number of samples for SmoothGrad.  If you do not want to use SmoothGrad, '
+    'make this argument <= 1.'
+)
+SMOOTHGRAD_STDEV_HELP_STRING = (
+    'Standard deviation of Gaussian noise for SmoothGrad.  If you do not want '
+    'to use SmoothGrad, leave this as the default.'
 )
 OUTPUT_FILE_HELP_STRING = (
     'Path to output file.  Results will be saved here by '
@@ -82,13 +93,22 @@ INPUT_ARG_PARSER.add_argument(
     help=IDEAL_ACTIVATION_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + NUM_SMOOTHGRAD_SAMPLES_ARG_NAME, type=int, required=False, default=0,
+    help=NUM_SMOOTHGRAD_SAMPLES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + SMOOTHGRAD_STDEV_ARG_NAME, type=float, required=False, default=-1,
+    help=SMOOTHGRAD_STDEV_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
     help=OUTPUT_FILE_HELP_STRING
 )
 
 
 def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
-         layer_name, neuron_indices, ideal_activation, output_file_name):
+         layer_name, neuron_indices, ideal_activation, num_smoothgrad_samples,
+         smoothgrad_noise_stdev, output_file_name):
     """Creates saliency maps.
 
     This is effectively the main method.
@@ -100,12 +120,18 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     :param layer_name: Same.
     :param neuron_indices: Same.
     :param ideal_activation: Same.
+    :param num_smoothgrad_samples: Same.
+    :param smoothgrad_noise_stdev: Same.
     :param output_file_name: Same.
     """
 
     # Process input args.
     if len(years) == 1 and years[0] < 0:
         years = None
+
+    use_smoothgrad = num_smoothgrad_samples > 1
+    if use_smoothgrad:
+        error_checking.assert_is_greater(smoothgrad_noise_stdev, 0.)
 
     # Read model.
     print('Reading model from: "{0:s}"...'.format(model_file_name))
@@ -183,12 +209,56 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             this_data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        new_saliency_matrices = saliency.get_saliency_one_neuron(
-            model_object=model_object,
-            three_predictor_matrices=new_predictor_matrices,
-            layer_name=layer_name, neuron_indices=neuron_indices,
-            ideal_activation=ideal_activation
-        )
+        if use_smoothgrad:
+            new_saliency_matrices = [None]
+
+            for k in num_smoothgrad_samples:
+                these_predictor_matrices = [
+                    None if p is None
+                    else p + numpy.random.normal(
+                        loc=0., scale=smoothgrad_noise_stdev, size=p.shape
+                    )
+                    for p in new_predictor_matrices
+                ]
+
+                these_saliency_matrices = saliency.get_saliency_one_neuron(
+                    model_object=model_object,
+                    three_predictor_matrices=these_predictor_matrices,
+                    layer_name=layer_name, neuron_indices=neuron_indices,
+                    ideal_activation=ideal_activation
+                )
+
+                if all([s is None for s in new_saliency_matrices]):
+                    for j in range(len(these_saliency_matrices)):
+                        if these_saliency_matrices[j] is None:
+                            continue
+
+                        new_saliency_matrices[j] = numpy.full(
+                            these_saliency_matrices[j].shape +
+                            (num_smoothgrad_samples,),
+                            numpy.nan
+                        )
+
+                for j in range(len(these_saliency_matrices)):
+                    if these_saliency_matrices[j] is None:
+                        continue
+
+                    new_saliency_matrices[j][..., k] = (
+                        these_saliency_matrices[j]
+                    )
+
+            new_saliency_matrices = [
+                None if s is None else numpy.mean(s, axis=-1)
+                for s in new_saliency_matrices
+            ]
+        else:
+            new_saliency_matrices = saliency.get_saliency_one_neuron(
+                model_object=model_object,
+                three_predictor_matrices=new_predictor_matrices,
+                layer_name=layer_name, neuron_indices=neuron_indices,
+                ideal_activation=ideal_activation
+            )
+
         new_input_grad_matrices = [
             None if p is None
             else p * s
@@ -241,5 +311,11 @@ if __name__ == '__main__':
             getattr(INPUT_ARG_OBJECT, NEURON_INDICES_ARG_NAME), dtype=int
         ),
         ideal_activation=getattr(INPUT_ARG_OBJECT, IDEAL_ACTIVATION_ARG_NAME),
+        num_smoothgrad_samples=getattr(
+            INPUT_ARG_OBJECT, NUM_SMOOTHGRAD_SAMPLES_ARG_NAME
+        ),
+        smoothgrad_noise_stdev=getattr(
+            INPUT_ARG_OBJECT, SMOOTHGRAD_STDEV_ARG_NAME
+        ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )
