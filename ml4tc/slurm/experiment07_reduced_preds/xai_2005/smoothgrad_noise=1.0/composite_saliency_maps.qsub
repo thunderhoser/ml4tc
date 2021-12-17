@@ -40,7 +40,7 @@ set input_saliency_files_string=""
 set i=1
 
 while ($i <= ${#CYCLONE_ID_STRINGS})
-    set input_saliency_files_string="${input_saliency_files_string} ${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_${CYCLONE_ID_STRINGS[$i]}.nc"
+    set input_saliency_files_string="${input_saliency_files_string} ${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_${CYCLONE_ID_STRINGS[$i]}.nc"
     @ i = $i + 1
 end
 
