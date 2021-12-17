@@ -229,6 +229,12 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                     for p in new_predictor_matrices
                 ]
 
+                these_diffs = numpy.concatenate([
+                    numpy.ravel(t - n) for t, n in
+                    zip(these_predictor_matrices, new_predictor_matrices)
+                ])
+                print(numpy.mean(these_diffs))
+
                 these_saliency_matrices = saliency.get_saliency_one_neuron(
                     model_object=model_object,
                     three_predictor_matrices=these_predictor_matrices,
