@@ -234,7 +234,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                 print(smoothgrad_noise_stdev)
                 print(numpy.mean(numpy.absolute(these_diffs)))
                 print(len(these_diffs))
-                
+
                 these_predictor_matrices = [
                     None if p is None
                     else p + numpy.random.normal(

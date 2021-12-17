@@ -1,20 +1,20 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="make_saliency_maps"
+#SBATCH --job-name="plot_saliency_maps"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=12:00:00
+#SBATCH --time=06:00:00
 #SBATCH --array=1-69
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=make_saliency_maps_%A_%a.out
+#SBATCH --output=plot_saliency_maps_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -22,6 +22,7 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/normalization_params_1993-2004_2015-2019.nc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment07_reduced_preds"
 
 set DENSE_LAYER_DROPOUT_RATE=0.5
@@ -36,16 +37,13 @@ set CYCLONE_ID_STRINGS=("2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "
 set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set model_file_name="${model_dir_name}/model.h5"
-set output_file_name="${model_dir_name}/saliency_maps_smoothgrad/saliency_maps_${cyclone_id_string}.nc"
+set saliency_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_${cyclone_id_string}.nc"
+set output_dir_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_${cyclone_id_string}"
 
-python3 -u "${CODE_DIR_NAME}/make_saliency_maps.py" \
---input_model_file_name="${model_file_name}" \
+python3 -u "${CODE_DIR_NAME}/plot_saliency_maps.py" \
+--input_saliency_file_name="${saliency_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
---cyclone_id_strings ${cyclone_id_string} \
---layer_name="activation_125" \
---neuron_indices 0 \
---ideal_activation=1 \
---num_smoothgrad_samples=50 \
---smoothgrad_noise_stdev=1 \
---output_file_name="${output_file_name}"
+--input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--plot_input_times_grad=0 \
+--smoothing_radius_px=2 \
+--output_dir_name="${output_dir_name}"
