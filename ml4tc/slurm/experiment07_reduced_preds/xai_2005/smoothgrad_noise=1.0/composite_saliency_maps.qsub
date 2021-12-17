@@ -33,6 +33,9 @@ set dense_layer_count_string=`printf "%1d" $DENSE_LAYER_COUNT`
 
 set CYCLONE_ID_STRINGS=("2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "2005AL06" "2005AL07" "2005AL08" "2005AL09" "2005AL10" "2005AL11" "2005AL12" "2005AL13" "2005AL14" "2005AL15" "2005AL16" "2005AL17" "2005AL18" "2005AL21" "2005AL22" "2005AL23" "2005AL24" "2005AL26" "2005AL27" "2005AL28" "2005AL29" "2005AL30" "2005AL31" "2005CP01" "2005EP01" "2005EP02" "2005EP03" "2005EP04" "2005EP05" "2005EP06" "2005EP07" "2005EP08" "2005EP09" "2005EP10" "2005EP11" "2005EP12" "2005EP13" "2005EP14" "2005EP15" "2005EP16" "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24")
 
+set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
+set output_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_composite.nc"
+
 set input_saliency_files_string=""
 set i=1
 
@@ -40,11 +43,6 @@ while ($i <= ${#CYCLONE_ID_STRINGS})
     set input_saliency_files_string="${input_saliency_files_string} ${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_${CYCLONE_ID_STRINGS[$i]}.nc"
     @ i = $i + 1
 end
-
-
-set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set model_file_name="${model_dir_name}/model.h5"
-set output_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_composite.nc"
 
 python3 -u "${CODE_DIR_NAME}/composite_saliency_maps.py" \
 --input_saliency_file_names ${input_saliency_files_string} \
