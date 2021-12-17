@@ -235,7 +235,10 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                     zip(these_predictor_matrices, new_predictor_matrices)
                     if t is not None
                 ])
+
+                print(smoothgrad_noise_stdev)
                 print(numpy.mean(these_diffs))
+                print('\n')
 
                 these_saliency_matrices = saliency.get_saliency_one_neuron(
                     model_object=model_object,
