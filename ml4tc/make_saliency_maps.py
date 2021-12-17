@@ -230,9 +230,10 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                 ]
 
                 these_diffs = numpy.concatenate([
-                    numpy.ravel(t - n) if t is not None
+                    numpy.ravel(t - n)
                     for t, n in
                     zip(these_predictor_matrices, new_predictor_matrices)
+                    if t is not None
                 ])
                 print(numpy.mean(these_diffs))
 
