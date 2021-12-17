@@ -46,6 +46,6 @@ python3 -u "${CODE_DIR_NAME}/make_saliency_maps.py" \
 --layer_name="activation_125" \
 --neuron_indices 0 \
 --ideal_activation=1 \
---num_smoothgrad_samples=20 \
---smoothgrad_noise_stdev=0.3 \
+--num_smoothgrad_samples=50 \
+--smoothgrad_noise_stdev=1 \
 --output_file_name="${output_file_name}"
