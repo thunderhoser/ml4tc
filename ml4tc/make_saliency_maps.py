@@ -221,6 +221,20 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             new_saliency_matrices = [None] * 3
 
             for k in range(num_smoothgrad_samples):
+                these_noise_matrices = [
+                    None if p is None
+                    else numpy.random.normal(
+                        loc=0., scale=smoothgrad_noise_stdev, size=p.shape
+                    )
+                    for p in new_predictor_matrices
+                ]
+
+                these_diffs = numpy.concatenate([numpy.ravel(n) for n in these_noise_matrices if n is not None])
+
+                print(smoothgrad_noise_stdev)
+                print(numpy.mean(numpy.absolute(these_diffs)))
+                print(len(these_diffs))
+                
                 these_predictor_matrices = [
                     None if p is None
                     else p + numpy.random.normal(
@@ -237,7 +251,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                 ])
 
                 print(smoothgrad_noise_stdev)
-                print(numpy.mean(these_diffs))
+                print(numpy.mean(numpy.absolute(these_diffs)))
                 print('\n')
 
                 these_saliency_matrices = saliency.get_saliency_one_neuron(
