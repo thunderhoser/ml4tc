@@ -26,11 +26,17 @@ GRIDDED_SATELLITE_INPUT_GRAD_KEY = 'gridded_satellite_input_grad_matrix'
 UNGRIDDED_SATELLITE_INPUT_GRAD_KEY = 'ungridded_satellite_input_grad_matrix'
 SHIPS_INPUT_GRAD_KEY = 'ships_input_grad_matrix'
 THREE_INPUT_GRAD_KEY = 'three_input_grad_matrices'
+GRIDDED_SATELLITE_PREDICTORS_KEY = 'gridded_satellite_predictor_matrix'
+UNGRIDDED_SATELLITE_PREDICTORS_KEY = 'ungridded_satellite_predictor_matrix'
+SHIPS_PREDICTORS_KEY = 'ships_predictor_matrix'
+THREE_PREDICTORS_KEY = 'three_predictor_matrices'
 
 MODEL_FILE_KEY = 'model_file_name'
 LAYER_NAME_KEY = 'layer_name'
 NEURON_INDICES_KEY = 'neuron_indices'
 IDEAL_ACTIVATION_KEY = 'ideal_activation'
+USE_PMM_KEY = 'use_pmm'
+PMM_MAX_PERCENTILE_KEY = 'pmm_max_percentile_level'
 
 
 def check_metadata(layer_name, neuron_indices, ideal_activation):
@@ -119,6 +125,285 @@ def get_saliency_one_neuron(
         three_saliency_matrices[j] = saliency_matrices[i]
 
     return three_saliency_matrices
+
+
+def write_composite_file(
+        netcdf_file_name, three_saliency_matrices, three_input_grad_matrices,
+        three_predictor_matrices, model_file_name, use_pmm,
+        pmm_max_percentile_level=None):
+    """Writes composite saliency map to NetCDF file.
+
+    :param netcdf_file_name: Path to output file.
+    :param three_saliency_matrices: length-3 list, where each element is either
+        None or a numpy array of saliency values.  three_saliency_matrices[i]
+        should have the same shape as the [i]th input tensor to the model, but
+        without the first axis, which is the example axis.
+    :param three_input_grad_matrices: Same as `three_saliency_matrices` but with
+        input-times-gradient values instead.
+    :param three_predictor_matrices: Same as `three_saliency_matrices` but with
+        predictor values instead.  Predictor values must be formatted the same
+        way as for training, e.g., normalized here if they are normalized for
+        training.
+    :param model_file_name: Path to file with neural net used to create saliency
+        maps (readable by `neural_net.read_model`).
+    :param use_pmm: Boolean flag.  If True (False), maps were composited via
+        probability-matched means (a simple average).
+    :param pmm_max_percentile_level: Max percentile level for
+        probability-matched means (PMM).  If PMM was not used, leave this alone.
+    """
+
+    # Check input args.
+    error_checking.assert_is_list(three_saliency_matrices)
+    error_checking.assert_is_list(three_input_grad_matrices)
+    error_checking.assert_is_list(three_predictor_matrices)
+
+    assert len(three_saliency_matrices) == 3
+    assert len(three_input_grad_matrices) == 3
+    assert len(three_predictor_matrices) == 3
+
+    for i in range(len(three_saliency_matrices)):
+        if three_saliency_matrices[i] is None:
+            assert three_input_grad_matrices[i] is None
+            assert three_predictor_matrices[i] is None
+            continue
+
+        error_checking.assert_is_numpy_array_without_nan(
+            three_saliency_matrices[i]
+        )
+        error_checking.assert_is_numpy_array_without_nan(
+            three_input_grad_matrices[i]
+        )
+        error_checking.assert_is_numpy_array_without_nan(
+            three_predictor_matrices[i]
+        )
+
+        expected_dim = numpy.array(three_saliency_matrices[i].shape, dtype=int)
+        error_checking.assert_is_numpy_array(
+            three_saliency_matrices[i], exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_numpy_array(
+            three_input_grad_matrices[i], exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_numpy_array(
+            three_predictor_matrices[i], exact_dimensions=expected_dim
+        )
+
+    error_checking.assert_is_string(model_file_name)
+    error_checking.assert_is_boolean(use_pmm)
+
+    if use_pmm:
+        error_checking.assert_is_geq(pmm_max_percentile_level, 90.)
+        error_checking.assert_is_leq(pmm_max_percentile_level, 100.)
+    else:
+        pmm_max_percentile_level = -1.
+
+    # Write to NetCDF file.
+    file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
+    dataset_object = netCDF4.Dataset(
+        netcdf_file_name, 'w', format='NETCDF3_64BIT_OFFSET'
+    )
+
+    dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
+    dataset_object.setncattr(USE_PMM_KEY, int(use_pmm))
+    dataset_object.setncattr(PMM_MAX_PERCENTILE_KEY, pmm_max_percentile_level)
+
+    num_satellite_lag_times = None
+
+    if three_saliency_matrices[0] is not None:
+        num_grid_rows = three_saliency_matrices[0].shape[1]
+        num_grid_columns = three_saliency_matrices[0].shape[2]
+        num_satellite_lag_times = three_saliency_matrices[0].shape[3]
+        num_gridded_satellite_channels = three_saliency_matrices[0].shape[4]
+
+        dataset_object.createDimension(GRID_ROW_DIMENSION_KEY, num_grid_rows)
+        dataset_object.createDimension(
+            GRID_COLUMN_DIMENSION_KEY, num_grid_columns
+        )
+        dataset_object.createDimension(
+            SATELLITE_LAG_TIME_KEY, num_satellite_lag_times
+        )
+        dataset_object.createDimension(
+            GRIDDED_SATELLITE_CHANNEL_KEY, num_gridded_satellite_channels
+        )
+
+        these_dim = (
+            GRID_ROW_DIMENSION_KEY, GRID_COLUMN_DIMENSION_KEY,
+            SATELLITE_LAG_TIME_KEY, GRIDDED_SATELLITE_CHANNEL_KEY
+        )
+        dataset_object.createVariable(
+            GRIDDED_SATELLITE_SALIENCY_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:] = (
+            three_saliency_matrices[0]
+        )
+
+        dataset_object.createVariable(
+            GRIDDED_SATELLITE_INPUT_GRAD_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
+            three_input_grad_matrices[0]
+        )
+
+        dataset_object.createVariable(
+            GRIDDED_SATELLITE_PREDICTORS_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[GRIDDED_SATELLITE_PREDICTORS_KEY][:] = (
+            three_predictor_matrices[0]
+        )
+
+    if three_saliency_matrices[1] is not None:
+        if num_satellite_lag_times is None:
+            num_satellite_lag_times = three_saliency_matrices[1].shape[1]
+            dataset_object.createDimension(
+                SATELLITE_LAG_TIME_KEY, num_satellite_lag_times
+            )
+        else:
+            assert (
+                num_satellite_lag_times ==
+                three_saliency_matrices[1].shape[1]
+            )
+
+        num_ungridded_satellite_channels = three_saliency_matrices[1].shape[2]
+        dataset_object.createDimension(
+            UNGRIDDED_SATELLITE_CHANNEL_KEY, num_ungridded_satellite_channels
+        )
+
+        these_dim = (SATELLITE_LAG_TIME_KEY, UNGRIDDED_SATELLITE_CHANNEL_KEY)
+        dataset_object.createVariable(
+            UNGRIDDED_SATELLITE_SALIENCY_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:] = (
+            three_saliency_matrices[1]
+        )
+
+        dataset_object.createVariable(
+            UNGRIDDED_SATELLITE_INPUT_GRAD_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
+            three_input_grad_matrices[1]
+        )
+
+        dataset_object.createVariable(
+            UNGRIDDED_SATELLITE_PREDICTORS_KEY,
+            datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[UNGRIDDED_SATELLITE_PREDICTORS_KEY][:] = (
+            three_predictor_matrices[1]
+        )
+
+    if three_saliency_matrices[2] is not None:
+        num_ships_lag_times = three_saliency_matrices[2].shape[1]
+        num_ships_channels = three_saliency_matrices[2].shape[2]
+        dataset_object.createDimension(SHIPS_LAG_TIME_KEY, num_ships_lag_times)
+        dataset_object.createDimension(SHIPS_CHANNEL_KEY, num_ships_channels)
+
+        these_dim = (SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY)
+        dataset_object.createVariable(
+            SHIPS_SALIENCY_KEY, datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[SHIPS_SALIENCY_KEY][:] = (
+            three_saliency_matrices[2]
+        )
+
+        dataset_object.createVariable(
+            SHIPS_INPUT_GRAD_KEY, datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:] = (
+            three_input_grad_matrices[2]
+        )
+
+        dataset_object.createVariable(
+            SHIPS_PREDICTORS_KEY, datatype=numpy.float32, dimensions=these_dim
+        )
+        dataset_object.variables[SHIPS_PREDICTORS_KEY][:] = (
+            three_predictor_matrices[2]
+        )
+
+    dataset_object.close()
+
+
+def read_composite_file(netcdf_file_name):
+    """Reads composite saliency map from NetCDF file.
+
+    :param netcdf_file_name: Path to input file.
+    :return: saliency_dict: Dictionary with the following keys.
+    saliency_dict['three_saliency_matrices']: See doc for
+        `write_composite_file`.
+    saliency_dict['three_input_grad_matrices']: Same.
+    saliency_dict['three_predictor_matrices']: Same.
+    saliency_dict['model_file_name']: Same.
+    saliency_dict['use_pmm']: Same.
+    saliency_dict['pmm_max_percentile_level']: Same.
+    """
+
+    dataset_object = netCDF4.Dataset(netcdf_file_name)
+
+    three_saliency_matrices = []
+    three_input_grad_matrices = []
+    three_predictor_matrices = []
+
+    if GRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
+        )
+        three_predictor_matrices.append(
+            dataset_object.variables[GRIDDED_SATELLITE_PREDICTORS_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+        three_predictor_matrices.append(None)
+
+    if UNGRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
+        )
+        three_predictor_matrices.append(
+            dataset_object.variables[UNGRIDDED_SATELLITE_PREDICTORS_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+        three_predictor_matrices.append(None)
+
+    if SHIPS_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[SHIPS_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:]
+        )
+        three_predictor_matrices.append(
+            dataset_object.variables[SHIPS_PREDICTORS_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+        three_predictor_matrices.append(None)
+
+    saliency_dict = {
+        THREE_SALIENCY_KEY: three_saliency_matrices,
+        THREE_INPUT_GRAD_KEY: three_input_grad_matrices,
+        THREE_PREDICTORS_KEY: three_predictor_matrices,
+        MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
+        USE_PMM_KEY: bool(getattr(dataset_object, USE_PMM_KEY)),
+        PMM_MAX_PERCENTILE_KEY:
+            float(getattr(dataset_object, PMM_MAX_PERCENTILE_KEY))
+    }
+
+    dataset_object.close()
+    return saliency_dict
 
 
 def write_file(
