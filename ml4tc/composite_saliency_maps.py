@@ -45,7 +45,7 @@ INPUT_ARG_PARSER.add_argument(
     '--' + USE_PMM_ARG_NAME, type=int, required=True, help=USE_PMM_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + MAX_PERCENTILE_ARG_NAME, type=int, required=False, default=99.5,
+    '--' + MAX_PERCENTILE_ARG_NAME, type=float, required=False, default=99.5,
     help=MAX_PERCENTILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
