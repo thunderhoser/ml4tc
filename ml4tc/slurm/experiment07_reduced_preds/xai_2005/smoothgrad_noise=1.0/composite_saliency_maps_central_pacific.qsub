@@ -34,7 +34,7 @@ set dense_layer_count_string=`printf "%1d" $DENSE_LAYER_COUNT`
 set CYCLONE_ID_STRINGS=("2005CP01")
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
-set output_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_central_pacific"
+set output_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_central_pacific.nc"
 
 set input_saliency_files_string=""
 set i=1
