@@ -134,6 +134,7 @@ def _plot_brightness_temp_saliency(
         for p in saliency_dict[this_key]
     ]
 
+    print(predictor_matrices[0].shape)
     grid_latitudes_deg_n = numpy.linspace(
         -10, 10, num=predictor_matrices[0].shape[1], dtype=float
     )
