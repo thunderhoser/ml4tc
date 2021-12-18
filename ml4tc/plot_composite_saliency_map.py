@@ -134,7 +134,6 @@ def _plot_brightness_temp_saliency(
         for p in saliency_dict[this_key]
     ]
 
-    print(predictor_matrices[0].shape)
     grid_latitudes_deg_n = numpy.linspace(
         -10, 10, num=predictor_matrices[0].shape[1], dtype=float
     )
@@ -144,6 +143,9 @@ def _plot_brightness_temp_saliency(
     grid_longitude_matrix_deg_e, grid_latitude_matrix_deg_n = numpy.meshgrid(
         grid_longitudes_deg_e, grid_latitudes_deg_n
     )
+
+    print(grid_longitude_matrix_deg_e.shape)
+    print(grid_latitude_matrix_deg_n.shape)
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_brightness_temp_one_example(
