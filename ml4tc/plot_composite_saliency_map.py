@@ -144,9 +144,9 @@ def _plot_brightness_temp_saliency(
         grid_longitudes_deg_e, grid_latitudes_deg_n
     )
 
-    print(grid_longitude_matrix_deg_e.shape)
-    print(grid_latitude_matrix_deg_n.shape)
-    print(predictor_matrices[0].shape)
+    # print(grid_longitude_matrix_deg_e.shape)
+    # print(grid_latitude_matrix_deg_n.shape)
+    # print(predictor_matrices[0].shape)
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_brightness_temp_one_example(
