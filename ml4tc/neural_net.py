@@ -2065,9 +2065,6 @@ def input_generator(option_dict):
                 num_negative_examples_in_memory
             )
 
-        predictor_matrices = [p.astype('float16') for p in predictor_matrices]
-        target_array = target_array.astype('float16')
-
         if use_data_augmentation:
             predictor_matrices, target_array = _augment_data(
                 predictor_matrices=predictor_matrices,
@@ -2080,10 +2077,8 @@ def input_generator(option_dict):
                 noise_stdev=data_aug_noise_stdev
             )
 
-            predictor_matrices = [
-                p.astype('float16') for p in predictor_matrices
-            ]
-            target_array = target_array.astype('float16')
+        predictor_matrices = [p.astype('float16') for p in predictor_matrices]
+        target_array = target_array.astype('float16')
 
         if len(target_array.shape) == 1:
             print((

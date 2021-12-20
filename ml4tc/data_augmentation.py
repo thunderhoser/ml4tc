@@ -231,6 +231,8 @@ def rotate_radar_images(radar_image_matrix, ccw_rotation_angle_deg):
     error_checking.assert_is_geq(ccw_rotation_angle_deg, -180.)
     error_checking.assert_is_leq(ccw_rotation_angle_deg, 180.)
 
+    print(radar_image_matrix.dtype)
+
     return scipy_rotate(
         input=radar_image_matrix, angle=-ccw_rotation_angle_deg, axes=(1, 2),
         reshape=False, order=1, mode='constant', cval=PADDING_VALUE
