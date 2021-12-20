@@ -62,7 +62,7 @@ BASE_OPTION_DICT_DENSE = {
 }
 
 DENSE_LAYER_DROPOUT_RATES = numpy.array([0.5])
-CONV_LAYER_L2_WEIGHTS = 10 ** numpy.array([-3])
+CONV_LAYER_L2_WEIGHTS = numpy.array([0.001])
 DENSE_LAYER_COUNTS = numpy.array([5], dtype=int)
 
 LOSS_FUNCTION = keras.losses.binary_crossentropy
