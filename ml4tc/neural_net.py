@@ -1494,9 +1494,9 @@ def _augment_data(
         )
 
         for j in range(1, num_matrices):
-            predictor_matrices[0] = numpy.concatenate((
-                predictor_matrices[0],
-                predictor_matrices[0][:orig_num_examples, ...]
+            predictor_matrices[j] = numpy.concatenate((
+                predictor_matrices[j],
+                predictor_matrices[j][:orig_num_examples, ...]
             ), axis=0)
 
     if num_rotations > 0:
@@ -1525,9 +1525,9 @@ def _augment_data(
         )
 
         for j in range(1, num_matrices):
-            predictor_matrices[0] = numpy.concatenate((
-                predictor_matrices[0],
-                predictor_matrices[0][:orig_num_examples, ...]
+            predictor_matrices[j] = numpy.concatenate((
+                predictor_matrices[j],
+                predictor_matrices[j][:orig_num_examples, ...]
             ), axis=0)
 
     if num_noisings > 0:
