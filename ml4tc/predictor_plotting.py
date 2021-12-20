@@ -235,10 +235,6 @@ def plot_brightness_temp_one_example(
             satellite_utils.GRID_ROW_DIM, satellite_utils.GRID_COLUMN_DIM
         )
 
-        print(brightness_temp_matrix_kelvins[[0], ..., j].shape)
-        print(numpy.transpose(grid_latitude_matrix_deg_n[:, [j]]).shape)
-        print(numpy.transpose(grid_longitude_matrix_deg_e[:, [j]]).shape)
-
         main_data_dict = {
             satellite_utils.CYCLONE_ID_KEY: (
                 (satellite_utils.TIME_DIM,),

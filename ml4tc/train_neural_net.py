@@ -31,7 +31,10 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          ships_time_tolerance_validation_sec,
          num_positive_examples_per_batch,
          num_negative_examples_per_batch, max_examples_per_cyclone_in_batch,
-         predict_td_to_ts, class_cutoffs_kt, num_epochs,
+         predict_td_to_ts, class_cutoffs_kt,
+         data_aug_num_translations, data_aug_max_translation_px,
+         data_aug_num_rotations, data_aug_max_rotation_deg,
+         data_aug_num_noisings, data_aug_noise_stdev, num_epochs,
          num_training_batches_per_epoch, num_validation_batches_per_epoch,
          plateau_lr_multiplier):
     """Trains neural net.
@@ -61,6 +64,12 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param max_examples_per_cyclone_in_batch: Same.
     :param predict_td_to_ts: Same.
     :param class_cutoffs_kt: Same.
+    :param data_aug_num_translations: Same.
+    :param data_aug_max_translation_px: Same.
+    :param data_aug_num_rotations: Same.
+    :param data_aug_max_rotation_deg: Same.
+    :param data_aug_num_noisings: Same.
+    :param data_aug_noise_stdev: Same.
     :param num_epochs: Same.
     :param num_training_batches_per_epoch: Same.
     :param num_validation_batches_per_epoch: Same.
@@ -118,7 +127,13 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.SHIPS_TIME_TOLERANCE_KEY: ships_time_tolerance_training_sec,
         neural_net.SHIPS_MAX_MISSING_TIMES_KEY:
             ships_max_missing_times_training,
-        neural_net.USE_CLIMO_KEY: False
+        neural_net.USE_CLIMO_KEY: False,
+        neural_net.DATA_AUG_NUM_TRANS_KEY: data_aug_num_translations,
+        neural_net.DATA_AUG_MAX_TRANS_KEY: data_aug_max_translation_px,
+        neural_net.DATA_AUG_NUM_ROTATIONS_KEY: data_aug_num_rotations,
+        neural_net.DATA_AUG_MAX_ROTATION_KEY: data_aug_max_rotation_deg,
+        neural_net.DATA_AUG_NUM_NOISINGS_KEY: data_aug_num_noisings,
+        neural_net.DATA_AUG_NOISE_STDEV_KEY: data_aug_noise_stdev
     }
 
     validation_option_dict = {
@@ -228,6 +243,24 @@ if __name__ == '__main__':
         class_cutoffs_kt=numpy.array(
             getattr(INPUT_ARG_OBJECT, training_args.CLASS_CUTOFFS_ARG_NAME),
             dtype=float
+        ),
+        data_aug_num_translations=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_NUM_TRANS_ARG_NAME
+        ),
+        data_aug_max_translation_px=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_MAX_TRANS_ARG_NAME
+        ),
+        data_aug_num_rotations=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_NUM_ROTATIONS_ARG_NAME
+        ),
+        data_aug_max_rotation_deg=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_MAX_ROTATION_ARG_NAME
+        ),
+        data_aug_num_noisings=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_NUM_NOISINGS_ARG_NAME
+        ),
+        data_aug_noise_stdev=getattr(
+            INPUT_ARG_OBJECT, training_args.DATA_AUG_NOISE_STDEV_ARG_NAME
         ),
         num_epochs=getattr(INPUT_ARG_OBJECT, training_args.NUM_EPOCHS_ARG_NAME),
         num_training_batches_per_epoch=getattr(

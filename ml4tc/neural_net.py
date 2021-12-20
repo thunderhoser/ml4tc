@@ -19,6 +19,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import time_conversion
 import file_system_utils
 import error_checking
+import data_augmentation
 import custom_metrics
 import example_io
 import ships_io
@@ -84,6 +85,12 @@ SATELLITE_MAX_MISSING_TIMES_KEY = 'satellite_max_missing_times'
 SHIPS_TIME_TOLERANCE_KEY = 'ships_time_tolerance_sec'
 SHIPS_MAX_MISSING_TIMES_KEY = 'ships_max_missing_times'
 USE_CLIMO_KEY = 'use_climo_as_backup'
+DATA_AUG_NUM_TRANS_KEY = 'data_aug_num_translations'
+DATA_AUG_MAX_TRANS_KEY = 'data_aug_max_translation_px'
+DATA_AUG_NUM_ROTATIONS_KEY = 'data_aug_num_rotations'
+DATA_AUG_MAX_ROTATION_KEY = 'data_aug_max_rotation_deg'
+DATA_AUG_NUM_NOISINGS_KEY = 'data_aug_num_noisings'
+DATA_AUG_NOISE_STDEV_KEY = 'data_aug_noise_stdev'
 
 ALL_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
@@ -128,7 +135,13 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     NUM_NEGATIVE_EXAMPLES_KEY: 24,
     MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
     CLASS_CUTOFFS_KEY: numpy.array([30 * KT_TO_METRES_PER_SECOND]),
-    PREDICT_TD_TO_TS_KEY: False
+    PREDICT_TD_TO_TS_KEY: False,
+    DATA_AUG_NUM_TRANS_KEY: 0,
+    DATA_AUG_MAX_TRANS_KEY: None,
+    DATA_AUG_NUM_ROTATIONS_KEY: 0,
+    DATA_AUG_MAX_ROTATION_KEY: None,
+    DATA_AUG_NUM_NOISINGS_KEY: 0,
+    DATA_AUG_NOISE_STDEV_KEY: None
 }
 
 NUM_EPOCHS_KEY = 'num_epochs'
@@ -566,7 +579,6 @@ def _find_all_desired_times(
         init_time_unix_sec, init_time_unix_sec + lead_time_sec,
         num=num_desired_times, dtype=int
     )
-
     target_indices = _find_desired_times(
         all_times_unix_sec=all_init_times_unix_sec,
         desired_times_unix_sec=desired_times_unix_sec,
@@ -1273,6 +1285,36 @@ def _check_generator_args(option_dict):
     error_checking.assert_is_integer(option_dict[SHIPS_MAX_MISSING_TIMES_KEY])
     error_checking.assert_is_geq(option_dict[SHIPS_MAX_MISSING_TIMES_KEY], 0)
 
+    if option_dict[DATA_AUG_NUM_TRANS_KEY] > 0:
+        error_checking.assert_is_integer(option_dict[DATA_AUG_MAX_TRANS_KEY])
+        error_checking.assert_is_greater(option_dict[DATA_AUG_MAX_TRANS_KEY], 0)
+    else:
+        option_dict[DATA_AUG_NUM_TRANS_KEY] = 0
+        option_dict[DATA_AUG_MAX_TRANS_KEY] = None
+
+    if option_dict[DATA_AUG_NUM_ROTATIONS_KEY] > 0:
+        error_checking.assert_is_integer(
+            option_dict[DATA_AUG_NUM_ROTATIONS_KEY]
+        )
+        error_checking.assert_is_greater(
+            option_dict[DATA_AUG_MAX_ROTATION_KEY], 0.
+        )
+        error_checking.assert_is_leq(
+            option_dict[DATA_AUG_MAX_ROTATION_KEY], 180.
+        )
+    else:
+        option_dict[DATA_AUG_NUM_ROTATIONS_KEY] = 0
+        option_dict[DATA_AUG_MAX_ROTATION_KEY] = None
+
+    if option_dict[DATA_AUG_NUM_NOISINGS_KEY] > 0:
+        error_checking.assert_is_integer(option_dict[DATA_AUG_NUM_NOISINGS_KEY])
+        error_checking.assert_is_greater(
+            option_dict[DATA_AUG_NOISE_STDEV_KEY], 0.
+        )
+    else:
+        option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
+        option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
+
     return option_dict
 
 
@@ -1389,6 +1431,118 @@ def find_metafile(model_file_name, raise_error_if_missing=True):
     return metafile_name
 
 
+def _augment_data(
+        predictor_matrices, target_array, num_translations, max_translation_px,
+        num_rotations, max_rotation_deg, num_noisings, noise_stdev):
+    """Performs data augmentation.
+
+    This method applies each augmentation separately.  For example, a satellite
+    image can be rotated *or* translated *or* noised, but not a combination of
+    the three.
+
+    :param predictor_matrices: See doc for `input_generator`.
+    :param target_array: Same.
+    :param num_translations: Number of translations per example.  This argument
+        applies only to satellite images.
+    :param max_translation_px: Max translation (pixels).  This argument applies
+        only to satellite images.
+    :param num_rotations: Number of rotations per example.  This argument
+        applies only to satellite images.
+    :param max_rotation_deg: Max absolute rotation angle (degrees).  This
+        argument applies only to satellite images.
+    :param num_noisings: Number of noisings per example.  This argument applies
+        to all predictor types.
+    :param noise_stdev: Standard deviation of Gaussian noise.  This argument
+        applies to all predictor types.
+    :return: predictor_matrices: Same as input but with more examples.  Also,
+        the new examples will be slightly different than the original examples.
+    :return: target_array: Same as input but with more examples.  The new
+        examples will be just copies of the old examples (i.e., data
+        augmentation changes only the predictors, not the targets).
+    """
+
+    orig_num_examples = predictor_matrices[0].shape[0]
+    num_matrices = len(predictor_matrices)
+
+    if num_translations > 0:
+        x_offsets_px, y_offsets_px = data_augmentation.get_translations(
+            num_translations=num_translations,
+            max_translation_pixels=max_translation_px,
+            num_grid_rows=predictor_matrices[0].shape[1],
+            num_grid_columns=predictor_matrices[0].shape[2]
+        )
+
+        print('Applying {0:d} translations for DATA AUGMENTATION...'.format(
+            num_translations
+        ))
+    else:
+        x_offsets_px = numpy.array([])
+        y_offsets_px = numpy.array([])
+
+    for k in range(num_translations):
+        this_matrix = data_augmentation.shift_radar_images(
+            radar_image_matrix=predictor_matrices[0][:orig_num_examples, ...],
+            x_offset_pixels=x_offsets_px[k],
+            y_offset_pixels=y_offsets_px[k]
+        )
+
+        predictor_matrices[0] = numpy.concatenate(
+            (predictor_matrices[0], this_matrix), axis=0
+        )
+        target_array = numpy.concatenate(
+            (target_array, target_array[:orig_num_examples, ...]), axis=0
+        )
+
+    if num_rotations > 0:
+        rotation_angles_deg = data_augmentation.get_rotations(
+            num_rotations=num_rotations,
+            max_absolute_rotation_angle_deg=max_rotation_deg
+        )
+
+        print('Applying {0:d} rotations for DATA AUGMENTATION...'.format(
+            num_rotations
+        ))
+    else:
+        rotation_angles_deg = numpy.array([])
+
+    for k in range(num_rotations):
+        this_matrix = data_augmentation.rotate_radar_images(
+            radar_image_matrix=predictor_matrices[0][:orig_num_examples, ...],
+            ccw_rotation_angle_deg=rotation_angles_deg[k]
+        )
+
+        predictor_matrices[0] = numpy.concatenate(
+            (predictor_matrices[0], this_matrix), axis=0
+        )
+        target_array = numpy.concatenate(
+            (target_array, target_array[:orig_num_examples, ...]), axis=0
+        )
+
+    if num_noisings > 0:
+        print('Applying {0:d} noisings for DATA AUGMENTATION...'.format(
+            num_noisings
+        ))
+
+    for k in range(num_noisings):
+        for j in range(num_matrices):
+            this_matrix = numpy.random.normal(
+                loc=0., scale=noise_stdev,
+                size=predictor_matrices[j][:orig_num_examples, ...].shape
+            )
+            this_matrix = (
+                this_matrix + predictor_matrices[j][:orig_num_examples, ...]
+            )
+            predictor_matrices[j] = numpy.concatenate(
+                (predictor_matrices[j], this_matrix), axis=0
+            )
+
+        target_array = numpy.concatenate(
+            (target_array, target_array[:orig_num_examples, ...]), axis=0
+        )
+
+    return predictor_matrices, target_array
+
+
 def read_metafile(pickle_file_name):
     """Reads metadata for neural net from Pickle file.
 
@@ -1431,6 +1585,21 @@ def read_metafile(pickle_file_name):
     if PREDICT_TD_TO_TS_KEY not in training_option_dict:
         training_option_dict[PREDICT_TD_TO_TS_KEY] = False
         validation_option_dict[PREDICT_TD_TO_TS_KEY] = False
+
+    if DATA_AUG_NUM_TRANS_KEY not in training_option_dict:
+        training_option_dict[DATA_AUG_NUM_TRANS_KEY] = 0
+        training_option_dict[DATA_AUG_MAX_TRANS_KEY] = None
+        training_option_dict[DATA_AUG_NUM_ROTATIONS_KEY] = 0
+        training_option_dict[DATA_AUG_MAX_ROTATION_KEY] = None
+        training_option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
+        training_option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
+
+        validation_option_dict[DATA_AUG_NUM_TRANS_KEY] = 0
+        validation_option_dict[DATA_AUG_MAX_TRANS_KEY] = None
+        validation_option_dict[DATA_AUG_NUM_ROTATIONS_KEY] = 0
+        validation_option_dict[DATA_AUG_MAX_ROTATION_KEY] = None
+        validation_option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
+        validation_option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
 
     training_option_dict[USE_CLIMO_KEY] = False
     validation_option_dict[USE_CLIMO_KEY] = True
@@ -1727,6 +1896,18 @@ def input_generator(option_dict):
     option_dict['class_cutoffs_m_s01']:
         [used only if `predict_td_to_ts == False`]
         numpy array (length K - 1) of class cutoffs.
+    option_dict['data_aug_num_translations']: Number of translations per example
+        for data augmentation.  You can make this 0.
+    option_dict['data_aug_max_translation_px']: Max translation (pixels) for
+        data augmentation.  Used only if data_aug_num_translations > 0.
+    option_dict['data_aug_num_rotations']: Number of rotations per example for
+        data augmentation.  You can make this 0.
+    option_dict['data_aug_max_rotation_deg']: Max absolute rotation (degrees)
+        for data augmentation.  Used only if data_aug_num_rotations > 0.
+    option_dict['data_aug_num_noisings']: Number of noisings per example for
+        data augmentation.  You can make this 0.
+    option_dict['data_aug_noise_stdev']: Standard deviation of noise for data
+        augmentation.  Used only if data_aug_num_noisings > 0.
 
     :return: predictor_matrices: See output doc for `_read_one_example_file`.
         However, for this generator, any undesired predictor type will be
@@ -1758,6 +1939,18 @@ def input_generator(option_dict):
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    data_aug_num_translations = option_dict[DATA_AUG_NUM_TRANS_KEY]
+    data_aug_max_translation_px = option_dict[DATA_AUG_MAX_TRANS_KEY]
+    data_aug_num_rotations = option_dict[DATA_AUG_NUM_ROTATIONS_KEY]
+    data_aug_max_rotation_deg = option_dict[DATA_AUG_MAX_ROTATION_KEY]
+    data_aug_num_noisings = option_dict[DATA_AUG_NUM_NOISINGS_KEY]
+    data_aug_noise_stdev = option_dict[DATA_AUG_NOISE_STDEV_KEY]
+
+    use_data_augmentation = (
+        data_aug_num_translations + data_aug_num_rotations +
+        data_aug_num_noisings
+        > 0
+    )
 
     # TODO(thunderhoser): For SHIPS predictors, all lag times and forecast times
     # are currently flattened along the channel axis.  I might change this in
@@ -1874,6 +2067,23 @@ def input_generator(option_dict):
 
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
         target_array = target_array.astype('float16')
+
+        if use_data_augmentation:
+            predictor_matrices, target_array = _augment_data(
+                predictor_matrices=predictor_matrices,
+                target_array=target_array,
+                num_translations=data_aug_num_translations,
+                max_translation_px=data_aug_max_translation_px,
+                num_rotations=data_aug_num_rotations,
+                max_rotation_deg=data_aug_max_rotation_deg,
+                num_noisings=data_aug_num_noisings,
+                noise_stdev=data_aug_noise_stdev
+            )
+
+            predictor_matrices = [
+                p.astype('float16') for p in predictor_matrices
+            ]
+            target_array = target_array.astype('float16')
 
         if len(target_array.shape) == 1:
             print((

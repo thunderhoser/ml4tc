@@ -42,6 +42,13 @@ NUM_NEGATIVE_EXAMPLES_ARG_NAME = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_ARG_NAME = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_ARG_NAME = 'class_cutoffs_kt'
 PREDICT_TD_TO_TS_ARG_NAME = 'predict_td_to_ts'
+DATA_AUG_NUM_TRANS_ARG_NAME = 'data_aug_num_translations'
+DATA_AUG_MAX_TRANS_ARG_NAME = 'data_aug_max_translation_px'
+DATA_AUG_NUM_ROTATIONS_ARG_NAME = 'data_aug_num_rotations'
+DATA_AUG_MAX_ROTATION_ARG_NAME = 'data_aug_max_rotation_deg'
+DATA_AUG_NUM_NOISINGS_ARG_NAME = 'data_aug_num_noisings'
+DATA_AUG_NOISE_STDEV_ARG_NAME = 'data_aug_noise_stdev'
+
 NUM_EPOCHS_ARG_NAME = 'num_epochs'
 NUM_TRAINING_BATCHES_ARG_NAME = 'num_training_batches_per_epoch'
 NUM_VALIDATION_BATCHES_ARG_NAME = 'num_validation_batches_per_epoch'
@@ -131,6 +138,27 @@ PREDICT_TD_TO_TS_HELP_STRING = (
 CLASS_CUTOFFS_HELP_STRING = (
     'List of class cutoffs (intensification in knots).  List must have length '
     'K - 1, where K = number of classes.'
+)
+DATA_AUG_NUM_TRANS_HELP_STRING = (
+    'Number of translations per example for data augmentation.  You can make '
+    'this 0.'
+)
+DATA_AUG_MAX_TRANS_HELP_STRING = (
+    'Max translation (pixels) for data augmentation.'
+)
+DATA_AUG_NUM_ROTATIONS_HELP_STRING = (
+    'Number of rotations per example for data augmentation.  You can make this '
+    '0.'
+)
+DATA_AUG_MAX_ROTATION_HELP_STRING = (
+    'Max absolute rotation angle (degrees) for data augmentation.'
+)
+DATA_AUG_NUM_NOISINGS_HELP_STRING = (
+    'Number of noisings per example for data augmentation.  You can make this '
+    '0.'
+)
+DATA_AUG_NOISE_STDEV_HELP_STRING = (
+    'Standard deviation of Gaussian noise for data augmentation.'
 )
 NUM_EPOCHS_HELP_STRING = 'Number of epochs.'
 NUM_TRAINING_BATCHES_HELP_STRING = 'Number of training batches per epoch.'
@@ -241,6 +269,30 @@ def add_input_args(parser_object):
     parser_object.add_argument(
         '--' + PREDICT_TD_TO_TS_ARG_NAME, type=int, required=False, default=0,
         help=PREDICT_TD_TO_TS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_NUM_TRANS_ARG_NAME, type=int, required=False, default=0,
+        help=DATA_AUG_NUM_TRANS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_MAX_TRANS_ARG_NAME, type=int, required=False,
+        default=-1, help=DATA_AUG_MAX_TRANS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_NUM_ROTATIONS_ARG_NAME, type=int, required=False,
+        default=0, help=DATA_AUG_NUM_ROTATIONS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_MAX_ROTATION_ARG_NAME, type=float, required=False,
+        default=-1, help=DATA_AUG_MAX_ROTATION_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_NUM_NOISINGS_ARG_NAME, type=int, required=False,
+        default=0, help=DATA_AUG_NUM_NOISINGS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + DATA_AUG_NOISE_STDEV_ARG_NAME, type=float, required=False,
+        default=-1, help=DATA_AUG_NOISE_STDEV_HELP_STRING
     )
     parser_object.add_argument(
         '--' + CLASS_CUTOFFS_ARG_NAME, type=float, nargs='+', required=False,
