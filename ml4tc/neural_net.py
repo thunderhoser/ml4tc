@@ -1493,6 +1493,12 @@ def _augment_data(
             (target_array, target_array[:orig_num_examples, ...]), axis=0
         )
 
+        for j in range(1, num_matrices):
+            predictor_matrices[0] = numpy.concatenate((
+                predictor_matrices[0],
+                predictor_matrices[0][:orig_num_examples, ...]
+            ), axis=0)
+
     if num_rotations > 0:
         rotation_angles_deg = data_augmentation.get_rotations(
             num_rotations=num_rotations,
@@ -1517,6 +1523,12 @@ def _augment_data(
         target_array = numpy.concatenate(
             (target_array, target_array[:orig_num_examples, ...]), axis=0
         )
+
+        for j in range(1, num_matrices):
+            predictor_matrices[0] = numpy.concatenate((
+                predictor_matrices[0],
+                predictor_matrices[0][:orig_num_examples, ...]
+            ), axis=0)
 
     if num_noisings > 0:
         print('Applying {0:d} noisings for DATA AUGMENTATION...'.format(
