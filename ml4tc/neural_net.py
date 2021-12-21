@@ -2184,6 +2184,8 @@ def train_model(
     validation_option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY] *= (
         1 + num_data_augmentations
     )
+    
+    print(validation_option_dict)
 
     validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
