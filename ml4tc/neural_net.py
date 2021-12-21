@@ -2184,11 +2184,13 @@ def train_model(
     validation_option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY] *= (
         1 + num_data_augmentations
     )
-    
-    print(validation_option_dict)
 
     validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
+    validation_option_dict[DATA_AUG_NUM_TRANS_KEY] = 0
+    validation_option_dict[DATA_AUG_NUM_ROTATIONS_KEY] = 0
+    validation_option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
+
     validation_option_dict = _check_generator_args(validation_option_dict)
 
     model_file_name = '{0:s}/model.h5'.format(output_dir_name)
