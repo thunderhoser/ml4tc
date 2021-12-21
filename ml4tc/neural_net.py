@@ -2170,6 +2170,21 @@ def train_model(
 
         validation_option_dict[this_key] = training_option_dict[this_key]
 
+    num_data_augmentations = (
+        training_option_dict[DATA_AUG_NUM_TRANS_KEY] +
+        training_option_dict[DATA_AUG_NUM_ROTATIONS_KEY] +
+        training_option_dict[DATA_AUG_NUM_NOISINGS_KEY]
+    )
+    validation_option_dict[NUM_POSITIVE_EXAMPLES_KEY] *= (
+        1 + num_data_augmentations
+    )
+    validation_option_dict[NUM_NEGATIVE_EXAMPLES_KEY] *= (
+        1 + num_data_augmentations
+    )
+    validation_option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY] *= (
+        1 + num_data_augmentations
+    )
+
     validation_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict[SHIPS_MAX_MISSING_TIMES_KEY] = int(1e10)
     validation_option_dict = _check_generator_args(validation_option_dict)
