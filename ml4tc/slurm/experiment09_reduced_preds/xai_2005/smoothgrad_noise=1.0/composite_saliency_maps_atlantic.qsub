@@ -1,0 +1,51 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="composite_saliency_maps_atlantic"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=12:00:00
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=composite_saliency_maps_atlantic_%A.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment07_reduced_preds"
+
+set DENSE_LAYER_DROPOUT_RATE=0.5
+set CONV_LAYER_L2_WEIGHT=0.001
+set DENSE_LAYER_COUNT=5
+
+set dense_layer_dropout_rate_string=`printf "%.1f" $DENSE_LAYER_DROPOUT_RATE`
+set conv_layer_l2_weight_string=`printf "%.12f" $CONV_LAYER_L2_WEIGHT`
+set dense_layer_count_string=`printf "%1d" $DENSE_LAYER_COUNT`
+
+set CYCLONE_ID_STRINGS=("2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "2005AL06" "2005AL07" "2005AL08" "2005AL09" "2005AL10" "2005AL11" "2005AL12" "2005AL13" "2005AL14" "2005AL15" "2005AL16" "2005AL17" "2005AL18" "2005AL21" "2005AL22" "2005AL23" "2005AL24" "2005AL26" "2005AL27" "2005AL28" "2005AL29" "2005AL30" "2005AL31")
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/dense-layer-dropout-rate=${dense_layer_dropout_rate_string}_conv-layer-l2-weight=${conv_layer_l2_weight_string}_dense-layer-count=${dense_layer_count_string}"
+set output_file_name="${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_2005_atlantic.nc"
+
+set input_saliency_files_string=""
+set i=1
+
+while ($i <= ${#CYCLONE_ID_STRINGS})
+    set input_saliency_files_string="${input_saliency_files_string} ${model_dir_name}/saliency_maps_smoothgrad_noise=1.0/saliency_maps_${CYCLONE_ID_STRINGS[$i]}.nc"
+    @ i = $i + 1
+end
+
+python3 -u "${CODE_DIR_NAME}/composite_saliency_maps.py" \
+--input_saliency_file_names ${input_saliency_files_string} \
+--use_pmm=1 \
+--pmm_max_percentile_level=99.5 \
+--output_saliency_file_name="${output_file_name}"
