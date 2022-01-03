@@ -125,15 +125,24 @@ def _plot_brightness_temp_saliency(
         None if p is None else numpy.expand_dims(p, axis=0)
         for p in saliency_dict[this_key]
     ]
+    num_lag_times = predictor_matrices[0].shape[3]
 
     grid_latitudes_deg_n = numpy.linspace(
         -10, 10, num=predictor_matrices[0].shape[1], dtype=float
     )
+    grid_latitude_matrix_deg_n = numpy.expand_dims(grid_latitudes_deg_n, axis=1)
+    grid_latitude_matrix_deg_n = numpy.repeat(
+        grid_latitude_matrix_deg_n, axis=1, repeats=num_lag_times
+    )
+
     grid_longitudes_deg_e = numpy.linspace(
         300, 320, num=predictor_matrices[0].shape[2], dtype=float
     )
-    grid_longitude_matrix_deg_e, grid_latitude_matrix_deg_n = numpy.meshgrid(
-        grid_longitudes_deg_e, grid_latitudes_deg_n
+    grid_longitude_matrix_deg_e = numpy.expand_dims(
+        grid_longitudes_deg_e, axis=1
+    )
+    grid_longitude_matrix_deg_e = numpy.repeat(
+        grid_longitude_matrix_deg_e, axis=1, repeats=num_lag_times
     )
 
     figure_objects, axes_objects, pathless_output_file_names = (

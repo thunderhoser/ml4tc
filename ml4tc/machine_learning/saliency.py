@@ -210,10 +210,10 @@ def write_composite_file(
     num_satellite_lag_times = None
 
     if three_saliency_matrices[0] is not None:
-        num_grid_rows = three_saliency_matrices[0].shape[1]
-        num_grid_columns = three_saliency_matrices[0].shape[2]
-        num_satellite_lag_times = three_saliency_matrices[0].shape[3]
-        num_gridded_satellite_channels = three_saliency_matrices[0].shape[4]
+        num_grid_rows = three_saliency_matrices[0].shape[0]
+        num_grid_columns = three_saliency_matrices[0].shape[1]
+        num_satellite_lag_times = three_saliency_matrices[0].shape[2]
+        num_gridded_satellite_channels = three_saliency_matrices[0].shape[3]
 
         dataset_object.createDimension(GRID_ROW_DIMENSION_KEY, num_grid_rows)
         dataset_object.createDimension(
@@ -256,17 +256,17 @@ def write_composite_file(
 
     if three_saliency_matrices[1] is not None:
         if num_satellite_lag_times is None:
-            num_satellite_lag_times = three_saliency_matrices[1].shape[1]
+            num_satellite_lag_times = three_saliency_matrices[1].shape[0]
             dataset_object.createDimension(
                 SATELLITE_LAG_TIME_KEY, num_satellite_lag_times
             )
         else:
             assert (
                 num_satellite_lag_times ==
-                three_saliency_matrices[1].shape[1]
+                three_saliency_matrices[1].shape[0]
             )
 
-        num_ungridded_satellite_channels = three_saliency_matrices[1].shape[2]
+        num_ungridded_satellite_channels = three_saliency_matrices[1].shape[1]
         dataset_object.createDimension(
             UNGRIDDED_SATELLITE_CHANNEL_KEY, num_ungridded_satellite_channels
         )
@@ -297,8 +297,8 @@ def write_composite_file(
         )
 
     if three_saliency_matrices[2] is not None:
-        num_ships_lag_times = three_saliency_matrices[2].shape[1]
-        num_ships_channels = three_saliency_matrices[2].shape[2]
+        num_ships_lag_times = three_saliency_matrices[2].shape[0]
+        num_ships_channels = three_saliency_matrices[2].shape[1]
         dataset_object.createDimension(SHIPS_LAG_TIME_KEY, num_ships_lag_times)
         dataset_object.createDimension(SHIPS_CHANNEL_KEY, num_ships_channels)
 
