@@ -21,6 +21,7 @@ EXAMPLE_DIMENSION_KEY = 'example'
 CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_char'
 GRID_ROW_DIMENSION_KEY = 'grid_row'
 GRID_COLUMN_DIMENSION_KEY = 'grid_column'
+LAG_TIME_DIMENSION_KEY = 'lag_time'
 
 MODEL_FILE_KEY = 'model_file_name'
 TARGET_CLASS_KEY = 'target_class'
@@ -43,6 +44,7 @@ def get_occlusion_maps(
     T = number of input tensors to model
     M = number of rows in brightness-temperature grid
     N = number of columns in brightness-temperature grid
+    L = number of lag times for brightness temperature
 
     :param model_object: Trained model (instance of `keras.models.Model` or
         `keras.models.Sequential`).
@@ -57,7 +59,7 @@ def get_occlusion_maps(
     :param stride_length_px: Stride length for occlusion window (pixels).
     :param fill_value: Fill value.  Inside the occlusion window, all brightness
         temperatures will be assigned this value, to simulate missing data.
-    :return: occlusion_prob_matrix: E-by-M-by-N numpy array of predicted
+    :return: occlusion_prob_matrix: E-by-M-by-N-by-L numpy array of predicted
         probabilities after occlusion.
     :return: original_probs: length-E numpy array of predicted probabilities
         before occlusion.
@@ -77,6 +79,8 @@ def get_occlusion_maps(
     num_examples = predictor_matrices[0].shape[0]
     num_grid_rows_orig = predictor_matrices[0].shape[1]
     num_grid_columns_orig = predictor_matrices[0].shape[2]
+    num_lag_times = predictor_matrices[0].shape[3]
+
     num_grid_rows_occluded = int(numpy.ceil(
         float(num_grid_rows_orig) / stride_length_px
     ))
@@ -85,7 +89,8 @@ def get_occlusion_maps(
     ))
 
     dimensions = (
-        num_examples, num_grid_rows_occluded, num_grid_columns_occluded
+        num_examples, num_grid_rows_occluded, num_grid_columns_occluded,
+        num_lag_times
     )
     occlusion_prob_matrix = numpy.full(dimensions, numpy.nan)
 
@@ -117,44 +122,51 @@ def get_occlusion_maps(
                 num_grid_columns_orig
             ])
 
-            new_brightness_temp_matrix = predictor_matrices[0] + 0.
-            new_brightness_temp_matrix[
-                :, first_row:last_row, first_column:last_column, ...
-            ] = fill_value
+            for k in range(num_lag_times):
+                new_brightness_temp_matrix = predictor_matrices[0] + 0.
+                new_brightness_temp_matrix[
+                    :, first_row:last_row, first_column:last_column, k
+                ] = fill_value
 
-            if len(predictor_matrices) > 1:
-                new_predictor_matrices = (
-                    [new_brightness_temp_matrix] + predictor_matrices[1:]
-                )
-            else:
-                new_predictor_matrices = [new_brightness_temp_matrix]
-
-            this_prob_array = neural_net.apply_model(
-                model_object=model_object,
-                predictor_matrices=new_predictor_matrices,
-                num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-                verbose=True
-            )
-            this_prob_array = numpy.squeeze(this_prob_array)
-
-            if len(this_prob_array.shape) == 1:
-                error_checking.assert_is_leq(target_class, 1)
-
-                if target_class == 1:
-                    occlusion_prob_matrix[:, i, j] = this_prob_array
+                if len(predictor_matrices) > 1:
+                    new_predictor_matrices = (
+                        [new_brightness_temp_matrix] + predictor_matrices[1:]
+                    )
                 else:
-                    occlusion_prob_matrix[:, i, j] = 1. - this_prob_array
-            else:
-                num_classes = this_prob_array.shape[1]
-                error_checking.assert_is_less_than(target_class, num_classes)
+                    new_predictor_matrices = [new_brightness_temp_matrix]
 
-                occlusion_prob_matrix[:, i, j] = (
-                    this_prob_array[:, target_class]
+                this_prob_array = neural_net.apply_model(
+                    model_object=model_object,
+                    predictor_matrices=new_predictor_matrices,
+                    num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
+                    verbose=True
                 )
+                this_prob_array = numpy.squeeze(this_prob_array)
+
+                if len(this_prob_array.shape) == 1:
+                    error_checking.assert_is_leq(target_class, 1)
+
+                    if target_class == 1:
+                        occlusion_prob_matrix[:, i, j, k] = this_prob_array
+                    else:
+                        occlusion_prob_matrix[:, i, j, k] = 1. - this_prob_array
+                else:
+                    num_classes = this_prob_array.shape[1]
+                    error_checking.assert_is_less_than(
+                        target_class, num_classes
+                    )
+
+                    occlusion_prob_matrix[:, i, j, k] = (
+                        this_prob_array[:, target_class]
+                    )
 
     if stride_length_px > 1:
         occlusion_prob_matrix_coarse = occlusion_prob_matrix + 0.
-        dimensions = (num_examples, num_grid_rows_orig, num_grid_columns_orig)
+
+        dimensions = (
+            num_examples, num_grid_rows_orig, num_grid_columns_orig,
+            num_lag_times
+        )
         occlusion_prob_matrix = numpy.full(dimensions, numpy.nan)
 
         for i in range(num_examples):
@@ -166,12 +178,14 @@ def get_occlusion_maps(
                     i, num_examples
                 ))
 
-            occlusion_prob_matrix[i, ...] = gradcam._upsample_cam(
-                class_activation_matrix=occlusion_prob_matrix_coarse[i, ...],
-                new_dimensions=numpy.array(
-                    [num_grid_rows_orig, num_grid_columns_orig], dtype=int
+            for k in range(num_lag_times):
+                occlusion_prob_matrix[i, ..., k] = gradcam._upsample_cam(
+                    class_activation_matrix=
+                    occlusion_prob_matrix_coarse[i, ..., k],
+                    new_dimensions=numpy.array(
+                        [num_grid_rows_orig, num_grid_columns_orig], dtype=int
+                    )
                 )
-            )
 
         occlusion_prob_matrix = numpy.maximum(occlusion_prob_matrix, 0.)
         occlusion_prob_matrix = numpy.minimum(occlusion_prob_matrix, 1.)
@@ -217,7 +231,7 @@ def normalize_occlusion_maps(occlusion_prob_matrix, original_probs):
     """
 
     error_checking.assert_is_numpy_array(
-        occlusion_prob_matrix, num_dimensions=3
+        occlusion_prob_matrix, num_dimensions=4
     )
     error_checking.assert_is_geq_numpy_array(occlusion_prob_matrix, 0.)
     error_checking.assert_is_leq_numpy_array(occlusion_prob_matrix, 1.)
@@ -257,13 +271,14 @@ def write_file(
     E = number of examples
     M = number of rows in brightness-temperature grid
     N = number of columns in brightness-temperature grid
+    L = number of lag times for brightness temperature
 
     :param netcdf_file_name: Path to output file.
-    :param occlusion_prob_matrix: E-by-M-by-N numpy array of predicted
+    :param occlusion_prob_matrix: E-by-M-by-N-by-L numpy array of predicted
         probabilities after occlusion.
-    :param normalized_occlusion_matrix: E-by-M-by-N numpy array of normalized
-        *decreases* in probability.  For more details, see output doc for
-        `normalize_occlusion_maps`.
+    :param normalized_occlusion_matrix: E-by-M-by-N-by-L numpy array of
+        normalized *decreases* in probability.  For more details, see output doc
+        for `normalize_occlusion_maps`.
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_times_unix_sec: length-E numpy array of forecast-init times.
     :param model_file_name: Path to file with neural net used to create
@@ -278,7 +293,7 @@ def write_file(
     error_checking.assert_is_geq_numpy_array(occlusion_prob_matrix, 0.)
     error_checking.assert_is_leq_numpy_array(occlusion_prob_matrix, 1.)
     error_checking.assert_is_numpy_array(
-        occlusion_prob_matrix, num_dimensions=3
+        occlusion_prob_matrix, num_dimensions=4
     )
 
     error_checking.assert_is_leq_numpy_array(normalized_occlusion_matrix, 1.)
@@ -323,9 +338,12 @@ def write_file(
 
     num_grid_rows = occlusion_prob_matrix.shape[1]
     num_grid_columns = occlusion_prob_matrix.shape[2]
+    num_lag_times = occlusion_prob_matrix.shape[3]
+
     dataset_object.createDimension(EXAMPLE_DIMENSION_KEY, num_examples)
     dataset_object.createDimension(GRID_ROW_DIMENSION_KEY, num_grid_rows)
     dataset_object.createDimension(GRID_COLUMN_DIMENSION_KEY, num_grid_columns)
+    dataset_object.createDimension(LAG_TIME_DIMENSION_KEY, num_lag_times)
 
     if num_examples == 0:
         num_id_characters = 1
@@ -356,7 +374,7 @@ def write_file(
 
     these_dim = (
         EXAMPLE_DIMENSION_KEY, GRID_ROW_DIMENSION_KEY,
-        GRID_COLUMN_DIMENSION_KEY
+        GRID_COLUMN_DIMENSION_KEY, LAG_TIME_DIMENSION_KEY
     )
     dataset_object.createVariable(
         OCCLUSION_PROBS_KEY, datatype=numpy.float32, dimensions=these_dim

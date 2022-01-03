@@ -100,7 +100,8 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _smooth_maps(occlusion_dict, smoothing_radius_px, plot_normalized_occlusion):
+def _smooth_maps(occlusion_dict, smoothing_radius_px,
+                 plot_normalized_occlusion):
     """Smooths occlusion maps via Gaussian filter.
 
     :param occlusion_dict: Dictionary returned by `occlusion.read_file`.
@@ -123,12 +124,16 @@ def _smooth_maps(occlusion_dict, smoothing_radius_px, plot_normalized_occlusion)
 
     occlusion_matrix = occlusion_dict[this_key]
     num_examples = occlusion_matrix.shape[0]
+    num_lag_times = occlusion_matrix.shape[3]
 
     for i in range(num_examples):
-        occlusion_matrix[i, ...] = gg_general_utils.apply_gaussian_filter(
-            input_matrix=occlusion_matrix[i, ...],
-            e_folding_radius_grid_cells=smoothing_radius_px
-        )
+        for k in range(num_lag_times):
+            occlusion_matrix[i, ..., k] = (
+                gg_general_utils.apply_gaussian_filter(
+                    input_matrix=occlusion_matrix[i, ..., k],
+                    e_folding_radius_grid_cells=smoothing_radius_px
+                )
+            )
 
     occlusion_dict[this_key] = occlusion_matrix
     return occlusion_dict
@@ -237,7 +242,7 @@ def _plot_occlusion_map_one_example(
         if plot_normalized_occlusion:
             min_contour_value, max_contour_value = (
                 satellite_plotting.plot_saliency(
-                    saliency_matrix=occlusion_matrix_one_example[0, ...],
+                    saliency_matrix=occlusion_matrix_one_example[0, ..., k],
                     axes_object=axes_objects[k],
                     latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
                     longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
@@ -249,8 +254,8 @@ def _plot_occlusion_map_one_example(
         else:
             min_contour_value, max_contour_value = (
                 satellite_plotting.plot_class_activation(
-                    class_activation_matrix=occlusion_matrix_one_example[
-                        0, ...],
+                    class_activation_matrix=
+                    occlusion_matrix_one_example[0, ..., k],
                     axes_object=axes_objects[k],
                     latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
                     longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
