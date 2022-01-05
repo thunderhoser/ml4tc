@@ -22,7 +22,7 @@ OPTION_DICT_GRIDDED_SAT = {
         [8, 8, 16, 16, 24, 24, 32, 32, 48, 48, 64, 64, 128, 128], dtype=int
     ),
     conv_lstm_architecture.DROPOUT_RATES_KEY: numpy.full(14, 0.),
-    conv_lstm_architecture.KEEP_TIME_DIMENSION_KEY: False,
+    conv_lstm_architecture.KEEP_TIME_DIMENSION_KEY: True,
     conv_lstm_architecture.ACTIVATION_FUNCTION_KEY:
         architecture_utils.RELU_FUNCTION_STRING,
     conv_lstm_architecture.ACTIVATION_FUNCTION_ALPHA_KEY: 0.2,
@@ -81,7 +81,7 @@ def _run():
     This is effectively the main method.
     """
 
-    file_system_utils.mkdir_recursive_if_necessary(file_name=OUTPUT_FILE_NAME)
+    # file_system_utils.mkdir_recursive_if_necessary(file_name=OUTPUT_FILE_NAME)
 
     model_object = conv_lstm_architecture.create_model(
         option_dict_gridded_sat=OPTION_DICT_GRIDDED_SAT,
