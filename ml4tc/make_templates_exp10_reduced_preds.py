@@ -64,7 +64,7 @@ BASE_OPTION_DICT_DENSE = {
 CHANNEL_COUNTS_ARRAY = [
     numpy.array([8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256], dtype=int),
     numpy.array([4, 4, 8, 8, 16, 16, 32, 32, 64, 64, 128, 128], dtype=int),
-    numpy.array([16, 16, 24, 24, 32, 32, 48, 48, 64, 64, 128, 128], dtype=int)
+    numpy.array([16, 16, 24, 24, 32, 32, 48, 48, 64, 64, 96, 96], dtype=int)
 ]
 
 LAG_TIME_COUNTS = numpy.linspace(1, 25, num=25, dtype=int)
