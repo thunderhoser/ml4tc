@@ -24,7 +24,7 @@ set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/m
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/imputed/normalized"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment11_reduced_preds"
 
-# set CHANNEL_COUNT_STRINGS=("002-002-004-004-006-006-008-008-012-012-016-016")
+# set CHANNEL_COUNT_STRINGS=("002-002-004-004-008-008-012-012-016-016")
 # set LAG_TIME_STRINGS_MINUTES=("0")
 # set LAG_TIME_COUNTS=(1)
 # set SATELLITE_TIME_TOLERANCES_SEC=(3630)
