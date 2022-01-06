@@ -71,6 +71,8 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --num_negative_examples_per_batch=24 \
 --max_examples_per_cyclone_in_batch=6 \
 --class_cutoffs_kt 30 \
+--num_grid_rows=270 \
+--num_grid_columns=382 \
 --num_epochs=1000 \
 --num_training_batches_per_epoch=32 \
 --num_validation_batches_per_epoch=16 \

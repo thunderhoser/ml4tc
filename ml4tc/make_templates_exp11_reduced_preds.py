@@ -97,7 +97,7 @@ def _run():
 
             option_dict_gridded_sat.update({
                 conv_lstm_architecture.INPUT_DIMENSIONS_KEY:
-                    numpy.array([380, 540, LAG_TIME_COUNTS[j], 1], dtype=int),
+                    numpy.array([270, 382, LAG_TIME_COUNTS[j], 1], dtype=int),
                 conv_lstm_architecture.NUM_CHANNELS_KEY:
                     CHANNEL_COUNTS_ARRAY[i]
             })

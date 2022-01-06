@@ -80,6 +80,8 @@ NUM_NEGATIVE_EXAMPLES_KEY = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_KEY = 'max_examples_per_cyclone_in_batch'
 PREDICT_TD_TO_TS_KEY = 'predict_td_to_ts'
 CLASS_CUTOFFS_KEY = 'class_cutoffs_m_s01'
+NUM_GRID_ROWS_KEY = 'num_grid_rows'
+NUM_GRID_COLUMNS_KEY = 'num_grid_columns'
 SATELLITE_TIME_TOLERANCE_KEY = 'satellite_time_tolerance_sec'
 SATELLITE_MAX_MISSING_TIMES_KEY = 'satellite_max_missing_times'
 SHIPS_TIME_TOLERANCE_KEY = 'ships_time_tolerance_sec'
@@ -135,6 +137,8 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     NUM_NEGATIVE_EXAMPLES_KEY: 24,
     MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
     CLASS_CUTOFFS_KEY: numpy.array([30 * KT_TO_METRES_PER_SECOND]),
+    NUM_GRID_ROWS_KEY: None,
+    NUM_GRID_COLUMNS_KEY: None,
     PREDICT_TD_TO_TS_KEY: False,
     DATA_AUG_NUM_TRANS_KEY: 0,
     DATA_AUG_MAX_TRANS_KEY: None,
@@ -767,7 +771,8 @@ def _read_non_predictors_one_file(
 
 
 def _read_brightness_temp_one_file(
-        example_table_xarray, table_rows_by_example, lag_times_sec):
+        example_table_xarray, table_rows_by_example, lag_times_sec,
+        num_grid_rows=None, num_grid_columns=None):
     """Reads brightness-temperature grids from one example file.
 
     E = number of examples
@@ -778,6 +783,9 @@ def _read_brightness_temp_one_file(
         None or a 1-D numpy array of indices to satellite times needed for the
         given example.  These are row indices into `example_table_xarray`.
     :param lag_times_sec: 1-D numpy array of lag times for model.
+    :param num_grid_rows: Number of rows to keep in grid.  If None, will keep
+        all rows.
+    :param num_grid_columns: Same but for columns.
     :return: brightness_temp_matrix: See output doc for
         `_read_one_example_file`.
     :return: grid_latitude_matrix_deg_n: Same.
@@ -788,24 +796,24 @@ def _read_brightness_temp_one_file(
 
     num_examples = len(table_rows_by_example)
     num_lag_times = len(lag_times_sec)
-    num_grid_rows = (
+    num_grid_rows_orig = (
         xt[example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY].values.shape[1]
     )
-    num_grid_columns = (
+    num_grid_columns_orig = (
         xt[example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY].values.shape[2]
     )
 
     these_dim = (
-        num_examples, num_grid_rows, num_grid_columns,
+        num_examples, num_grid_rows_orig, num_grid_columns_orig,
         num_lag_times, 1
     )
     brightness_temp_matrix = numpy.full(these_dim, numpy.nan)
 
     grid_latitude_matrix_deg_n = numpy.full(
-        (num_examples, num_grid_rows, num_lag_times), numpy.nan
+        (num_examples, num_grid_rows_orig, num_lag_times), numpy.nan
     )
     grid_longitude_matrix_deg_e = numpy.full(
-        (num_examples, num_grid_columns, num_lag_times), numpy.nan
+        (num_examples, num_grid_columns_orig, num_lag_times), numpy.nan
     )
 
     for i in range(num_examples):
@@ -813,10 +821,10 @@ def _read_brightness_temp_one_file(
             if table_rows_by_example[i] is None:
                 brightness_temp_matrix[i, ..., j, 0] = 0.
                 grid_latitude_matrix_deg_n[i, :, j] = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows]
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
                 )
                 grid_longitude_matrix_deg_e[i, :, j] = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns]
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
                 )
 
                 continue
@@ -825,10 +833,10 @@ def _read_brightness_temp_one_file(
 
             if k == MISSING_INDEX:
                 grid_latitude_matrix_deg_n[i, :, j] = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows]
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
                 )
                 grid_longitude_matrix_deg_e[i, :, j] = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns]
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
                 )
                 continue
 
@@ -854,10 +862,10 @@ def _read_brightness_temp_one_file(
                 )
             except:
                 these_latitudes_deg_n = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows] + 0.
+                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig] + 0.
                 )
                 these_longitudes_deg_e = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns] + 0.
+                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig] + 0.
                 )
 
             grid_latitude_matrix_deg_n[i, :, j] = these_latitudes_deg_n
@@ -866,6 +874,42 @@ def _read_brightness_temp_one_file(
             brightness_temp_matrix[i, ..., j, 0] = xt[
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
             ].values[k, ..., 0]
+
+    if num_grid_rows is not None:
+        error_checking.assert_is_less_than(num_grid_rows, num_grid_rows_orig)
+
+        first_index = int(numpy.round(
+            num_grid_rows_orig / 2 - num_grid_rows / 2
+        ))
+        last_index = int(numpy.round(
+            num_grid_rows_orig / 2 + num_grid_rows / 2
+        ))
+
+        brightness_temp_matrix = (
+            brightness_temp_matrix[:, first_index:last_index, ...]
+        )
+        grid_latitude_matrix_deg_n = (
+            grid_latitude_matrix_deg_n[:, first_index:last_index, ...]
+        )
+
+    if num_grid_columns is not None:
+        error_checking.assert_is_less_than(
+            num_grid_columns, num_grid_columns_orig
+        )
+
+        first_index = int(numpy.round(
+            num_grid_columns_orig / 2 - num_grid_columns / 2
+        ))
+        last_index = int(numpy.round(
+            num_grid_columns_orig / 2 + num_grid_columns / 2
+        ))
+
+        brightness_temp_matrix = (
+            brightness_temp_matrix[:, :, first_index:last_index, ...]
+        )
+        grid_longitude_matrix_deg_e = (
+            grid_longitude_matrix_deg_e[:, first_index:last_index, ...]
+        )
 
     brightness_temp_matrix = _interp_missing_times(
         data_matrix=brightness_temp_matrix, times_sec=-1 * lag_times_sec
@@ -1019,7 +1063,8 @@ def _read_one_example_file(
         ships_predictor_names_forecast, predict_td_to_ts,
         satellite_time_tolerance_sec, satellite_max_missing_times,
         ships_time_tolerance_sec, ships_max_missing_times,
-        use_climo_as_backup, class_cutoffs_m_s01=None):
+        use_climo_as_backup, class_cutoffs_m_s01=None, num_grid_rows=None,
+        num_grid_columns=None):
     """Reads one example file for generator.
 
     E = number of examples per batch
@@ -1051,6 +1096,8 @@ def _read_one_example_file(
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
     :param class_cutoffs_m_s01: Same.
+    :param num_grid_rows: Same.
+    :param num_grid_columns: Same.
 
     :return: data_dict: Dictionary with the following keys.
     data_dict['predictor_matrices']: 1-D list with one or more of the following
@@ -1129,7 +1176,8 @@ def _read_one_example_file(
         ) = _read_brightness_temp_one_file(
             example_table_xarray=xt,
             table_rows_by_example=satellite_rows_by_example,
-            lag_times_sec=satellite_lag_times_sec
+            lag_times_sec=satellite_lag_times_sec,
+            num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
         )
 
     if satellite_predictor_names is None:
@@ -1271,6 +1319,16 @@ def _check_generator_args(option_dict):
             numpy.diff(option_dict[CLASS_CUTOFFS_KEY]), 0.
         )
         assert numpy.all(numpy.isfinite(option_dict[CLASS_CUTOFFS_KEY]))
+
+    if option_dict[NUM_GRID_ROWS_KEY] is not None:
+        error_checking.assert_is_integer(option_dict[NUM_GRID_ROWS_KEY])
+        error_checking.assert_is_greater(option_dict[NUM_GRID_ROWS_KEY], 0)
+        assert numpy.mod(option_dict[NUM_GRID_ROWS_KEY], 2) == 0
+
+    if option_dict[NUM_GRID_COLUMNS_KEY] is not None:
+        error_checking.assert_is_integer(option_dict[NUM_GRID_COLUMNS_KEY])
+        error_checking.assert_is_greater(option_dict[NUM_GRID_COLUMNS_KEY], 0)
+        assert numpy.mod(option_dict[NUM_GRID_COLUMNS_KEY], 2) == 0
 
     error_checking.assert_is_integer(option_dict[SATELLITE_TIME_TOLERANCE_KEY])
     error_checking.assert_is_geq(option_dict[SATELLITE_TIME_TOLERANCE_KEY], 0)
@@ -1613,6 +1671,13 @@ def read_metafile(pickle_file_name):
         validation_option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
         validation_option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
 
+    if NUM_GRID_ROWS_KEY not in training_option_dict:
+        training_option_dict[NUM_GRID_ROWS_KEY] = None
+        training_option_dict[NUM_GRID_COLUMNS_KEY] = None
+
+        validation_option_dict[NUM_GRID_ROWS_KEY] = None
+        validation_option_dict[NUM_GRID_COLUMNS_KEY] = None
+
     training_option_dict[USE_CLIMO_KEY] = False
     validation_option_dict[USE_CLIMO_KEY] = True
 
@@ -1801,6 +1866,8 @@ def create_inputs(option_dict):
     option_dict['ships_max_missing_times']: Same.
     option_dict['use_climo_as_backup']: Same.
     option_dict['class_cutoffs_m_s01']: Same.
+    option_dict['num_grid_rows']: Same.
+    option_dict['num_grid_columns']: Same.
 
     :return: data_dict: See doc for `_read_one_example_file`.
     """
@@ -1827,6 +1894,8 @@ def create_inputs(option_dict):
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    num_grid_rows = option_dict[NUM_GRID_ROWS_KEY]
+    num_grid_columns = option_dict[NUM_GRID_COLUMNS_KEY]
 
     data_dict = _read_one_example_file(
         example_file_name=example_file_name,
@@ -1845,7 +1914,8 @@ def create_inputs(option_dict):
         ships_time_tolerance_sec=ships_time_tolerance_sec,
         ships_max_missing_times=ships_max_missing_times,
         use_climo_as_backup=use_climo_as_backup,
-        class_cutoffs_m_s01=class_cutoffs_m_s01
+        class_cutoffs_m_s01=class_cutoffs_m_s01,
+        num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
     )
 
     data_dict[PREDICTOR_MATRICES_KEY] = [
@@ -1908,6 +1978,9 @@ def input_generator(option_dict):
     option_dict['class_cutoffs_m_s01']:
         [used only if `predict_td_to_ts == False`]
         numpy array (length K - 1) of class cutoffs.
+    option_dict['num_grid_rows']: Number of rows to keep in brightness-
+        temperature grid.  If you want to keep all rows, make this None.
+    option_dict['num_grid_columns']: Same but for columns.
     option_dict['data_aug_num_translations']: Number of translations per example
         for data augmentation.  You can make this 0.
     option_dict['data_aug_max_translation_px']: Max translation (pixels) for
@@ -1951,6 +2024,8 @@ def input_generator(option_dict):
     ships_max_missing_times = option_dict[SHIPS_MAX_MISSING_TIMES_KEY]
     use_climo_as_backup = option_dict[USE_CLIMO_KEY]
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
+    num_grid_rows = option_dict[NUM_GRID_ROWS_KEY]
+    num_grid_columns = option_dict[NUM_GRID_COLUMNS_KEY]
     data_aug_num_translations = option_dict[DATA_AUG_NUM_TRANS_KEY]
     data_aug_max_translation_px = option_dict[DATA_AUG_MAX_TRANS_KEY]
     data_aug_num_rotations = option_dict[DATA_AUG_NUM_ROTATIONS_KEY]
@@ -2039,7 +2114,8 @@ def input_generator(option_dict):
                 ships_time_tolerance_sec=ships_time_tolerance_sec,
                 ships_max_missing_times=ships_max_missing_times,
                 use_climo_as_backup=use_climo_as_backup,
-                class_cutoffs_m_s01=class_cutoffs_m_s01
+                class_cutoffs_m_s01=class_cutoffs_m_s01,
+                num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
             )
 
             these_predictor_matrices = [
