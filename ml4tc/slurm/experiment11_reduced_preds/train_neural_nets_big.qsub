@@ -67,9 +67,9 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --ships_max_missing_times_training=1 \
 --satellite_time_tolerance_validation_sec=${satellite_time_tolerance_string_sec} \
 --ships_time_tolerance_validation_sec=21610 \
---num_positive_examples_per_batch=4 \
---num_negative_examples_per_batch=8 \
---max_examples_per_cyclone_in_batch=2 \
+--num_positive_examples_per_batch=2 \
+--num_negative_examples_per_batch=6 \
+--max_examples_per_cyclone_in_batch=1 \
 --class_cutoffs_kt 30 \
 --num_grid_rows=190 \
 --num_grid_columns=270 \
