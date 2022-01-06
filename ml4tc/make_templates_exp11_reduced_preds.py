@@ -19,11 +19,11 @@ import conv_lstm_architecture
 BASE_OPTION_DICT_GRIDDED_SAT = {
     # conv_lstm_architecture.INPUT_DIMENSIONS_KEY:
     #     numpy.array([380, 540, 4, 1], dtype=int),
-    conv_lstm_architecture.NUM_LAYERS_BY_BLOCK_KEY: numpy.full(6, 2, dtype=int),
+    conv_lstm_architecture.NUM_LAYERS_BY_BLOCK_KEY: numpy.full(5, 2, dtype=int),
     # conv_lstm_architecture.NUM_CHANNELS_KEY: numpy.array(
     #     [8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256], dtype=int
     # ),
-    conv_lstm_architecture.DROPOUT_RATES_KEY: numpy.full(12, 0.),
+    conv_lstm_architecture.DROPOUT_RATES_KEY: numpy.full(10, 0.),
     conv_lstm_architecture.KEEP_TIME_DIMENSION_KEY: True,
     conv_lstm_architecture.ACTIVATION_FUNCTION_KEY:
         architecture_utils.RELU_FUNCTION_STRING,
@@ -97,7 +97,7 @@ def _run():
 
             option_dict_gridded_sat.update({
                 conv_lstm_architecture.INPUT_DIMENSIONS_KEY:
-                    numpy.array([270, 382, LAG_TIME_COUNTS[j], 1], dtype=int),
+                    numpy.array([190, 270, LAG_TIME_COUNTS[j], 1], dtype=int),
                 conv_lstm_architecture.NUM_CHANNELS_KEY:
                     CHANNEL_COUNTS_ARRAY[i]
             })
