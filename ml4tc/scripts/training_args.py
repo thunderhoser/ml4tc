@@ -33,6 +33,8 @@ NUM_POSITIVE_EXAMPLES_ARG_NAME = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_ARG_NAME = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_ARG_NAME = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_ARG_NAME = 'class_cutoffs_kt'
+NUM_ROWS_ARG_NAME = 'num_grid_rows'
+NUM_COLUMNS_ARG_NAME = 'num_grid_columns'
 PREDICT_TD_TO_TS_ARG_NAME = 'predict_td_to_ts'
 DATA_AUG_NUM_TRANS_ARG_NAME = 'data_aug_num_translations'
 DATA_AUG_MAX_TRANS_ARG_NAME = 'data_aug_max_translation_px'
@@ -130,6 +132,14 @@ PREDICT_TD_TO_TS_HELP_STRING = (
 CLASS_CUTOFFS_HELP_STRING = (
     'List of class cutoffs (intensification in knots).  List must have length '
     'K - 1, where K = number of classes.'
+)
+NUM_ROWS_HELP_STRING = (
+    'Number of rows to keep in brightness-temperature grid.  If you want to '
+    'keep all rows, leave this alone.'
+)
+NUM_COLUMNS_HELP_STRING = (
+    'Number of columns to keep in brightness-temperature grid.  If you want to '
+    'keep all columns, leave this alone.'
 )
 DATA_AUG_NUM_TRANS_HELP_STRING = (
     'Number of translations per example for data augmentation.  You can make '
@@ -289,6 +299,14 @@ def add_input_args(parser_object):
     parser_object.add_argument(
         '--' + CLASS_CUTOFFS_ARG_NAME, type=float, nargs='+', required=False,
         default=[30], help=CLASS_CUTOFFS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + NUM_ROWS_ARG_NAME, type=int, required=False, default=-1,
+        help=NUM_ROWS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + NUM_COLUMNS_ARG_NAME, type=int, required=False, default=-1,
+        help=NUM_COLUMNS_HELP_STRING
     )
     parser_object.add_argument(
         '--' + NUM_EPOCHS_ARG_NAME, type=int, required=False, default=1000,

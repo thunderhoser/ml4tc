@@ -23,7 +23,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          ships_time_tolerance_validation_sec,
          num_positive_examples_per_batch,
          num_negative_examples_per_batch, max_examples_per_cyclone_in_batch,
-         predict_td_to_ts, class_cutoffs_kt,
+         predict_td_to_ts, class_cutoffs_kt, num_grid_rows, num_grid_columns,
          data_aug_num_translations, data_aug_max_translation_px,
          data_aug_num_rotations, data_aug_max_rotation_deg,
          data_aug_num_noisings, data_aug_noise_stdev, num_epochs,
@@ -56,6 +56,8 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param max_examples_per_cyclone_in_batch: Same.
     :param predict_td_to_ts: Same.
     :param class_cutoffs_kt: Same.
+    :param num_grid_rows: Same.
+    :param num_grid_columns: Same.
     :param data_aug_num_translations: Same.
     :param data_aug_max_translation_px: Same.
     :param data_aug_num_rotations: Same.
@@ -112,6 +114,8 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.PREDICT_TD_TO_TS_KEY: predict_td_to_ts,
         neural_net.CLASS_CUTOFFS_KEY:
             class_cutoffs_kt * KT_TO_METRES_PER_SECOND,
+        neural_net.NUM_GRID_ROWS_KEY: num_grid_rows,
+        neural_net.NUM_GRID_COLUMNS_KEY: num_grid_columns,
         neural_net.SATELLITE_TIME_TOLERANCE_KEY:
             satellite_time_tolerance_training_sec,
         neural_net.SATELLITE_MAX_MISSING_TIMES_KEY:
@@ -235,6 +239,12 @@ if __name__ == '__main__':
         class_cutoffs_kt=numpy.array(
             getattr(INPUT_ARG_OBJECT, training_args.CLASS_CUTOFFS_ARG_NAME),
             dtype=float
+        ),
+        num_grid_rows=getattr(
+            INPUT_ARG_OBJECT, training_args.NUM_ROWS_ARG_NAME
+        ),
+        num_grid_columns=getattr(
+            INPUT_ARG_OBJECT, training_args.NUM_COLUMNS_ARG_NAME
         ),
         data_aug_num_translations=getattr(
             INPUT_ARG_OBJECT, training_args.DATA_AUG_NUM_TRANS_ARG_NAME
