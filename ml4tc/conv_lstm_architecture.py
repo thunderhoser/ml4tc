@@ -222,8 +222,7 @@ def _create_layers_gridded_sat(option_dict):
 
     num_blocks = len(num_layers_by_block)
     num_layers = numpy.sum(num_layers_by_block)
-    error_checking.assert_is_geq(num_blocks, 6)
-    error_checking.assert_is_leq(num_blocks, 7)
+    error_checking.assert_is_geq(num_blocks, 2)
 
     error_checking.assert_is_numpy_array(
         num_channels_by_layer,
