@@ -43,5 +43,5 @@ python3 -u "${CODE_DIR_NAME}/plot_saliency_maps.py" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
 --plot_input_times_grad=0 \
---smoothing_radius_px=0 \
+--smoothing_radius_px=2 \
 --output_dir_name="${output_dir_name}"
