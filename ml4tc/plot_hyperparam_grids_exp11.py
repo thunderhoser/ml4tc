@@ -64,7 +64,7 @@ LAG_TIME_STRINGS_MINUTES = [
     '0-240', '0-240-480', '0-240-480-720'
 ]
 
-FIRST_LAYER_CHANNEL_COUNTS = numpy.array([4, 8, 12], dtype=int)
+LAST_LAYER_CHANNEL_COUNTS = numpy.array([16, 24, 48, 64], dtype=int)
 LAG_TIME_STRINGS_HOURS = [
     '0', '0, 0.5', '0, 0.5, 1', '0, 0.5, ..., 1.5', '0, 0.5, ..., 2',
     '0, 0.5, ..., 2.5', '0, 0.5, ..., 3', '0, 0.5, ..., 3.5', '0, 0.5, ..., 4',
@@ -208,7 +208,7 @@ def _plot_scores_2d(
 def _print_ranking_one_score(score_matrix, score_name):
     """Prints ranking for one score.
     
-    C = number of first-layer channel counts
+    C = number of last-layer channel counts
     L = number of lag-time sets
 
     :param score_matrix: C-by-L numpy array of scores.
@@ -228,11 +228,11 @@ def _print_ranking_one_score(score_matrix, score_name):
         j = j_sort_indices[k]
 
         print((
-            '{0:d}th-highest {1:s} = {2:.4g} ... num first-layer filters = '
+            '{0:d}th-highest {1:s} = {2:.4g} ... num last-layer filters = '
             '{3:d} ... lag times = {4:s} h'
         ).format(
             k + 1, score_name, score_matrix[i, j],
-            FIRST_LAYER_CHANNEL_COUNTS[i], LAG_TIME_STRINGS_HOURS[j]
+            LAST_LAYER_CHANNEL_COUNTS[i], LAG_TIME_STRINGS_HOURS[j]
         ))
 
 
@@ -354,7 +354,7 @@ def _run(experiment_dir_name, output_dir_name):
         directory_name=output_dir_name
     )
 
-    num_channel_counts = len(FIRST_LAYER_CHANNEL_COUNTS)
+    num_channel_counts = len(LAST_LAYER_CHANNEL_COUNTS)
     num_lag_time_sets = len(LAG_TIME_STRINGS_HOURS)
     dimensions = (num_channel_counts, num_lag_time_sets)
 
@@ -364,9 +364,9 @@ def _run(experiment_dir_name, output_dir_name):
     csi_matrix = numpy.full(dimensions, numpy.nan)
     frequency_bias_matrix = numpy.full(dimensions, numpy.nan)
 
-    y_tick_labels = ['{0:d}'.format(n) for n in FIRST_LAYER_CHANNEL_COUNTS]
+    y_tick_labels = ['{0:d}'.format(n) for n in LAST_LAYER_CHANNEL_COUNTS]
     x_tick_labels = ['{0:s}'.format(s) for s in LAG_TIME_STRINGS_HOURS]
-    y_axis_label = 'Num first-layer filters'
+    y_axis_label = 'Num last-layer filters'
     x_axis_label = 'Lag times (hours)'
 
     for i in range(num_channel_counts):
