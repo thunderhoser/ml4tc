@@ -14,6 +14,8 @@ import file_system_utils
 import error_checking
 import gg_saliency_maps as saliency_utils
 
+NUM_EXAMPLES_PER_BATCH = 16
+
 EXAMPLE_DIMENSION_KEY = 'example'
 CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_char'
 GRID_ROW_DIMENSION_KEY = 'grid_row'
@@ -121,12 +123,33 @@ def get_saliency_one_neuron(
 
     loss_tensor = (activation_tensor - ideal_activation) ** 2
 
-    saliency_matrices = saliency_utils.do_saliency_calculations(
-        model_object=model_object, loss_tensor=loss_tensor,
-        list_of_input_matrices=[
-            three_predictor_matrices[k] for k in have_predictors_indices
-        ]
-    )
+    num_examples = three_predictor_matrices[have_predictors_indices[0]].shape[0]
+    saliency_matrices = [None] * len(have_predictors_indices)
+
+    for i in range(0, num_examples, NUM_EXAMPLES_PER_BATCH):
+        first_index = i
+        last_index = min([
+            i + NUM_EXAMPLES_PER_BATCH - 1, num_examples
+        ])
+
+        these_matrices = saliency_utils.do_saliency_calculations(
+            model_object=model_object, loss_tensor=loss_tensor,
+            list_of_input_matrices=[
+                three_predictor_matrices[k][first_index:last_index, ...]
+                for k in have_predictors_indices
+            ]
+        )
+
+        for j in range(len(have_predictors_indices)):
+            if saliency_matrices[j] is None:
+                these_dim = numpy.array(
+                    (num_examples,) + these_matrices[j].shape[1:], dtype=int
+                )
+                saliency_matrices[j] = numpy.full(these_dim, numpy.nan)
+
+            saliency_matrices[j][first_index:last_index, ...] = (
+                these_matrices[j]
+            )
 
     three_saliency_matrices = [None] * 3
     for i, j in enumerate(have_predictors_indices):
