@@ -154,6 +154,7 @@ def get_saliency_one_neuron(
             saliency_matrices[j][first_index:last_index, ...] = (
                 these_matrices[j]
             )
+            print(numpy.any(numpy.isnan(these_matrices[j])))
 
     three_saliency_matrices = [None] * 3
     for i, j in enumerate(have_predictors_indices):

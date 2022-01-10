@@ -205,9 +205,6 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
                     target_layer_activation_matrix[j, ..., k]
                 )
 
-    print(class_activation_matrix.shape)
-    print(predictor_matrices_one_example[0].shape)
-
     class_activation_matrix = _upsample_cam(
         class_activation_matrix=class_activation_matrix,
         new_dimensions=numpy.array(
