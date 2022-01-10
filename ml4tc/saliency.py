@@ -129,7 +129,7 @@ def get_saliency_one_neuron(
     for i in range(0, num_examples, NUM_EXAMPLES_PER_BATCH):
         first_index = i
         last_index = min([
-            i + NUM_EXAMPLES_PER_BATCH - 1, num_examples
+            i + NUM_EXAMPLES_PER_BATCH, num_examples
         ])
 
         print('Computing saliency for examples {0:d}-{1:d} of {2:d}...'.format(
@@ -154,7 +154,6 @@ def get_saliency_one_neuron(
             saliency_matrices[j][first_index:last_index, ...] = (
                 these_matrices[j]
             )
-            print(numpy.any(numpy.isnan(these_matrices[j])))
 
     three_saliency_matrices = [None] * 3
     for i, j in enumerate(have_predictors_indices):
