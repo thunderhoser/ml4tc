@@ -181,13 +181,16 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
     target_layer_activation_matrix = target_layer_activation_matrix[0, ...]
     gradient_matrix = gradient_matrix[0, ...]
 
-    print(target_layer_activation_matrix.shape)
-    print(gradient_matrix.shape)
+    num_axes = len(gradient_matrix.shape)
+    axes_to_average_over = numpy.linspace(
+        0, num_axes - 2, num=num_axes - 1, dtype=int
+    )
+    axes_to_average_over = tuple(axes_to_average_over.tolist())
 
     # Compute class-activation map.
-    mean_weight_by_filter = numpy.mean(gradient_matrix, axis=(0, 1))
-    print(mean_weight_by_filter.shape)
-
+    mean_weight_by_filter = numpy.mean(
+        gradient_matrix, axis=axes_to_average_over
+    )
     class_activation_matrix = numpy.full(
         target_layer_activation_matrix.shape[:-1], 0.
     )

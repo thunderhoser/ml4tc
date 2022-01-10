@@ -14,7 +14,7 @@ import file_system_utils
 import error_checking
 import gg_saliency_maps as saliency_utils
 
-NUM_EXAMPLES_PER_BATCH = 16
+NUM_EXAMPLES_PER_BATCH = 8
 
 EXAMPLE_DIMENSION_KEY = 'example'
 CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_char'
