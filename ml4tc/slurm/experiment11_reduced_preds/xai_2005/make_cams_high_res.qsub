@@ -42,5 +42,5 @@ python3 -u "${CODE_DIR_NAME}/make_class_activation_maps.py" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings ${cyclone_id_string} \
 --target_class=1 \
---target_layer_name="batch_normalization_1" \
+--target_layer_name="batch_normalization_161" \
 --output_file_name="${output_file_name}"
