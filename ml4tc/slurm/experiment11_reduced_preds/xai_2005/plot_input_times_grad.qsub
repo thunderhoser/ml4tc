@@ -25,20 +25,11 @@ set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/l
 set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/normalization_params_1993-2004_2015-2019.nc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment11_reduced_preds"
 
-# set CHANNEL_COUNT_STRINGS=("002-002-004-004-008-008-012-012-016-016")
-# set LAG_TIME_STRINGS_MINUTES=("0")
-# set LAG_TIME_COUNTS=(1)
-# set SATELLITE_TIME_TOLERANCES_SEC=(3630)
-# set SATELLITE_MAX_MISSING_TIME_COUNTS=(0)
+set CHANNEL_COUNT_STRINGS=("004-004-008-008-012-012-016-016-024-024")
+set LAG_TIME_STRINGS_MINUTES=("0-30-60-90-120-150-180-210-240-270-300")
 
 set channel_count_string=${CHANNEL_COUNT_STRINGS[1]}
 set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[1]}
-set lag_time_count=${LAG_TIME_COUNTS[1]}
-set satellite_time_tolerance_sec=${SATELLITE_TIME_TOLERANCES_SEC[1]}
-set satellite_max_missing_times=${SATELLITE_MAX_MISSING_TIME_COUNTS[1]}
-
-set lag_time_count_string=`printf "%02d" $lag_time_count`
-set satellite_time_tolerance_string_sec=`printf "%05d" $satellite_time_tolerance_sec`
 
 set CYCLONE_ID_STRINGS=("2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "2005AL06" "2005AL07" "2005AL08" "2005AL09" "2005AL10" "2005AL11" "2005AL12" "2005AL13" "2005AL14" "2005AL15" "2005AL16" "2005AL17" "2005AL18" "2005AL21" "2005AL22" "2005AL23" "2005AL24" "2005AL26" "2005AL27" "2005AL28" "2005AL29" "2005AL30" "2005AL31" "2005CP01" "2005EP01" "2005EP02" "2005EP03" "2005EP04" "2005EP05" "2005EP06" "2005EP07" "2005EP08" "2005EP09" "2005EP10" "2005EP11" "2005EP12" "2005EP13" "2005EP14" "2005EP15" "2005EP16" "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24")
 set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
@@ -52,5 +43,5 @@ python3 -u "${CODE_DIR_NAME}/plot_saliency_maps.py" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
 --plot_input_times_grad=1 \
---smoothing_radius_px=0 \
+--smoothing_radius_px=2 \
 --output_dir_name="${output_dir_name}"

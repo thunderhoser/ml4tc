@@ -23,20 +23,11 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment11_reduced_preds"
 
-# set CHANNEL_COUNT_STRINGS=("002-002-004-004-008-008-012-012-016-016")
-# set LAG_TIME_STRINGS_MINUTES=("0")
-# set LAG_TIME_COUNTS=(1)
-# set SATELLITE_TIME_TOLERANCES_SEC=(3630)
-# set SATELLITE_MAX_MISSING_TIME_COUNTS=(0)
+set CHANNEL_COUNT_STRINGS=("004-004-008-008-012-012-016-016-024-024")
+set LAG_TIME_STRINGS_MINUTES=("0-30-60-90-120-150-180-210-240-270-300")
 
 set channel_count_string=${CHANNEL_COUNT_STRINGS[$SLURM_ARRAY_TASK_ID]}
 set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[$SLURM_ARRAY_TASK_ID]}
-set lag_time_count=${LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
-set satellite_time_tolerance_sec=${SATELLITE_TIME_TOLERANCES_SEC[$SLURM_ARRAY_TASK_ID]}
-set satellite_max_missing_times=${SATELLITE_MAX_MISSING_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
-
-set lag_time_count_string=`printf "%02d" $lag_time_count`
-set satellite_time_tolerance_string_sec=`printf "%05d" $satellite_time_tolerance_sec`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/channels=${channel_count_string}_lag-times-minutes=${lag_time_string_minutes}"
 set evaluation_dir_name="${model_dir_name}/validation_2005-2009"
