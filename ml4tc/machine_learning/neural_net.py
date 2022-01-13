@@ -1289,9 +1289,9 @@ def _check_generator_args(option_dict):
         )
 
     error_checking.assert_is_integer(option_dict[NUM_POSITIVE_EXAMPLES_KEY])
-    error_checking.assert_is_geq(option_dict[NUM_POSITIVE_EXAMPLES_KEY], 4)
+    error_checking.assert_is_geq(option_dict[NUM_POSITIVE_EXAMPLES_KEY], 1)
     error_checking.assert_is_integer(option_dict[NUM_NEGATIVE_EXAMPLES_KEY])
-    error_checking.assert_is_geq(option_dict[NUM_NEGATIVE_EXAMPLES_KEY], 4)
+    error_checking.assert_is_geq(option_dict[NUM_NEGATIVE_EXAMPLES_KEY], 1)
     error_checking.assert_is_integer(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY])
     error_checking.assert_is_geq(option_dict[MAX_EXAMPLES_PER_CYCLONE_KEY], 1)
     error_checking.assert_is_greater(

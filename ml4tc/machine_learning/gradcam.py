@@ -174,16 +174,28 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
     gradient_matrix = gradient_matrix[0, ...]
 
     # Compute class-activation map.
-    mean_weight_by_filter = numpy.mean(gradient_matrix, axis=(0, 1))
-    class_activation_matrix = numpy.full(
-        target_layer_activation_matrix.shape[:-1], 0.
-    )
-    num_filters = len(mean_weight_by_filter)
+    num_rows = gradient_matrix.shape[-3]
+    num_columns = gradient_matrix.shape[-2]
+    class_activation_matrix = numpy.full((num_rows, num_columns), 0.)
 
-    for k in range(num_filters):
-        class_activation_matrix += (
-            mean_weight_by_filter[k] * target_layer_activation_matrix[..., k]
-        )
+    spatial_mean_weight_matrix = numpy.mean(gradient_matrix, axis=(-3, -2))
+    num_filters = spatial_mean_weight_matrix.shape[-1]
+
+    if len(spatial_mean_weight_matrix.shape) == 1:
+        for k in range(num_filters):
+            class_activation_matrix += (
+                spatial_mean_weight_matrix[k] *
+                target_layer_activation_matrix[..., k]
+            )
+    else:
+        num_lag_times = spatial_mean_weight_matrix.shape[0]
+
+        for j in range(num_lag_times):
+            for k in range(num_filters):
+                class_activation_matrix += (
+                    spatial_mean_weight_matrix[j, k] *
+                    target_layer_activation_matrix[j, ..., k]
+                )
 
     class_activation_matrix = _upsample_cam(
         class_activation_matrix=class_activation_matrix,
