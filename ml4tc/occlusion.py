@@ -304,6 +304,12 @@ def normalize_occlusion_maps(occlusion_prob_matrices, original_probs):
         if this_matrix is None:
             continue
 
+        print('Number of NaN entries = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(this_matrix)), this_matrix.size))
+
+    for this_matrix in occlusion_prob_matrices:
+        if this_matrix is None:
+            continue
+
         num_examples = this_matrix.shape[0]
         error_checking.assert_is_geq_numpy_array(this_matrix, 0.)
         error_checking.assert_is_leq_numpy_array(this_matrix, 1.)

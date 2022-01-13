@@ -2,7 +2,6 @@
 
 import os
 import sys
-import copy
 import argparse
 import numpy
 import matplotlib
@@ -15,18 +14,13 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import gg_general_utils
-import time_conversion
 import file_system_utils
 import imagemagick_utils
-import example_io
-import border_io
 import normalization
 import saliency
 import neural_net
 import plotting_utils
-import ships_plotting
 import satellite_plotting
-import scalar_satellite_plotting
 import predictor_plotting
 
 MAX_COLOUR_PERCENTILE = 99.
