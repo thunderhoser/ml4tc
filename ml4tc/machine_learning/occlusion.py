@@ -90,9 +90,11 @@ def get_occlusion_maps(
         float(num_grid_columns_orig) / stride_length_px
     ))
 
-    occlusion_prob_matrices = [
-        numpy.full(predictor_matrices[0].shape, numpy.nan)
-    ]
+    dimensions = (
+        num_examples, num_grid_rows_occluded, num_grid_columns_occluded,
+        num_lag_times, 1
+    )
+    occlusion_prob_matrices = [numpy.full(dimensions, numpy.nan)]
 
     for i in range(num_grid_rows_occluded):
         orig_row_index = min([

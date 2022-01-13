@@ -16,7 +16,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          lead_time_hours, satellite_lag_times_minutes, ships_lag_times_hours,
          satellite_predictor_names,
          ships_predictor_names_lagged, ships_predictor_names_forecast,
-         satellite_time_tolerance_training_sec,
+         ships_max_forecast_hour, satellite_time_tolerance_training_sec,
          satellite_max_missing_times_training,
          ships_time_tolerance_training_sec, ships_max_missing_times_training,
          satellite_time_tolerance_validation_sec,
@@ -45,6 +45,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param satellite_predictor_names: Same.
     :param ships_predictor_names_lagged: Same.
     :param ships_predictor_names_forecast: Same.
+    :param ships_max_forecast_hour: Same.
     :param satellite_time_tolerance_training_sec: Same.
     :param satellite_max_missing_times_training: Same.
     :param ships_time_tolerance_training_sec: Same.
@@ -107,6 +108,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_predictor_names_lagged,
         neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
             ships_predictor_names_forecast,
+        neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: ships_max_forecast_hour,
         neural_net.NUM_POSITIVE_EXAMPLES_KEY: num_positive_examples_per_batch,
         neural_net.NUM_NEGATIVE_EXAMPLES_KEY: num_negative_examples_per_batch,
         neural_net.MAX_EXAMPLES_PER_CYCLONE_KEY:
@@ -202,6 +204,9 @@ if __name__ == '__main__':
         ),
         ships_predictor_names_forecast=getattr(
             INPUT_ARG_OBJECT, training_args.SHIPS_PREDICTORS_FORECAST_ARG_NAME
+        ),
+        ships_max_forecast_hour=getattr(
+            INPUT_ARG_OBJECT, training_args.SHIPS_MAX_FORECAST_HOUR_ARG_NAME
         ),
         satellite_time_tolerance_training_sec=getattr(
             INPUT_ARG_OBJECT, training_args.TRAINING_SAT_TIME_TOLERANCE_ARG_NAME

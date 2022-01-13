@@ -1,28 +1,21 @@
 """Plots composite saliency map."""
 
-import copy
 import argparse
 import numpy
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import general_utils as gg_general_utils
-from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.plotting import imagemagick_utils
-from ml4tc.io import example_io
-from ml4tc.io import border_io
 from ml4tc.utils import normalization
 from ml4tc.machine_learning import saliency
 from ml4tc.machine_learning import neural_net
 from ml4tc.plotting import plotting_utils
-from ml4tc.plotting import ships_plotting
 from ml4tc.plotting import satellite_plotting
-from ml4tc.plotting import scalar_satellite_plotting
 from ml4tc.plotting import predictor_plotting
 
 MAX_COLOUR_PERCENTILE = 99.
-SHIPS_FORECAST_HOURS = numpy.array([0], dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12

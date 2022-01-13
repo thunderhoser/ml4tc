@@ -25,7 +25,6 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 MAX_COLOUR_PERCENTILE = 99.
-SHIPS_FORECAST_HOURS = numpy.array([0], dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
@@ -454,17 +453,6 @@ def _plot_lagged_ships_saliency(
         for s in saliency_dict[this_key]
     ]
 
-    figure_objects, axes_objects, pathless_output_file_names = (
-        predictor_plotting.plot_lagged_ships_one_example(
-            predictor_matrices_one_example=predictor_matrices_one_example,
-            model_metadata_dict=model_metadata_dict,
-            cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-            forecast_hours=SHIPS_FORECAST_HOURS,
-            init_time_unix_sec=init_time_unix_sec
-        )
-    )
-
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
@@ -482,12 +470,31 @@ def _plot_lagged_ships_saliency(
         0 if forecast_predictor_names is None else len(forecast_predictor_names)
     )
 
+    max_forecast_hour = (
+        validation_option_dict[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+    )
+    forecast_hours = numpy.linspace(
+        0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
+        dtype=int
+    )
+
+    figure_objects, axes_objects, pathless_output_file_names = (
+        predictor_plotting.plot_lagged_ships_one_example(
+            predictor_matrices_one_example=predictor_matrices_one_example,
+            model_metadata_dict=model_metadata_dict,
+            cyclone_id_string=cyclone_id_string,
+            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+            forecast_hours=forecast_hours,
+            init_time_unix_sec=init_time_unix_sec
+        )
+    )
+
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
         predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(SHIPS_BUILTIN_LAG_TIMES_HOURS),
         num_forecast_predictors=num_forecast_predictors,
-        num_forecast_hours=len(SHIPS_FORECAST_HOURS)
+        num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
 
     all_saliency_values = numpy.concatenate([
@@ -602,17 +609,6 @@ def _plot_forecast_ships_saliency(
         for s in saliency_dict[this_key]
     ]
 
-    figure_objects, axes_objects, pathless_output_file_names = (
-        predictor_plotting.plot_forecast_ships_one_example(
-            predictor_matrices_one_example=predictor_matrices_one_example,
-            model_metadata_dict=model_metadata_dict,
-            cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-            forecast_hours=SHIPS_FORECAST_HOURS,
-            init_time_unix_sec=init_time_unix_sec
-        )
-    )
-
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
@@ -630,12 +626,31 @@ def _plot_forecast_ships_saliency(
         0 if lagged_predictor_names is None else len(lagged_predictor_names)
     )
 
+    max_forecast_hour = (
+        validation_option_dict[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+    )
+    forecast_hours = numpy.linspace(
+        0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
+        dtype=int
+    )
+
+    figure_objects, axes_objects, pathless_output_file_names = (
+        predictor_plotting.plot_forecast_ships_one_example(
+            predictor_matrices_one_example=predictor_matrices_one_example,
+            model_metadata_dict=model_metadata_dict,
+            cyclone_id_string=cyclone_id_string,
+            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+            forecast_hours=forecast_hours,
+            init_time_unix_sec=init_time_unix_sec
+        )
+    )
+
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
         predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(SHIPS_BUILTIN_LAG_TIMES_HOURS),
         num_forecast_predictors=num_forecast_predictors,
-        num_forecast_hours=len(SHIPS_FORECAST_HOURS)
+        num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
     all_saliency_values = numpy.concatenate([

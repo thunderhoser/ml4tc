@@ -12,7 +12,6 @@ from ml4tc.machine_learning import neural_net
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 NUM_BUILTIN_SHIPS_LAG_TIMES = 4
-NUM_SHIPS_FORECAST_HOURS = 1
 DEFAULT_NUM_BOOTSTRAP_REPS = 1000
 
 THREE_PREDICTOR_MATRICES_KEY = 'three_predictor_matrices'
@@ -161,13 +160,15 @@ def _permute_values(
             t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
         )
 
+    max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
             predictor_matrix_3d=predictor_matrix,
             num_lagged_predictors=num_lagged_predictors,
             num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
             num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
+            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )
     )
 
@@ -266,13 +267,15 @@ def _depermute_values(
             t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
         )
 
+    max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
             predictor_matrix_3d=predictor_matrix,
             num_lagged_predictors=num_lagged_predictors,
             num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
             num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
+            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )
     )
 
@@ -282,7 +285,7 @@ def _depermute_values(
             num_lagged_predictors=num_lagged_predictors,
             num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
             num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
+            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )
     )
 

@@ -27,8 +27,6 @@ TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 HOURS_TO_SECONDS = 3600
 METRES_PER_SECOND_TO_KT = 3.6 / 1.852
-# SHIPS_FORECAST_HOURS = numpy.linspace(-12, 120, num=23, dtype=int)
-SHIPS_FORECAST_HOURS = numpy.array([0], dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 TITLE_FONT_SIZE = 16
@@ -644,13 +642,21 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
 
+            max_forecast_hour = (
+                v[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+            )
+            forecast_hours = numpy.linspace(
+                0, max_forecast_hour,
+                num=int(numpy.round(max_forecast_hour / 6)) + 1, dtype=int
+            )
+
             figure_objects, axes_objects, pathless_panel_file_names = (
                 predictor_plotting.plot_lagged_ships_one_example(
                     predictor_matrices_one_example=these_predictor_matrices,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=cyclone_id_string,
                     builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-                    forecast_hours=SHIPS_FORECAST_HOURS,
+                    forecast_hours=forecast_hours,
                     init_time_unix_sec=init_times_unix_sec[i]
                 )
             )
@@ -673,13 +679,21 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
 
+            max_forecast_hour = (
+                v[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+            )
+            forecast_hours = numpy.linspace(
+                0, max_forecast_hour,
+                num=int(numpy.round(max_forecast_hour / 6)) + 1, dtype=int
+            )
+
             figure_objects, axes_objects, pathless_panel_file_names = (
                 predictor_plotting.plot_forecast_ships_one_example(
                     predictor_matrices_one_example=these_predictor_matrices,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=cyclone_id_string,
                     builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
-                    forecast_hours=SHIPS_FORECAST_HOURS,
+                    forecast_hours=forecast_hours,
                     init_time_unix_sec=init_times_unix_sec[i]
                 )
             )
