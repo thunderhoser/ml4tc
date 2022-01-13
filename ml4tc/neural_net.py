@@ -1450,9 +1450,9 @@ def _ships_predictors_xarray_to_keras(
             xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values == 0
         )[0][0]
 
-        last_index = numpy.where(
+        last_index = 1 + numpy.where(
             xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values ==
-            max_forecast_hour + 1
+            max_forecast_hour
         )[0][0]
 
         forecast_values = (
