@@ -286,3 +286,62 @@ def plot_pm_signs_multi_times(
                     color=rgb_matrix[i, j, ...], horizontalalignment='center',
                     verticalalignment='bottom', transform=axes_object.transAxes
                 )
+
+
+def plot_raw_numbers_multi_times(
+        data_matrix, axes_object, font_size, colour_map_object,
+        min_colour_value, max_colour_value, number_format_string):
+    """Plots data at many times with raw numbers (text).
+
+    This method is good for plotting saliency, input * gradient, or any other
+    explainable-ML result that can have only one sign (positive or negative).
+
+    V = number of satellite variables
+    T = number of times
+
+    :param data_matrix: T-by-V numpy array of data values to plot.
+    :param axes_object: Will plot on these axes (instance of
+        `matplotlib.axes._subplots.AxesSubplot`).
+    :param font_size: Font size.
+    :param colour_map_object: Colour scheme (instance of
+        `matplotlib.pyplot.cm`).
+    :param min_colour_value: Minimum value in colour scheme.
+    :param max_colour_value: Max value in colour scheme.
+    :param number_format_string: Format for printing numbers.  Valid examples
+        are ".2f", "d", etc.
+    """
+
+    error_checking.assert_is_numpy_array_without_nan(data_matrix)
+    error_checking.assert_is_numpy_array(data_matrix, num_dimensions=2)
+    error_checking.assert_is_greater(max_colour_value, min_colour_value)
+    error_checking.assert_is_string(number_format_string)
+
+    number_format_string = '{0:' + number_format_string + '}'
+
+    num_grid_rows = data_matrix.shape[0]
+    num_grid_columns = data_matrix.shape[1]
+    x_coord_spacing = num_grid_columns ** -1
+    y_coord_spacing = num_grid_rows ** -1
+
+    x_coords, y_coords = grids.get_xy_grid_points(
+        x_min_metres=x_coord_spacing / 2, y_min_metres=y_coord_spacing / 2,
+        x_spacing_metres=x_coord_spacing, y_spacing_metres=y_coord_spacing,
+        num_rows=num_grid_rows, num_columns=num_grid_columns
+    )
+
+    colour_norm_object = pyplot.Normalize(
+        vmin=min_colour_value, vmax=max_colour_value
+    )
+    rgb_matrix = colour_map_object(colour_norm_object(
+        numpy.absolute(data_matrix)
+    ))[..., :-1]
+
+    for i in range(num_grid_rows):
+        for j in range(num_grid_columns):
+            axes_object.text(
+                x_coords[j], y_coords[i],
+                number_format_string.format(data_matrix[i, j]),
+                fontsize=font_size, color=rgb_matrix[i, j, ...],
+                horizontalalignment='center', verticalalignment='center',
+                transform=axes_object.transAxes
+            )
