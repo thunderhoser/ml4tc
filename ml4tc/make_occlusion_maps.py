@@ -170,8 +170,8 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    occlusion_prob_matrix = None
-    normalized_occlusion_matrix = None
+    three_occlusion_prob_matrices = None
+    three_norm_occlusion_matrices = None
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -197,35 +197,49 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
             this_data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        this_prob_matrix, these_original_probs = occlusion.get_occlusion_maps(
-            model_object=model_object,
-            predictor_matrices=these_predictor_matrices,
-            target_class=target_class, half_window_size_px=half_window_size_px,
-            stride_length_px=stride_length_px, fill_value=fill_value
+        new_occlusion_prob_matrices, new_original_probs = (
+            occlusion.get_occlusion_maps(
+                model_object=model_object,
+                predictor_matrices=these_predictor_matrices,
+                target_class=target_class,
+                half_window_size_px=half_window_size_px,
+                stride_length_px=stride_length_px, fill_value=fill_value
+            )
         )
-        this_norm_matrix = occlusion.normalize_occlusion_maps(
-            occlusion_prob_matrix=this_prob_matrix,
-            original_probs=these_original_probs
+        new_norm_occlusion_matrices = occlusion.normalize_occlusion_maps(
+            occlusion_prob_matrices=new_occlusion_prob_matrices,
+            original_probs=new_original_probs
         )
 
-        if occlusion_prob_matrix is None:
-            occlusion_prob_matrix = this_prob_matrix + 0.
-            normalized_occlusion_matrix = this_norm_matrix + 0.
+        if all([m is None for m in three_occlusion_prob_matrices]):
+            three_occlusion_prob_matrices = copy.deepcopy(
+                new_occlusion_prob_matrices
+            )
+            three_norm_occlusion_matrices = copy.deepcopy(
+                new_norm_occlusion_matrices
+            )
         else:
-            occlusion_prob_matrix = numpy.concatenate(
-                (occlusion_prob_matrix, this_prob_matrix), axis=0
-            )
-            normalized_occlusion_matrix = numpy.concatenate(
-                (normalized_occlusion_matrix, this_norm_matrix), axis=0
-            )
+            for j in range(len(three_occlusion_prob_matrices)):
+                if three_occlusion_prob_matrices[j] is None:
+                    continue
+
+                three_occlusion_prob_matrices[j] = numpy.concatenate((
+                    three_occlusion_prob_matrices[j],
+                    new_occlusion_prob_matrices[j]
+                ), axis=0)
+
+                three_norm_occlusion_matrices[j] = numpy.concatenate((
+                    three_norm_occlusion_matrices[j],
+                    new_norm_occlusion_matrices[j]
+                ), axis=0)
 
     print(SEPARATOR_STRING)
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     occlusion.write_file(
         netcdf_file_name=output_file_name,
-        occlusion_prob_matrix=occlusion_prob_matrix,
-        normalized_occlusion_matrix=normalized_occlusion_matrix,
+        three_occlusion_prob_matrices=three_occlusion_prob_matrices,
+        three_norm_occlusion_matrices=three_norm_occlusion_matrices,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,
