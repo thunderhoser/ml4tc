@@ -172,6 +172,8 @@ def get_occlusion_maps(
                         this_prob_array[:, target_class]
                     )
 
+    print('Number of NaN entries in first occlusion matrix = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(occlusion_prob_matrices[0])), occlusion_prob_matrices[0].size))
+
     if stride_length_px > 1:
         first_prob_matrix_coarse = occlusion_prob_matrices[0] + 0.
 
@@ -198,6 +200,8 @@ def get_occlusion_maps(
                         [num_grid_rows_orig, num_grid_columns_orig], dtype=int
                     )
                 )
+
+        print('Number of NaN entries in first occlusion matrix = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(occlusion_prob_matrices[0])), occlusion_prob_matrices[0].size))
 
         occlusion_prob_matrices[0] = numpy.maximum(
             occlusion_prob_matrices[0], 0.
@@ -264,6 +268,10 @@ def get_occlusion_maps(
         occlusion_prob_matrices[k] = numpy.reshape(
             occlusion_prob_matrices[k], predictor_matrices[k].shape
         )
+
+    print('Number of NaN entries in first occlusion matrix = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(occlusion_prob_matrices[0])), occlusion_prob_matrices[0].size))
+    print('Number of NaN entries in second occlusion matrix = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(occlusion_prob_matrices[1])), occlusion_prob_matrices[1].size))
+    print('Number of NaN entries in third occlusion matrix = {0:d} of {1:d}'.format(numpy.sum(numpy.isnan(occlusion_prob_matrices[2])), occlusion_prob_matrices[2].size))
 
     original_prob_array = neural_net.apply_model(
         model_object=model_object,
