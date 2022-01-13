@@ -380,7 +380,8 @@ class NeuralNetTests(unittest.TestCase):
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=0,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
-            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=0
         )
         self.assertTrue(numpy.allclose(
             these_predictor_values, SCALAR_PREDICTORS_EXAMPLE1, atol=TOLERANCE
@@ -395,7 +396,8 @@ class NeuralNetTests(unittest.TestCase):
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=1,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
-            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=0
         )
         self.assertTrue(numpy.allclose(
             these_predictor_values, SCALAR_PREDICTORS_EXAMPLE2, atol=TOLERANCE
@@ -410,7 +412,8 @@ class NeuralNetTests(unittest.TestCase):
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=2,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
-            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=0
         )
         self.assertTrue(numpy.allclose(
             these_predictor_values, SCALAR_PREDICTORS_EXAMPLE3, atol=TOLERANCE

@@ -93,7 +93,7 @@ def plot_one_satellite_image(
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
     :param cbar_orientation_string: See doc for
-        `satellite_plotting.plot_2d_grid_regular`.
+        `satellite_plotting.plot_2d_grid`.
     :param output_dir_name: Name of output directory.  Image will be saved here.
         If you do not want to save image right away, make this None.
     :param info_string: Info string (to be appended to title).
@@ -107,10 +107,10 @@ def plot_one_satellite_image(
 
     t = satellite_table_xarray
     grid_latitudes_deg_n = (
-        t[satellite_utils.GRID_LATITUDE_KEY].values[time_index, :]
+        t[satellite_utils.GRID_LATITUDE_KEY].values[time_index, ...]
     )
     grid_longitudes_deg_e = (
-        t[satellite_utils.GRID_LONGITUDE_KEY].values[time_index, :]
+        t[satellite_utils.GRID_LONGITUDE_KEY].values[time_index, ...]
     )
 
     figure_object, axes_object = pyplot.subplots(
@@ -125,18 +125,18 @@ def plot_one_satellite_image(
     brightness_temp_matrix_kelvins = (
         t[satellite_utils.BRIGHTNESS_TEMPERATURE_KEY][time_index, ...].values
     )
-    satellite_plotting.plot_2d_grid_regular(
+    satellite_plotting.plot_2d_grid(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
-        axes_object=axes_object, latitudes_deg_n=grid_latitudes_deg_n,
-        longitudes_deg_e=grid_longitudes_deg_e,
+        axes_object=axes_object, latitude_array_deg_n=grid_latitudes_deg_n,
+        longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string=cbar_orientation_string,
         font_size=DEFAULT_FONT_SIZE
     )
     plotting_utils.plot_grid_lines(
-        plot_latitudes_deg_n=grid_latitudes_deg_n,
-        plot_longitudes_deg_e=grid_longitudes_deg_e, axes_object=axes_object,
-        parallel_spacing_deg=2., meridian_spacing_deg=2.,
-        font_size=DEFAULT_FONT_SIZE
+        plot_latitudes_deg_n=numpy.ravel(grid_latitudes_deg_n),
+        plot_longitudes_deg_e=numpy.ravel(grid_longitudes_deg_e),
+        axes_object=axes_object, parallel_spacing_deg=2.,
+        meridian_spacing_deg=2., font_size=DEFAULT_FONT_SIZE
     )
 
     valid_time_unix_sec = (

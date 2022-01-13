@@ -5,10 +5,16 @@ import warnings
 import numpy
 import xarray
 from scipy.interpolate import interp1d
+from gewittergefahr.gg_utils import grids
+from gewittergefahr.gg_utils import geodetic_utils
+from gewittergefahr.gg_utils import projections
+from gewittergefahr.gg_utils import interp
 from gewittergefahr.gg_utils import number_rounding
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import general_utils
 
+GRID_SPACING_METRES = 4000.
 DEFAULT_NUM_GRID_ROWS = 480
 DEFAULT_NUM_GRID_COLUMNS = 640
 
@@ -548,3 +554,223 @@ def crop_images_around_storm_centers(
     )
 
     return satellite_table_xarray
+
+
+def rotate_grid(
+        center_latitude_deg_n, center_longitude_deg_e, east_velocity_m_s01,
+        north_velocity_m_s01, num_rows, num_columns):
+    """Rotates grid to align with motion vector.
+
+    The "motion vector" could be storm motion, wind, wind shear, etc.
+
+    M = number of rows in new grid
+    N = number of columns in new grid
+
+    :param center_latitude_deg_n: Latitude (deg N) of tropical-cyclone center.
+    :param center_longitude_deg_e: Longitude (deg E) of tropical-cyclone center.
+    :param east_velocity_m_s01: Eastward component of motion vector (metres per
+        second).
+    :param north_velocity_m_s01: Northward component of motion vector (metres
+        per second).
+    :param num_rows: Number of rows in grid.
+    :param num_columns: Number of columns in grid.
+    :return: latitude_matrix_deg_n: M-by-N numpy array of latitudes (deg N).
+    :return: longitude_matrix_deg_e: M-by-N numpy array of longitudes (deg E).
+    """
+
+    # Check input args.
+    error_checking.assert_is_not_nan(center_latitude_deg_n)
+    error_checking.assert_is_not_nan(center_longitude_deg_e)
+    error_checking.assert_is_not_nan(east_velocity_m_s01)
+    error_checking.assert_is_not_nan(north_velocity_m_s01)
+
+    error_checking.assert_is_integer(num_rows)
+    error_checking.assert_is_greater(num_rows, 0)
+    assert numpy.mod(num_rows, 2) == 0
+
+    error_checking.assert_is_integer(num_columns)
+    error_checking.assert_is_greater(num_columns, 0)
+    assert numpy.mod(num_columns, 2) == 0
+
+    # Do actual stuff.
+    bearing_deg = geodetic_utils.xy_to_scalar_displacements_and_bearings(
+        x_displacements_metres=numpy.array([east_velocity_m_s01]),
+        y_displacements_metres=numpy.array([north_velocity_m_s01])
+    )[-1][0]
+
+    x_max_metres = GRID_SPACING_METRES * (num_columns / 2 - 0.5)
+    x_coords_metres = numpy.linspace(
+        -x_max_metres, x_max_metres, num=num_columns
+    )
+    y_max_metres = GRID_SPACING_METRES * (num_rows / 2 - 0.5)
+    y_coords_metres = numpy.linspace(
+        -y_max_metres, y_max_metres, num=num_rows
+    )
+    x_coord_matrix_metres, y_coord_matrix_metres = grids.xy_vectors_to_matrices(
+        x_unique_metres=x_coords_metres, y_unique_metres=y_coords_metres
+    )
+
+    x_coord_matrix_metres, y_coord_matrix_metres = (
+        geodetic_utils.rotate_displacement_vectors(
+            x_displacements_metres=x_coord_matrix_metres,
+            y_displacements_metres=y_coord_matrix_metres,
+            ccw_rotation_angle_deg=-(bearing_deg - 90)
+        )
+    )
+
+    displacement_matrix_metres, bearing_matrix_deg = (
+        geodetic_utils.xy_to_scalar_displacements_and_bearings(
+            x_displacements_metres=x_coord_matrix_metres,
+            y_displacements_metres=y_coord_matrix_metres
+        )
+    )
+
+    start_latitude_matrix_deg = numpy.full(
+        (num_rows, num_columns), center_latitude_deg_n
+    )
+    start_longitude_matrix_deg = numpy.full(
+        (num_rows, num_columns), center_longitude_deg_e
+    )
+
+    return geodetic_utils.start_points_and_displacements_to_endpoints(
+        start_latitudes_deg=start_latitude_matrix_deg,
+        start_longitudes_deg=start_longitude_matrix_deg,
+        scalar_displacements_metres=displacement_matrix_metres,
+        geodetic_bearings_deg=bearing_matrix_deg
+    )
+
+
+def rotate_image(
+        brightness_temp_matrix_kelvins, orig_latitudes_deg_n,
+        orig_longitudes_deg_e, new_latitude_matrix_deg_n,
+        new_longitude_matrix_deg_e, fill_value):
+    """Rotates satellite image.
+
+    The original grid must be a regular lat/long grid; the new grid is assumed
+    not to be.
+
+    m = number of rows in original grid
+    n = number of columns in original grid
+    M = number of rows in new grid
+    N = number of columns in new grid
+
+    :param brightness_temp_matrix_kelvins: m-by-n numpy array.
+    :param orig_latitudes_deg_n: length-m numpy array of latitudes (deg N).
+    :param orig_longitudes_deg_e: length-n numpy array of longitudes (deg E).
+    :param new_latitude_matrix_deg_n: M-by-N numpy array of latitudes (deg N).
+    :param new_longitude_matrix_deg_e: M-by-N numpy array of longitudes (deg E).
+    :param fill_value: Fill value, used instead of extrapolation.
+    :return: brightness_temp_matrix_kelvins: M-by-N numpy array.
+    """
+
+    # Check input args.
+    error_checking.assert_is_numpy_array_without_nan(orig_latitudes_deg_n)
+    error_checking.assert_is_numpy_array(orig_latitudes_deg_n, num_dimensions=1)
+
+    error_checking.assert_is_numpy_array_without_nan(orig_longitudes_deg_e)
+    error_checking.assert_is_numpy_array(
+        orig_longitudes_deg_e, num_dimensions=1
+    )
+
+    orig_num_rows = len(orig_latitudes_deg_n)
+    orig_num_columns = len(orig_longitudes_deg_e)
+    expected_dim = numpy.array([orig_num_rows, orig_num_columns], dtype=int)
+
+    error_checking.assert_is_numpy_array(
+        brightness_temp_matrix_kelvins, exact_dimensions=expected_dim
+    )
+    brightness_temp_matrix_kelvins = general_utils.fill_nans(
+        brightness_temp_matrix_kelvins
+    )
+
+    error_checking.assert_is_numpy_array_without_nan(new_latitude_matrix_deg_n)
+    error_checking.assert_is_numpy_array(
+        new_latitude_matrix_deg_n, num_dimensions=2
+    )
+
+    error_checking.assert_is_numpy_array_without_nan(new_longitude_matrix_deg_e)
+    error_checking.assert_is_numpy_array(
+        new_longitude_matrix_deg_e,
+        exact_dimensions=numpy.array(new_latitude_matrix_deg_n.shape, dtype=int)
+    )
+
+    error_checking.assert_is_not_nan(fill_value)
+
+    # Deal with grids that cross International Date Line or Prime Meridian.
+    new_longitude_matrix_deg_e = lng_conversion.convert_lng_positive_in_west(
+        new_longitude_matrix_deg_e
+    )
+    longitude_range_deg = (
+        numpy.max(new_longitude_matrix_deg_e) -
+        numpy.min(new_longitude_matrix_deg_e)
+    )
+
+    # TODO(thunderhoser): This solution is a bit hacky (assumes grids small
+    # enough that they never truly span 100 deg of longitude).
+    if longitude_range_deg > 100:
+        new_longitude_matrix_deg_e = (
+            lng_conversion.convert_lng_negative_in_west(
+                new_longitude_matrix_deg_e
+            )
+        )
+
+    # Do actual stuff.
+    central_latitude_deg_n = numpy.mean(new_latitude_matrix_deg_n)
+    central_longitude_deg_e = numpy.mean(new_longitude_matrix_deg_e)
+
+    projection_object = projections.init_cylindrical_equidistant_projection(
+        central_latitude_deg=central_latitude_deg_n,
+        central_longitude_deg=central_longitude_deg_e,
+        true_scale_latitude_deg=central_latitude_deg_n
+    )
+
+    new_x_matrix_metres, new_y_matrix_metres = projections.project_latlng_to_xy(
+        latitudes_deg=new_latitude_matrix_deg_n,
+        longitudes_deg=new_longitude_matrix_deg_e,
+        projection_object=projection_object
+    )
+
+    orig_x_coords_metres, _ = projections.project_latlng_to_xy(
+        latitudes_deg=numpy.full(
+            len(orig_longitudes_deg_e), central_latitude_deg_n
+        ),
+        longitudes_deg=orig_longitudes_deg_e,
+        projection_object=projection_object
+    )
+
+    _, orig_y_coords_metres = projections.project_latlng_to_xy(
+        latitudes_deg=orig_latitudes_deg_n,
+        longitudes_deg=numpy.full(
+            len(orig_latitudes_deg_n), central_longitude_deg_e
+        ),
+        projection_object=projection_object
+    )
+
+    brightness_temp_matrix_kelvins = interp.interp_from_xy_grid_to_points(
+        input_matrix=brightness_temp_matrix_kelvins,
+        sorted_grid_point_x_metres=orig_x_coords_metres,
+        sorted_grid_point_y_metres=orig_y_coords_metres,
+        query_x_coords_metres=numpy.ravel(new_x_matrix_metres),
+        query_y_coords_metres=numpy.ravel(new_y_matrix_metres),
+        method_string=interp.SPLINE_METHOD_STRING, spline_degree=1,
+        extrapolate=True
+    )
+    brightness_temp_matrix_kelvins = numpy.reshape(
+        brightness_temp_matrix_kelvins, new_x_matrix_metres.shape
+    )
+
+    invalid_x_flags = numpy.logical_or(
+        new_x_matrix_metres < numpy.min(orig_x_coords_metres),
+        new_x_matrix_metres > numpy.max(orig_x_coords_metres)
+    )
+    invalid_y_flags = numpy.logical_or(
+        new_y_matrix_metres < numpy.min(orig_y_coords_metres),
+        new_y_matrix_metres > numpy.max(orig_y_coords_metres)
+    )
+    invalid_indices = numpy.where(
+        numpy.logical_or(invalid_x_flags, invalid_y_flags)
+    )
+
+    brightness_temp_matrix_kelvins[invalid_indices] = fill_value
+
+    return brightness_temp_matrix_kelvins

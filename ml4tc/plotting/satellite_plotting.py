@@ -143,9 +143,10 @@ def add_colour_bar(
     return colour_bar_object
 
 
-def plot_2d_grid_regular(
-        brightness_temp_matrix_kelvins, axes_object, latitudes_deg_n,
-        longitudes_deg_e, cbar_orientation_string='vertical', font_size=30.):
+def plot_2d_grid(
+        brightness_temp_matrix_kelvins, axes_object, latitude_array_deg_n,
+        longitude_array_deg_e, cbar_orientation_string='vertical',
+        font_size=30.):
     """Plots brightness temperature on 2-D grid.
 
     M = number of rows in grid
@@ -155,10 +156,12 @@ def plot_2d_grid_regular(
         temperatures.
     :param axes_object: Will plot on these axes (instance of
         `matplotlib.axes._subplots.AxesSubplot`).
-    :param latitudes_deg_n: length-M numpy array of grid-point latitudes (deg
-        north).
-    :param longitudes_deg_e: length-N numpy array of grid-point longitudes (deg
-        east).
+    :param latitude_array_deg_n: If regular lat-long grid, this should be a
+        length-M numpy array of latitudes (deg north).  If irregular grid, this
+        should be an M-by-N array of latitudes.
+    :param longitude_array_deg_e: If regular lat-long grid, this should be a
+        length-N numpy array of longitudes (deg east).  If irregular grid, this
+        should be an M-by-N array of longitudes.
     :param cbar_orientation_string: Colour-bar orientation.  May be
         "horizontal", "vertical", or None.
     :param font_size: Font size.
@@ -166,24 +169,39 @@ def plot_2d_grid_regular(
         `matplotlib.pyplot.colorbar`).
     """
 
-    error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
-    error_checking.assert_is_valid_lat_numpy_array(latitudes_deg_n)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(latitudes_deg_n), 0.
+    error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
+    longitude_array_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitude_array_deg_e
     )
 
-    error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
-    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-        longitudes_deg_e
-    )
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(longitudes_deg_e), 0.
-    )
+    regular_grid = len(latitude_array_deg_n.shape) == 1
 
-    num_rows = len(latitudes_deg_n)
-    num_columns = len(longitudes_deg_e)
+    if regular_grid:
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(latitude_array_deg_n), 0.
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e, num_dimensions=1
+        )
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(longitude_array_deg_e), 0.
+        )
+
+        num_rows = len(latitude_array_deg_n)
+        num_columns = len(longitude_array_deg_e)
+    else:
+        error_checking.assert_is_numpy_array(
+            latitude_array_deg_n, num_dimensions=2
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e,
+            exact_dimensions=numpy.array(latitude_array_deg_n.shape, dtype=int)
+        )
+
+        num_rows = latitude_array_deg_n.shape[0]
+        num_columns = latitude_array_deg_n.shape[1]
+
     expected_dim = numpy.array([num_rows, num_columns], dtype=int)
-
     error_checking.assert_is_numpy_array(
         brightness_temp_matrix_kelvins, exact_dimensions=expected_dim
     )
@@ -194,16 +212,36 @@ def plot_2d_grid_regular(
     if cbar_orientation_string is not None:
         error_checking.assert_is_string(cbar_orientation_string)
 
-    edge_latitudes_deg_n = _grid_points_to_edges(latitudes_deg_n)
-    edge_longitudes_deg_e = _grid_points_to_edges(longitudes_deg_e)
-    edge_temp_matrix_kelvins = grids.latlng_field_grid_points_to_edges(
-        field_matrix=brightness_temp_matrix_kelvins,
-        min_latitude_deg=1., min_longitude_deg=1.,
-        lat_spacing_deg=1e-6, lng_spacing_deg=1e-6
-    )[0]
+    if regular_grid:
+        latitudes_to_plot_deg_n = _grid_points_to_edges(latitude_array_deg_n)
 
-    edge_temp_matrix_kelvins = numpy.ma.masked_where(
-        numpy.isnan(edge_temp_matrix_kelvins), edge_temp_matrix_kelvins
+        longitude_range_deg = (
+            numpy.max(longitude_array_deg_e) - numpy.min(longitude_array_deg_e)
+        )
+        if longitude_range_deg > 100:
+            longitude_array_deg_e = lng_conversion.convert_lng_positive_in_west(
+                longitude_array_deg_e
+            )
+
+        longitudes_to_plot_deg_e = _grid_points_to_edges(longitude_array_deg_e)
+        longitudes_to_plot_deg_e = lng_conversion.convert_lng_negative_in_west(
+            longitudes_to_plot_deg_e
+        )
+
+        temp_matrix_to_plot_kelvins = grids.latlng_field_grid_points_to_edges(
+            field_matrix=brightness_temp_matrix_kelvins,
+            min_latitude_deg=1., min_longitude_deg=1.,
+            lat_spacing_deg=1e-6, lng_spacing_deg=1e-6
+        )[0]
+    else:
+        # TODO(thunderhoser): For an irregular grid I should also supply edge
+        # coordinates to the plotting method (pcolor), but CBF right now.
+        latitudes_to_plot_deg_n = latitude_array_deg_n + 0.
+        longitudes_to_plot_deg_e = longitude_array_deg_e + 0.
+        temp_matrix_to_plot_kelvins = brightness_temp_matrix_kelvins + 0.
+
+    temp_matrix_to_plot_kelvins = numpy.ma.masked_where(
+        numpy.isnan(temp_matrix_to_plot_kelvins), temp_matrix_to_plot_kelvins
     )
     colour_map_object, colour_norm_object = get_colour_scheme()
 
@@ -214,12 +252,22 @@ def plot_2d_grid_regular(
         min_colour_value = colour_norm_object.vmin
         max_colour_value = colour_norm_object.vmax
 
-    axes_object.pcolormesh(
-        edge_longitudes_deg_e, edge_latitudes_deg_n, edge_temp_matrix_kelvins,
-        cmap=colour_map_object, norm=colour_norm_object,
-        vmin=min_colour_value, vmax=max_colour_value, shading='flat',
-        edgecolors='None', zorder=-1e11
-    )
+    if regular_grid:
+        axes_object.pcolormesh(
+            longitudes_to_plot_deg_e, latitudes_to_plot_deg_n,
+            temp_matrix_to_plot_kelvins,
+            cmap=colour_map_object, norm=colour_norm_object,
+            vmin=min_colour_value, vmax=max_colour_value, shading='flat',
+            edgecolors='None', zorder=-1e11
+        )
+    else:
+        axes_object.pcolor(
+            longitudes_to_plot_deg_e, latitudes_to_plot_deg_n,
+            temp_matrix_to_plot_kelvins,
+            cmap=colour_map_object, norm=colour_norm_object,
+            vmin=min_colour_value, vmax=max_colour_value,
+            edgecolors='None', zorder=-1e11
+        )
 
     if cbar_orientation_string is None:
         return None
@@ -233,9 +281,9 @@ def plot_2d_grid_regular(
 
 
 def plot_saliency(
-        saliency_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
-        min_abs_contour_value, max_abs_contour_value, half_num_contours,
-        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        saliency_matrix, axes_object, latitude_array_deg_n,
+        longitude_array_deg_e, min_abs_contour_value, max_abs_contour_value,
+        half_num_contours, colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
         line_width=DEFAULT_CONTOUR_WIDTH):
     """Plots saliency map on 2-D grid.
 
@@ -245,10 +293,12 @@ def plot_saliency(
     :param saliency_matrix: M-by-N numpy array of saliency values.
     :param axes_object: Instance of `matplotlib.axes._subplots.AxesSubplot`.
         Will plot on these axes.
-    :param latitudes_deg_n: length-M numpy array of grid-point latitudes (deg
-        north).
-    :param longitudes_deg_e: length-N numpy array of grid-point longitudes (deg
-        east).
+    :param latitude_array_deg_n: If regular lat-long grid, this should be a
+        length-M numpy array of latitudes (deg north).  If irregular grid, this
+        should be an M-by-N array of latitudes.
+    :param longitude_array_deg_e: If regular lat-long grid, this should be a
+        length-N numpy array of longitudes (deg east).  If irregular grid, this
+        should be an M-by-N array of longitudes.
     :param min_abs_contour_value: Minimum absolute saliency to plot.
     :param max_abs_contour_value: Max absolute saliency to plot.
     :param half_num_contours: Number of contours on either side of zero.
@@ -259,18 +309,44 @@ def plot_saliency(
     :return: max_abs_contour_value: Same as input but maybe changed.
     """
 
-    error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(latitudes_deg_n), 0.
+    error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
+    regular_grid = len(latitude_array_deg_n.shape) == 1
+
+    if regular_grid:
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(latitude_array_deg_n), 0.
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e, num_dimensions=1
+        )
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(longitude_array_deg_e), 0.
+        )
+
+        latitude_matrix_deg_n, longitude_matrix_deg_e = (
+            grids.latlng_vectors_to_matrices(
+                unique_latitudes_deg=latitude_array_deg_n,
+                unique_longitudes_deg=longitude_array_deg_e
+            )
+        )
+    else:
+        error_checking.assert_is_numpy_array(
+            latitude_array_deg_n, num_dimensions=2
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e,
+            exact_dimensions=numpy.array(latitude_array_deg_n.shape, dtype=int)
+        )
+
+        latitude_matrix_deg_n = latitude_array_deg_n + 0.
+        longitude_matrix_deg_e = longitude_array_deg_e + 0.
+
+    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitude_matrix_deg_e
     )
 
-    error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(longitudes_deg_e), 0.
-    )
-
-    num_rows = len(latitudes_deg_n)
-    num_columns = len(longitudes_deg_e)
+    num_rows = latitude_matrix_deg_n.shape[0]
+    num_columns = latitude_matrix_deg_n.shape[1]
     expected_dim = numpy.array([num_rows, num_columns], dtype=int)
 
     error_checking.assert_is_numpy_array_without_nan(saliency_matrix)
@@ -289,16 +365,6 @@ def plot_saliency(
 
     error_checking.assert_is_integer(half_num_contours)
     error_checking.assert_is_geq(half_num_contours, 5)
-
-    latitude_matrix_deg_n, longitude_matrix_deg_e = (
-        grids.latlng_vectors_to_matrices(
-            unique_latitudes_deg=latitudes_deg_n,
-            unique_longitudes_deg=longitudes_deg_e
-        )
-    )
-    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
-        longitude_matrix_deg_e
-    )
 
     # Plot positive values.
     contour_levels = numpy.linspace(
@@ -324,9 +390,9 @@ def plot_saliency(
 
 
 def plot_class_activation(
-        class_activation_matrix, axes_object, latitudes_deg_n, longitudes_deg_e,
-        min_contour_value, max_contour_value, num_contours,
-        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        class_activation_matrix, axes_object, latitude_array_deg_n,
+        longitude_array_deg_e, min_contour_value, max_contour_value,
+        num_contours, colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
         line_width=DEFAULT_CONTOUR_WIDTH):
     """Plots class-activation map on 2-D grid.
 
@@ -335,8 +401,8 @@ def plot_class_activation(
 
     :param class_activation_matrix: M-by-N numpy array of class activations.
     :param axes_object: See doc for `plot_saliency`.
-    :param latitudes_deg_n: Same.
-    :param longitudes_deg_e: Same.
+    :param latitude_array_deg_n: Same.
+    :param longitude_array_deg_e: Same.
     :param min_contour_value: Minimum class activation to plot.
     :param max_contour_value: Max class activation to plot.
     :param num_contours: Number of contours.
@@ -347,18 +413,44 @@ def plot_class_activation(
     :return: max_contour_value: Same as input but maybe changed.
     """
 
-    error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(latitudes_deg_n), 0.
+    error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
+    regular_grid = len(latitude_array_deg_n.shape) == 1
+
+    if regular_grid:
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(latitude_array_deg_n), 0.
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e, num_dimensions=1
+        )
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(longitude_array_deg_e), 0.
+        )
+
+        latitude_matrix_deg_n, longitude_matrix_deg_e = (
+            grids.latlng_vectors_to_matrices(
+                unique_latitudes_deg=latitude_array_deg_n,
+                unique_longitudes_deg=longitude_array_deg_e
+            )
+        )
+    else:
+        error_checking.assert_is_numpy_array(
+            latitude_array_deg_n, num_dimensions=2
+        )
+        error_checking.assert_is_numpy_array(
+            longitude_array_deg_e,
+            exact_dimensions=numpy.array(latitude_array_deg_n.shape, dtype=int)
+        )
+
+        latitude_matrix_deg_n = latitude_array_deg_n + 0.
+        longitude_matrix_deg_e = longitude_array_deg_e + 0.
+
+    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitude_matrix_deg_e
     )
 
-    error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
-    error_checking.assert_is_greater_numpy_array(
-        numpy.diff(longitudes_deg_e), 0.
-    )
-
-    num_rows = len(latitudes_deg_n)
-    num_columns = len(longitudes_deg_e)
+    num_rows = latitude_matrix_deg_n.shape[0]
+    num_columns = latitude_matrix_deg_n.shape[1]
     expected_dim = numpy.array([num_rows, num_columns], dtype=int)
 
     error_checking.assert_is_numpy_array_without_nan(class_activation_matrix)
@@ -376,20 +468,9 @@ def plot_class_activation(
     error_checking.assert_is_integer(num_contours)
     error_checking.assert_is_geq(num_contours, 5)
 
-    latitude_matrix_deg_n, longitude_matrix_deg_e = (
-        grids.latlng_vectors_to_matrices(
-            unique_latitudes_deg=latitudes_deg_n,
-            unique_longitudes_deg=longitudes_deg_e
-        )
-    )
-    longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
-        longitude_matrix_deg_e
-    )
-
     contour_levels = numpy.linspace(
         min_contour_value, max_contour_value, num=num_contours
     )
-
     axes_object.contour(
         longitude_matrix_deg_e, latitude_matrix_deg_n, class_activation_matrix,
         contour_levels, cmap=colour_map_object,

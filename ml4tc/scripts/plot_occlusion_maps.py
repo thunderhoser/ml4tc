@@ -264,8 +264,8 @@ def _plot_brightness_temp_map(
                     saliency_matrix=
                     occlusion_matrices_one_example[0][0, ..., k, 0],
                     axes_object=axes_objects[k],
-                    latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-                    longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                    latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+                    longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
                     min_abs_contour_value=min_contour_value,
                     max_abs_contour_value=max_contour_value,
                     half_num_contours=10, colour_map_object=colour_map_object
@@ -277,8 +277,8 @@ def _plot_brightness_temp_map(
                     class_activation_matrix=
                     occlusion_matrices_one_example[0][0, ..., k, 0],
                     axes_object=axes_objects[k],
-                    latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-                    longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                    latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+                    longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
                     min_contour_value=min_contour_value,
                     max_contour_value=max_contour_value,
                     num_contours=15, colour_map_object=colour_map_object
