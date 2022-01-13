@@ -29,6 +29,20 @@ import satellite_utils
 TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M'
 MISSING_INDEX = int(1e12)
 
+SHIPS_PREDICTORS_WITH_USABLE_FORECAST = [
+    ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY,
+    ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY,
+    ships_io.TEMP_200MB_OUTER_RING_KEY,
+    ships_io.SHEAR_850TO500MB_U_KEY,
+    ships_io.SHEAR_850TO500MB_V_KEY,
+    ships_io.W_WIND_0TO15KM_INNER_RING_KEY,
+    ships_io.OCEAN_AGE_KEY,
+    ships_io.MAX_TAN_WIND_850MB_KEY,
+    ships_io.REYNOLDS_SST_DAILY_KEY,
+    ships_io.OHC_FROM_SST_AND_CLIMO_KEY,
+    ships_io.FORECAST_LATITUDE_KEY
+]
+
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
@@ -75,6 +89,7 @@ SHIPS_LAG_TIMES_KEY = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_KEY = 'satellite_predictor_names'
 SHIPS_PREDICTORS_LAGGED_KEY = 'ships_predictor_names_lagged'
 SHIPS_PREDICTORS_FORECAST_KEY = 'ships_predictor_names_forecast'
+SHIPS_MAX_FORECAST_HOUR_KEY = 'ships_max_forecast_hour'
 NUM_POSITIVE_EXAMPLES_KEY = 'num_positive_examples_per_batch'
 NUM_NEGATIVE_EXAMPLES_KEY = 'num_negative_examples_per_batch'
 MAX_EXAMPLES_PER_CYCLONE_KEY = 'max_examples_per_cyclone_in_batch'
@@ -133,6 +148,7 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     SATELLITE_PREDICTORS_KEY: DEFAULT_SATELLITE_PREDICTOR_NAMES,
     SHIPS_PREDICTORS_LAGGED_KEY: DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
     SHIPS_PREDICTORS_FORECAST_KEY: DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST,
+    SHIPS_MAX_FORECAST_HOUR_KEY: 0,
     NUM_POSITIVE_EXAMPLES_KEY: 8,
     NUM_NEGATIVE_EXAMPLES_KEY: 24,
     MAX_EXAMPLES_PER_CYCLONE_KEY: 6,
@@ -973,7 +989,7 @@ def _read_scalar_satellite_one_file(
 
 def _read_ships_one_file(
         example_table_xarray, table_rows_by_example, model_lag_times_sec,
-        predictor_names_lagged, predictor_names_forecast):
+        predictor_names_lagged, predictor_names_forecast, max_forecast_hour):
     """Reads SHIPS predictors from one example file.
 
     :param example_table_xarray: See doc for `_read_brightness_temp_one_file`.
@@ -981,6 +997,7 @@ def _read_ships_one_file(
     :param model_lag_times_sec: Same.
     :param predictor_names_lagged: 1-D list of lagged predictors to read.
     :param predictor_names_forecast: 1-D list of forecast predictors to read.
+    :param max_forecast_hour: Maximum forecast hour to read.
     :return: ships_predictor_matrix: See output doc for
         `_read_one_example_file`.
     """
@@ -1047,7 +1064,8 @@ def _read_ships_one_file(
             predictor_matrix[i, j, :] = _ships_predictors_xarray_to_keras(
                 example_table_xarray=xt, init_time_index=k,
                 lagged_predictor_indices=predictor_indices_lagged,
-                forecast_predictor_indices=predictor_indices_forecast
+                forecast_predictor_indices=predictor_indices_forecast,
+                max_forecast_hour=max_forecast_hour
             )
 
     return _interp_missing_times(
@@ -1060,11 +1078,11 @@ def _read_one_example_file(
         num_negative_examples_desired, lead_time_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
-        ships_predictor_names_forecast, predict_td_to_ts,
-        satellite_time_tolerance_sec, satellite_max_missing_times,
-        ships_time_tolerance_sec, ships_max_missing_times,
-        use_climo_as_backup, class_cutoffs_m_s01=None, num_grid_rows=None,
-        num_grid_columns=None):
+        ships_predictor_names_forecast, ships_max_forecast_hour,
+        predict_td_to_ts, satellite_time_tolerance_sec,
+        satellite_max_missing_times, ships_time_tolerance_sec,
+        ships_max_missing_times, use_climo_as_backup, class_cutoffs_m_s01=None,
+        num_grid_rows=None, num_grid_columns=None):
     """Reads one example file for generator.
 
     E = number of examples per batch
@@ -1089,6 +1107,7 @@ def _read_one_example_file(
     :param satellite_predictor_names: Same.
     :param ships_predictor_names_lagged: Same.
     :param ships_predictor_names_forecast: Same.
+    :param ships_max_forecast_hour: Same.
     :param predict_td_to_ts: Same.
     :param satellite_time_tolerance_sec: Same.
     :param satellite_max_missing_times: Same.
@@ -1198,7 +1217,8 @@ def _read_one_example_file(
             table_rows_by_example=ships_rows_by_example,
             model_lag_times_sec=ships_lag_times_sec,
             predictor_names_lagged=ships_predictor_names_lagged,
-            predictor_names_forecast=ships_predictor_names_forecast
+            predictor_names_forecast=ships_predictor_names_forecast,
+            max_forecast_hour=ships_max_forecast_hour
         )
 
     predictor_matrices = [
@@ -1290,10 +1310,20 @@ def _check_generator_args(option_dict):
             option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
         )
 
-    if option_dict[SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+    if option_dict[SHIPS_PREDICTORS_FORECAST_KEY] is None:
+        option_dict[SHIPS_MAX_FORECAST_HOUR_KEY] = 0
+    else:
         error_checking.assert_is_string_list(
             option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
         )
+
+        error_checking.assert_is_integer(
+            option_dict[SHIPS_MAX_FORECAST_HOUR_KEY]
+        )
+        error_checking.assert_is_geq(
+            option_dict[SHIPS_MAX_FORECAST_HOUR_KEY], 0
+        )
+        assert numpy.mod(option_dict[SHIPS_MAX_FORECAST_HOUR_KEY], 6) == 0
 
     error_checking.assert_is_integer(option_dict[NUM_POSITIVE_EXAMPLES_KEY])
     error_checking.assert_is_geq(option_dict[NUM_POSITIVE_EXAMPLES_KEY], 1)
@@ -1378,7 +1408,7 @@ def _check_generator_args(option_dict):
 
 def _ships_predictors_xarray_to_keras(
         example_table_xarray, init_time_index, lagged_predictor_indices,
-        forecast_predictor_indices):
+        forecast_predictor_indices, max_forecast_hour):
     """Converts SHIPS predictors from xarray format to Keras format.
 
     :param example_table_xarray: xarray table returned by
@@ -1389,6 +1419,7 @@ def _ships_predictors_xarray_to_keras(
         predictors to use.
     :param forecast_predictor_indices: 1-D numpy array with indices of forecast
         predictors to use.
+    :param max_forecast_hour: Maximum forecast hour to return.
     :return: predictor_values_1d: 1-D numpy array with all desired SHIPS
         predictors.
     """
@@ -1413,19 +1444,42 @@ def _ships_predictors_xarray_to_keras(
     else:
         error_checking.assert_is_integer_numpy_array(forecast_predictor_indices)
         error_checking.assert_is_geq_numpy_array(forecast_predictor_indices, 0)
-
         xt = example_table_xarray
-        zero_hour_index = numpy.where(
+
+        first_index = numpy.where(
             xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values == 0
+        )[0][0]
+
+        last_index = numpy.where(
+            xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values ==
+            max_forecast_hour + 1
         )[0][0]
 
         forecast_values = (
             xt[example_utils.SHIPS_PREDICTORS_FORECAST_KEY].values[
-                init_time_index
+                init_time_index, ...
             ]
         )
-        forecast_values = forecast_values[:, forecast_predictor_indices]
-        forecast_values = numpy.ravel(forecast_values[[zero_hour_index], :])
+        forecast_values = forecast_values[
+            first_index:last_index, forecast_predictor_indices
+        ]
+
+        for k in forecast_predictor_indices:
+            this_predictor_name = (
+                xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[k]
+            )
+            if this_predictor_name in SHIPS_PREDICTORS_WITH_USABLE_FORECAST:
+                continue
+
+            print((
+                'Cannot use true forecast values for SHIPS predictor "{0:s}".'
+            ).format(
+                this_predictor_name
+            ))
+
+            forecast_values[:, k] = forecast_values[0, k]
+
+        forecast_values = numpy.ravel(forecast_values)
 
     return numpy.concatenate((lagged_values, forecast_values))
 
@@ -1678,6 +1732,10 @@ def read_metafile(pickle_file_name):
         validation_option_dict[NUM_GRID_ROWS_KEY] = None
         validation_option_dict[NUM_GRID_COLUMNS_KEY] = None
 
+    if SHIPS_MAX_FORECAST_HOUR_KEY not in training_option_dict:
+        training_option_dict[SHIPS_MAX_FORECAST_HOUR_KEY] = 0
+        validation_option_dict[SHIPS_MAX_FORECAST_HOUR_KEY] = 0
+
     training_option_dict[USE_CLIMO_KEY] = False
     validation_option_dict[USE_CLIMO_KEY] = True
 
@@ -1887,6 +1945,7 @@ def create_inputs(option_dict):
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
     ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
+    ships_max_forecast_hour = option_dict[SHIPS_MAX_FORECAST_HOUR_KEY]
     predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
     satellite_time_tolerance_sec = option_dict[SATELLITE_TIME_TOLERANCE_KEY]
     satellite_max_missing_times = option_dict[SATELLITE_MAX_MISSING_TIMES_KEY]
@@ -1908,6 +1967,7 @@ def create_inputs(option_dict):
         satellite_predictor_names=satellite_predictor_names,
         ships_predictor_names_lagged=ships_predictor_names_lagged,
         ships_predictor_names_forecast=ships_predictor_names_forecast,
+        ships_max_forecast_hour=ships_max_forecast_hour,
         predict_td_to_ts=predict_td_to_ts,
         satellite_time_tolerance_sec=satellite_time_tolerance_sec,
         satellite_max_missing_times=satellite_max_missing_times,
@@ -1951,6 +2011,8 @@ def input_generator(option_dict):
     option_dict['ships_predictor_names_forecast']: 1-D list with names of
         forecast SHIPS predictors to use.  If you do not want forecast SHIPS
         predictors, make this None.
+    option_dict['ships_max_forecast_hour']: Max forecast hour to include in
+        SHIPS predictors.
     option_dict['num_positive_examples_per_batch']: Number of positive examples
         (in highest class) per batch.
     option_dict['num_negative_examples_per_batch']: Number of negative examples
@@ -2012,6 +2074,7 @@ def input_generator(option_dict):
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
     ships_predictor_names_lagged = option_dict[SHIPS_PREDICTORS_LAGGED_KEY]
     ships_predictor_names_forecast = option_dict[SHIPS_PREDICTORS_FORECAST_KEY]
+    ships_max_forecast_hour = option_dict[SHIPS_MAX_FORECAST_HOUR_KEY]
     num_positive_examples_per_batch = option_dict[NUM_POSITIVE_EXAMPLES_KEY]
     num_negative_examples_per_batch = option_dict[NUM_NEGATIVE_EXAMPLES_KEY]
     max_examples_per_cyclone_in_batch = (
@@ -2108,6 +2171,7 @@ def input_generator(option_dict):
                 ships_predictor_names_lagged=ships_predictor_names_lagged,
                 ships_predictor_names_forecast=
                 ships_predictor_names_forecast,
+                ships_max_forecast_hour=ships_max_forecast_hour,
                 predict_td_to_ts=predict_td_to_ts,
                 satellite_time_tolerance_sec=satellite_time_tolerance_sec,
                 satellite_max_missing_times=satellite_max_missing_times,

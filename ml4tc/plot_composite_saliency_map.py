@@ -24,7 +24,6 @@ import satellite_plotting
 import predictor_plotting
 
 MAX_COLOUR_PERCENTILE = 99.
-SHIPS_FORECAST_HOURS = numpy.array([0], dtype=int)
 SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
