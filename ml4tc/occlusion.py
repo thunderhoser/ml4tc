@@ -147,7 +147,8 @@ def get_occlusion_maps(
 
                 this_prob_array = neural_net.apply_model(
                     model_object=model_object,
-                    predictor_matrices=new_predictor_matrices,
+                    predictor_matrices=
+                    [p for p in new_predictor_matrices if p is not None],
                     num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
                     verbose=True
                 )
@@ -240,7 +241,8 @@ def get_occlusion_maps(
 
             this_prob_array = neural_net.apply_model(
                 model_object=model_object,
-                predictor_matrices=new_predictor_matrices,
+                predictor_matrices=
+                [p for p in new_predictor_matrices if p is not None],
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
                 verbose=True
             )
@@ -269,7 +271,8 @@ def get_occlusion_maps(
 
     original_prob_array = neural_net.apply_model(
         model_object=model_object,
-        predictor_matrices=predictor_matrices,
+        predictor_matrices=
+        [p for p in predictor_matrices if p is not None],
         num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
         verbose=True
     )
