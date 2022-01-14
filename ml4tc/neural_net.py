@@ -16,6 +16,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import grids
 import time_conversion
 import file_system_utils
 import error_checking
@@ -50,6 +51,13 @@ MIN_TROP_STORM_INTENSITY_M_S01 = 34 * KT_TO_METRES_PER_SECOND
 
 DUMMY_LATITUDES_DEG_N = numpy.linspace(50, 60, num=480, dtype=float)
 DUMMY_LONGITUDES_DEG_E = numpy.linspace(-120, -110, num=640, dtype=float)
+
+DUMMY_LATITUDE_MATRIX_DEG_N, DUMMY_LONGITUDE_MATRIX_DEG_E = (
+    grids.latlng_vectors_to_matrices(
+        unique_latitudes_deg=DUMMY_LATITUDES_DEG_N,
+        unique_longitudes_deg=DUMMY_LONGITUDES_DEG_E
+    )
+)
 
 METRIC_DICT = {
     'accuracy': custom_metrics.accuracy,
@@ -825,43 +833,79 @@ def _read_brightness_temp_one_file(
     )
     brightness_temp_matrix = numpy.full(these_dim, numpy.nan)
 
-    grid_latitude_matrix_deg_n = numpy.full(
-        (num_examples, num_grid_rows_orig, num_lag_times), numpy.nan
-    )
-    grid_longitude_matrix_deg_e = numpy.full(
-        (num_examples, num_grid_columns_orig, num_lag_times), numpy.nan
-    )
+    regular_grids = xt[satellite_utils.GRID_LATITUDE_KEY].values.shape == 2
+
+    if regular_grids:
+        grid_latitude_matrix_deg_n = numpy.full(
+            (num_examples, num_grid_rows_orig, num_lag_times), numpy.nan
+        )
+        grid_longitude_matrix_deg_e = numpy.full(
+            (num_examples, num_grid_columns_orig, num_lag_times), numpy.nan
+        )
+    else:
+        dimensions = (
+            num_examples, num_grid_rows_orig, num_grid_columns_orig,
+            num_lag_times
+        )
+        grid_latitude_matrix_deg_n = numpy.full(dimensions, numpy.nan)
+        grid_longitude_matrix_deg_e = numpy.full(dimensions, numpy.nan)
 
     for i in range(num_examples):
         for j in range(len(lag_times_sec)):
             if table_rows_by_example[i] is None:
                 brightness_temp_matrix[i, ..., j, 0] = 0.
-                grid_latitude_matrix_deg_n[i, :, j] = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
-                )
-                grid_longitude_matrix_deg_e[i, :, j] = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
-                )
+
+                if regular_grids:
+                    grid_latitude_matrix_deg_n[i, :, j] = (
+                        DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
+                    )
+                    grid_longitude_matrix_deg_e[i, :, j] = (
+                        DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
+                    )
+                else:
+                    grid_latitude_matrix_deg_n[i, ..., j] = (
+                        DUMMY_LATITUDE_MATRIX_DEG_N[
+                            :num_grid_rows_orig, :num_grid_columns_orig
+                        ]
+                    )
+                    grid_longitude_matrix_deg_e[i, :, j] = (
+                        DUMMY_LONGITUDE_MATRIX_DEG_E[
+                            :num_grid_rows_orig, :num_grid_columns_orig
+                        ]
+                    )
 
                 continue
 
             k = table_rows_by_example[i][j]
 
             if k == MISSING_INDEX:
-                grid_latitude_matrix_deg_n[i, :, j] = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
-                )
-                grid_longitude_matrix_deg_e[i, :, j] = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
-                )
+                if regular_grids:
+                    grid_latitude_matrix_deg_n[i, :, j] = (
+                        DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig]
+                    )
+                    grid_longitude_matrix_deg_e[i, :, j] = (
+                        DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig]
+                    )
+                else:
+                    grid_latitude_matrix_deg_n[i, ..., j] = (
+                        DUMMY_LATITUDE_MATRIX_DEG_N[
+                            :num_grid_rows_orig, :num_grid_columns_orig
+                        ]
+                    )
+                    grid_longitude_matrix_deg_e[i, :, j] = (
+                        DUMMY_LONGITUDE_MATRIX_DEG_E[
+                            :num_grid_rows_orig, :num_grid_columns_orig
+                        ]
+                    )
+
                 continue
 
             try:
                 these_latitudes_deg_n = (
-                    xt[satellite_utils.GRID_LATITUDE_KEY].values[k, :]
+                    xt[satellite_utils.GRID_LATITUDE_KEY].values[k, ...]
                 )
                 these_longitudes_deg_e = (
-                    xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, :]
+                    xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, ...]
                 )
 
                 error_checking.assert_is_valid_lat_numpy_array(
@@ -870,22 +914,32 @@ def _read_brightness_temp_one_file(
                 error_checking.assert_is_valid_lng_numpy_array(
                     these_longitudes_deg_e, allow_nan=False
                 )
-                error_checking.assert_is_greater_numpy_array(
-                    numpy.diff(these_latitudes_deg_n), 0.
-                )
-                error_checking.assert_is_greater_numpy_array(
-                    numpy.diff(these_longitudes_deg_e), 0.
-                )
-            except:
-                these_latitudes_deg_n = (
-                    DUMMY_LATITUDES_DEG_N[:num_grid_rows_orig] + 0.
-                )
-                these_longitudes_deg_e = (
-                    DUMMY_LONGITUDES_DEG_E[:num_grid_columns_orig] + 0.
-                )
 
-            grid_latitude_matrix_deg_n[i, :, j] = these_latitudes_deg_n
-            grid_longitude_matrix_deg_e[i, :, j] = these_longitudes_deg_e
+                if regular_grids:
+                    error_checking.assert_is_greater_numpy_array(
+                        numpy.diff(these_latitudes_deg_n), 0.
+                    )
+                    error_checking.assert_is_greater_numpy_array(
+                        numpy.diff(these_longitudes_deg_e), 0.
+                    )
+            except:
+                if regular_grids:
+                    these_latitudes_deg_n = 0. + DUMMY_LATITUDES_DEG_N[
+                        :num_grid_rows_orig
+                    ]
+                    these_longitudes_deg_e = 0. + DUMMY_LONGITUDES_DEG_E[
+                        :num_grid_columns_orig
+                    ]
+                else:
+                    these_latitudes_deg_n = 0. + DUMMY_LATITUDE_MATRIX_DEG_N[
+                        :num_grid_rows_orig, :num_grid_columns_orig
+                    ]
+                    these_longitudes_deg_e = 0. + DUMMY_LONGITUDE_MATRIX_DEG_E[
+                        :num_grid_rows_orig, num_grid_columns_orig
+                    ]
+
+            grid_latitude_matrix_deg_n[i, ..., j] = these_latitudes_deg_n
+            grid_longitude_matrix_deg_e[i, ..., j] = these_longitudes_deg_e
 
             brightness_temp_matrix[i, ..., j, 0] = xt[
                 example_utils.SATELLITE_PREDICTORS_GRIDDED_KEY
@@ -907,6 +961,9 @@ def _read_brightness_temp_one_file(
         grid_latitude_matrix_deg_n = (
             grid_latitude_matrix_deg_n[:, first_index:last_index, ...]
         )
+        grid_longitude_matrix_deg_e = (
+            grid_longitude_matrix_deg_e[:, first_index:last_index, ...]
+        )
 
     if num_grid_columns is not None:
         error_checking.assert_is_less_than(
@@ -923,8 +980,11 @@ def _read_brightness_temp_one_file(
         brightness_temp_matrix = (
             brightness_temp_matrix[:, :, first_index:last_index, ...]
         )
+        grid_latitude_matrix_deg_n = (
+            grid_latitude_matrix_deg_n[:, :, first_index:last_index, ...]
+        )
         grid_longitude_matrix_deg_e = (
-            grid_longitude_matrix_deg_e[:, first_index:last_index, ...]
+            grid_longitude_matrix_deg_e[:, :, first_index:last_index, ...]
         )
 
     brightness_temp_matrix = _interp_missing_times(
@@ -1140,10 +1200,12 @@ def _read_one_example_file(
         (deg N).
     data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
         longitudes (deg E).
-    data_dict['grid_latitude_matrix_deg_n']: numpy array (E x M x T_sat) of grid
-        latitudes (deg N).
-    data_dict['grid_longitude_matrix_deg_e']: numpy array (E x N x T_sat) of
-        grid longitudes (deg E).
+    data_dict['grid_latitude_matrix_deg_n']: numpy array of grid latitudes (deg
+        north).  If regular grids, this array will have dimensions
+        E x M x T_sat; if irregular, will have dimensions E x M x N x T_sat.
+    data_dict['grid_longitude_matrix_deg_e']: numpy array of grid longitudes
+        (deg east).  If regular grids, this array will have dimensions
+        E x N x T_sat; if irregular, will have dimensions E x M x N x T_sat.
     """
 
     if satellite_lag_times_minutes is None:

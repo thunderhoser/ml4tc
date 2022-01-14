@@ -356,8 +356,8 @@ def _plot_brightness_temp_saliency(
             satellite_plotting.plot_saliency(
                 saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
                 axes_object=axes_objects[k],
-                latitudes_deg_n=grid_latitude_matrix_deg_n[:, k],
-                longitudes_deg_e=grid_longitude_matrix_deg_e[:, k],
+                latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+                longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
                 min_abs_contour_value=min_abs_contour_value,
                 max_abs_contour_value=max_abs_contour_value,
                 half_num_contours=10,

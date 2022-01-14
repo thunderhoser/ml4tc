@@ -16,6 +16,7 @@ import number_rounding
 import longitude_conversion as lng_conversion
 import error_checking
 
+GRID_SPACING_METRES = 4000.
 DEFAULT_NUM_GRID_ROWS = 480
 DEFAULT_NUM_GRID_COLUMNS = 640
 

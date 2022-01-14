@@ -139,10 +139,12 @@ def plot_brightness_temp_one_example(
     :param init_time_unix_sec: Same.
     :param normalization_table_xarray: xarray table returned by
         `normalization.read_file`.
-    :param grid_latitude_matrix_deg_n: M-by-L numpy array of grid-point
-        latitudes (deg north).
-    :param grid_longitude_matrix_deg_e: N-by-L numpy array of grid-point
-        longitudes (deg east).
+    :param grid_latitude_matrix_deg_n: numpy array of latitudes (deg north).  If
+        regular grids, this should have dimensions M x L.  If irregular grids,
+        should have dimensions M x N x L.
+    :param grid_longitude_matrix_deg_e: numpy array of longitudes (deg east).
+        If regular grids, this should have dimensions N x L.  If irregular
+        grids, should have dimensions M x N x L.
     :param border_latitudes_deg_n: length-P numpy array of latitudes
         (deg north).
     :param border_longitudes_deg_e: length-P numpy array of longitudes
@@ -167,17 +169,31 @@ def plot_brightness_temp_one_example(
     satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_integer(init_time_unix_sec)
 
-    error_checking.assert_is_numpy_array(
-        grid_latitude_matrix_deg_n, num_dimensions=2
-    )
+    error_checking.assert_is_numpy_array(grid_latitude_matrix_deg_n)
+    regular_grids = len(grid_latitude_matrix_deg_n.shape) == 2
 
-    num_model_lag_times = grid_latitude_matrix_deg_n.shape[1]
-    expected_dim = numpy.array(
-        [grid_longitude_matrix_deg_e.shape[0], num_model_lag_times], dtype=int
-    )
-    error_checking.assert_is_numpy_array(
-        grid_longitude_matrix_deg_e, exact_dimensions=expected_dim
-    )
+    if regular_grids:
+        error_checking.assert_is_numpy_array(
+            grid_latitude_matrix_deg_n, num_dimensions=2
+        )
+
+        num_model_lag_times = grid_latitude_matrix_deg_n.shape[1]
+        expected_dim = numpy.array(
+            [grid_longitude_matrix_deg_e.shape[0], num_model_lag_times],
+            dtype=int
+        )
+        error_checking.assert_is_numpy_array(
+            grid_longitude_matrix_deg_e, exact_dimensions=expected_dim
+        )
+    else:
+        error_checking.assert_is_numpy_array(
+            grid_latitude_matrix_deg_n, num_dimensions=3
+        )
+        error_checking.assert_is_numpy_array(
+            grid_longitude_matrix_deg_e,
+            exact_dimensions=
+            numpy.array(grid_latitude_matrix_deg_n.shape, dtype=int)
+        )
 
     # Denormalize brightness temperatures.
     nt = normalization_table_xarray
@@ -234,7 +250,6 @@ def plot_brightness_temp_one_example(
             satellite_utils.TIME_DIM,
             satellite_utils.GRID_ROW_DIM, satellite_utils.GRID_COLUMN_DIM
         )
-
         main_data_dict = {
             satellite_utils.CYCLONE_ID_KEY: (
                 (satellite_utils.TIME_DIM,),
@@ -243,16 +258,40 @@ def plot_brightness_temp_one_example(
             satellite_utils.BRIGHTNESS_TEMPERATURE_KEY: (
                 dimensions,
                 brightness_temp_matrix_kelvins[[0], ..., j]
-            ),
-            satellite_utils.GRID_LATITUDE_KEY: (
-                (satellite_utils.TIME_DIM, satellite_utils.GRID_ROW_DIM),
-                numpy.transpose(grid_latitude_matrix_deg_n[:, [j]])
-            ),
-            satellite_utils.GRID_LONGITUDE_KEY: (
-                (satellite_utils.TIME_DIM, satellite_utils.GRID_COLUMN_DIM),
-                numpy.transpose(grid_longitude_matrix_deg_e[:, [j]])
             )
         }
+
+        if regular_grids:
+            main_data_dict.update({
+                satellite_utils.GRID_LATITUDE_KEY: (
+                    (satellite_utils.TIME_DIM, satellite_utils.GRID_ROW_DIM),
+                    numpy.transpose(grid_latitude_matrix_deg_n[:, [j]])
+                ),
+                satellite_utils.GRID_LONGITUDE_KEY: (
+                    (satellite_utils.TIME_DIM, satellite_utils.GRID_COLUMN_DIM),
+                    numpy.transpose(grid_longitude_matrix_deg_e[:, [j]])
+                )
+            })
+        else:
+            dimensions = (
+                satellite_utils.TIME_DIM, satellite_utils.GRID_ROW_DIM,
+                satellite_utils.GRID_COLUMN_DIM
+            )
+            this_latitude_matrix_deg_n = numpy.expand_dims(
+                grid_latitude_matrix_deg_n[..., j], axis=0
+            )
+            this_longitude_matrix_deg_e = numpy.expand_dims(
+                grid_longitude_matrix_deg_e[..., j], axis=0
+            )
+
+            main_data_dict.update({
+                satellite_utils.GRID_LATITUDE_KEY: (
+                    dimensions, this_latitude_matrix_deg_n
+                ),
+                satellite_utils.GRID_LONGITUDE_KEY: (
+                    dimensions, this_longitude_matrix_deg_e
+                )
+            })
 
         example_table_xarray = xarray.Dataset(
             data_vars=main_data_dict, coords=metadata_dict
