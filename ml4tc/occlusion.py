@@ -334,10 +334,10 @@ def normalize_occlusion_maps(occlusion_prob_matrices, original_probs):
     original_probs_with_nan[original_probs_with_nan == 0] = numpy.nan
 
     for k in range(len(occlusion_prob_matrices)):
-        for i in range(num_examples):
-            if occlusion_prob_matrices[k] is None:
-                continue
+        if occlusion_prob_matrices[k] is None:
+            continue
 
+        for i in range(num_examples):
             normalized_occlusion_matrices[k][i, ...] = (
                 original_probs_with_nan[i] - occlusion_prob_matrices[k][i, ...]
             ) / original_probs_with_nan[i]
