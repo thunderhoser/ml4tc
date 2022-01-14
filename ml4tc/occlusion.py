@@ -233,6 +233,9 @@ def get_occlusion_maps(
                 (num_examples, num_scalar_predictors)
             )
             new_predictor_matrix[:, j] = fill_value
+            new_predictor_matrix = numpy.reshape(
+                new_predictor_matrix, predictor_matrices[k].shape
+            )
 
             new_predictor_matrices = (
                 predictor_matrices[:k] + [new_predictor_matrix] +
