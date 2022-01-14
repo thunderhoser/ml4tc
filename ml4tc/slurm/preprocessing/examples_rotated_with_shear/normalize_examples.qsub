@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="compress_example_files_raw"
+#SBATCH --job-name="normalize_examples"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,18 +14,23 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=compress_example_files_raw_%A_%a.out
+#SBATCH --output=normalize_examples_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion"
+set INPUT_EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_wind_shear/imputed"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_wind_shear/normalization_params_1993-2004_2015-2019.nc"
+set OUTPUT_EXAMPLE_DIR_NAME="${INPUT_EXAMPLE_DIR_NAME}/normalized"
 
 set YEARS=(1993 1994 1995 1996 1997 1998 1999 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019)
 set year=${YEARS[$SLURM_ARRAY_TASK_ID]}
 
-python3 -u "${CODE_DIR_NAME}/compress_example_files.py" \
---example_dir_name="${EXAMPLE_DIR_NAME}" \
---year=${year}
+python3 -u "${CODE_DIR_NAME}/normalize_examples.py" \
+--input_example_dir_name="${INPUT_EXAMPLE_DIR_NAME}" \
+--year=${year} \
+--input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--compress_output_files=0 \
+--output_example_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}"
