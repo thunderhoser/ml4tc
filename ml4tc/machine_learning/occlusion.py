@@ -139,7 +139,8 @@ def get_occlusion_maps(
 
                 this_prob_array = neural_net.apply_model(
                     model_object=model_object,
-                    predictor_matrices=new_predictor_matrices,
+                    predictor_matrices=
+                    [p for p in new_predictor_matrices if p is not None],
                     num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
                     verbose=True
                 )
@@ -224,6 +225,9 @@ def get_occlusion_maps(
                 (num_examples, num_scalar_predictors)
             )
             new_predictor_matrix[:, j] = fill_value
+            new_predictor_matrix = numpy.reshape(
+                new_predictor_matrix, predictor_matrices[k].shape
+            )
 
             new_predictor_matrices = (
                 predictor_matrices[:k] + [new_predictor_matrix] +
@@ -232,7 +236,8 @@ def get_occlusion_maps(
 
             this_prob_array = neural_net.apply_model(
                 model_object=model_object,
-                predictor_matrices=new_predictor_matrices,
+                predictor_matrices=
+                [p for p in new_predictor_matrices if p is not None],
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
                 verbose=True
             )
@@ -261,7 +266,8 @@ def get_occlusion_maps(
 
     original_prob_array = neural_net.apply_model(
         model_object=model_object,
-        predictor_matrices=predictor_matrices,
+        predictor_matrices=
+        [p for p in predictor_matrices if p is not None],
         num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
         verbose=True
     )
@@ -319,10 +325,10 @@ def normalize_occlusion_maps(occlusion_prob_matrices, original_probs):
     original_probs_with_nan[original_probs_with_nan == 0] = numpy.nan
 
     for k in range(len(occlusion_prob_matrices)):
-        for i in range(num_examples):
-            if occlusion_prob_matrices[k] is None:
-                continue
+        if occlusion_prob_matrices[k] is None:
+            continue
 
+        for i in range(num_examples):
             normalized_occlusion_matrices[k][i, ...] = (
                 original_probs_with_nan[i] - occlusion_prob_matrices[k][i, ...]
             ) / original_probs_with_nan[i]

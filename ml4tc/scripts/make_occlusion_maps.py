@@ -162,8 +162,8 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    three_occlusion_prob_matrices = None
-    three_norm_occlusion_matrices = None
+    three_occlusion_prob_matrices = [None]
+    three_norm_occlusion_matrices = [None]
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -173,10 +173,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         this_data_dict = neural_net.create_inputs(this_option_dict)
         print(SEPARATOR_STRING)
 
-        these_predictor_matrices = [
-            m for m in this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
-            if m is not None
-        ]
+        these_predictor_matrices = (
+            this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+        )
         this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
 
         if this_target_array.size == 0:
