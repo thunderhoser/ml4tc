@@ -833,9 +833,7 @@ def _read_brightness_temp_one_file(
     )
     brightness_temp_matrix = numpy.full(these_dim, numpy.nan)
 
-    regular_grids = xt[satellite_utils.GRID_LATITUDE_KEY].values.shape == 2
-    print('REGULAR GRIDS? {0:d}'.format(int(regular_grids)))
-    print(xt[satellite_utils.GRID_LATITUDE_KEY].values.shape)
+    regular_grids = len(xt[satellite_utils.GRID_LATITUDE_KEY].values.shape) == 2
 
     if regular_grids:
         grid_latitude_matrix_deg_n = numpy.full(
