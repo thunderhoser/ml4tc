@@ -18,7 +18,7 @@ import imputation
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
-YEAR_ARG_NAME = 'year'
+CYCLONE_ID_ARG_NAME = 'cyclone_id_string'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 MIN_TEMPORAL_FRACTION_ARG_NAME = 'min_temporal_coverage_fraction'
 MIN_NUM_TIMES_ARG_NAME = 'min_num_times'
@@ -33,7 +33,9 @@ INPUT_DIR_HELP_STRING = (
     'values.  Files therein will be found by `example_io.find_file` and read '
     'by `example_io.read_file`.'
 )
-YEAR_HELP_STRING = 'Will handle only learning examples in this year.'
+CYCLONE_ID_HELP_STRING = (
+    'Will handle only learning examples for this tropical cyclone.'
+)
 NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be read by '
     '`normalization.read_file`).'
@@ -74,7 +76,8 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + YEAR_ARG_NAME, type=int, required=True, help=YEAR_HELP_STRING
+    '--' + CYCLONE_ID_ARG_NAME, type=str, required=True,
+    help=CYCLONE_ID_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
@@ -110,7 +113,7 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(input_example_dir_name, year, normalization_file_name,
+def _run(input_example_dir_name, cyclone_id_string, normalization_file_name,
          min_temporal_coverage_fraction, min_num_times,
          min_spatial_coverage_fraction, min_num_pixels,
          fill_value_for_isotherm_stuff, compress_output_files,
@@ -120,7 +123,7 @@ def _run(input_example_dir_name, year, normalization_file_name,
     This is effectively the main method.
 
     :param input_example_dir_name: See documentation at top of file.
-    :param year: Same.
+    :param cyclone_id_string: Same.
     :param normalization_file_name: Same.
     :param min_temporal_coverage_fraction: Same.
     :param min_num_times: Same.
@@ -136,15 +139,17 @@ def _run(input_example_dir_name, year, normalization_file_name,
         normalization_file_name
     )
 
-    cyclone_id_strings = example_io.find_cyclones(
-        directory_name=input_example_dir_name, raise_error_if_all_missing=True
-    )
-    cyclone_id_strings = set([
-        c for c in cyclone_id_strings
-        if satellite_utils.parse_cyclone_id(c)[0] == year
-    ])
-    cyclone_id_strings = list(cyclone_id_strings)
-    cyclone_id_strings.sort()
+    cyclone_id_strings = [cyclone_id_string]
+
+    # cyclone_id_strings = example_io.find_cyclones(
+    #     directory_name=input_example_dir_name, raise_error_if_all_missing=True
+    # )
+    # cyclone_id_strings = set([
+    #     c for c in cyclone_id_strings
+    #     if satellite_utils.parse_cyclone_id(c)[0] == year
+    # ])
+    # cyclone_id_strings = list(cyclone_id_strings)
+    # cyclone_id_strings.sort()
 
     for this_cyclone_id_string in cyclone_id_strings:
         input_example_file_name = example_io.find_file(
@@ -197,7 +202,7 @@ if __name__ == '__main__':
 
     _run(
         input_example_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
-        year=getattr(INPUT_ARG_OBJECT, YEAR_ARG_NAME),
+        cyclone_id_string=getattr(INPUT_ARG_OBJECT, CYCLONE_ID_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
