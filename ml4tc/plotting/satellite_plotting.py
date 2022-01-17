@@ -9,6 +9,7 @@ from gewittergefahr.gg_utils import grids
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
+from ml4tc.utils import satellite_utils
 
 TOLERANCE = 1e-6
 
@@ -177,14 +178,9 @@ def plot_2d_grid(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(latitude_array_deg_n), 0.
-        )
-        error_checking.assert_is_numpy_array(
-            longitude_array_deg_e, num_dimensions=1
-        )
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(longitude_array_deg_e), 0.
+        assert satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=latitude_array_deg_n,
+            longitudes_deg_e=longitude_array_deg_e
         )
 
         num_rows = len(latitude_array_deg_n)
@@ -224,9 +220,6 @@ def plot_2d_grid(
             )
 
         longitudes_to_plot_deg_e = _grid_points_to_edges(longitude_array_deg_e)
-        longitudes_to_plot_deg_e = lng_conversion.convert_lng_negative_in_west(
-            longitudes_to_plot_deg_e
-        )
 
         temp_matrix_to_plot_kelvins = grids.latlng_field_grid_points_to_edges(
             field_matrix=brightness_temp_matrix_kelvins,
@@ -239,6 +232,17 @@ def plot_2d_grid(
         latitudes_to_plot_deg_n = latitude_array_deg_n + 0.
         longitudes_to_plot_deg_e = longitude_array_deg_e + 0.
         temp_matrix_to_plot_kelvins = brightness_temp_matrix_kelvins + 0.
+
+        longitude_range_deg = (
+            numpy.max(longitudes_to_plot_deg_e) -
+            numpy.min(longitudes_to_plot_deg_e)
+        )
+        if longitude_range_deg > 100:
+            longitudes_to_plot_deg_e = (
+                lng_conversion.convert_lng_positive_in_west(
+                    longitudes_to_plot_deg_e
+                )
+            )
 
     temp_matrix_to_plot_kelvins = numpy.ma.masked_where(
         numpy.isnan(temp_matrix_to_plot_kelvins), temp_matrix_to_plot_kelvins
@@ -313,14 +317,9 @@ def plot_saliency(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(latitude_array_deg_n), 0.
-        )
-        error_checking.assert_is_numpy_array(
-            longitude_array_deg_e, num_dimensions=1
-        )
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(longitude_array_deg_e), 0.
+        assert satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=latitude_array_deg_n,
+            longitudes_deg_e=longitude_array_deg_e
         )
 
         latitude_matrix_deg_n, longitude_matrix_deg_e = (
@@ -344,6 +343,14 @@ def plot_saliency(
     longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
         longitude_matrix_deg_e
     )
+
+    longitude_range_deg = (
+        numpy.max(longitude_matrix_deg_e) - numpy.min(longitude_matrix_deg_e)
+    )
+    if longitude_range_deg > 100:
+        longitude_matrix_deg_e = lng_conversion.convert_lng_positive_in_west(
+            longitude_matrix_deg_e
+        )
 
     num_rows = latitude_matrix_deg_n.shape[0]
     num_columns = latitude_matrix_deg_n.shape[1]
@@ -417,14 +424,9 @@ def plot_class_activation(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(latitude_array_deg_n), 0.
-        )
-        error_checking.assert_is_numpy_array(
-            longitude_array_deg_e, num_dimensions=1
-        )
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(longitude_array_deg_e), 0.
+        assert satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=latitude_array_deg_n,
+            longitudes_deg_e=longitude_array_deg_e
         )
 
         latitude_matrix_deg_n, longitude_matrix_deg_e = (
@@ -448,6 +450,14 @@ def plot_class_activation(
     longitude_matrix_deg_e = lng_conversion.convert_lng_negative_in_west(
         longitude_matrix_deg_e
     )
+
+    longitude_range_deg = (
+        numpy.max(longitude_matrix_deg_e) - numpy.min(longitude_matrix_deg_e)
+    )
+    if longitude_range_deg > 100:
+        longitude_matrix_deg_e = lng_conversion.convert_lng_positive_in_west(
+            longitude_matrix_deg_e
+        )
 
     num_rows = latitude_matrix_deg_n.shape[0]
     num_columns = latitude_matrix_deg_n.shape[1]

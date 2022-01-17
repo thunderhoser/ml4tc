@@ -909,11 +909,9 @@ def _read_brightness_temp_one_file(
                 )
 
                 if regular_grids:
-                    error_checking.assert_is_greater_numpy_array(
-                        numpy.diff(these_latitudes_deg_n), 0.
-                    )
-                    error_checking.assert_is_greater_numpy_array(
-                        numpy.diff(these_longitudes_deg_e), 0.
+                    assert satellite_utils.is_regular_grid_valid(
+                        latitudes_deg_n=these_latitudes_deg_n,
+                        longitudes_deg_e=these_longitudes_deg_e
                     )
             except:
                 if regular_grids:

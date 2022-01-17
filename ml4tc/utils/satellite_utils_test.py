@@ -123,6 +123,43 @@ BASIN_ID_STRING = 'AL'
 CYCLONE_NUMBER = 5
 CYCLONE_ID_STRING = '1998AL05'
 
+# The following constants are used to test is_regular_grid_valid.
+FIRST_REGULAR_LATITUDES_DEG_N = numpy.array([50, 50.5, 51, 51.5, 52, 52.5, 53])
+FIRST_REGULAR_LONGITUDES_DEG_E = numpy.array(
+    [-114, -113, -112, -111, -110, -109], dtype=float
+)
+FIRST_REGULAR_GRID_VALID_FLAG = True
+
+SECOND_REGULAR_LATITUDES_DEG_N = FIRST_REGULAR_LATITUDES_DEG_N + 0.
+SECOND_REGULAR_LONGITUDES_DEG_E = numpy.array(
+    [246, 247, 248, 249, 250, 251], dtype=float
+)
+SECOND_REGULAR_GRID_VALID_FLAG = True
+
+THIRD_REGULAR_LATITUDES_DEG_N = FIRST_REGULAR_LATITUDES_DEG_N + 0.
+THIRD_REGULAR_LONGITUDES_DEG_E = numpy.array(
+    [358, 359, 0, 1, 2, 3], dtype=float
+)
+THIRD_REGULAR_GRID_VALID_FLAG = True
+
+FOURTH_REGULAR_LATITUDES_DEG_N = FIRST_REGULAR_LATITUDES_DEG_N + 0.
+FOURTH_REGULAR_LONGITUDES_DEG_E = numpy.array(
+    [178, 179, 180, -179, -178, -177], dtype=float
+)
+FOURTH_REGULAR_GRID_VALID_FLAG = True
+
+FIFTH_REGULAR_LATITUDES_DEG_N = FIRST_REGULAR_LATITUDES_DEG_N + 0.
+FIFTH_REGULAR_LONGITUDES_DEG_E = numpy.array(
+    [-178, 179, 180, -179, -178, -177], dtype=float
+)
+FIFTH_REGULAR_GRID_VALID_FLAG = False
+
+SIXTH_REGULAR_LATITUDES_DEG_N = numpy.array([
+    50.6, 50.5, 51, 51.5, 52, 52.5, 53
+])
+SIXTH_REGULAR_LONGITUDES_DEG_E = FIRST_REGULAR_LONGITUDES_DEG_E + 0.
+SIXTH_REGULAR_GRID_VALID_FLAG = False
+
 
 class SatelliteUtilsTests(unittest.TestCase):
     """Each method is a unit test for satellite_utils.py."""
@@ -369,6 +406,78 @@ class SatelliteUtilsTests(unittest.TestCase):
         self.assertTrue(this_year == YEAR)
         self.assertTrue(this_basin_id_string == BASIN_ID_STRING)
         self.assertTrue(this_cyclone_number == CYCLONE_NUMBER)
+
+    def test_is_regular_grid_valid_first(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using first set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=FIRST_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=FIRST_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == FIRST_REGULAR_GRID_VALID_FLAG)
+
+    def test_is_regular_grid_valid_second(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using second set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=SECOND_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=SECOND_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == SECOND_REGULAR_GRID_VALID_FLAG)
+
+    def test_is_regular_grid_valid_third(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using third set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=THIRD_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=THIRD_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == THIRD_REGULAR_GRID_VALID_FLAG)
+
+    def test_is_regular_grid_valid_fourth(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using fourth set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=FOURTH_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=FOURTH_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == FOURTH_REGULAR_GRID_VALID_FLAG)
+
+    def test_is_regular_grid_valid_fifth(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using fifth set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=FIFTH_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=FIFTH_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == FIFTH_REGULAR_GRID_VALID_FLAG)
+
+    def test_is_regular_grid_valid_sixth(self):
+        """Ensures correct output from is_regular_grid_valid.
+
+        In this case, using sixth set of coordinates.
+        """
+
+        this_flag = satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=SIXTH_REGULAR_LATITUDES_DEG_N,
+            longitudes_deg_e=SIXTH_REGULAR_LONGITUDES_DEG_E
+        )
+        self.assertTrue(this_flag == SIXTH_REGULAR_GRID_VALID_FLAG)
 
 
 if __name__ == '__main__':
