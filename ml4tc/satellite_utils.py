@@ -556,3 +556,42 @@ def crop_images_around_storm_centers(
     )
 
     return satellite_table_xarray
+
+
+def is_regular_grid_valid(latitudes_deg_n, longitudes_deg_e):
+    """Determines validity of coordinates in regular grid.
+
+    :param latitudes_deg_n: 1-D numpy array of latitudes (deg north).
+    :param longitudes_deg_e: 1-D numpy array of longitudes (deg east).
+    :return: is_grid_valid: Boolean flag.
+    """
+
+    try:
+        error_checking.assert_is_numpy_array(latitudes_deg_n, num_dimensions=1)
+        error_checking.assert_is_numpy_array(longitudes_deg_e, num_dimensions=1)
+
+        error_checking.assert_is_valid_lat_numpy_array(
+            latitudes_deg_n, allow_nan=False
+        )
+        error_checking.assert_is_valid_lng_numpy_array(
+            longitudes_deg_e, allow_nan=False
+        )
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(latitudes_deg_n), 0.
+        )
+    except:
+        return False
+
+    these_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+        longitudes_deg_e + 0.
+    )
+    if numpy.all(numpy.diff(these_longitudes_deg_e) > 0):
+        return True
+
+    these_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        these_longitudes_deg_e
+    )
+    if numpy.all(numpy.diff(these_longitudes_deg_e) > 0):
+        return True
+
+    return False
