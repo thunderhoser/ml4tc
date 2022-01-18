@@ -98,9 +98,13 @@ def _run(input_dir_name, year):
 
     for variable_name in ships_table_nh_xarray.data_vars:
         these_values = ships_table_nh_xarray[variable_name].values
-        these_real_values = these_values[
-            numpy.invert(numpy.isnan(these_values))
-        ]
+
+        try:
+            these_real_values = these_values[
+                numpy.invert(numpy.isnan(these_values))
+            ]
+        except:
+            continue
 
         print((
             'Variable "{0:s}" in northern hemi ... NaN frequency = {1:.4f} '
@@ -122,9 +126,13 @@ def _run(input_dir_name, year):
 
     for variable_name in ships_table_sh_xarray.data_vars:
         these_values = ships_table_sh_xarray[variable_name].values
-        these_real_values = these_values[
-            numpy.invert(numpy.isnan(these_values))
-        ]
+
+        try:
+            these_real_values = these_values[
+                numpy.invert(numpy.isnan(these_values))
+            ]
+        except:
+            continue
 
         print((
             'Variable "{0:s}" in southern hemi ... NaN frequency = {1:.4f} '
