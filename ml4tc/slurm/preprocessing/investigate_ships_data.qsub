@@ -22,6 +22,6 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed/5day"
 
-python3 -u "${CODE_DIR_NAME}/plot_ships_histogram.py" \
+python3 -u "${CODE_DIR_NAME}/investigate_ships_vars.py" \
 --input_ships_dir_name="${INPUT_DIR_NAME}" \
 --year=2019
