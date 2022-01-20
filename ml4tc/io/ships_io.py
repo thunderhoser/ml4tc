@@ -179,7 +179,7 @@ PRECIP_WATER_INNER_RING_UPSHEAR_KEY = (
 PRECIP_WATER_INNER_RING_KEY = 'ships_precipitable_water_0to500km_mm'
 REYNOLDS_SST_DAILY_CLIMO_KEY = 'ships_reynolds_sst_daily_climo_kelvins'
 NCODA_SST_CLIMO_KEY = 'ships_sst_ncoda_climo_kelvins'
-NCODA_OHC_26C_CLIMO_KEY = 'ships_ohc_ncoda_26c_isotherm_climo_j_kg01'
+NCODA_OHC_26C_CLIMO_KEY = 'ships_ohc_ncoda_26c_isotherm_climo_j_m02'
 NCODA_BOTTOM_CLIMO_KEY = 'ships_depth_ncoda_bottom_climo_metres'
 NCODA_MAX_TEMP_CLIMO_KEY = 'ships_ocean_temp_column_max_ncoda_climo_kelvins'
 DEPTH_MAX_TEMP_CLIMO_KEY = 'ships_depth_max_temp_climo_metres'
@@ -193,7 +193,7 @@ DEPTH_20C_CLIMO_KEY = 'ships_depth_20c_isotherm_climo_metres'
 DEPTH_18C_CLIMO_KEY = 'ships_depth_18c_isotherm_climo_metres'
 DEPTH_16C_CLIMO_KEY = 'ships_depth_16c_isotherm_climo_metres'
 NCODA_BOTTOM_TEMP_CLIMO_KEY = 'ships_ocean_temp_ncoda_bottom_climo_kelvins'
-NCODA_OHC_20C_CLIMO_KEY = 'ships_ohc_ncoda_20c_isotherm_climo_j_kg01'
+NCODA_OHC_20C_CLIMO_KEY = 'ships_ohc_ncoda_20c_isotherm_climo_j_m02'
 NCODA_SST_KEY = 'ships_sst_ncoda_kelvins'
 NCODA_SST_AREAL_KEY = 'ships_sst_ncoda_daily_50km_diamond_kelvins'
 NCODA_MAX_TEMP_KEY = 'ships_ocean_temp_column_max_ncoda_kelvins'
@@ -209,12 +209,14 @@ DEPTH_18C_KEY = 'ships_depth_18c_isotherm_metres'
 DEPTH_16C_KEY = 'ships_depth_16c_isotherm_metres'
 NCODA_BOTTOM_KEY = 'ships_depth_ncoda_bottom_metres'
 NCODA_BOTTOM_TEMP_KEY = 'ships_ocean_temp_ncoda_bottom_kelvins'
-NCODA_OHC_26C_KEY = 'ships_ohc_ncoda_26c_isotherm_j_kg01'
-NCODA_OHC_20C_KEY = 'ships_ohc_ncoda_20c_isotherm_j_kg01'
+NCODA_OHC_26C_KEY = 'ships_ohc_ncoda_26c_isotherm_j_m02'
+NCODA_OHC_20C_KEY = 'ships_ohc_ncoda_20c_isotherm_j_m02'
 SATELLITE_OHC_KEY = 'ships_ohc_satellite_j_m02'
 DEPTH_20C_SATELLITE_KEY = 'ships_depth_20c_isotherm_satellite_metres'
 DEPTH_26C_SATELLITE_KEY = 'ships_depth_26c_isotherm_satellite_metres'
 OHC_FROM_SST_AND_CLIMO_KEY = 'ships_ohc_climo_and_sst_j_m02'
+MERGED_OHC_KEY = 'merged_ocean_heat_content_j_m02'
+MERGED_SST_KEY = 'merged_sea_surface_temp_kelvins'
 
 FORECAST_FIELD_NAMES = [
     THRESHOLD_EXCEEDANCE_KEY,
@@ -351,7 +353,9 @@ FORECAST_FIELD_NAMES = [
     SATELLITE_OHC_KEY,
     DEPTH_20C_SATELLITE_KEY,
     DEPTH_26C_SATELLITE_KEY,
-    OHC_FROM_SST_AND_CLIMO_KEY
+    OHC_FROM_SST_AND_CLIMO_KEY,
+    MERGED_OHC_KEY,
+    MERGED_SST_KEY
 ]
 
 SATELLITE_LAG_TIME_KEY = 'ships_goes_time_lag_seconds'

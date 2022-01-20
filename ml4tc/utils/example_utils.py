@@ -6,12 +6,17 @@ from gewittergefahr.gg_utils import grids
 from gewittergefahr.gg_utils import geodetic_utils
 from gewittergefahr.gg_utils import projections
 from gewittergefahr.gg_utils import interp
+from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import time_periods
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import ships_io
 from ml4tc.utils import satellite_utils
 from ml4tc.utils import general_utils
+
+NCODA_SST_CUTOFF_TIME_UNIX_SEC = time_conversion.string_to_unix_sec(
+    '2013-01-01', '%Y-%m-%d'
+)
 
 GRID_SPACING_METRES = satellite_utils.GRID_SPACING_METRES
 STORM_INTENSITY_KEY = ships_io.STORM_INTENSITY_KEY
@@ -127,6 +132,152 @@ SHIPS_METADATA_AND_FORECAST_KEYS = [
     MEAN_TAN_WIND_300MB_500KM_KEY,
     VORTICITY_850MB_BIG_RING_KEY
 ]
+
+
+def _create_merged_sst_variable(example_table_xarray):
+    """Creates merged SST (sea-surface temperature) variable.
+
+    :param example_table_xarray: xarray table in format created by `merge_data`.
+    :return: example_table_xarray: Same but with additional SHIPS forecast
+        variable.
+    """
+
+    all_predictor_names = example_table_xarray.coords[
+        SHIPS_PREDICTOR_FORECAST_DIM
+    ].values.tolist()
+
+    if ships_io.MERGED_SST_KEY in all_predictor_names:
+        merged_sst_index = all_predictor_names.index(ships_io.MERGED_SST_KEY)
+    else:
+        merged_sst_index = -1
+
+    original_var_names = [
+        ships_io.NCODA_SST_KEY,
+        ships_io.REYNOLDS_SST_DAILY_KEY,
+        ships_io.REYNOLDS_SST_KEY,
+        ships_io.CLIMO_SST_KEY
+    ]
+    original_var_indices = numpy.array([
+        all_predictor_names.index(n) for n in original_var_names
+    ], dtype=int)
+
+    original_sst_matrix_kelvins = example_table_xarray[
+        SHIPS_PREDICTORS_FORECAST_KEY
+    ].values[..., original_var_indices]
+
+    init_times_unix_sec = (
+        example_table_xarray.coords[SHIPS_VALID_TIME_DIM].values
+    )
+    early_indices = numpy.where(
+        init_times_unix_sec < NCODA_SST_CUTOFF_TIME_UNIX_SEC
+    )[0]
+    original_sst_matrix_kelvins[..., 0][early_indices, :] = numpy.nan
+
+    merged_sst_matrix_kelvins = original_sst_matrix_kelvins[..., 0]
+
+    for k in range(1, len(original_var_indices)):
+        nan_flag_matrix = numpy.isnan(merged_sst_matrix_kelvins)
+        merged_sst_matrix_kelvins[nan_flag_matrix] = (
+            original_sst_matrix_kelvins[..., k][nan_flag_matrix]
+        )
+
+    if merged_sst_index == -1:
+        new_matrix = numpy.concatenate((
+            example_table_xarray[SHIPS_PREDICTORS_FORECAST_KEY].values,
+            numpy.expand_dims(merged_sst_matrix_kelvins, axis=-1)
+        ), axis=-1)
+
+        example_table_xarray = example_table_xarray.drop(
+            labels=SHIPS_PREDICTORS_FORECAST_KEY
+        )
+        example_table_xarray = example_table_xarray.assign_coords({
+            SHIPS_PREDICTOR_FORECAST_DIM:
+                all_predictor_names + [ships_io.MERGED_SST_KEY]
+        })
+
+        these_dim = (
+            SHIPS_VALID_TIME_DIM, SHIPS_FORECAST_HOUR_DIM,
+            SHIPS_PREDICTOR_FORECAST_DIM
+        )
+        example_table_xarray = example_table_xarray.assign({
+            SHIPS_PREDICTORS_FORECAST_KEY: (these_dim, new_matrix)
+        })
+    else:
+        example_table_xarray[SHIPS_PREDICTORS_FORECAST_KEY].values[
+            ..., merged_sst_index
+        ] = merged_sst_matrix_kelvins
+
+    return example_table_xarray
+
+
+def _create_merged_ohc_variable(example_table_xarray):
+    """Creates merged OHC (ocean heat content) variable.
+
+    :param example_table_xarray: xarray table in format created by `merge_data`.
+    :return: example_table_xarray: Same but with additional SHIPS forecast
+        variable.
+    """
+
+    all_predictor_names = example_table_xarray.coords[
+        SHIPS_PREDICTOR_FORECAST_DIM
+    ].values.tolist()
+
+    if ships_io.MERGED_OHC_KEY in all_predictor_names:
+        merged_ohc_index = all_predictor_names.index(ships_io.MERGED_OHC_KEY)
+    else:
+        merged_ohc_index = -1
+
+    original_var_names = [
+        ships_io.NCODA_OHC_26C_KEY,
+        ships_io.SATELLITE_OHC_KEY,
+        ships_io.OHC_FROM_SST_AND_CLIMO_KEY,
+        ships_io.NCODA_OHC_26C_CLIMO_KEY,
+        ships_io.CLIMO_OHC_KEY
+    ]
+
+    original_var_indices = numpy.array([
+        all_predictor_names.index(n) for n in original_var_names
+    ], dtype=int)
+
+    original_ohc_matrix_j_m02 = example_table_xarray[
+        SHIPS_PREDICTORS_FORECAST_KEY
+    ].values[..., original_var_indices]
+
+    merged_ohc_matrix_j_m02 = original_ohc_matrix_j_m02[..., 0]
+
+    for k in range(1, len(original_var_indices)):
+        nan_flag_matrix = numpy.isnan(merged_ohc_matrix_j_m02)
+        merged_ohc_matrix_j_m02[nan_flag_matrix] = (
+            original_ohc_matrix_j_m02[..., k][nan_flag_matrix]
+        )
+
+    if merged_ohc_index == -1:
+        new_matrix = numpy.concatenate((
+            example_table_xarray[SHIPS_PREDICTORS_FORECAST_KEY].values,
+            numpy.expand_dims(merged_ohc_matrix_j_m02, axis=-1)
+        ), axis=-1)
+
+        example_table_xarray = example_table_xarray.drop(
+            labels=SHIPS_PREDICTORS_FORECAST_KEY
+        )
+        example_table_xarray = example_table_xarray.assign_coords({
+            SHIPS_PREDICTOR_FORECAST_DIM:
+                all_predictor_names + [ships_io.MERGED_OHC_KEY]
+        })
+
+        these_dim = (
+            SHIPS_VALID_TIME_DIM, SHIPS_FORECAST_HOUR_DIM,
+            SHIPS_PREDICTOR_FORECAST_DIM
+        )
+        example_table_xarray = example_table_xarray.assign({
+            SHIPS_PREDICTORS_FORECAST_KEY: (these_dim, new_matrix)
+        })
+    else:
+        example_table_xarray[SHIPS_PREDICTORS_FORECAST_KEY].values[
+            ..., merged_ohc_index
+        ] = merged_ohc_matrix_j_m02
+
+    return example_table_xarray
 
 
 def merge_data(satellite_table_xarray, ships_table_xarray):
@@ -333,7 +484,11 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
         these_dim, ships_predictor_matrix_forecast
     )
 
-    return xarray.Dataset(data_vars=example_dict, coords=example_metadata_dict)
+    example_table_xarray = xarray.Dataset(
+        data_vars=example_dict, coords=example_metadata_dict
+    )
+    example_table_xarray = _create_merged_sst_variable(example_table_xarray)
+    return _create_merged_ohc_variable(example_table_xarray)
 
 
 def subset_satellite_times(example_table_xarray, time_interval_sec):
