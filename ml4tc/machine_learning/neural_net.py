@@ -1071,9 +1071,11 @@ def _read_ships_one_file(
     num_builtin_lag_times = len(
         xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
     )
+    num_forecast_hours = int(numpy.round(max_forecast_hour / 6)) + 1
+
     num_channels = (
         num_builtin_lag_times * num_lagged_predictors +
-        num_forecast_predictors
+        num_forecast_predictors * num_forecast_hours
     )
     predictor_matrix = numpy.full(
         (num_examples, num_model_lag_times, num_channels), numpy.nan
@@ -1517,9 +1519,9 @@ def _ships_predictors_xarray_to_keras(
             first_index:last_index, forecast_predictor_indices
         ]
 
-        for k in forecast_predictor_indices:
+        for i, j in enumerate(forecast_predictor_indices):
             this_predictor_name = (
-                xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[k]
+                xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[j]
             )
             if this_predictor_name in SHIPS_PREDICTORS_WITH_USABLE_FORECAST:
                 continue
@@ -1530,7 +1532,7 @@ def _ships_predictors_xarray_to_keras(
                 this_predictor_name
             ))
 
-            forecast_values[:, k] = forecast_values[0, k]
+            # forecast_values[:, i] = forecast_values[0, i]
 
         forecast_values = numpy.ravel(forecast_values)
 
