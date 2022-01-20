@@ -142,21 +142,12 @@ def _run(input_dir_name, cyclone_id_string, normalization_file_name,
             xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
         )
     else:
-        predictor_names = xt.coords[
-            example_utils.SATELLITE_PREDICTOR_UNGRIDDED_DIM
-        ].values.tolist()
-
-        u_index = predictor_names.index(satellite_utils.STORM_MOTION_U_KEY)
-        v_index = predictor_names.index(satellite_utils.STORM_MOTION_V_KEY)
-
-        orig_east_velocities_m_s01 = xt[
-            example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
-        ].values[:, u_index]
-
-        orig_north_velocities_m_s01 = xt[
-            example_utils.SATELLITE_PREDICTORS_UNGRIDDED_KEY
-        ].values[:, v_index]
-
+        orig_east_velocities_m_s01 = (
+            xt[satellite_utils.STORM_MOTION_U_KEY].values
+        )
+        orig_north_velocities_m_s01 = (
+            xt[satellite_utils.STORM_MOTION_V_KEY].values
+        )
         orig_times_unix_sec = xt.coords[example_utils.SATELLITE_TIME_DIM].values
 
     # Interpolate motion vectors to satellite times.

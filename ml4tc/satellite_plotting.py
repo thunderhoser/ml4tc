@@ -186,13 +186,16 @@ def plot_2d_grid(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        assert satellite_utils.is_regular_grid_valid(
-            latitudes_deg_n=latitude_array_deg_n,
-            longitudes_deg_e=longitude_array_deg_e
+        this_flag, latitudes_to_plot_deg_n, longitudes_to_plot_deg_e = (
+            satellite_utils.is_regular_grid_valid(
+                latitudes_deg_n=latitude_array_deg_n,
+                longitudes_deg_e=longitude_array_deg_e
+            )
         )
 
-        num_rows = len(latitude_array_deg_n)
-        num_columns = len(longitude_array_deg_e)
+        assert this_flag
+        num_rows = len(latitudes_to_plot_deg_n)
+        num_columns = len(longitudes_to_plot_deg_e)
     else:
         error_checking.assert_is_numpy_array(
             latitude_array_deg_n, num_dimensions=2
@@ -201,6 +204,9 @@ def plot_2d_grid(
             longitude_array_deg_e,
             exact_dimensions=numpy.array(latitude_array_deg_n.shape, dtype=int)
         )
+
+        latitudes_to_plot_deg_n = latitude_array_deg_n + 0.
+        longitudes_to_plot_deg_e = longitude_array_deg_e + 0.
 
         num_rows = latitude_array_deg_n.shape[0]
         num_columns = latitude_array_deg_n.shape[1]
@@ -217,17 +223,10 @@ def plot_2d_grid(
         error_checking.assert_is_string(cbar_orientation_string)
 
     if regular_grid:
-        latitudes_to_plot_deg_n = _grid_points_to_edges(latitude_array_deg_n)
-
-        longitude_range_deg = (
-            numpy.max(longitude_array_deg_e) - numpy.min(longitude_array_deg_e)
+        latitudes_to_plot_deg_n = _grid_points_to_edges(latitudes_to_plot_deg_n)
+        longitudes_to_plot_deg_e = _grid_points_to_edges(
+            longitudes_to_plot_deg_e
         )
-        if longitude_range_deg > 100:
-            longitude_array_deg_e = lng_conversion.convert_lng_positive_in_west(
-                longitude_array_deg_e
-            )
-
-        longitudes_to_plot_deg_e = _grid_points_to_edges(longitude_array_deg_e)
 
         temp_matrix_to_plot_kelvins = grids.latlng_field_grid_points_to_edges(
             field_matrix=brightness_temp_matrix_kelvins,
@@ -237,8 +236,6 @@ def plot_2d_grid(
     else:
         # TODO(thunderhoser): For an irregular grid I should also supply edge
         # coordinates to the plotting method (pcolor), but CBF right now.
-        latitudes_to_plot_deg_n = latitude_array_deg_n + 0.
-        longitudes_to_plot_deg_e = longitude_array_deg_e + 0.
         temp_matrix_to_plot_kelvins = brightness_temp_matrix_kelvins + 0.
 
         longitude_range_deg = (
@@ -325,16 +322,16 @@ def plot_saliency(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        assert satellite_utils.is_regular_grid_valid(
-            latitudes_deg_n=latitude_array_deg_n,
-            longitudes_deg_e=longitude_array_deg_e
+        this_flag, these_latitudes_deg_n, these_longitudes_deg_e = (
+            satellite_utils.is_regular_grid_valid(
+                latitudes_deg_n=latitude_array_deg_n,
+                longitudes_deg_e=longitude_array_deg_e
+            )
         )
 
-        latitude_matrix_deg_n, longitude_matrix_deg_e = (
-            grids.latlng_vectors_to_matrices(
-                unique_latitudes_deg=latitude_array_deg_n,
-                unique_longitudes_deg=longitude_array_deg_e
-            )
+        assert this_flag
+        longitude_matrix_deg_e, latitude_matrix_deg_n = numpy.meshgrid(
+            these_longitudes_deg_e, these_latitudes_deg_n
         )
     else:
         error_checking.assert_is_numpy_array(
@@ -432,16 +429,16 @@ def plot_class_activation(
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
     if regular_grid:
-        assert satellite_utils.is_regular_grid_valid(
-            latitudes_deg_n=latitude_array_deg_n,
-            longitudes_deg_e=longitude_array_deg_e
+        this_flag, these_latitudes_deg_n, these_longitudes_deg_e = (
+            satellite_utils.is_regular_grid_valid(
+                latitudes_deg_n=latitude_array_deg_n,
+                longitudes_deg_e=longitude_array_deg_e
+            )
         )
 
-        latitude_matrix_deg_n, longitude_matrix_deg_e = (
-            grids.latlng_vectors_to_matrices(
-                unique_latitudes_deg=latitude_array_deg_n,
-                unique_longitudes_deg=longitude_array_deg_e
-            )
+        assert this_flag
+        longitude_matrix_deg_e, latitude_matrix_deg_n = numpy.meshgrid(
+            these_longitudes_deg_e, these_latitudes_deg_n
         )
     else:
         error_checking.assert_is_numpy_array(

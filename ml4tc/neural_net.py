@@ -908,18 +908,11 @@ def _read_brightness_temp_one_file(
                     xt[satellite_utils.GRID_LONGITUDE_KEY].values[k, ...]
                 )
 
-                error_checking.assert_is_valid_lat_numpy_array(
-                    these_latitudes_deg_n, allow_nan=False
-                )
-                error_checking.assert_is_valid_lng_numpy_array(
-                    these_longitudes_deg_e, allow_nan=False
-                )
-
                 if regular_grids:
                     assert satellite_utils.is_regular_grid_valid(
                         latitudes_deg_n=these_latitudes_deg_n,
                         longitudes_deg_e=these_longitudes_deg_e
-                    )
+                    )[0]
             except:
                 if regular_grids:
                     these_latitudes_deg_n = 0. + DUMMY_LATITUDES_DEG_N[
@@ -1539,7 +1532,7 @@ def _ships_predictors_xarray_to_keras(
                 this_predictor_name
             ))
 
-            # forecast_values[:, i] = forecast_values[0, i]
+            forecast_values[:, i] = forecast_values[0, i]
 
         forecast_values = numpy.ravel(forecast_values)
 
