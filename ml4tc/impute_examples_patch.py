@@ -11,7 +11,6 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import example_io
 import general_utils
-import satellite_utils
 import normalization
 import imputation
 
@@ -140,16 +139,6 @@ def _run(input_example_dir_name, cyclone_id_string, normalization_file_name,
     )
 
     cyclone_id_strings = [cyclone_id_string]
-
-    # cyclone_id_strings = example_io.find_cyclones(
-    #     directory_name=input_example_dir_name, raise_error_if_all_missing=True
-    # )
-    # cyclone_id_strings = set([
-    #     c for c in cyclone_id_strings
-    #     if satellite_utils.parse_cyclone_id(c)[0] == year
-    # ])
-    # cyclone_id_strings = list(cyclone_id_strings)
-    # cyclone_id_strings.sort()
 
     for this_cyclone_id_string in cyclone_id_strings:
         input_example_file_name = example_io.find_file(
