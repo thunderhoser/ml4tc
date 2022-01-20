@@ -35,62 +35,97 @@ SATELLITE_PREDICTORS_GRIDDED_KEY = 'satellite_predictors_gridded'
 SHIPS_PREDICTORS_LAGGED_KEY = 'ships_predictors_lagged'
 SHIPS_PREDICTORS_FORECAST_KEY = 'ships_predictors_forecast'
 
+SATELLITE_NUMBER_KEY = satellite_utils.SATELLITE_NUMBER_KEY
+BAND_NUMBER_KEY = satellite_utils.BAND_NUMBER_KEY
+BAND_WAVELENGTH_KEY = satellite_utils.BAND_WAVELENGTH_KEY
+SATELLITE_LONGITUDE_KEY = satellite_utils.SATELLITE_LONGITUDE_KEY
+SATELLITE_CYCLONE_ID_KEY = satellite_utils.CYCLONE_ID_KEY
+SATELLITE_STORM_TYPE_KEY = satellite_utils.STORM_TYPE_KEY
+STORM_NAME_KEY = satellite_utils.STORM_NAME_KEY
+SATELLITE_STORM_LATITUDE_KEY = satellite_utils.STORM_LATITUDE_KEY
+SATELLITE_STORM_LONGITUDE_KEY = satellite_utils.STORM_LONGITUDE_KEY
+STORM_INTENSITY_NUM_KEY = satellite_utils.STORM_INTENSITY_NUM_KEY
+GRID_LATITUDE_KEY = satellite_utils.GRID_LATITUDE_KEY
+GRID_LONGITUDE_KEY = satellite_utils.GRID_LONGITUDE_KEY
+
 SATELLITE_METADATA_KEYS = [
-    satellite_utils.SATELLITE_NUMBER_KEY,
-    satellite_utils.BAND_NUMBER_KEY,
-    satellite_utils.BAND_WAVELENGTH_KEY,
-    satellite_utils.SATELLITE_LONGITUDE_KEY,
-    satellite_utils.CYCLONE_ID_KEY,
-    satellite_utils.STORM_TYPE_KEY,
-    satellite_utils.STORM_NAME_KEY,
-    satellite_utils.STORM_LATITUDE_KEY,
-    satellite_utils.STORM_LONGITUDE_KEY,
-    satellite_utils.STORM_INTENSITY_NUM_KEY,
-    satellite_utils.GRID_LATITUDE_KEY,
-    satellite_utils.GRID_LONGITUDE_KEY
+    SATELLITE_NUMBER_KEY,
+    BAND_NUMBER_KEY,
+    BAND_WAVELENGTH_KEY,
+    SATELLITE_LONGITUDE_KEY,
+    SATELLITE_CYCLONE_ID_KEY,
+    SATELLITE_STORM_TYPE_KEY,
+    STORM_NAME_KEY,
+    SATELLITE_STORM_LATITUDE_KEY,
+    SATELLITE_STORM_LONGITUDE_KEY,
+    STORM_INTENSITY_NUM_KEY,
+    GRID_LATITUDE_KEY,
+    GRID_LONGITUDE_KEY
 ]
+
+SHIPS_CYCLONE_ID_KEY = ships_io.CYCLONE_ID_KEY
+SHIPS_STORM_LATITUDE_KEY = ships_io.STORM_LATITUDE_KEY
+SHIPS_STORM_LONGITUDE_KEY = ships_io.STORM_LONGITUDE_KEY
+SHIPS_STORM_TYPE_KEY = ships_io.STORM_TYPE_KEY
+FORECAST_LATITUDE_KEY = ships_io.FORECAST_LATITUDE_KEY
+FORECAST_LONGITUDE_KEY = ships_io.FORECAST_LONGITUDE_KEY
+VORTEX_LATITUDE_KEY = ships_io.VORTEX_LATITUDE_KEY
+VORTEX_LONGITUDE_KEY = ships_io.VORTEX_LONGITUDE_KEY
+THRESHOLD_EXCEEDANCE_KEY = ships_io.THRESHOLD_EXCEEDANCE_KEY
+SRH_1000TO700MB_OUTER_RING_KEY = ships_io.SRH_1000TO700MB_OUTER_RING_KEY
+SRH_1000TO500MB_OUTER_RING_KEY = ships_io.SRH_1000TO500MB_OUTER_RING_KEY
+V_WIND_200MB_INNER_RING_KEY = ships_io.V_WIND_200MB_INNER_RING_KEY
+V_MOTION_KEY = ships_io.V_MOTION_KEY
+V_MOTION_1000TO100MB_KEY = ships_io.V_MOTION_1000TO100MB_KEY
+V_MOTION_OPTIMAL_KEY = ships_io.V_MOTION_OPTIMAL_KEY
+MEAN_TAN_WIND_850MB_0TO600KM_KEY = ships_io.MEAN_TAN_WIND_850MB_0TO600KM_KEY
+MAX_TAN_WIND_850MB_KEY = ships_io.MAX_TAN_WIND_850MB_KEY
+MEAN_TAN_WIND_1000MB_500KM_KEY = ships_io.MEAN_TAN_WIND_1000MB_500KM_KEY
+MEAN_TAN_WIND_850MB_500KM_KEY = ships_io.MEAN_TAN_WIND_850MB_500KM_KEY
+MEAN_TAN_WIND_500MB_500KM_KEY = ships_io.MEAN_TAN_WIND_500MB_500KM_KEY
+MEAN_TAN_WIND_300MB_500KM_KEY = ships_io.MEAN_TAN_WIND_300MB_500KM_KEY
+VORTICITY_850MB_BIG_RING_KEY = ships_io.VORTICITY_850MB_BIG_RING_KEY
 
 SHIPS_METADATA_KEYS = [
-    ships_io.CYCLONE_ID_KEY,
-    ships_io.STORM_LATITUDE_KEY,
-    ships_io.STORM_LONGITUDE_KEY,
-    ships_io.STORM_TYPE_KEY,
-    ships_io.FORECAST_LATITUDE_KEY,
-    ships_io.FORECAST_LONGITUDE_KEY,
-    ships_io.VORTEX_LATITUDE_KEY,
-    ships_io.VORTEX_LONGITUDE_KEY,
-    ships_io.THRESHOLD_EXCEEDANCE_KEY,
-    ships_io.SRH_1000TO700MB_OUTER_RING_KEY,
-    ships_io.SRH_1000TO500MB_OUTER_RING_KEY,
-    ships_io.V_WIND_200MB_INNER_RING_KEY,
-    ships_io.V_MOTION_KEY,
-    ships_io.V_MOTION_1000TO100MB_KEY,
-    ships_io.V_MOTION_OPTIMAL_KEY,
-    ships_io.MEAN_TAN_WIND_850MB_0TO600KM_KEY,
-    ships_io.MAX_TAN_WIND_850MB_KEY,
-    ships_io.MEAN_TAN_WIND_1000MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_850MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_500MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_300MB_500KM_KEY,
-    ships_io.VORTICITY_850MB_BIG_RING_KEY
+    SHIPS_CYCLONE_ID_KEY,
+    SHIPS_STORM_LATITUDE_KEY,
+    SHIPS_STORM_LONGITUDE_KEY,
+    SHIPS_STORM_TYPE_KEY,
+    FORECAST_LATITUDE_KEY,
+    FORECAST_LONGITUDE_KEY,
+    VORTEX_LATITUDE_KEY,
+    VORTEX_LONGITUDE_KEY,
+    THRESHOLD_EXCEEDANCE_KEY,
+    SRH_1000TO700MB_OUTER_RING_KEY,
+    SRH_1000TO500MB_OUTER_RING_KEY,
+    V_WIND_200MB_INNER_RING_KEY,
+    V_MOTION_KEY,
+    V_MOTION_1000TO100MB_KEY,
+    V_MOTION_OPTIMAL_KEY,
+    MEAN_TAN_WIND_850MB_0TO600KM_KEY,
+    MAX_TAN_WIND_850MB_KEY,
+    MEAN_TAN_WIND_1000MB_500KM_KEY,
+    MEAN_TAN_WIND_850MB_500KM_KEY,
+    MEAN_TAN_WIND_500MB_500KM_KEY,
+    MEAN_TAN_WIND_300MB_500KM_KEY,
+    VORTICITY_850MB_BIG_RING_KEY
 ]
 
-SHIPS_NEGATIVE_IN_SOUTHERN_HEMI_KEYS = [
-    ships_io.FORECAST_LATITUDE_KEY,
-    ships_io.VORTEX_LATITUDE_KEY,
-    ships_io.SRH_1000TO700MB_OUTER_RING_KEY,
-    ships_io.SRH_1000TO500MB_OUTER_RING_KEY,
-    ships_io.V_WIND_200MB_INNER_RING_KEY,
-    ships_io.V_MOTION_KEY,
-    ships_io.V_MOTION_1000TO100MB_KEY,
-    ships_io.V_MOTION_OPTIMAL_KEY,
-    ships_io.MEAN_TAN_WIND_850MB_0TO600KM_KEY,
-    ships_io.MAX_TAN_WIND_850MB_KEY,
-    ships_io.MEAN_TAN_WIND_1000MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_850MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_500MB_500KM_KEY,
-    ships_io.MEAN_TAN_WIND_300MB_500KM_KEY,
-    ships_io.VORTICITY_850MB_BIG_RING_KEY
+SHIPS_METADATA_AND_FORECAST_KEYS = [
+    FORECAST_LATITUDE_KEY,
+    SRH_1000TO700MB_OUTER_RING_KEY,
+    SRH_1000TO500MB_OUTER_RING_KEY,
+    V_WIND_200MB_INNER_RING_KEY,
+    V_MOTION_KEY,
+    V_MOTION_1000TO100MB_KEY,
+    V_MOTION_OPTIMAL_KEY,
+    MEAN_TAN_WIND_850MB_0TO600KM_KEY,
+    MAX_TAN_WIND_850MB_KEY,
+    MEAN_TAN_WIND_1000MB_500KM_KEY,
+    MEAN_TAN_WIND_850MB_500KM_KEY,
+    MEAN_TAN_WIND_500MB_500KM_KEY,
+    MEAN_TAN_WIND_300MB_500KM_KEY,
+    VORTICITY_850MB_BIG_RING_KEY
 ]
 
 
@@ -246,15 +281,14 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
                 ships_dict[this_key]['data']
             )
 
-            if this_key not in SHIPS_NEGATIVE_IN_SOUTHERN_HEMI_KEYS:
+            if this_key not in SHIPS_METADATA_AND_FORECAST_KEYS:
                 continue
 
         new_matrix = numpy.expand_dims(ships_dict[this_key]['data'], axis=-1)
-        if this_key in SHIPS_NEGATIVE_IN_SOUTHERN_HEMI_KEYS:
-            for i in range(len(ships_northern_hemi_flags)):
-                new_matrix[i, ...] = (
-                    new_matrix[i, ...] * ships_northern_hemi_flags[i]
-                )
+        for i in range(len(ships_northern_hemi_flags)):
+            new_matrix[i, ...] = (
+                new_matrix[i, ...] * ships_northern_hemi_flags[i]
+            )
 
         if SHIPS_LAG_TIME_DIM in ships_dict[this_key]['dims']:
             ships_predictor_names_lagged.append(this_key)
@@ -413,12 +447,20 @@ def rotate_satellite_grid(
         (num_rows, num_columns), center_longitude_deg_e
     )
 
-    return geodetic_utils.start_points_and_displacements_to_endpoints(
-        start_latitudes_deg=start_latitude_matrix_deg,
-        start_longitudes_deg=start_longitude_matrix_deg,
-        scalar_displacements_metres=displacement_matrix_metres,
-        geodetic_bearings_deg=bearing_matrix_deg
+    latitude_matrix_deg_n, longitude_matrix_deg_e = (
+        geodetic_utils.start_points_and_displacements_to_endpoints(
+            start_latitudes_deg=start_latitude_matrix_deg,
+            start_longitudes_deg=start_longitude_matrix_deg,
+            scalar_displacements_metres=displacement_matrix_metres,
+            geodetic_bearings_deg=bearing_matrix_deg
+        )
     )
+
+    if center_latitude_deg_n < 0:
+        latitude_matrix_deg_n = numpy.flip(latitude_matrix_deg_n, axis=0)
+        longitude_matrix_deg_e = numpy.flip(longitude_matrix_deg_e, axis=0)
+
+    return latitude_matrix_deg_n, longitude_matrix_deg_e
 
 
 def rotate_satellite_image(

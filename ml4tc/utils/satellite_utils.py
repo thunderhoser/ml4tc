@@ -101,7 +101,7 @@ def _find_storm_center_px_space(
 
     interp_object = interp1d(
         x=grid_latitudes_deg_n, y=row_indices, kind='linear',
-        bounds_error=True, assume_sorted=True
+        bounds_error=True, assume_sorted=False
     )
 
     try:
@@ -557,6 +557,10 @@ def is_regular_grid_valid(latitudes_deg_n, longitudes_deg_e):
     :param latitudes_deg_n: 1-D numpy array of latitudes (deg north).
     :param longitudes_deg_e: 1-D numpy array of longitudes (deg east).
     :return: is_grid_valid: Boolean flag.
+    :return: increasing_latitudes_deg_n: Same as input, except that array is
+        monotonically increasing.
+    :return: increasing_longitudes_deg_e: Same as input, except that array is
+        monotonically increasing.
     """
 
     try:
@@ -569,22 +573,102 @@ def is_regular_grid_valid(latitudes_deg_n, longitudes_deg_e):
         error_checking.assert_is_valid_lng_numpy_array(
             longitudes_deg_e, allow_nan=False
         )
-        error_checking.assert_is_greater_numpy_array(
-            numpy.diff(latitudes_deg_n), 0.
-        )
     except:
-        return False
+        return False, None, None
 
-    these_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+    forward_latitudes_deg_n = latitudes_deg_n + 0.
+    backwards_latitudes_deg_n = latitudes_deg_n[::-1]
+    forward_latitude_diffs_deg = numpy.diff(forward_latitudes_deg_n)
+    backwards_latitude_diffs_deg = numpy.diff(backwards_latitudes_deg_n)
+
+    if not (
+            numpy.all(forward_latitude_diffs_deg > 0) or
+            numpy.all(backwards_latitude_diffs_deg > 0)
+    ):
+        these_counts = numpy.array([
+            numpy.sum(forward_latitude_diffs_deg > 0),
+            numpy.sum(backwards_latitude_diffs_deg > 0)
+        ], dtype=int)
+
+        if numpy.argmax(these_counts) == 0:
+            these_latitudes_deg = forward_latitudes_deg_n
+            these_latitude_diffs_deg = forward_latitude_diffs_deg
+        else:
+            these_latitudes_deg = backwards_latitudes_deg_n
+            these_latitude_diffs_deg = backwards_latitude_diffs_deg
+
+        bad_indices = numpy.where(
+            numpy.invert(these_latitude_diffs_deg > 0)
+        )[0]
+
+        if len(bad_indices) > 0:
+            warning_string = (
+                'Latitudes are not monotonically increasing.  Non-positive '
+                'differences are as follows:'
+            )
+            for i in bad_indices:
+                warning_string += '\n{0:.4f} to {1:.4f} deg N'.format(
+                    these_latitudes_deg[i], these_latitudes_deg[i + 1]
+                )
+
+            warnings.warn(warning_string)
+
+        return False, None, None
+
+    positive_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
         longitudes_deg_e + 0.
     )
-    if numpy.all(numpy.diff(these_longitudes_deg_e) > 0):
-        return True
-
-    these_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-        these_longitudes_deg_e
+    negative_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e + 0.
     )
-    if numpy.all(numpy.diff(these_longitudes_deg_e) > 0):
-        return True
 
-    return False
+    positive_longitude_diffs_deg = numpy.diff(positive_longitudes_deg_e)
+    negative_longitude_diffs_deg = numpy.diff(negative_longitudes_deg_e)
+
+    if not (
+            numpy.all(positive_longitude_diffs_deg > 0) or
+            numpy.all(negative_longitude_diffs_deg > 0)
+    ):
+        these_counts = numpy.array([
+            numpy.sum(positive_longitude_diffs_deg > 0),
+            numpy.sum(negative_longitude_diffs_deg > 0)
+        ], dtype=int)
+
+        if numpy.argmax(these_counts) == 0:
+            these_longitudes_deg_e = positive_longitudes_deg_e
+            these_longitude_diffs_deg = positive_longitude_diffs_deg
+        else:
+            these_longitudes_deg_e = negative_longitudes_deg_e
+            these_longitude_diffs_deg = negative_longitude_diffs_deg
+
+        bad_indices = numpy.where(
+            numpy.invert(these_longitude_diffs_deg > 0)
+        )[0]
+
+        if len(bad_indices) > 0:
+            warning_string = (
+                'Longitudes are not monotonically increasing.  Non-positive '
+                'differences are as follows:'
+            )
+            for i in bad_indices:
+                warning_string += '\n{0:.4f} to {1:.4f} deg E'.format(
+                    these_longitudes_deg_e[i], these_longitudes_deg_e[i + 1]
+                )
+
+            warnings.warn(warning_string)
+
+        return False, None, None
+
+    if numpy.all(forward_latitude_diffs_deg > 0):
+        increasing_latitudes_deg_n = forward_latitudes_deg_n
+    else:
+        increasing_latitudes_deg_n = backwards_latitudes_deg_n
+
+    if numpy.all(numpy.diff(longitudes_deg_e) > 0):
+        increasing_longitudes_deg_e = longitudes_deg_e
+    elif numpy.all(positive_longitude_diffs_deg > 0):
+        increasing_longitudes_deg_e = positive_longitudes_deg_e
+    else:
+        increasing_longitudes_deg_e = negative_longitudes_deg_e
+
+    return True, increasing_latitudes_deg_n, increasing_longitudes_deg_e
