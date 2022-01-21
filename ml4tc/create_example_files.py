@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import numpy
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -101,6 +102,15 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year,
         satellite_cyclone_id_strings.intersection(ships_cyclone_id_strings)
     )
     cyclone_id_strings.sort()
+
+    basin_id_strings = [
+        satellite_utils.parse_cyclone_id(id)[1] for id in cyclone_id_strings
+    ]
+    good_flags = numpy.array(
+        [id == 'SH' for id in basin_id_strings], dtype=bool
+    )
+    good_indices = numpy.where(good_flags)[0]
+    cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
 
     for this_cyclone_id_string in cyclone_id_strings:
         this_satellite_file_name = satellite_io.find_file(

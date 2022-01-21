@@ -358,6 +358,7 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
                     if satellite_northern_hemi_flags[i]:
                         continue
 
+                    print(new_matrix.shape)
                     new_matrix[i, ...] = numpy.flip(new_matrix[i, ...], axis=0)
 
             example_dict[this_key] = (
