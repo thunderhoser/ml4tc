@@ -354,6 +354,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
             new_matrix = satellite_dict[this_key]['data']
 
             if this_key == satellite_utils.GRID_LATITUDE_KEY:
+                print(new_matrix)
+
                 for i in range(len(satellite_northern_hemi_flags)):
                     if satellite_northern_hemi_flags[i]:
                         continue
