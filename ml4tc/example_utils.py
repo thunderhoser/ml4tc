@@ -57,6 +57,8 @@ SATELLITE_STORM_TYPE_KEY = satellite_utils.STORM_TYPE_KEY
 STORM_NAME_KEY = satellite_utils.STORM_NAME_KEY
 SATELLITE_STORM_LATITUDE_KEY = satellite_utils.STORM_LATITUDE_KEY
 SATELLITE_STORM_LONGITUDE_KEY = satellite_utils.STORM_LONGITUDE_KEY
+SATELLITE_STORM_MOTION_U_KEY = satellite_utils.STORM_MOTION_U_KEY
+SATELLITE_STORM_MOTION_V_KEY = satellite_utils.STORM_MOTION_V_KEY
 STORM_INTENSITY_NUM_KEY = satellite_utils.STORM_INTENSITY_NUM_KEY
 GRID_LATITUDE_KEY = satellite_utils.GRID_LATITUDE_KEY
 GRID_LONGITUDE_KEY = satellite_utils.GRID_LONGITUDE_KEY
@@ -71,9 +73,16 @@ SATELLITE_METADATA_KEYS = [
     STORM_NAME_KEY,
     SATELLITE_STORM_LATITUDE_KEY,
     SATELLITE_STORM_LONGITUDE_KEY,
+    SATELLITE_STORM_MOTION_U_KEY,
+    SATELLITE_STORM_MOTION_V_KEY,
     STORM_INTENSITY_NUM_KEY,
     GRID_LATITUDE_KEY,
     GRID_LONGITUDE_KEY
+]
+
+SATELLITE_METADATA_AND_FORECAST_KEYS = [
+    SATELLITE_STORM_MOTION_U_KEY,
+    SATELLITE_STORM_MOTION_V_KEY
 ]
 
 SHIPS_CYCLONE_ID_KEY = ships_io.CYCLONE_ID_KEY
@@ -365,7 +374,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
                 satellite_dict[this_key]['dims'], new_matrix
             )
 
-            continue
+            if this_key not in SATELLITE_METADATA_AND_FORECAST_KEYS:
+                continue
 
         if this_key == satellite_utils.BRIGHTNESS_TEMPERATURE_KEY:
             these_dim = (
@@ -392,6 +402,13 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
         new_matrix = numpy.expand_dims(
             satellite_dict[this_key]['data'], axis=-1
         )
+
+        if this_key == SATELLITE_STORM_MOTION_V_KEY:
+            for i in range(len(satellite_northern_hemi_flags)):
+                if satellite_northern_hemi_flags[i]:
+                    continue
+
+                new_matrix[i, ...] *= -1
 
         if satellite_predictor_matrix_ungridded.size == 0:
             satellite_predictor_matrix_ungridded = new_matrix + 0.
