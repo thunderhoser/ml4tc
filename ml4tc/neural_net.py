@@ -868,7 +868,7 @@ def _read_brightness_temp_one_file(
                             :num_grid_rows_orig, :num_grid_columns_orig
                         ]
                     )
-                    grid_longitude_matrix_deg_e[i, :, j] = (
+                    grid_longitude_matrix_deg_e[i, ..., j] = (
                         DUMMY_LONGITUDE_MATRIX_DEG_E[
                             :num_grid_rows_orig, :num_grid_columns_orig
                         ]
@@ -892,7 +892,7 @@ def _read_brightness_temp_one_file(
                             :num_grid_rows_orig, :num_grid_columns_orig
                         ]
                     )
-                    grid_longitude_matrix_deg_e[i, :, j] = (
+                    grid_longitude_matrix_deg_e[i, ..., j] = (
                         DUMMY_LONGITUDE_MATRIX_DEG_E[
                             :num_grid_rows_orig, :num_grid_columns_orig
                         ]
