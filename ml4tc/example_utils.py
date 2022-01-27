@@ -667,13 +667,17 @@ def rotate_satellite_image(
     :return: brightness_temp_matrix_kelvins: M-by-N numpy array.
     """
 
-    assert satellite_utils.is_regular_grid_valid(
-        latitudes_deg_n=orig_latitudes_deg_n,
-        longitudes_deg_e=orig_longitudes_deg_e
-    )[0]
+    this_flag, increasing_latitudes_deg_n, increasing_longitudes_deg_e = (
+        satellite_utils.is_regular_grid_valid(
+            latitudes_deg_n=orig_latitudes_deg_n,
+            longitudes_deg_e=orig_longitudes_deg_e
+        )
+    )
 
-    orig_num_rows = len(orig_latitudes_deg_n)
-    orig_num_columns = len(orig_longitudes_deg_e)
+    assert this_flag
+
+    orig_num_rows = len(increasing_latitudes_deg_n)
+    orig_num_columns = len(increasing_longitudes_deg_e)
     expected_dim = numpy.array([orig_num_rows, orig_num_columns], dtype=int)
 
     error_checking.assert_is_numpy_array(
@@ -732,16 +736,16 @@ def rotate_satellite_image(
 
     orig_x_coords_metres, _ = projections.project_latlng_to_xy(
         latitudes_deg=numpy.full(
-            len(orig_longitudes_deg_e), central_latitude_deg_n
+            len(increasing_longitudes_deg_e), central_latitude_deg_n
         ),
-        longitudes_deg=orig_longitudes_deg_e,
+        longitudes_deg=increasing_longitudes_deg_e,
         projection_object=projection_object
     )
 
     _, orig_y_coords_metres = projections.project_latlng_to_xy(
-        latitudes_deg=orig_latitudes_deg_n,
+        latitudes_deg=increasing_latitudes_deg_n,
         longitudes_deg=numpy.full(
-            len(orig_latitudes_deg_n), central_longitude_deg_e
+            len(increasing_latitudes_deg_n), central_longitude_deg_e
         ),
         projection_object=projection_object
     )

@@ -17,10 +17,9 @@ import normalization
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
-YEAR_ARG_NAME = 'year'
+CYCLONE_ID_ARG_NAME = 'cyclone_id_string'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 COMPRESS_ARG_NAME = 'compress_output_files'
-CYCLONE_INDEX_ARG_NAME = 'cyclone_index'
 OUTPUT_DIR_ARG_NAME = 'output_example_dir_name'
 
 INPUT_DIR_HELP_STRING = (
@@ -28,13 +27,14 @@ INPUT_DIR_HELP_STRING = (
     'will be found by `example_io.find_file` and read by '
     '`example_io.read_file`.'
 )
-YEAR_HELP_STRING = 'Will normalize learning examples in this year.'
+CYCLONE_ID_HELP_STRING = (
+    'Will handle only learning examples for this tropical cyclone.'
+)
 NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be read by '
     '`normalization.read_file`).'
 )
 COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
-CYCLONE_INDEX_HELP_STRING = 'Will process data for this cyclone only.'
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Normalized examples will be written here by '
     '`example_io.write_file`, to exact locations determined by '
@@ -47,7 +47,8 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + YEAR_ARG_NAME, type=int, required=True, help=YEAR_HELP_STRING
+    '--' + CYCLONE_ID_ARG_NAME, type=str, required=True,
+    help=CYCLONE_ID_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
@@ -58,26 +59,21 @@ INPUT_ARG_PARSER.add_argument(
     help=COMPRESS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + CYCLONE_INDEX_ARG_NAME, type=int, required=True,
-    help=CYCLONE_INDEX_HELP_STRING
-)
-INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
 
 
-def _run(input_example_dir_name, year, normalization_file_name,
-         compress_output_files, cyclone_index, output_example_dir_name):
+def _run(input_example_dir_name, cyclone_id_string, normalization_file_name,
+         compress_output_files, output_example_dir_name):
     """Normalizes learning examples.
 
     This is effectively the main method.
 
     :param input_example_dir_name: See documentation at top of file.
-    :param year: Same.
+    :param cyclone_id_string: Same.
     :param normalization_file_name: Same.
     :param compress_output_files: Same.
-    :param cyclone_index: Same.
     :param output_example_dir_name: Same.
     """
 
@@ -86,16 +82,7 @@ def _run(input_example_dir_name, year, normalization_file_name,
         normalization_file_name
     )
 
-    cyclone_id_strings = example_io.find_cyclones(
-        directory_name=input_example_dir_name, raise_error_if_all_missing=True
-    )
-    cyclone_id_strings = set([
-        c for c in cyclone_id_strings
-        if satellite_utils.parse_cyclone_id(c)[0] == year
-    ])
-    cyclone_id_strings = list(cyclone_id_strings)
-    cyclone_id_strings.sort()
-    cyclone_id_strings = [cyclone_id_strings[cyclone_index]]
+    cyclone_id_strings = [cyclone_id_string]
 
     for this_cyclone_id_string in cyclone_id_strings:
         input_example_file_name = example_io.find_file(
@@ -139,13 +126,12 @@ if __name__ == '__main__':
 
     _run(
         input_example_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
-        year=getattr(INPUT_ARG_OBJECT, YEAR_ARG_NAME),
+        cyclone_id_string=getattr(INPUT_ARG_OBJECT, CYCLONE_ID_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
         compress_output_files=bool(
             getattr(INPUT_ARG_OBJECT, COMPRESS_ARG_NAME)
         ),
-        cyclone_index=getattr(INPUT_ARG_OBJECT, CYCLONE_INDEX_ARG_NAME),
         output_example_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
