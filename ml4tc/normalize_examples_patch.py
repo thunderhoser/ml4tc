@@ -11,7 +11,6 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import example_io
 import general_utils
-import satellite_utils
 import normalization
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
