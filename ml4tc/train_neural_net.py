@@ -79,6 +79,11 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param plateau_lr_multiplier: Same.
     """
 
+    if num_grid_rows <= 0:
+        num_grid_rows = None
+    if num_grid_columns <= 0:
+        num_grid_columns = None
+
     if (
             len(satellite_lag_times_minutes) == 1
             and satellite_lag_times_minutes[0] < 0
