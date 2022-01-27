@@ -94,6 +94,7 @@ def _run(input_dir_name, year):
             forecast_ships_predictor_matrix = forecast_ships_predictor_matrix_sh
             lagged_ships_predictor_matrix = lagged_ships_predictor_matrix_sh
             satellite_predictor_matrix = satellite_predictor_matrix_sh
+            num_nh_files_read += 1
         else:
             if num_sh_files_read >= 5:
                 continue
@@ -101,6 +102,7 @@ def _run(input_dir_name, year):
             forecast_ships_predictor_matrix = forecast_ships_predictor_matrix_nh
             lagged_ships_predictor_matrix = lagged_ships_predictor_matrix_nh
             satellite_predictor_matrix = satellite_predictor_matrix_nh
+            num_sh_files_read += 1
 
         print('Reading data from: "{0:s}"...'.format(this_file_name))
         this_example_dict = example_io.read_file(this_file_name)
@@ -131,6 +133,18 @@ def _run(input_dir_name, year):
             satellite_predictor_matrix = numpy.concatenate(
                 (satellite_predictor_matrix, this_satellite_matrix), axis=0
             )
+
+        if (
+                this_basin_id_string ==
+                satellite_utils.SOUTHERN_HEMISPHERE_ID_STRING
+        ):
+            forecast_ships_predictor_matrix_sh = forecast_ships_predictor_matrix
+            lagged_ships_predictor_matrix_sh = lagged_ships_predictor_matrix
+            satellite_predictor_matrix_sh = satellite_predictor_matrix
+        else:
+            forecast_ships_predictor_matrix_nh = forecast_ships_predictor_matrix
+            lagged_ships_predictor_matrix_nh = lagged_ships_predictor_matrix
+            satellite_predictor_matrix_nh = satellite_predictor_matrix
 
         if len(forecast_ships_predictor_names) == 0:
             forecast_ships_predictor_names = this_example_dict.coords[
