@@ -237,7 +237,7 @@ def _run(input_dir_name, cyclone_id_string, normalization_file_name,
                     fill_value=climo_mean_kelvins
                 )
             )
-        except ValueError:
+        except AssertionError:
             print('POTENTIAL ERROR: failed to rotate satellite image.')
             east_velocities_m_s01[i] = numpy.nan
             north_velocities_m_s01[i] = numpy.nan

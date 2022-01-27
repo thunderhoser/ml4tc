@@ -665,59 +665,12 @@ def rotate_satellite_image(
     :param new_longitude_matrix_deg_e: M-by-N numpy array of longitudes (deg E).
     :param fill_value: Fill value, used instead of extrapolation.
     :return: brightness_temp_matrix_kelvins: M-by-N numpy array.
-    :raises: ValueError: if original lat/long arrays are not monotonically
-        increasing.
     """
 
-    # Check input args.
-    error_checking.assert_is_numpy_array(orig_latitudes_deg_n, num_dimensions=1)
-
-    latitude_diffs_deg = numpy.diff(orig_latitudes_deg_n)
-    bad_indices = numpy.where(
-        numpy.invert(latitude_diffs_deg > 0)
+    assert satellite_utils.is_regular_grid_valid(
+        latitudes_deg_n=orig_latitudes_deg_n,
+        longitudes_deg_e=orig_longitudes_deg_e
     )[0]
-
-    if len(bad_indices) > 0:
-        error_string = (
-            'Latitudes are not monotonically increasing.  Non-positive '
-            'differences are as follows:'
-        )
-        for i in bad_indices:
-            error_string += '\n{0:.4f} to {1:.4f} deg N'.format(
-                orig_latitudes_deg_n[i], orig_latitudes_deg_n[i + 1]
-            )
-
-        raise ValueError(error_string)
-
-    error_checking.assert_is_numpy_array(
-        orig_longitudes_deg_e, num_dimensions=1
-    )
-    orig_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
-        orig_longitudes_deg_e
-    )
-    longitude_diffs_deg = numpy.diff(orig_longitudes_deg_e)
-
-    if numpy.any(longitude_diffs_deg <= 0):
-        orig_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
-            orig_longitudes_deg_e
-        )
-        longitude_diffs_deg = numpy.diff(orig_longitudes_deg_e)
-
-    bad_indices = numpy.where(
-        numpy.invert(longitude_diffs_deg > 0)
-    )[0]
-
-    if len(bad_indices) > 0:
-        error_string = (
-            'Longitudes are not monotonically increasing.  Non-positive '
-            'differences are as follows:'
-        )
-        for i in bad_indices:
-            error_string += '\n{0:.4f} to {1:.4f} deg E'.format(
-                orig_longitudes_deg_e[i], orig_longitudes_deg_e[i + 1]
-            )
-
-        raise ValueError(error_string)
 
     orig_num_rows = len(orig_latitudes_deg_n)
     orig_num_columns = len(orig_longitudes_deg_e)
