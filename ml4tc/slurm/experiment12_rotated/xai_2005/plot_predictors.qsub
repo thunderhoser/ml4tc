@@ -1,0 +1,48 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="plot_predictors"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=01:00:00
+#SBATCH --array=1-69
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=plot_predictors_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/normalization_params_1993-2004_2015-2019.nc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment12_rotated"
+
+set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256")
+set LAG_TIME_STRINGS_MINUTES=("0-120")
+
+set channel_count_string=${CHANNEL_COUNT_STRINGS[1]}
+set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[1]}
+
+set CYCLONE_ID_STRINGS=("2005AL01" "2005AL02" "2005AL03" "2005AL04" "2005AL05" "2005AL06" "2005AL07" "2005AL08" "2005AL09" "2005AL10" "2005AL11" "2005AL12" "2005AL13" "2005AL14" "2005AL15" "2005AL16" "2005AL17" "2005AL18" "2005AL21" "2005AL22" "2005AL23" "2005AL24" "2005AL26" "2005AL27" "2005AL28" "2005AL29" "2005AL30" "2005AL31" "2005CP01" "2005EP01" "2005EP02" "2005EP03" "2005EP04" "2005EP05" "2005EP06" "2005EP07" "2005EP08" "2005EP09" "2005EP10" "2005EP11" "2005EP12" "2005EP13" "2005EP14" "2005EP15" "2005EP16" "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24")
+set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/channels=${channel_count_string}_lag-times-minutes=${lag_time_string_minutes}"
+set model_metafile_name="${model_dir_name}/model_metadata.p"
+set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
+set output_dir_name="${model_dir_name}/predictor_plots/${cyclone_id_string}"
+
+python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
+--input_model_metafile_name="${model_metafile_name}" \
+--input_norm_example_file_name="${example_file_name}" \
+--input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--input_prediction_file_name="${prediction_file_name}" \
+--first_init_time_string="2005-01-01-000000" \
+--last_init_time_string="2006-01-01-000000" \
+--output_dir_name="${output_dir_name}"
