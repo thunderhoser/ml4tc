@@ -26,7 +26,7 @@ set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_pr
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment12_rotated"
 
 set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256")
-set LAG_TIME_STRINGS_MINUTES=("0-120")
+set LAG_TIME_STRINGS_MINUTES=("0-60-120")
 
 set channel_count_string=${CHANNEL_COUNT_STRINGS[1]}
 set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[1]}
