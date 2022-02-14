@@ -32,7 +32,7 @@ set LAG_TIME_STRINGS_MINUTES=("0-240" "0-120-240" "0-30-60-90-120-150-180-210-24
 set LAYER_NAMES=("activation_26" "activation_27" "activation_45")
 set i=1
 
-while ($i <= ${#BASIN_ID_STRINGS})
+while ($i <= ${#CHANNEL_COUNT_STRINGS})
     set model_dir_name="${TOP_MODEL_DIR_NAME}/channels=${CHANNEL_COUNT_STRINGS[$i]}_lag-times-minutes=${LAG_TIME_STRINGS_MINUTES[$i]}"
     set model_file_name="${model_dir_name}/model.h5"
     set output_file_name="${model_dir_name}/saliency_maps/saliency_maps_${cyclone_id_string}.nc"

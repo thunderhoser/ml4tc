@@ -32,7 +32,7 @@ set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256" "00
 set LAG_TIME_STRINGS_MINUTES=("0-240" "0-120-240" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600")
 set i=1
 
-while ($i <= ${#BASIN_ID_STRINGS})
+while ($i <= ${#CHANNEL_COUNT_STRINGS})
     set model_dir_name="${TOP_MODEL_DIR_NAME}/channels=${CHANNEL_COUNT_STRINGS[$i]}_lag-times-minutes=${LAG_TIME_STRINGS_MINUTES[$i]}"
     set input_file_name="${model_dir_name}/gradcam_high_res/gradcam_${cyclone_id_string}.nc"
     set output_dir_name="${model_dir_name}/gradcam_high_res/gradcam_${cyclone_id_string}"
