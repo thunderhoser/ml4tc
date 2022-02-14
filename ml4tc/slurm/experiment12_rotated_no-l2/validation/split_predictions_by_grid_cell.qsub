@@ -8,7 +8,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=01:00:00
-#SBATCH --array=1
+#SBATCH --array=1-3
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
@@ -23,8 +23,8 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment12_rotated_no-l2"
 
-set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256")
-set LAG_TIME_STRINGS_MINUTES=("0-60-120")
+set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256" "008-008-016-016-032-032-064-064-128-128-256-256" "008-008-016-016-032-032-064-064-128-128-256-256")
+set LAG_TIME_STRINGS_MINUTES=("0-240" "0-120-240" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600")
 
 set channel_count_string=${CHANNEL_COUNT_STRINGS[$SLURM_ARRAY_TASK_ID]}
 set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[$SLURM_ARRAY_TASK_ID]}
