@@ -69,7 +69,7 @@ if ($use_data_aug_flag > 0) then
     --ships_lag_times_hours 0 6 12 18 24 \
     --ships_predictor_names_lagged ${ships_lagged_predictor_string} \
     --ships_predictors_use_all_lags=0 \
-    --ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01 ships_temp_gradient_850to700mb_0to500km_k_m01 ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01 ships_temp_200mb_200to800km_kelvins ships_shear_850to500mb_eastward_m_s01 ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01 ships_ocean_age_seconds ships_max_tangential_wind_850mb_m_s01 ships_intensity_m_s01 merged_sea_surface_temp_kelvins merged_ocean_heat_content_j_m02 ships_forecast_latitude_deg_n ships_max_pttl_intensity_m_s01" \
+    --ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "merged_sea_surface_temp_kelvins" "merged_ocean_heat_content_j_m02" "ships_forecast_latitude_deg_n" "ships_max_pttl_intensity_m_s01" \
     --satellite_time_tolerance_training_sec=${satellite_time_tolerance_sec} \
     --satellite_max_missing_times_training=${satellite_max_missing_times} \
     --ships_time_tolerance_training_sec=0 \
@@ -102,7 +102,7 @@ else
     --ships_lag_times_hours 0 6 12 18 24 \
     --ships_predictor_names_lagged ${ships_lagged_predictor_string} \
     --ships_predictors_use_all_lags=0 \
-    --ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01 ships_temp_gradient_850to700mb_0to500km_k_m01 ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01 ships_temp_200mb_200to800km_kelvins ships_shear_850to500mb_eastward_m_s01 ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01 ships_ocean_age_seconds ships_max_tangential_wind_850mb_m_s01 ships_intensity_m_s01 merged_sea_surface_temp_kelvins merged_ocean_heat_content_j_m02 ships_forecast_latitude_deg_n ships_max_pttl_intensity_m_s01" \
+    --ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "merged_sea_surface_temp_kelvins" "merged_ocean_heat_content_j_m02" "ships_forecast_latitude_deg_n" "ships_max_pttl_intensity_m_s01" \
     --satellite_time_tolerance_training_sec=${satellite_time_tolerance_sec} \
     --satellite_max_missing_times_training=${satellite_max_missing_times} \
     --ships_time_tolerance_training_sec=0 \
