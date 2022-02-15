@@ -1069,12 +1069,14 @@ def _read_ships_one_file(
     num_model_lag_times = len(model_lag_times_sec)
 
     xt = example_table_xarray
+    lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
 
-    num_builtin_lag_times = len(
-        xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
-    )
+    if use_all_predictor_lags:
+        num_builtin_lag_times = len(lag_times_hours)
+    else:
+        num_builtin_lag_times = 1
+
     num_forecast_hours = int(numpy.round(max_forecast_hour / 6)) + 1
-
     num_channels = (
         num_builtin_lag_times * num_lagged_predictors +
         num_forecast_predictors * num_forecast_hours
@@ -1093,8 +1095,6 @@ def _read_ships_one_file(
         predictor_indices_lagged = numpy.array([
             all_predictor_names_lagged.index(n) for n in predictor_names_lagged
         ], dtype=int)
-
-        lag_times_hours = xt.coords[example_utils.SHIPS_LAG_TIME_DIM].values
 
         if use_all_predictor_lags:
             lag_time_indices = numpy.linspace(
