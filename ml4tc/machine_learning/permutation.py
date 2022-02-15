@@ -11,7 +11,6 @@ from ml4tc.machine_learning import neural_net
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
-NUM_BUILTIN_SHIPS_LAG_TIMES = 4
 DEFAULT_NUM_BOOTSTRAP_REPS = 1000
 
 THREE_PREDICTOR_MATRICES_KEY = 'three_predictor_matrices'
@@ -161,12 +160,15 @@ def _permute_values(
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+    num_builtin_lag_times = (
+        4 if t[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY] else 1
+    )
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
             predictor_matrix_3d=predictor_matrix,
             num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
+            num_builtin_lag_times=num_builtin_lag_times,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )
@@ -268,12 +270,15 @@ def _depermute_values(
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
+    num_builtin_lag_times = (
+        4 if t[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY] else 1
+    )
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
             predictor_matrix_3d=predictor_matrix,
             num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
+            num_builtin_lag_times=num_builtin_lag_times,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )
@@ -283,7 +288,7 @@ def _depermute_values(
         neural_net.ships_predictors_3d_to_4d(
             predictor_matrix_3d=clean_predictor_matrix,
             num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
+            num_builtin_lag_times=num_builtin_lag_times,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
         )

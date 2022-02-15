@@ -20,6 +20,7 @@ SATELLITE_LAG_TIMES_ARG_NAME = 'satellite_lag_times_minutes'
 SHIPS_LAG_TIMES_ARG_NAME = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_ARG_NAME = 'satellite_predictor_names'
 SHIPS_PREDICTORS_LAGGED_ARG_NAME = 'ships_predictor_names_lagged'
+SHIPS_USE_ALL_PREDICTOR_LAGS_ARG_NAME = 'ships_predictors_use_all_lags'
 SHIPS_PREDICTORS_FORECAST_ARG_NAME = 'ships_predictor_names_forecast'
 SHIPS_MAX_FORECAST_HOUR_ARG_NAME = 'ships_max_forecast_hour'
 TRAINING_SAT_TIME_TOLERANCE_ARG_NAME = 'satellite_time_tolerance_training_sec'
@@ -82,6 +83,10 @@ SHIPS_PREDICTORS_LAGGED_HELP_STRING = (
     'List with names of lagged SHIPS predictors to use.  If you do not want '
     'lagged SHIPS predictors, make this a one-item list with the empty '
     'string, "".'
+)
+SHIPS_USE_ALL_PREDICTOR_LAGS_HELP_STRING = (
+    'Boolean flag.  If True, will use all lag times for lagged SHIPS '
+    'predictors.  If False, will use only 0-hour lag time.'
 )
 SHIPS_PREDICTORS_FORECAST_HELP_STRING = (
     'List with names of forecast SHIPS predictors to use.  If you do not want '
@@ -228,6 +233,11 @@ def add_input_args(parser_object):
         '--' + SHIPS_PREDICTORS_LAGGED_ARG_NAME, type=str, nargs='+',
         required=False, default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
         help=SHIPS_PREDICTORS_LAGGED_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + SHIPS_USE_ALL_PREDICTOR_LAGS_ARG_NAME,
+        type=int, required=False, default=1,
+        help=SHIPS_USE_ALL_PREDICTOR_LAGS_HELP_STRING
     )
     parser_object.add_argument(
         '--' + SHIPS_PREDICTORS_FORECAST_ARG_NAME, type=str, nargs='+',

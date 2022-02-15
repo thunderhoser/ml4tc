@@ -145,7 +145,9 @@ FORECAST_PRED_MATRIX_STANDARD = numpy.stack((
     FORECAST_PRED_MATRIX_EXAMPLE3
 ), axis=0)
 
-FORECAST_PRED_MATRIX_STANDARD_0HOURS = FORECAST_PRED_MATRIX_STANDARD[:, [1], :]
+FORECAST_PRED_MATRIX_STANDARD_FIRST12H = (
+    FORECAST_PRED_MATRIX_STANDARD[:, 1:3, :]
+)
 
 METADATA_DICT = {
     example_utils.SHIPS_LAG_TIME_DIM: numpy.array([3, 0], dtype=int),
@@ -185,27 +187,57 @@ FORECAST_PREDICTOR_INDICES = numpy.linspace(
     num=len(FORECAST_PREDICTORS_EXAMPLE1_HOUR1), dtype=int
 )
 
-SCALAR_PREDICTORS_EXAMPLE1 = numpy.array([
-    0, 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5,
-    2, 4, 6, 8, 10
+MAX_FORECAST_HOUR = 12
+ALL_LAG_TIME_INDICES = numpy.array([0, 1], dtype=int)
+ZERO_LAG_TIME_INDICES = numpy.array([1], dtype=int)
+
+SCALAR_PREDICTORS_EXAMPLE1_ALL_LAGS = numpy.array([
+    0, 1, 2, 3, 4, 5, 0, -1, -2, -3, -4, -5,
+    2, 4, 6, 8, 10, 5, 4, 3, 2, 1
 ], dtype=float)
 
-SCALAR_PREDICTORS_EXAMPLE2 = numpy.array([
-    0, 0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10,
-    10, 20, 30, 40, 50
+SCALAR_PREDICTORS_EXAMPLE1_ZERO_LAG = numpy.array([
+    0, -1, -2, -3, -4, -5,
+    2, 4, 6, 8, 10, 5, 4, 3, 2, 1
 ], dtype=float)
 
-SCALAR_PREDICTORS_EXAMPLE3 = numpy.array([
-    0, 0, 3, -3, 6, -6, 9, -9, 12, -12, 15, -15,
-    20, 40, 60, 80, 100
+SCALAR_PREDICTORS_EXAMPLE2_ALL_LAGS = numpy.array([
+    0, 2, 4, 6, 8, 10, 0, -2, -4, -6, -8, -10,
+    10, 20, 30, 40, 50, 25, 20, 15, 10, 5
 ], dtype=float)
 
-SCALAR_PREDICTOR_MATRIX = numpy.stack((
-    SCALAR_PREDICTORS_EXAMPLE1, SCALAR_PREDICTORS_EXAMPLE2,
-    SCALAR_PREDICTORS_EXAMPLE3
+SCALAR_PREDICTORS_EXAMPLE2_ZERO_LAG = numpy.array([
+    0, -2, -4, -6, -8, -10,
+    10, 20, 30, 40, 50, 25, 20, 15, 10, 5
+], dtype=float)
+
+SCALAR_PREDICTORS_EXAMPLE3_ALL_LAGS = numpy.array([
+    0, 3, 6, 9, 12, 15, 0, -3, -6, -9, -12, -15,
+    20, 40, 60, 80, 100, 50, 40, 30, 20, 10
+], dtype=float)
+
+SCALAR_PREDICTORS_EXAMPLE3_ZERO_LAG = numpy.array([
+    0, -3, -6, -9, -12, -15,
+    20, 40, 60, 80, 100, 50, 40, 30, 20, 10
+], dtype=float)
+
+SCALAR_PREDICTOR_MATRIX_ALL_LAGS = numpy.stack((
+    SCALAR_PREDICTORS_EXAMPLE1_ALL_LAGS, SCALAR_PREDICTORS_EXAMPLE2_ALL_LAGS,
+    SCALAR_PREDICTORS_EXAMPLE3_ALL_LAGS
 ), axis=0)
 
-SCALAR_PREDICTOR_MATRIX = numpy.expand_dims(SCALAR_PREDICTOR_MATRIX, axis=0)
+SCALAR_PREDICTOR_MATRIX_ALL_LAGS = numpy.expand_dims(
+    SCALAR_PREDICTOR_MATRIX_ALL_LAGS, axis=0
+)
+
+SCALAR_PREDICTOR_MATRIX_ZERO_LAG = numpy.stack((
+    SCALAR_PREDICTORS_EXAMPLE1_ZERO_LAG, SCALAR_PREDICTORS_EXAMPLE2_ZERO_LAG,
+    SCALAR_PREDICTORS_EXAMPLE3_ZERO_LAG
+), axis=0)
+
+SCALAR_PREDICTOR_MATRIX_ZERO_LAG = numpy.expand_dims(
+    SCALAR_PREDICTOR_MATRIX_ZERO_LAG, axis=0
+)
 
 
 class NeuralNetTests(unittest.TestCase):
@@ -371,52 +403,118 @@ class NeuralNetTests(unittest.TestCase):
         )
         self.assertTrue(numpy.array_equal(these_flags, FOURTH_CLASS_FLAGS))
 
-    def test_ships_predictors_standard_to_keras_example1(self):
+    def test_ships_predictors_standard_to_keras_all_lags_example1(self):
         """Ensures correct output from _ships_predictors_xarray_to_keras.
 
-        In this case, extracting values from first example (init time).
+        In this case, extracting values from first example (init time) at all
+        lag times.
         """
 
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=0,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ALL_LAG_TIME_INDICES,
             forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
-            max_forecast_hour=0
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
         )
         self.assertTrue(numpy.allclose(
-            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE1, atol=TOLERANCE
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE1_ALL_LAGS,
+            atol=TOLERANCE
         ))
 
-    def test_ships_predictors_standard_to_keras_example2(self):
+    def test_ships_predictors_standard_to_keras_all_lags_example2(self):
         """Ensures correct output from _ships_predictors_xarray_to_keras.
 
-        In this case, extracting values from second example (init time).
+        In this case, extracting values from second example (init time) at all
+        lag times.
         """
 
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=1,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ALL_LAG_TIME_INDICES,
             forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
-            max_forecast_hour=0
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
         )
         self.assertTrue(numpy.allclose(
-            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE2, atol=TOLERANCE
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE2_ALL_LAGS,
+            atol=TOLERANCE
         ))
 
-    def test_ships_predictors_standard_to_keras_example3(self):
+    def test_ships_predictors_standard_to_keras_all_lags_example3(self):
         """Ensures correct output from _ships_predictors_xarray_to_keras.
 
-        In this case, extracting values from third example (init time).
+        In this case, extracting values from third example (init time) at all
+        lag times.
         """
 
         these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
             example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=2,
             lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ALL_LAG_TIME_INDICES,
             forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
-            max_forecast_hour=0
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
         )
         self.assertTrue(numpy.allclose(
-            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE3, atol=TOLERANCE
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE3_ALL_LAGS,
+            atol=TOLERANCE
+        ))
+
+    def test_ships_predictors_standard_to_keras_zero_lag_example1(self):
+        """Ensures correct output from _ships_predictors_xarray_to_keras.
+
+        In this case, extracting values from first example (init time) at 0-hour
+        lag time.
+        """
+
+        these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
+            example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=0,
+            lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ZERO_LAG_TIME_INDICES,
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
+        )
+        self.assertTrue(numpy.allclose(
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE1_ZERO_LAG,
+            atol=TOLERANCE
+        ))
+
+    def test_ships_predictors_standard_to_keras_zero_lag_example2(self):
+        """Ensures correct output from _ships_predictors_xarray_to_keras.
+
+        In this case, extracting values from second example (init time) at
+        0-hour lag time.
+        """
+
+        these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
+            example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=1,
+            lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ZERO_LAG_TIME_INDICES,
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
+        )
+        self.assertTrue(numpy.allclose(
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE2_ZERO_LAG,
+            atol=TOLERANCE
+        ))
+
+    def test_ships_predictors_standard_to_keras_zero_lag_example3(self):
+        """Ensures correct output from _ships_predictors_xarray_to_keras.
+
+        In this case, extracting values from third example (init time) at
+        0-hour lag time.
+        """
+
+        these_predictor_values = neural_net._ships_predictors_xarray_to_keras(
+            example_table_xarray=EXAMPLE_TABLE_XARRAY, init_time_index=2,
+            lagged_predictor_indices=LAGGED_PREDICTOR_INDICES,
+            lag_time_indices=ZERO_LAG_TIME_INDICES,
+            forecast_predictor_indices=FORECAST_PREDICTOR_INDICES,
+            max_forecast_hour=MAX_FORECAST_HOUR, test_mode=True
+        )
+        self.assertTrue(numpy.allclose(
+            these_predictor_values, SCALAR_PREDICTORS_EXAMPLE3_ZERO_LAG,
+            atol=TOLERANCE
         ))
 
     def test_ships_predictors_3d_to_4d(self):
@@ -424,12 +522,14 @@ class NeuralNetTests(unittest.TestCase):
 
         this_lagged_pred_matrix, this_forecast_pred_matrix = (
             neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=SCALAR_PREDICTOR_MATRIX,
+                predictor_matrix_3d=SCALAR_PREDICTOR_MATRIX_ALL_LAGS
+                ,
                 num_lagged_predictors=LAGGED_PRED_MATRIX_STANDARD.shape[2],
                 num_builtin_lag_times=LAGGED_PRED_MATRIX_STANDARD.shape[1],
                 num_forecast_predictors=
-                FORECAST_PRED_MATRIX_STANDARD_0HOURS.shape[2],
-                num_forecast_hours=FORECAST_PRED_MATRIX_STANDARD_0HOURS.shape[1]
+                FORECAST_PRED_MATRIX_STANDARD_FIRST12H.shape[2],
+                num_forecast_hours=
+                FORECAST_PRED_MATRIX_STANDARD_FIRST12H.shape[1]
             )
         )
 
@@ -439,7 +539,7 @@ class NeuralNetTests(unittest.TestCase):
         ))
         self.assertTrue(numpy.allclose(
             this_forecast_pred_matrix[0, ...],
-            FORECAST_PRED_MATRIX_STANDARD_0HOURS, atol=TOLERANCE
+            FORECAST_PRED_MATRIX_STANDARD_FIRST12H, atol=TOLERANCE
         ))
 
     def test_ships_predictors_4d_to_3d(self):
@@ -449,11 +549,11 @@ class NeuralNetTests(unittest.TestCase):
             lagged_predictor_matrix_4d=
             numpy.expand_dims(LAGGED_PRED_MATRIX_STANDARD, axis=0),
             forecast_predictor_matrix_4d=
-            numpy.expand_dims(FORECAST_PRED_MATRIX_STANDARD_0HOURS, axis=0)
+            numpy.expand_dims(FORECAST_PRED_MATRIX_STANDARD_FIRST12H, axis=0)
         )
 
         self.assertTrue(numpy.allclose(
-            this_scalar_pred_matrix[0, ...], SCALAR_PREDICTOR_MATRIX,
+            this_scalar_pred_matrix[0, ...], SCALAR_PREDICTOR_MATRIX_ALL_LAGS,
             atol=TOLERANCE
         ))
 

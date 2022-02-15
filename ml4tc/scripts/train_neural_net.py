@@ -14,8 +14,8 @@ INPUT_ARG_PARSER = training_args.add_input_args(parser_object=INPUT_ARG_PARSER)
 def _run(template_file_name, output_dir_name, training_example_dir_name,
          validation_example_dir_name, training_years, validation_years,
          lead_time_hours, satellite_lag_times_minutes, ships_lag_times_hours,
-         satellite_predictor_names,
-         ships_predictor_names_lagged, ships_predictor_names_forecast,
+         satellite_predictor_names, ships_predictor_names_lagged,
+         ships_predictors_use_all_lags, ships_predictor_names_forecast,
          ships_max_forecast_hour, satellite_time_tolerance_training_sec,
          satellite_max_missing_times_training,
          ships_time_tolerance_training_sec, ships_max_missing_times_training,
@@ -44,6 +44,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param ships_lag_times_hours: Same.
     :param satellite_predictor_names: Same.
     :param ships_predictor_names_lagged: Same.
+    :param ships_predictors_use_all_lags: Same.
     :param ships_predictor_names_forecast: Same.
     :param ships_max_forecast_hour: Same.
     :param satellite_time_tolerance_training_sec: Same.
@@ -111,6 +112,8 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.SHIPS_LAG_TIMES_KEY: ships_lag_times_hours,
         neural_net.SATELLITE_PREDICTORS_KEY: satellite_predictor_names,
         neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_predictor_names_lagged,
+        neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY:
+            ships_predictors_use_all_lags,
         neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
             ships_predictor_names_forecast,
         neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: ships_max_forecast_hour,
@@ -207,6 +210,10 @@ if __name__ == '__main__':
         ships_predictor_names_lagged=getattr(
             INPUT_ARG_OBJECT, training_args.SHIPS_PREDICTORS_LAGGED_ARG_NAME
         ),
+        ships_predictors_use_all_lags=bool(getattr(
+            INPUT_ARG_OBJECT,
+            training_args.SHIPS_USE_ALL_PREDICTOR_LAGS_ARG_NAME
+        )),
         ships_predictor_names_forecast=getattr(
             INPUT_ARG_OBJECT, training_args.SHIPS_PREDICTORS_FORECAST_ARG_NAME
         ),
