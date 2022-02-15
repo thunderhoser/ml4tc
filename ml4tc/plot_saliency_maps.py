@@ -33,7 +33,7 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
 MAX_COLOUR_PERCENTILE = 99.
-SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
+ALL_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
 SCALAR_SATELLITE_FONT_SIZE = 20
@@ -486,12 +486,17 @@ def _plot_lagged_ships_saliency(
         dtype=int
     )
 
+    if validation_option_dict[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY]:
+        builtin_lag_times_hours = ALL_BUILTIN_LAG_TIMES_HOURS
+    else:
+        builtin_lag_times_hours = numpy.array([0.])
+
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_lagged_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
@@ -500,7 +505,7 @@ def _plot_lagged_ships_saliency(
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
         predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
         num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(SHIPS_BUILTIN_LAG_TIMES_HOURS),
+        num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
@@ -642,12 +647,17 @@ def _plot_forecast_ships_saliency(
         dtype=int
     )
 
+    if validation_option_dict[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY]:
+        builtin_lag_times_hours = ALL_BUILTIN_LAG_TIMES_HOURS
+    else:
+        builtin_lag_times_hours = numpy.array([0.])
+
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_forecast_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=SHIPS_BUILTIN_LAG_TIMES_HOURS,
+            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
@@ -656,7 +666,7 @@ def _plot_forecast_ships_saliency(
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
         predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
         num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(SHIPS_BUILTIN_LAG_TIMES_HOURS),
+        num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
