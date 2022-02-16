@@ -292,7 +292,8 @@ def plot_2d_grid(
 def plot_saliency(
         saliency_matrix, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, min_abs_contour_value, max_abs_contour_value,
-        half_num_contours, colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        half_num_contours, plot_in_log_space=False,
+        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
         line_width=DEFAULT_CONTOUR_WIDTH):
     """Plots saliency map on 2-D grid.
 
@@ -311,6 +312,8 @@ def plot_saliency(
     :param min_abs_contour_value: Minimum absolute saliency to plot.
     :param max_abs_contour_value: Max absolute saliency to plot.
     :param half_num_contours: Number of contours on either side of zero.
+    :param plot_in_log_space: Boolean flag.  If True (False), colour scale will
+        be logarithmic in base 10 (linear).
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
@@ -318,6 +321,8 @@ def plot_saliency(
     :return: max_abs_contour_value: Same as input but maybe changed.
     """
 
+    # Check input args.
+    error_checking.assert_is_boolean(plot_in_log_space)
     error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
@@ -366,33 +371,24 @@ def plot_saliency(
         saliency_matrix, exact_dimensions=expected_dim
     )
 
-    # if min_abs_contour_value < 0.001 or max_abs_contour_value < 0.01:
-    #     min_abs_contour_value = 0.001
-    #     max_abs_contour_value = 0.01
-
-    min_abs_contour_value = max([min_abs_contour_value, TOLERANCE])
-    max_abs_contour_value = max([
-        max_abs_contour_value, min_abs_contour_value + TOLERANCE
-    ])
-
     error_checking.assert_is_integer(half_num_contours)
     error_checking.assert_is_geq(half_num_contours, 5)
 
     # Plot positive values.
-
-    # TODO(thunderhoser): HACK.
-    min_abs_contour_value = numpy.percentile(numpy.log10(1 + numpy.absolute(saliency_matrix)), 1)
-    max_abs_contour_value = numpy.percentile(numpy.log10(1 + numpy.absolute(saliency_matrix)), 99)
+    min_abs_contour_value = max([min_abs_contour_value, TOLERANCE])
     max_abs_contour_value = max([
         max_abs_contour_value, min_abs_contour_value + TOLERANCE
     ])
     contour_levels = numpy.linspace(
         min_abs_contour_value, max_abs_contour_value, num=half_num_contours
     )
-    print(contour_levels)
 
-    positive_saliency_matrix = numpy.log10(1 + numpy.maximum(saliency_matrix, 0.))
-    print(numpy.percentile(positive_saliency_matrix, numpy.array([90, 95, 99, 100])))
+    if plot_in_log_space:
+        positive_saliency_matrix = numpy.log10(
+            1 + numpy.maximum(saliency_matrix, 0.)
+        )
+    else:
+        positive_saliency_matrix = saliency_matrix
 
     axes_object.contour(
         longitude_matrix_deg_e, latitude_matrix_deg_n, positive_saliency_matrix,
@@ -401,9 +397,12 @@ def plot_saliency(
         linewidths=line_width, linestyles='solid', zorder=1e6
     )
 
-    negative_saliency_matrix = numpy.log10(1 + numpy.absolute(numpy.minimum(saliency_matrix, 0.)))
-    print(numpy.percentile(negative_saliency_matrix, numpy.array([90, 95, 99, 100])))
-    print('\n\n\n\n**************\n\n\n\n')
+    if plot_in_log_space:
+        negative_saliency_matrix = numpy.log10(
+            1 + numpy.absolute(numpy.minimum(saliency_matrix, 0.))
+        )
+    else:
+        negative_saliency_matrix = -saliency_matrix
 
     # Plot negative values.
     axes_object.contour(

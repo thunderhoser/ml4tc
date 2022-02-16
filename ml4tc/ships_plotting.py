@@ -20,10 +20,50 @@ import example_utils
 
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-DEFAULT_FONT_SIZE = 20
-FORECAST_HOUR_FONT_SIZE = 7
-LAG_TIME_FONT_SIZE = 20
-PREDICTOR_FONT_SIZE = 7
+VARIABLE_ABBREV_TO_VERBOSE = {
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M10C_KEY:
+        r'Pct T$_{b} <$ -10$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M20C_KEY:
+        r'Pct T$_{b} <$ -20$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M30C_KEY:
+        r'Pct T$_{b} <$ -30$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M40C_KEY:
+        r'Pct T$_{b} <$ -40$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M50C_KEY:
+        r'Pct T$_{b} <$ -50$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_FRACTION_BELOW_M60C_KEY:
+        r'Pct T$_{b} <$ -60$^{\circ}$C, 50-200 km',
+    ships_io.SATELLITE_TEMP_0TO200KM_KEY: r'Mean T$_{b}$, 0-200 km',
+    ships_io.SATELLITE_TEMP_0TO200KM_STDEV_KEY: r'Stdev T$_{b}$, 0-200 km',
+    ships_io.SATELLITE_TEMP_100TO300KM_KEY: r'Mean T$_{b}$, 100-300 km',
+    ships_io.SATELLITE_TEMP_100TO300KM_STDEV_KEY: r'Stdev T$_{b}$, 100-300 km',
+    ships_io.SATELLITE_MAX_TEMP_0TO30KM_KEY: r'Max T$_{b}$, 0-30 km',
+    ships_io.SATELLITE_MEAN_TEMP_0TO30KM_KEY: r'Mean T$_{b}$, 0-30 km',
+    ships_io.SATELLITE_MIN_TEMP_20TO120KM_KEY: r'Min T$_{b}$, 20-120 km',
+    ships_io.SATELLITE_MEAN_TEMP_20TO120KM_KEY: r'Mean T$_{b}$, 20-120 km',
+    ships_io.SATELLITE_MIN_TEMP_RADIUS_KEY: r'Radius of min T$_{b}$',
+    ships_io.SATELLITE_MAX_TEMP_RADIUS_KEY: r'Radius of max T$_{b}$',
+    ships_io.INTENSITY_CHANGE_6HOURS_KEY: r'Intensity, 6-hour $\Delta$',
+    ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY:
+        r'$\nabla$Temp, 850-700 mb, 0-500 km',
+    ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY:
+        'Shear, 850-200 mb, 0-500 km, gen, no vort',
+    ships_io.TEMP_200MB_OUTER_RING_KEY: 'Temp, 200 mb, 200-800 km',
+    ships_io.SHEAR_850TO500MB_U_KEY: r'$u$-shear, 850-500 mb',
+    ships_io.W_WIND_0TO15KM_INNER_RING_KEY:
+        r'$w$-wind, 0-15 km AGL, 0-500 km, no vort',
+    ships_io.OCEAN_AGE_KEY: 'Ocean age',
+    ships_io.MAX_TAN_WIND_850MB_KEY: 'Max tan wind, 850 mb',
+    ships_io.INTENSITY_KEY: 'Intensity',
+    ships_io.MERGED_OHC_KEY: 'Ocean heat content',
+    ships_io.MERGED_SST_KEY: 'Sea-surface temp',
+    ships_io.FORECAST_LATITUDE_KEY: 'TC-center latitude',
+    ships_io.MAX_PTTL_INTENSITY_KEY: 'Max pttl intensity'
+}
+
+DEFAULT_FCST_HOUR_TICK_FONT_SIZE = 7
+DEFAULT_LAG_TIME_TICK_FONT_SIZE = 20
+DEFAULT_PREDICTOR_TICK_FONT_SIZE = 7
 
 MIN_NORMALIZED_VALUE = -3.
 MAX_NORMALIZED_VALUE = 3.
@@ -32,6 +72,7 @@ COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 
+DEFAULT_FONT_SIZE = 30
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
@@ -43,6 +84,8 @@ pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 def plot_lagged_predictors_one_init_time(
         example_table_xarray, init_time_index, predictor_indices,
+        lag_time_tick_font_size=DEFAULT_LAG_TIME_TICK_FONT_SIZE,
+        predictor_tick_font_size=DEFAULT_PREDICTOR_TICK_FONT_SIZE,
         info_string=None, figure_object=None, axes_object=None
 ):
     """Plots lagged predictors for one initialization time.
@@ -52,6 +95,8 @@ def plot_lagged_predictors_one_init_time(
     :param init_time_index: Index of initial time to plot.
     :param predictor_indices: 1-D numpy array with indices of predictors to
         plot.
+    :param lag_time_tick_font_size: Font size for tick labels on y-axis.
+    :param predictor_tick_font_size: Font size for tick labels on x-axis.
     :param info_string: Info string (to be appended to title).
     :param figure_object: Will plot on this figure (instance of
         `matplotlib.figure.Figure`).  If None, will create new figure.
@@ -91,7 +136,9 @@ def plot_lagged_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
-    pyplot.yticks(y_tick_values, y_tick_labels, fontsize=LAG_TIME_FONT_SIZE)
+    axes_object.set_yticks(
+        y_tick_values, y_tick_labels, fontsize=lag_time_tick_font_size
+    )
     axes_object.set_ylabel('Lag time (hours)')
 
     x_tick_values = numpy.linspace(
@@ -103,8 +150,14 @@ def plot_lagged_predictors_one_init_time(
             predictor_indices
         ].tolist()
     )
-    pyplot.xticks(
-        x_tick_values, x_tick_labels, rotation=90., fontsize=PREDICTOR_FONT_SIZE
+    x_tick_labels = [
+        s if s not in VARIABLE_ABBREV_TO_VERBOSE
+        else VARIABLE_ABBREV_TO_VERBOSE[s]
+        for s in x_tick_labels
+    ]
+    axes_object.set_xticks(
+        x_tick_values, x_tick_labels, rotation=90.,
+        fontsize=predictor_tick_font_size
     )
 
     init_time_unix_sec = (
@@ -134,6 +187,8 @@ def plot_lagged_predictors_one_init_time(
 
 def plot_fcst_predictors_one_init_time(
         example_table_xarray, init_time_index, predictor_indices,
+        forecast_hour_tick_font_size=DEFAULT_FCST_HOUR_TICK_FONT_SIZE,
+        predictor_tick_font_size=DEFAULT_PREDICTOR_TICK_FONT_SIZE,
         info_string=None, figure_object=None, axes_object=None
 ):
     """Plots forecast predictors for one initialization time.
@@ -142,6 +197,8 @@ def plot_fcst_predictors_one_init_time(
         `plot_lagged_predictors_one_init_time`.
     :param init_time_index: Same.
     :param predictor_indices: Same.
+    :param forecast_hour_tick_font_size: Font size for tick labels on y-axis.
+    :param predictor_tick_font_size: Font size for tick labels on x-axis.
     :param info_string: Same.
     :param figure_object: Same.
     :param axes_object: Same.
@@ -181,10 +238,10 @@ def plot_fcst_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:d}'.format(t) for t in forecast_times_hours]
-    pyplot.yticks(
-        y_tick_values, y_tick_labels, fontsize=FORECAST_HOUR_FONT_SIZE
+    axes_object.set_yticks(
+        y_tick_values, y_tick_labels, fontsize=forecast_hour_tick_font_size
     )
-    axes_object.set_ylabel('Forecast time (hours)')
+    axes_object.set_ylabel('Fcst hour')
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
@@ -195,8 +252,14 @@ def plot_fcst_predictors_one_init_time(
             predictor_indices
         ].tolist()
     )
-    pyplot.xticks(
-        x_tick_values, x_tick_labels, rotation=90., fontsize=PREDICTOR_FONT_SIZE
+    x_tick_labels = [
+        s if s not in VARIABLE_ABBREV_TO_VERBOSE
+        else VARIABLE_ABBREV_TO_VERBOSE[s]
+        for s in x_tick_labels
+    ]
+    axes_object.set_xticks(
+        x_tick_values, x_tick_labels, rotation=90.,
+        fontsize=predictor_tick_font_size
     )
 
     init_time_unix_sec = (
@@ -289,7 +352,8 @@ def plot_pm_signs_one_init_time(
 
 def plot_raw_numbers_one_init_time(
         data_matrix, axes_object, font_size, colour_map_object,
-        min_colour_value, max_colour_value, number_format_string):
+        min_colour_value, max_colour_value, number_format_string,
+        plot_in_log_space=False):
     """Plots data at one initialization time with raw numbers (text).
 
     This method is good for plotting saliency, input * gradient, or any other
@@ -308,12 +372,15 @@ def plot_raw_numbers_one_init_time(
     :param max_colour_value: Max value in colour scheme.
     :param number_format_string: Format for printing numbers.  Valid examples
         are ".2f", "d", etc.
+    :param plot_in_log_space: Boolean flag.  If True (False), colours will be
+        scaled logarithmically (linearly).
     """
 
     error_checking.assert_is_numpy_array_without_nan(data_matrix)
     error_checking.assert_is_numpy_array(data_matrix, num_dimensions=2)
     error_checking.assert_is_greater(max_colour_value, min_colour_value)
     error_checking.assert_is_string(number_format_string)
+    error_checking.assert_is_boolean(plot_in_log_space)
 
     number_format_string = '{0:' + number_format_string + '}'
 
@@ -331,56 +398,23 @@ def plot_raw_numbers_one_init_time(
     colour_norm_object = pyplot.Normalize(
         vmin=min_colour_value, vmax=max_colour_value
     )
-    rgb_matrix = colour_map_object(colour_norm_object(
-        numpy.absolute(data_matrix)
-    ))[..., :-1]
+
+    if plot_in_log_space:
+        rgb_matrix = colour_map_object(colour_norm_object(
+            numpy.log10(1 + numpy.absolute(data_matrix))
+        ))[..., :-1]
+    else:
+        rgb_matrix = colour_map_object(colour_norm_object(
+            numpy.absolute(data_matrix)
+        ))[..., :-1]
 
     for i in range(num_grid_rows):
         for j in range(num_grid_columns):
             axes_object.text(
                 x_coords[j], y_coords[i],
                 number_format_string.format(data_matrix[i, j]),
-                fontsize=font_size, color=rgb_matrix[i, j, ...],
+                fontsize=font_size, fontweight='bold',
+                color=rgb_matrix[i, j, ...],
                 horizontalalignment='center', verticalalignment='center',
                 transform=axes_object.transAxes
             )
-
-
-# def plot_colour_map_one_init_time(
-#         data_matrix, colour_map_object, colour_norm_object,
-#         figure_object=None, axes_object=None):
-#     """Plots data at one initialization time with colour map.
-#
-#     This method is good for plotting the heat map from any explainable-ML
-#     method.
-#
-#     :param data_matrix: See doc for `plot_pm_signs_one_init_time`.
-#     :param colour_map_object: Colour scheme (instance of
-#         `matplotlib.pyplot.cm`).
-#     :param colour_norm_object: Colour normalization (maps from data space to
-#         colour-bar space, which goes from 0...1).  This is an instance of
-#         `matplotlib.colors.Normalize`.
-#     :param figure_object: See doc for `plot_lagged_predictors_one_init_time`.
-#     :param axes_object: Same.
-#     :return: figure_object: Same.
-#     :return: axes_object: Same.
-#     """
-#
-#     error_checking.assert_is_numpy_array_without_nan(data_matrix)
-#     error_checking.assert_is_numpy_array(data_matrix, num_dimensions=2)
-#
-#     num_grid_rows = data_matrix.shape[0]
-#     num_grid_columns = data_matrix.shape[1]
-#     x_coord_spacing = num_grid_columns ** -1
-#     y_coord_spacing = num_grid_rows ** -1
-#
-#     x_coords, y_coords = grids.get_xy_grid_points(
-#         x_min_metres=x_coord_spacing / 2, y_min_metres=y_coord_spacing / 2,
-#         x_spacing_metres=x_coord_spacing, y_spacing_metres=y_coord_spacing,
-#         num_rows=num_grid_rows, num_columns=num_grid_columns
-#     )
-#
-#     if figure_object is None or axes_object is None:
-#         figure_object, axes_object = pyplot.subplots(
-#             1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-#         )
