@@ -136,7 +136,7 @@ def plot_lagged_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
-    axes_object.set_yticks(
+    pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=lag_time_tick_font_size
     )
     axes_object.set_ylabel('Lag time (hours)')
@@ -155,7 +155,7 @@ def plot_lagged_predictors_one_init_time(
         else VARIABLE_ABBREV_TO_VERBOSE[s]
         for s in x_tick_labels
     ]
-    axes_object.set_xticks(
+    pyplot.xticks(
         x_tick_values, x_tick_labels, rotation=90.,
         fontsize=predictor_tick_font_size
     )
@@ -238,7 +238,7 @@ def plot_fcst_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:d}'.format(t) for t in forecast_times_hours]
-    axes_object.set_yticks(
+    pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=forecast_hour_tick_font_size
     )
     axes_object.set_ylabel('Fcst hour')
@@ -257,7 +257,7 @@ def plot_fcst_predictors_one_init_time(
         else VARIABLE_ABBREV_TO_VERBOSE[s]
         for s in x_tick_labels
     ]
-    axes_object.set_xticks(
+    pyplot.xticks(
         x_tick_values, x_tick_labels, rotation=90.,
         fontsize=predictor_tick_font_size
     )
