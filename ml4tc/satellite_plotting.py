@@ -379,20 +379,34 @@ def plot_saliency(
     error_checking.assert_is_geq(half_num_contours, 5)
 
     # Plot positive values.
+
+    # TODO(thunderhoser): HACK.
+    min_abs_contour_value = numpy.log10(1.1)
+    max_abs_contour_value = numpy.log10(max_abs_contour_value)
+    max_abs_contour_value = max([
+        max_abs_contour_value, min_abs_contour_value + TOLERANCE
+    ])
+
     contour_levels = numpy.linspace(
         min_abs_contour_value, max_abs_contour_value, num=half_num_contours
     )
 
+    positive_saliency_matrix = numpy.maximum(saliency_matrix, 0.)
+    positive_saliency_matrix = numpy.log10(1 + positive_saliency_matrix)
+
     axes_object.contour(
-        longitude_matrix_deg_e, latitude_matrix_deg_n, saliency_matrix,
+        longitude_matrix_deg_e, latitude_matrix_deg_n, positive_saliency_matrix,
         contour_levels, cmap=colour_map_object,
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='solid', zorder=1e6
     )
 
+    negative_saliency_matrix = numpy.minimum(saliency_matrix, 0.)
+    negative_saliency_matrix = numpy.log10(1 + numpy.absolute(negative_saliency_matrix))
+
     # Plot negative values.
     axes_object.contour(
-        longitude_matrix_deg_e, latitude_matrix_deg_n, -1 * saliency_matrix,
+        longitude_matrix_deg_e, latitude_matrix_deg_n, negative_saliency_matrix,
         contour_levels, cmap=colour_map_object,
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='dashed', zorder=1e6
