@@ -382,7 +382,7 @@ def plot_saliency(
 
     # TODO(thunderhoser): HACK.
     min_abs_contour_value = numpy.log10(1.1)
-    max_abs_contour_value = numpy.log10(max_abs_contour_value)
+    max_abs_contour_value = numpy.log10(1 + max_abs_contour_value)
     max_abs_contour_value = max([
         max_abs_contour_value, min_abs_contour_value + TOLERANCE
     ])
