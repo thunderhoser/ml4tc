@@ -381,22 +381,17 @@ def plot_saliency(
     # Plot positive values.
 
     # TODO(thunderhoser): HACK.
-    min_abs_contour_value = numpy.log10(1.1)
-    max_abs_contour_value = numpy.log10(1 + max_abs_contour_value)
+    min_abs_contour_value = numpy.percentile(numpy.log10(1 + numpy.absolute(saliency_matrix)), 1)
+    max_abs_contour_value = numpy.percentile(numpy.log10(1 + numpy.absolute(saliency_matrix)), 99)
     max_abs_contour_value = max([
         max_abs_contour_value, min_abs_contour_value + TOLERANCE
     ])
-
     contour_levels = numpy.linspace(
         min_abs_contour_value, max_abs_contour_value, num=half_num_contours
     )
-
     print(contour_levels)
 
-    positive_saliency_matrix = numpy.maximum(saliency_matrix, 0.)
-    print(numpy.percentile(positive_saliency_matrix, numpy.array([90, 95, 99, 100])))
-    positive_saliency_matrix = numpy.log10(1 + positive_saliency_matrix)
-
+    positive_saliency_matrix = numpy.log10(1 + numpy.maximum(saliency_matrix, 0.))
     print(numpy.percentile(positive_saliency_matrix, numpy.array([90, 95, 99, 100])))
 
     axes_object.contour(
@@ -406,12 +401,9 @@ def plot_saliency(
         linewidths=line_width, linestyles='solid', zorder=1e6
     )
 
-    negative_saliency_matrix = numpy.minimum(saliency_matrix, 0.)
+    negative_saliency_matrix = numpy.log10(1 + numpy.absolute(numpy.minimum(saliency_matrix, 0.)))
     print(numpy.percentile(negative_saliency_matrix, numpy.array([90, 95, 99, 100])))
-    negative_saliency_matrix = numpy.log10(1 + numpy.absolute(negative_saliency_matrix))
-
-    print(numpy.percentile(negative_saliency_matrix, numpy.array([90, 95, 99, 100])))
-    print('\n\n\n\n***************\n\n\n\n')
+    print('\n\n\n\n**************\n\n\n\n')
 
     # Plot negative values.
     axes_object.contour(
