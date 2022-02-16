@@ -391,8 +391,13 @@ def plot_saliency(
         min_abs_contour_value, max_abs_contour_value, num=half_num_contours
     )
 
+    print(contour_levels)
+
     positive_saliency_matrix = numpy.maximum(saliency_matrix, 0.)
+    print(numpy.percentile(positive_saliency_matrix, numpy.array([90, 95, 99, 100])))
     positive_saliency_matrix = numpy.log10(1 + positive_saliency_matrix)
+
+    print(numpy.percentile(positive_saliency_matrix, numpy.array([90, 95, 99, 100])))
 
     axes_object.contour(
         longitude_matrix_deg_e, latitude_matrix_deg_n, positive_saliency_matrix,
@@ -402,7 +407,11 @@ def plot_saliency(
     )
 
     negative_saliency_matrix = numpy.minimum(saliency_matrix, 0.)
+    print(numpy.percentile(negative_saliency_matrix, numpy.array([90, 95, 99, 100])))
     negative_saliency_matrix = numpy.log10(1 + numpy.absolute(negative_saliency_matrix))
+
+    print(numpy.percentile(negative_saliency_matrix, numpy.array([90, 95, 99, 100])))
+    print('\n\n\n\n***************\n\n\n\n')
 
     # Plot negative values.
     axes_object.contour(
