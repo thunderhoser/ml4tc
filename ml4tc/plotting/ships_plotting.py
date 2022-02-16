@@ -39,11 +39,10 @@ VARIABLE_ABBREV_TO_VERBOSE = {
     ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY:
         r'$\nabla$Temp, 850-700 mb, 0-500 km',
     ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY:
-        'Shear, 850-200 mb, 0-500 km, gen, no vort',
+        'Shear, 850-200 mb, 0-500 km',
     ships_io.TEMP_200MB_OUTER_RING_KEY: 'Temp, 200 mb, 200-800 km',
     ships_io.SHEAR_850TO500MB_U_KEY: r'$u$-shear, 850-500 mb',
-    ships_io.W_WIND_0TO15KM_INNER_RING_KEY:
-        r'$w$-wind, 0-15 km AGL, 0-500 km, no vort',
+    ships_io.W_WIND_0TO15KM_INNER_RING_KEY: r'$w$-wind, 0-15 km, 0-500 km',
     ships_io.OCEAN_AGE_KEY: 'Ocean age',
     ships_io.MAX_TAN_WIND_850MB_KEY: 'Max tan wind, 850 mb',
     ships_io.INTENSITY_KEY: 'Intensity',
@@ -53,9 +52,9 @@ VARIABLE_ABBREV_TO_VERBOSE = {
     ships_io.MAX_PTTL_INTENSITY_KEY: 'Max pttl intensity'
 }
 
-DEFAULT_FCST_HOUR_TICK_FONT_SIZE = 7
-DEFAULT_LAG_TIME_TICK_FONT_SIZE = 20
-DEFAULT_PREDICTOR_TICK_FONT_SIZE = 7
+DEFAULT_FCST_HOUR_TICK_FONT_SIZE = 30
+DEFAULT_LAG_TIME_TICK_FONT_SIZE = 30
+DEFAULT_PREDICTOR_TICK_FONT_SIZE = 20
 
 MIN_NORMALIZED_VALUE = -3.
 MAX_NORMALIZED_VALUE = 3.
@@ -128,7 +127,7 @@ def plot_lagged_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
-    axes_object.set_yticks(
+    pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=lag_time_tick_font_size
     )
     axes_object.set_ylabel('Lag time (hours)')
@@ -147,7 +146,7 @@ def plot_lagged_predictors_one_init_time(
         else VARIABLE_ABBREV_TO_VERBOSE[s]
         for s in x_tick_labels
     ]
-    axes_object.set_xticks(
+    pyplot.xticks(
         x_tick_values, x_tick_labels, rotation=90.,
         fontsize=predictor_tick_font_size
     )
@@ -230,7 +229,7 @@ def plot_fcst_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:d}'.format(t) for t in forecast_times_hours]
-    axes_object.set_yticks(
+    pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=forecast_hour_tick_font_size
     )
     axes_object.set_ylabel('Fcst hour')
@@ -249,7 +248,7 @@ def plot_fcst_predictors_one_init_time(
         else VARIABLE_ABBREV_TO_VERBOSE[s]
         for s in x_tick_labels
     ]
-    axes_object.set_xticks(
+    pyplot.xticks(
         x_tick_values, x_tick_labels, rotation=90.,
         fontsize=predictor_tick_font_size
     )
@@ -405,7 +404,8 @@ def plot_raw_numbers_one_init_time(
             axes_object.text(
                 x_coords[j], y_coords[i],
                 number_format_string.format(data_matrix[i, j]),
-                fontsize=font_size, fontweight='bold',
+                fontsize=font_size,
+                fontstyle='italic' if data_matrix[i, j] < 0 else 'normal',
                 color=rgb_matrix[i, j, ...],
                 horizontalalignment='center', verticalalignment='center',
                 transform=axes_object.transAxes

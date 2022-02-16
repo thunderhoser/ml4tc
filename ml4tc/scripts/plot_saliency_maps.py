@@ -29,8 +29,6 @@ ALL_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
 SCALAR_SATELLITE_FONT_SIZE = 20
-LAGGED_SHIPS_FONT_SIZE = 20
-FORECAST_SHIPS_FONT_SIZE = 10
 
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
@@ -521,7 +519,7 @@ def _plot_lagged_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrix[[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
@@ -533,11 +531,11 @@ def _plot_lagged_ships_saliency(
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k], font_size=40,
+            axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
-            number_format_string='.2f',
+            number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
 
@@ -681,7 +679,7 @@ def _plot_forecast_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrix[[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
@@ -693,11 +691,11 @@ def _plot_forecast_ships_saliency(
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k], font_size=40,
+            axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
-            number_format_string='.2f',
+            number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
 
