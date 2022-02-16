@@ -9,6 +9,7 @@ from matplotlib import pyplot
 from gewittergefahr.gg_utils import general_utils as gg_general_utils
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import imagemagick_utils
 from ml4tc.io import example_io
 from ml4tc.io import border_io
@@ -24,7 +25,6 @@ from ml4tc.plotting import predictor_plotting
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-MAX_COLOUR_PERCENTILE = 99.
 ALL_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
@@ -41,6 +41,9 @@ NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 PLOT_INPUT_GRAD_ARG_NAME = 'plot_input_times_grad'
 SPATIAL_COLOUR_MAP_ARG_NAME = 'spatial_colour_map_name'
 NONSPATIAL_COLOUR_MAP_ARG_NAME = 'nonspatial_colour_map_name'
+MIN_COLOUR_PERCENTILE_ARG_NAME = 'min_colour_percentile'
+MAX_COLOUR_PERCENTILE_ARG_NAME = 'max_colour_percentile'
+PLOT_IN_LOG_SPACE_ARG_NAME = 'plot_in_log_space'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -66,6 +69,20 @@ SPATIAL_COLOUR_MAP_HELP_STRING = (
 NONSPATIAL_COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for non-spatial saliency maps.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
+)
+MIN_COLOUR_PERCENTILE_HELP_STRING = (
+    'Determines minimum absolute saliency in colour bar.  For each example, '
+    'the minimum will be the [k]th percentile of all absolute saliency values '
+    'for said example, where k = `{0:s}`.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
+MAX_COLOUR_PERCENTILE_HELP_STRING = (
+    'Same as `{0:s}` but for max absolute saliency in colour bar.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
+PLOT_IN_LOG_SPACE_HELP_STRING = (
+    'Boolean flag.  If 1 (0), colours for gridded saliency will be scaled '
+    'logarithmically (linearly).'
 )
 SMOOTHING_RADIUS_HELP_STRING = (
     'Smoothing radius (number of pixels) for saliency maps.  If you do not want'
@@ -97,6 +114,18 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NONSPATIAL_COLOUR_MAP_ARG_NAME, type=str, required=False,
     default='binary', help=NONSPATIAL_COLOUR_MAP_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MIN_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=1, help=MIN_COLOUR_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MAX_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=99, help=MAX_COLOUR_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_IN_LOG_SPACE_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_IN_LOG_SPACE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SMOOTHING_RADIUS_ARG_NAME, type=float, required=False, default=-1,
@@ -151,7 +180,8 @@ def _smooth_maps(saliency_dict, smoothing_radius_px, plot_input_times_grad):
 
 def _plot_scalar_satellite_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
-        init_time_unix_sec, colour_map_object, plot_input_times_grad,
+        init_time_unix_sec, colour_map_object, min_colour_value,
+        max_colour_value, plot_in_log_space, plot_input_times_grad,
         output_dir_name):
     """Plots saliency for scalar satellite for each lag time at one init time.
 
@@ -163,8 +193,12 @@ def _plot_scalar_satellite_saliency(
     :param init_time_unix_sec: Same.
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
-    :param plot_input_times_grad: Boolean flag.  If 1 (0), will plot input *
-        gradient (saliency).
+    :param min_colour_value: Minimum absolute value in colour scheme.
+    :param max_colour_value: Max absolute value in colour scheme.
+    :param plot_in_log_space: Boolean flag.  If True (False), colours will be
+        scaled logarithmically (linearly).
+    :param plot_input_times_grad: Boolean flag.  If True (False), will plot
+        input * gradient (saliency).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     """
@@ -186,10 +220,7 @@ def _plot_scalar_satellite_saliency(
     else:
         this_key = saliency.THREE_SALIENCY_KEY
 
-    saliency_matrices_one_example = [
-        None if s is None else s[[saliency_example_index], ...]
-        for s in saliency_dict[this_key]
-    ]
+    saliency_matrix = saliency_dict[this_key][1][saliency_example_index, ...]
 
     figure_object, axes_object = (
         predictor_plotting.plot_scalar_satellite_one_example(
@@ -200,19 +231,13 @@ def _plot_scalar_satellite_saliency(
         )[:2]
     )
 
-    all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
-    ])
-    max_absolute_colour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
-    )
-    scalar_satellite_plotting.plot_pm_signs_multi_times(
-        data_matrix=saliency_matrices_one_example[1][0, ...],
-        axes_object=axes_object,
-        font_size=SCALAR_SATELLITE_FONT_SIZE,
-        colour_map_object=colour_map_object,
-        max_absolute_colour_value=max_absolute_colour_value
-    )
+    # # TODO(thunderhoser): Need new method.
+    # scalar_satellite_plotting.plot_pm_signs_multi_times(
+    #     data_matrix=saliency_matrix, axes_object=axes_object,
+    #     font_size=SCALAR_SATELLITE_FONT_SIZE,
+    #     colour_map_object=colour_map_object,
+    #     max_absolute_colour_value=max_absolute_colour_value
+    # )
 
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
@@ -241,11 +266,14 @@ def _plot_scalar_satellite_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=0., vmax=max_absolute_colour_value
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input times gradient' if plot_input_times_grad else 'saliency'
+        'input x grad' if plot_input_times_grad else 'saliency'
     )
+    if plot_in_log_space:
+        label_string += ', log space'
+
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         colour_map_object=colour_map_object,
@@ -259,6 +287,7 @@ def _plot_brightness_temp_saliency(
         data_dict, saliency_dict, model_metadata_dict,
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
+        min_colour_value, max_colour_value, plot_in_log_space,
         plot_input_times_grad, output_dir_name):
     """Plots saliency for brightness temp for each lag time at one init time.
 
@@ -276,8 +305,15 @@ def _plot_brightness_temp_saliency(
     :param border_longitudes_deg_e: length-P numpy array of longitudes
         (deg east).
     :param colour_map_object: See doc for `_plot_scalar_satellite_saliency`.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
+    :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
     :param output_dir_name: Same.
+    :return: min_colour_value: Same meaning as input variable, except that value
+        might have been changed.
+    :return: max_colour_value: Same meaning as input variable, except that value
+        might have been changed.
     """
 
     predictor_example_index = numpy.where(
@@ -297,10 +333,7 @@ def _plot_brightness_temp_saliency(
     else:
         this_key = saliency.THREE_SALIENCY_KEY
 
-    saliency_matrices_one_example = [
-        None if s is None else s[[saliency_example_index], ...]
-        for s in saliency_dict[this_key]
-    ]
+    saliency_matrix = saliency_dict[this_key][0][saliency_example_index, ..., 0]
 
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
@@ -330,31 +363,18 @@ def _plot_brightness_temp_saliency(
     num_model_lag_times = len(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
-
-    all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
-    ])
-    min_abs_contour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), 100. - MAX_COLOUR_PERCENTILE
-    )
-    max_abs_contour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
-    )
-
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        min_abs_contour_value, max_abs_contour_value = (
-            satellite_plotting.plot_saliency(
-                saliency_matrix=saliency_matrices_one_example[0][0, ..., k, 0],
-                axes_object=axes_objects[k],
-                latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
-                longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                min_abs_contour_value=min_abs_contour_value,
-                max_abs_contour_value=max_abs_contour_value,
-                half_num_contours=10,
-                colour_map_object=colour_map_object
-            )
+        min_colour_value, max_colour_value = satellite_plotting.plot_saliency(
+            saliency_matrix=saliency_matrix[..., k],
+            axes_object=axes_objects[k],
+            latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+            longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
+            min_abs_contour_value=min_colour_value,
+            max_abs_contour_value=max_colour_value,
+            half_num_contours=10, plot_in_log_space=plot_in_log_space,
+            colour_map_object=colour_map_object
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -401,11 +421,14 @@ def _plot_brightness_temp_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_abs_contour_value, vmax=max_abs_contour_value
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input times gradient' if plot_input_times_grad else 'saliency'
+        'input x grad' if plot_input_times_grad else 'saliency'
     )
+    if plot_in_log_space:
+        label_string += ', log space'
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -414,10 +437,13 @@ def _plot_brightness_temp_saliency(
         cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
     )
 
+    return min_colour_value, max_colour_value
+
 
 def _plot_lagged_ships_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
-        init_time_unix_sec, colour_map_object, plot_input_times_grad,
+        init_time_unix_sec, colour_map_object, min_colour_value,
+        max_colour_value, plot_in_log_space, plot_input_times_grad,
         output_dir_name):
     """Plots saliency for lagged SHIPS for each lag time at one init time.
 
@@ -427,6 +453,9 @@ def _plot_lagged_ships_saliency(
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param colour_map_object: Same.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
+    :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
     :param output_dir_name: Same.
     """
@@ -448,10 +477,7 @@ def _plot_lagged_ships_saliency(
     else:
         this_key = saliency.THREE_SALIENCY_KEY
 
-    saliency_matrices_one_example = [
-        None if s is None else s[[saliency_example_index], ...]
-        for s in saliency_dict[this_key]
-    ]
+    saliency_matrix = saliency_dict[this_key][2][saliency_example_index, ...]
 
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
@@ -495,29 +521,24 @@ def _plot_lagged_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
+        predictor_matrix_3d=saliency_matrix[[0], ...],
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
 
-    all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
-    ])
-    max_absolute_colour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
-    )
-
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        ships_plotting.plot_pm_signs_one_init_time(
+        ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k],
-            font_size=LAGGED_SHIPS_FONT_SIZE,
+            axes_object=axes_objects[k], font_size=40,
             colour_map_object=colour_map_object,
-            max_absolute_colour_value=max_absolute_colour_value
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.2f',
+            plot_in_log_space=plot_in_log_space
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -562,11 +583,14 @@ def _plot_lagged_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=0., vmax=max_absolute_colour_value
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input times gradient' if plot_input_times_grad else 'saliency'
+        'input x grad' if plot_input_times_grad else 'saliency'
     )
+    if plot_in_log_space:
+        label_string += ', log space'
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -578,7 +602,8 @@ def _plot_lagged_ships_saliency(
 
 def _plot_forecast_ships_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
-        init_time_unix_sec, colour_map_object, plot_input_times_grad,
+        init_time_unix_sec, colour_map_object, min_colour_value,
+        max_colour_value, plot_in_log_space, plot_input_times_grad,
         output_dir_name):
     """Plots saliency for forecast SHIPS for each lag time at one init time.
 
@@ -588,6 +613,9 @@ def _plot_forecast_ships_saliency(
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param colour_map_object: Same.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
+    :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
     :param output_dir_name: Same.
     """
@@ -609,10 +637,7 @@ def _plot_forecast_ships_saliency(
     else:
         this_key = saliency.THREE_SALIENCY_KEY
 
-    saliency_matrices_one_example = [
-        None if s is None else s[[saliency_example_index], ...]
-        for s in saliency_dict[this_key]
-    ]
+    saliency_matrix = saliency_dict[this_key][2][saliency_example_index, ...]
 
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
@@ -656,29 +681,24 @@ def _plot_forecast_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrices_one_example[2][[0], ...],
+        predictor_matrix_3d=saliency_matrix[[0], ...],
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
-    all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices_one_example if s is not None
-    ])
-    max_absolute_colour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
-    )
-
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        ships_plotting.plot_pm_signs_one_init_time(
+        ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k],
-            font_size=FORECAST_SHIPS_FONT_SIZE,
+            axes_object=axes_objects[k], font_size=40,
             colour_map_object=colour_map_object,
-            max_absolute_colour_value=max_absolute_colour_value
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.2f',
+            plot_in_log_space=plot_in_log_space
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -723,7 +743,7 @@ def _plot_forecast_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=0., vmax=max_absolute_colour_value
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
@@ -739,7 +759,9 @@ def _plot_forecast_ships_saliency(
 
 def _run(saliency_file_name, example_dir_name, normalization_file_name,
          plot_input_times_grad, spatial_colour_map_name,
-         nonspatial_colour_map_name, smoothing_radius_px, output_dir_name):
+         nonspatial_colour_map_name, min_colour_percentile,
+         max_colour_percentile, plot_in_log_space, smoothing_radius_px,
+         output_dir_name):
     """Plots saliency maps.
 
     This is effectively the main method.
@@ -750,9 +772,18 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
     :param plot_input_times_grad: Same.
     :param spatial_colour_map_name: Same.
     :param nonspatial_colour_map_name: Same.
+    :param min_colour_percentile: Same.
+    :param max_colour_percentile: Same.
+    :param plot_in_log_space: Same.
     :param smoothing_radius_px: Same.
     :param output_dir_name: Same.
     """
+
+    error_checking.assert_is_geq(min_colour_percentile, 0.)
+    error_checking.assert_is_leq(max_colour_percentile, 100.)
+    error_checking.assert_is_greater(
+        max_colour_percentile, min_colour_percentile
+    )
 
     spatial_colour_map_object = pyplot.get_cmap(spatial_colour_map_name)
     nonspatial_colour_map_object = pyplot.get_cmap(nonspatial_colour_map_name)
@@ -819,19 +850,50 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         )[0]
 
         for j in example_indices:
+            if plot_input_times_grad:
+                this_key = saliency.THREE_INPUT_GRAD_KEY
+            else:
+                this_key = saliency.THREE_SALIENCY_KEY
+
+            saliency_matrices_example_j = [
+                None if s is None else s[j, ...]
+                for s in saliency_dict[this_key]
+            ]
+            saliency_values_example_j = numpy.concatenate([
+                numpy.ravel(s) for s in saliency_matrices_example_j
+                if s is not None
+            ])
+
+            if plot_in_log_space:
+                saliency_values_example_j = numpy.log10(
+                    1 + numpy.absolute(saliency_values_example_j)
+                )
+
+            min_colour_value = numpy.percentile(
+                numpy.absolute(saliency_values_example_j), min_colour_percentile
+            )
+            max_colour_value = numpy.percentile(
+                numpy.absolute(saliency_values_example_j), max_colour_percentile
+            )
+
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
-                _plot_brightness_temp_saliency(
-                    data_dict=data_dict, saliency_dict=saliency_dict,
-                    model_metadata_dict=model_metadata_dict,
-                    cyclone_id_string=unique_cyclone_id_strings[i],
-                    init_time_unix_sec=
-                    saliency_dict[saliency.INIT_TIMES_KEY][j],
-                    normalization_table_xarray=normalization_table_xarray,
-                    border_latitudes_deg_n=border_latitudes_deg_n,
-                    border_longitudes_deg_e=border_longitudes_deg_e,
-                    colour_map_object=spatial_colour_map_object,
-                    plot_input_times_grad=plot_input_times_grad,
-                    output_dir_name=output_dir_name
+                min_colour_value, max_colour_value = (
+                    _plot_brightness_temp_saliency(
+                        data_dict=data_dict, saliency_dict=saliency_dict,
+                        model_metadata_dict=model_metadata_dict,
+                        cyclone_id_string=unique_cyclone_id_strings[i],
+                        init_time_unix_sec=
+                        saliency_dict[saliency.INIT_TIMES_KEY][j],
+                        normalization_table_xarray=normalization_table_xarray,
+                        border_latitudes_deg_n=border_latitudes_deg_n,
+                        border_longitudes_deg_e=border_longitudes_deg_e,
+                        colour_map_object=spatial_colour_map_object,
+                        min_colour_value=min_colour_value,
+                        max_colour_value=max_colour_value,
+                        plot_in_log_space=plot_in_log_space,
+                        plot_input_times_grad=plot_input_times_grad,
+                        output_dir_name=output_dir_name
+                    )
                 )
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][1] is not None:
@@ -842,6 +904,9 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
+                    plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     output_dir_name=output_dir_name
                 )
@@ -854,6 +919,9 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
+                    plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     output_dir_name=output_dir_name
                 )
@@ -869,6 +937,9 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
+                    plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     output_dir_name=output_dir_name
                 )
@@ -892,6 +963,15 @@ if __name__ == '__main__':
         nonspatial_colour_map_name=getattr(
             INPUT_ARG_OBJECT, NONSPATIAL_COLOUR_MAP_ARG_NAME
         ),
+        min_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MIN_COLOUR_PERCENTILE_ARG_NAME
+        ),
+        max_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MAX_COLOUR_PERCENTILE_ARG_NAME
+        ),
+        plot_in_log_space=bool(getattr(
+            INPUT_ARG_OBJECT, PLOT_IN_LOG_SPACE_ARG_NAME
+        )),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME
         ),
