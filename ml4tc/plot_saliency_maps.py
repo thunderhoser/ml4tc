@@ -527,7 +527,7 @@ def _plot_lagged_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrix[[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
@@ -687,7 +687,7 @@ def _plot_forecast_ships_saliency(
     )
 
     saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=saliency_matrix[[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
