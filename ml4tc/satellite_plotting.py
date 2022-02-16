@@ -410,7 +410,7 @@ def plot_saliency(
         longitude_matrix_deg_e, latitude_matrix_deg_n, negative_saliency_matrix,
         contour_levels, cmap=colour_map_object,
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
-        linewidths=line_width, linestyle=(0, (5, 10)), zorder=1e6
+        linewidths=line_width, linestyles=[(0, (5, 10))], zorder=1e6
     )
 
     return min_abs_contour_value, max_abs_contour_value
