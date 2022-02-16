@@ -539,11 +539,11 @@ def _plot_lagged_ships_saliency(
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k], font_size=40,
+            axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
-            number_format_string='.2f',
+            number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
 
@@ -699,11 +699,11 @@ def _plot_forecast_ships_saliency(
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
-            axes_object=axes_objects[k], font_size=40,
+            axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
-            number_format_string='.2f',
+            number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
 
