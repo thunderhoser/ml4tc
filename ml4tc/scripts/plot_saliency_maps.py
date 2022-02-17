@@ -28,8 +28,6 @@ TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 ALL_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
 
 COLOUR_BAR_FONT_SIZE = 12
-SCALAR_SATELLITE_FONT_SIZE = 20
-
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
 
@@ -229,13 +227,14 @@ def _plot_scalar_satellite_saliency(
         )[:2]
     )
 
-    # # TODO(thunderhoser): Need new method.
-    # scalar_satellite_plotting.plot_pm_signs_multi_times(
-    #     data_matrix=saliency_matrix, axes_object=axes_object,
-    #     font_size=SCALAR_SATELLITE_FONT_SIZE,
-    #     colour_map_object=colour_map_object,
-    #     max_absolute_colour_value=max_absolute_colour_value
-    # )
+    scalar_satellite_plotting.plot_raw_numbers_multi_times(
+        data_matrix=saliency_matrix, axes_object=axes_object, font_size=25,
+        colour_map_object=colour_map_object,
+        min_colour_value=min_colour_value,
+        max_colour_value=max_colour_value,
+        number_format_string='.1f',
+        plot_in_log_space=plot_in_log_space
+    )
 
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
@@ -267,17 +266,15 @@ def _plot_scalar_satellite_saliency(
         vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input x grad' if plot_input_times_grad else 'saliency'
+        'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    if plot_in_log_space:
-        label_string += ', log space'
-
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
+        cbar_label_string=label_string, tick_label_format_string='{0:.2g}',
+        log_space=plot_in_log_space
     )
 
 
@@ -422,17 +419,15 @@ def _plot_brightness_temp_saliency(
         vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input x grad' if plot_input_times_grad else 'saliency'
+        'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    if plot_in_log_space:
-        label_string += ', log space'
-
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
+        cbar_label_string=label_string, tick_label_format_string='{0:.2g}',
+        log_space=plot_in_log_space
     )
 
     return min_colour_value, max_colour_value
@@ -584,17 +579,15 @@ def _plot_lagged_ships_saliency(
         vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
-        'input x grad' if plot_input_times_grad else 'saliency'
+        'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    if plot_in_log_space:
-        label_string += ', log space'
-
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
+        cbar_label_string=label_string, tick_label_format_string='{0:.2g}',
+        log_space=plot_in_log_space
     )
 
 
@@ -751,7 +744,8 @@ def _plot_forecast_ships_saliency(
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
+        cbar_label_string=label_string, tick_label_format_string='{0:.2g}',
+        log_space=plot_in_log_space
     )
 
 

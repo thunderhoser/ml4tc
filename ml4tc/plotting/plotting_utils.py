@@ -169,7 +169,8 @@ def plot_borders(
 def add_colour_bar(
         figure_file_name, colour_map_object, colour_norm_object,
         orientation_string, font_size, cbar_label_string,
-        tick_label_format_string='{0:.2g}', temporary_cbar_file_name=None):
+        tick_label_format_string='{0:.2g}', log_space=False,
+        temporary_cbar_file_name=None):
     """Adds colour bar to saved image file.
 
     :param figure_file_name: Path to saved image file.  Colour bar will be added
@@ -181,9 +182,13 @@ def add_colour_bar(
     :param cbar_label_string: Label for colour bar.
     :param tick_label_format_string: Number format for tick labels.  A valid
         example is '{0:.2g}'.
+    :param log_space: Boolean flag.  If True (False), values are scaled
+        logarithmically (linearly).
     :param temporary_cbar_file_name: Path to temporary image file where colour
         bar will be saved.  If None, will determine this on the fly.
     """
+
+    error_checking.assert_is_boolean(log_space)
 
     this_image_matrix = Image.open(figure_file_name)
     figure_width_px, figure_height_px = this_image_matrix.size
@@ -217,7 +222,13 @@ def add_colour_bar(
     if 'd' in tick_label_format_string:
         tick_values = numpy.round(tick_values).astype(int)
 
-    tick_strings = [tick_label_format_string.format(v) for v in tick_values]
+    if log_space:
+        tick_strings = [
+            tick_label_format_string.format(10 ** v - 1) for v in tick_values
+        ]
+    else:
+        tick_strings = [tick_label_format_string.format(v) for v in tick_values]
+
     colour_bar_object.set_ticks(tick_values)
     colour_bar_object.set_ticklabels(tick_strings)
     colour_bar_object.set_label(cbar_label_string, fontsize=font_size)
