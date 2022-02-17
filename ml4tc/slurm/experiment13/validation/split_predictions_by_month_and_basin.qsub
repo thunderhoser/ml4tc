@@ -1,0 +1,41 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="split_predictions_by_month_and_basin"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=01:00:00
+#SBATCH --array=1-42
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=split_predictions_by_month_and_basin_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment13"
+
+# set LAG_TIME_COUNTS=(2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21)
+# set SHIPS_LAGGED_PREDICTOR_GROUP_STRINGS=("fractions" "fractions" "fractions" "fractions" "fractions" "fractions" "largerad" "largerad" "largerad" "largerad" "largerad" "largerad" "smallrad" "smallrad" "smallrad" "smallrad" "smallrad" "smallrad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad")
+# set USE_DATA_AUG_FLAGS=(0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+
+set lag_time_count=${LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set lag_time_count=`printf "%02d" $lag_time_count`
+set ships_lagged_predictor_group_string=${SHIPS_LAGGED_PREDICTOR_GROUP_STRINGS[$SLURM_ARRAY_TASK_ID]}
+set use_data_aug_flag=${USE_DATA_AUG_FLAGS[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/num-lag-times=${lag_time_count}_lagged-ships-predictors=${ships_lagged_predictor_group_string}_data-aug=${use_data_aug_flag}"
+set input_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
+set output_dir_name="${model_dir_name}/validation_2005-2009"
+
+python3 -u "${CODE_DIR_NAME}/split_predictions_by_month_and_basin.py" \
+--input_prediction_file_name="${input_file_name}" \
+--output_prediction_dir_name="${output_dir_name}"
