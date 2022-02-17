@@ -181,7 +181,7 @@ def _print_ranking_one_score(score_matrix, score_name):
         k = k_sort_indices[m]
 
         print((
-            '{0:d}th-highest {1:s} = {2:.4g} ... predictors = "{3:d}" ... '
+            '{0:d}th-highest {1:s} = {2:.4g} ... predictors = "{3:s}" ... '
             'num lag times = {4:d} ... data augmentation? {5:d}'
         ).format(
             m + 1, score_name, score_matrix[i, j, k],
