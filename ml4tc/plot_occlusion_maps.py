@@ -17,6 +17,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import gg_general_utils
 import time_conversion
 import file_system_utils
+import error_checking
 import imagemagick_utils
 import example_io
 import border_io
@@ -49,6 +50,8 @@ NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 PLOT_NORMALIZED_ARG_NAME = 'plot_normalized_occlusion'
 SPATIAL_COLOUR_MAP_ARG_NAME = 'spatial_colour_map_name'
 NONSPATIAL_COLOUR_MAP_ARG_NAME = 'nonspatial_colour_map_name'
+MIN_COLOUR_PERCENTILE_ARG_NAME = 'min_colour_percentile'
+MAX_COLOUR_PERCENTILE_ARG_NAME = 'max_colour_percentile'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -75,6 +78,16 @@ NONSPATIAL_COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for non-spatial occlusion maps.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
 )
+MIN_COLOUR_PERCENTILE_HELP_STRING = (
+    'Determines minimum value in colour bar.  For each example, the minimum '
+    'will be the [k]th percentile of all values for said example, where '
+    'k = `{0:s}`.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
+MAX_COLOUR_PERCENTILE_HELP_STRING = (
+    'Same as `{0:s}` but for max value in colour bar.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
 SMOOTHING_RADIUS_HELP_STRING = (
     'Smoothing radius (number of pixels) for occlusion maps.  If you do '
     'not want to smooth, make this 0 or negative.'
@@ -105,6 +118,14 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NONSPATIAL_COLOUR_MAP_ARG_NAME, type=str, required=False,
     default='binary', help=NONSPATIAL_COLOUR_MAP_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MIN_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=1, help=MIN_COLOUR_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MAX_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=99, help=MAX_COLOUR_PERCENTILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SMOOTHING_RADIUS_ARG_NAME, type=float, required=False, default=-1,
@@ -169,7 +190,8 @@ def _plot_brightness_temp_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
         normalization_table_xarray, border_latitudes_deg_n,
-        border_longitudes_deg_e, colour_map_object, output_dir_name):
+        border_longitudes_deg_e, colour_map_object, min_colour_value,
+        max_colour_value, output_dir_name):
     """Plots occlusion map for brightness temp, each lag time, one init time.
 
     P = number of points in border set
@@ -191,8 +213,14 @@ def _plot_brightness_temp_map(
         (deg east).
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
+    :param min_colour_value: Minimum value in colour scheme.
+    :param max_colour_value: Max value in colour scheme.
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
+    :return: min_colour_value: Same meaning as input variable, except that value
+        might have been changed.
+    :return: max_colour_value: Same meaning as input variable, except that value
+        might have been changed.
     """
 
     predictor_example_index = numpy.where(
@@ -212,10 +240,9 @@ def _plot_brightness_temp_map(
     else:
         this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
-    occlusion_matrices_one_example = [
-        None if s is None else s[[occlusion_example_index], ...]
-        for s in occlusion_dict[this_key]
-    ]
+    occlusion_matrix = (
+        occlusion_dict[this_key][0][occlusion_example_index, ..., 0]
+    )
 
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
@@ -239,24 +266,6 @@ def _plot_brightness_temp_map(
         )
     )
 
-    all_values = numpy.concatenate([
-        numpy.ravel(m) for m in occlusion_matrices_one_example if m is not None
-    ])
-
-    if plot_normalized_occlusion:
-        finite_values = all_values[numpy.isfinite(all_values)]
-        max_contour_value = numpy.percentile(
-            numpy.absolute(finite_values), MAX_COLOUR_PERCENTILE
-        )
-        min_contour_value = numpy.percentile(
-            numpy.absolute(finite_values), 100. - MAX_COLOUR_PERCENTILE
-        )
-    else:
-        max_contour_value = numpy.percentile(all_values, MAX_COLOUR_PERCENTILE)
-        min_contour_value = numpy.percentile(
-            all_values, 100. - MAX_COLOUR_PERCENTILE
-        )
-
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
@@ -267,29 +276,29 @@ def _plot_brightness_temp_map(
 
     for k in range(num_model_lag_times):
         if plot_normalized_occlusion:
-            min_contour_value, max_contour_value = (
+            min_colour_value, max_colour_value = (
                 satellite_plotting.plot_saliency(
-                    saliency_matrix=
-                    occlusion_matrices_one_example[0][0, ..., k, 0],
+                    saliency_matrix=occlusion_matrix[..., k],
                     axes_object=axes_objects[k],
                     latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
                     longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                    min_abs_contour_value=min_contour_value,
-                    max_abs_contour_value=max_contour_value,
-                    half_num_contours=10, colour_map_object=colour_map_object
+                    colour_map_object=colour_map_object,
+                    min_abs_contour_value=min_colour_value,
+                    max_abs_contour_value=max_colour_value,
+                    half_num_contours=10, plot_in_log_space=False
                 )
             )
         else:
-            min_contour_value, max_contour_value = (
+            min_colour_value, max_colour_value = (
                 satellite_plotting.plot_class_activation(
-                    class_activation_matrix=
-                    occlusion_matrices_one_example[0][0, ..., k, 0],
+                    class_activation_matrix=occlusion_matrix[..., k],
                     axes_object=axes_objects[k],
                     latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
                     longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                    min_contour_value=min_contour_value,
-                    max_contour_value=max_contour_value,
-                    num_contours=15, colour_map_object=colour_map_object
+                    colour_map_object=colour_map_object,
+                    min_contour_value=min_colour_value,
+                    max_contour_value=max_colour_value,
+                    num_contours=15, plot_in_log_space=False
                 )
             )
 
@@ -337,7 +346,7 @@ def _plot_brightness_temp_map(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_contour_value, vmax=max_contour_value
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
@@ -351,11 +360,13 @@ def _plot_brightness_temp_map(
         cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
     )
 
+    return min_colour_value, max_colour_value
+
 
 def _plot_scalar_satellite_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
     """Plots occlusion map for scalar satellite, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -365,6 +376,8 @@ def _plot_scalar_satellite_map(
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param colour_map_object: Same.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
     :param output_dir_name: Same.
     """
 
@@ -385,10 +398,7 @@ def _plot_scalar_satellite_map(
     else:
         this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
-    occlusion_matrices_one_example = [
-        None if s is None else s[[occlusion_example_index], ...]
-        for s in occlusion_dict[this_key]
-    ]
+    occlusion_matrix = occlusion_dict[this_key][1][occlusion_example_index, ...]
 
     figure_object, axes_object = (
         predictor_plotting.plot_scalar_satellite_one_example(
@@ -399,44 +409,12 @@ def _plot_scalar_satellite_map(
         )[:2]
     )
 
-    all_values = numpy.concatenate([
-        numpy.ravel(m) for m in occlusion_matrices_one_example if m is not None
-    ])
-
-    if plot_normalized_occlusion:
-        finite_values = all_values[numpy.isfinite(all_values)]
-        max_colour_value = numpy.percentile(
-            numpy.absolute(finite_values), MAX_COLOUR_PERCENTILE
-        )
-        colour_norm_object = pyplot.Normalize(
-            vmin=0., vmax=max_colour_value
-        )
-
-        scalar_satellite_plotting.plot_pm_signs_multi_times(
-            data_matrix=occlusion_matrices_one_example[1][0, ...],
-            axes_object=axes_object,
-            font_size=SCALAR_SATELLITE_FONT_SIZE,
-            colour_map_object=colour_map_object,
-            max_absolute_colour_value=max_colour_value
-        )
-    else:
-        max_colour_value = numpy.percentile(all_values, MAX_COLOUR_PERCENTILE)
-        min_colour_value = numpy.percentile(
-            all_values, 100. - MAX_COLOUR_PERCENTILE
-        )
-        colour_norm_object = pyplot.Normalize(
-            vmin=min_colour_value, vmax=max_colour_value
-        )
-
-        scalar_satellite_plotting.plot_raw_numbers_multi_times(
-            data_matrix=occlusion_matrices_one_example[1][0, ...],
-            axes_object=axes_object,
-            font_size=SCALAR_SATELLITE_FONT_SIZE,
-            colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value,
-            max_colour_value=max_colour_value,
-            number_format_string='.1f'
-        )
+    scalar_satellite_plotting.plot_raw_numbers_multi_times(
+        data_matrix=occlusion_matrix, axes_object=axes_object, font_size=25,
+        colour_map_object=colour_map_object,
+        min_colour_value=min_colour_value, max_colour_value=max_colour_value,
+        number_format_string='.1f', plot_in_log_space=False
+    )
 
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
@@ -452,18 +430,21 @@ def _plot_scalar_satellite_map(
     )
     pyplot.close(figure_object)
 
-    this_colour_norm_object = pyplot.Normalize(
+    colour_norm_object = pyplot.Normalize(
         vmin=scalar_satellite_plotting.MIN_NORMALIZED_VALUE,
         vmax=scalar_satellite_plotting.MAX_NORMALIZED_VALUE
     )
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         colour_map_object=scalar_satellite_plotting.COLOUR_MAP_OBJECT,
-        colour_norm_object=this_colour_norm_object,
+        colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor', tick_label_format_string='{0:.2g}'
     )
 
+    colour_norm_object = pyplot.Normalize(
+        vmin=min_colour_value, vmax=max_colour_value
+    )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
@@ -480,7 +461,7 @@ def _plot_scalar_satellite_map(
 def _plot_lagged_ships_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
     """Plots occlusion map for lagged SHIPS data, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -490,6 +471,8 @@ def _plot_lagged_ships_map(
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param colour_map_object: Same.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
     :param output_dir_name: Same.
     """
 
@@ -510,10 +493,7 @@ def _plot_lagged_ships_map(
     else:
         this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
-    occlusion_matrices_one_example = [
-        None if s is None else s[[occlusion_example_index], ...]
-        for s in occlusion_dict[this_key]
-    ]
+    occlusion_matrix = occlusion_dict[this_key][2][occlusion_example_index, ...]
 
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
@@ -557,53 +537,24 @@ def _plot_lagged_ships_map(
     )
 
     occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=occlusion_matrices_one_example[2][[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
 
-    all_values = numpy.concatenate([
-        numpy.ravel(m) for m in occlusion_matrices_one_example if m is not None
-    ])
-
-    if plot_normalized_occlusion:
-        finite_values = all_values[numpy.isfinite(all_values)]
-        max_colour_value = numpy.percentile(
-            numpy.absolute(finite_values), MAX_COLOUR_PERCENTILE
-        )
-        min_colour_value = 0.
-    else:
-        max_colour_value = numpy.percentile(all_values, MAX_COLOUR_PERCENTILE)
-        min_colour_value = numpy.percentile(
-            all_values, 100. - MAX_COLOUR_PERCENTILE
-        )
-
-    colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
-    )
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        if plot_normalized_occlusion:
-            ships_plotting.plot_pm_signs_one_init_time(
-                data_matrix=occlusion_matrix[k, ...],
-                axes_object=axes_objects[k],
-                font_size=LAGGED_SHIPS_FONT_SIZE,
-                colour_map_object=colour_map_object,
-                max_absolute_colour_value=max_colour_value
-            )
-        else:
-            ships_plotting.plot_raw_numbers_one_init_time(
-                data_matrix=occlusion_matrix[k, ...],
-                axes_object=axes_objects[k],
-                font_size=LAGGED_SHIPS_FONT_SIZE,
-                colour_map_object=colour_map_object,
-                min_colour_value=min_colour_value,
-                max_colour_value=max_colour_value,
-                number_format_string='.1f'
-            )
+        ships_plotting.plot_raw_numbers_one_init_time(
+            data_matrix=occlusion_matrix[k, ...],
+            axes_object=axes_objects[k], font_size=25,
+            colour_map_object=colour_map_object,
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.1f', plot_in_log_space=False
+        )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -634,18 +585,21 @@ def _plot_lagged_ships_map(
         concat_figure_file_name=concat_figure_file_name
     )
 
-    this_colour_norm_object = pyplot.Normalize(
+    colour_norm_object = pyplot.Normalize(
         vmin=ships_plotting.MIN_NORMALIZED_VALUE,
         vmax=ships_plotting.MAX_NORMALIZED_VALUE
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
-        colour_norm_object=this_colour_norm_object,
+        colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor', tick_label_format_string='{0:.2g}'
     )
 
+    colour_norm_object = pyplot.Normalize(
+        vmin=min_colour_value, vmax=max_colour_value
+    )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
@@ -662,7 +616,7 @@ def _plot_lagged_ships_map(
 def _plot_forecast_ships_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
     """Plots occlusion map for forecast SHIPS, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -672,6 +626,8 @@ def _plot_forecast_ships_map(
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param colour_map_object: Same.
+    :param min_colour_value: Same.
+    :param max_colour_value: Same.
     :param output_dir_name: Same.
     """
 
@@ -692,10 +648,7 @@ def _plot_forecast_ships_map(
     else:
         this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
-    occlusion_matrices_one_example = [
-        None if s is None else s[[occlusion_example_index], ...]
-        for s in occlusion_dict[this_key]
-    ]
+    occlusion_matrix = occlusion_dict[this_key][2][occlusion_example_index, ...]
 
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
@@ -739,53 +692,24 @@ def _plot_forecast_ships_map(
     )
 
     occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=occlusion_matrices_one_example[2][[0], ...],
+        predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
         num_lagged_predictors=num_lagged_predictors,
         num_builtin_lag_times=len(builtin_lag_times_hours),
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
-    all_values = numpy.concatenate([
-        numpy.ravel(m) for m in occlusion_matrices_one_example if m is not None
-    ])
-
-    if plot_normalized_occlusion:
-        finite_values = all_values[numpy.isfinite(all_values)]
-        max_colour_value = numpy.percentile(
-            numpy.absolute(finite_values), MAX_COLOUR_PERCENTILE
-        )
-        min_colour_value = 0.
-    else:
-        max_colour_value = numpy.percentile(all_values, MAX_COLOUR_PERCENTILE)
-        min_colour_value = numpy.percentile(
-            all_values, 100. - MAX_COLOUR_PERCENTILE
-        )
-
-    colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
-    )
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        if plot_normalized_occlusion:
-            ships_plotting.plot_pm_signs_one_init_time(
-                data_matrix=occlusion_matrix[k, ...],
-                axes_object=axes_objects[k],
-                font_size=FORECAST_SHIPS_FONT_SIZE,
-                colour_map_object=colour_map_object,
-                max_absolute_colour_value=max_colour_value
-            )
-        else:
-            ships_plotting.plot_raw_numbers_one_init_time(
-                data_matrix=occlusion_matrix[k, ...],
-                axes_object=axes_objects[k],
-                font_size=FORECAST_SHIPS_FONT_SIZE,
-                colour_map_object=colour_map_object,
-                min_colour_value=min_colour_value,
-                max_colour_value=max_colour_value,
-                number_format_string='.1f'
-            )
+        ships_plotting.plot_raw_numbers_one_init_time(
+            data_matrix=occlusion_matrix[k, ...],
+            axes_object=axes_objects[k], font_size=25,
+            colour_map_object=colour_map_object,
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.1f', plot_in_log_space=False
+        )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -816,18 +740,21 @@ def _plot_forecast_ships_map(
         concat_figure_file_name=concat_figure_file_name
     )
 
-    this_colour_norm_object = pyplot.Normalize(
+    colour_norm_object = pyplot.Normalize(
         vmin=ships_plotting.MIN_NORMALIZED_VALUE,
         vmax=ships_plotting.MAX_NORMALIZED_VALUE
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
-        colour_norm_object=this_colour_norm_object,
+        colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
         cbar_label_string='Predictor', tick_label_format_string='{0:.2g}'
     )
 
+    colour_norm_object = pyplot.Normalize(
+        vmin=min_colour_value, vmax=max_colour_value
+    )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
@@ -843,7 +770,8 @@ def _plot_forecast_ships_map(
 
 def _run(occlusion_file_name, example_dir_name, normalization_file_name,
          plot_normalized_occlusion, spatial_colour_map_name,
-         nonspatial_colour_map_name, smoothing_radius_px, output_dir_name):
+         nonspatial_colour_map_name, min_colour_percentile,
+         max_colour_percentile, smoothing_radius_px, output_dir_name):
     """Plots occlusion maps.
 
     :param occlusion_file_name: See documentation at top of file.
@@ -852,9 +780,17 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
     :param plot_normalized_occlusion: Same.
     :param spatial_colour_map_name: Same.
     :param nonspatial_colour_map_name: Same.
+    :param min_colour_percentile: Same.
+    :param max_colour_percentile: Same.
     :param smoothing_radius_px: Same.
     :param output_dir_name: Same.
     """
+
+    error_checking.assert_is_geq(min_colour_percentile, 0.)
+    error_checking.assert_is_leq(max_colour_percentile, 100.)
+    error_checking.assert_is_greater(
+        max_colour_percentile, min_colour_percentile
+    )
 
     spatial_colour_map_object = pyplot.get_cmap(spatial_colour_map_name)
     nonspatial_colour_map_object = pyplot.get_cmap(nonspatial_colour_map_name)
@@ -921,8 +857,40 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
         )[0]
 
         for j in example_indices:
+            if plot_normalized_occlusion:
+                this_key = occlusion.THREE_NORM_OCCLUSION_KEY
+            else:
+                this_key = occlusion.THREE_OCCLUSION_PROB_KEY
+
+            occlusion_matrices_example_j = [
+                None if s is None else s[[j], ...]
+                for s in occlusion_dict[this_key]
+            ]
+            occlusion_values_example_j = numpy.concatenate([
+                numpy.ravel(m) for m in occlusion_matrices_example_j
+                if m is not None
+            ])
+
+            if plot_normalized_occlusion:
+                finite_values = occlusion_values_example_j[
+                    numpy.isfinite(occlusion_values_example_j)
+                ]
+                max_colour_value = numpy.percentile(
+                    numpy.absolute(finite_values), max_colour_percentile
+                )
+                min_colour_value = numpy.percentile(
+                    numpy.absolute(finite_values), min_colour_percentile
+                )
+            else:
+                max_colour_value = numpy.percentile(
+                    occlusion_values_example_j, max_colour_percentile
+                )
+                min_colour_value = numpy.percentile(
+                    occlusion_values_example_j, min_colour_percentile
+                )
+
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
-                _plot_brightness_temp_map(
+                min_colour_value, max_colour_value = _plot_brightness_temp_map(
                     data_dict=data_dict, occlusion_dict=occlusion_dict,
                     plot_normalized_occlusion=plot_normalized_occlusion,
                     model_metadata_dict=model_metadata_dict,
@@ -933,6 +901,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     border_latitudes_deg_n=border_latitudes_deg_n,
                     border_longitudes_deg_e=border_longitudes_deg_e,
                     colour_map_object=spatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
                     output_dir_name=output_dir_name
                 )
 
@@ -945,6 +915,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
                     output_dir_name=output_dir_name
                 )
 
@@ -957,6 +929,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
                     output_dir_name=output_dir_name
                 )
 
@@ -972,6 +946,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][j],
                     colour_map_object=nonspatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
                     output_dir_name=output_dir_name
                 )
 
@@ -993,6 +969,12 @@ if __name__ == '__main__':
         ),
         nonspatial_colour_map_name=getattr(
             INPUT_ARG_OBJECT, NONSPATIAL_COLOUR_MAP_ARG_NAME
+        ),
+        min_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MIN_COLOUR_PERCENTILE_ARG_NAME
+        ),
+        max_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MAX_COLOUR_PERCENTILE_ARG_NAME
         ),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME

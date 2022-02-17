@@ -17,6 +17,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import gg_general_utils
 import time_conversion
 import file_system_utils
+import error_checking
 import imagemagick_utils
 import example_io
 import border_io
@@ -40,7 +41,9 @@ GRADCAM_FILE_ARG_NAME = 'input_gradcam_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 COLOUR_MAP_ARG_NAME = 'colour_map_name'
-PLOT_LOG_ARG_NAME = 'plot_log_activations'
+MIN_COLOUR_PERCENTILE_ARG_NAME = 'min_colour_percentile'
+MAX_COLOUR_PERCENTILE_ARG_NAME = 'max_colour_percentile'
+PLOT_IN_LOG_SPACE_ARG_NAME = 'plot_in_log_space'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -60,9 +63,19 @@ COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for class activation.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
 )
-PLOT_LOG_HELP_STRING = (
-    'Boolean flag.  If 1 (0), will plot base-10 logarithm of (actual) class '
-    'activation.'
+MIN_COLOUR_PERCENTILE_HELP_STRING = (
+    'Determines minimum class activation in colour bar.  For each example, the '
+    'minimum will be the [k]th percentile of all class activations for said '
+    'example, where k = `{0:s}`.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
+MAX_COLOUR_PERCENTILE_HELP_STRING = (
+    'Same as `{0:s}` but for max class activation in colour bar.'
+).format(MIN_COLOUR_PERCENTILE_ARG_NAME)
+
+PLOT_IN_LOG_SPACE_HELP_STRING = (
+    'Boolean flag.  If 1 (0), colours for class activation will be scaled '
+    'logarithmically (linearly).'
 )
 SMOOTHING_RADIUS_HELP_STRING = (
     'Smoothing radius (number of pixels) for class-activation maps.  If you do '
@@ -88,8 +101,16 @@ INPUT_ARG_PARSER.add_argument(
     help=COLOUR_MAP_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + PLOT_LOG_ARG_NAME, type=int, required=False, default=0,
-    help=PLOT_LOG_HELP_STRING
+    '--' + MIN_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=1, help=MIN_COLOUR_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MAX_COLOUR_PERCENTILE_ARG_NAME, type=float, required=False,
+    default=99, help=MAX_COLOUR_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_IN_LOG_SPACE_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_IN_LOG_SPACE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SMOOTHING_RADIUS_ARG_NAME, type=float, required=False, default=-1,
@@ -139,7 +160,8 @@ def _plot_cam_one_example(
         data_dict, class_activation_dict, model_metadata_dict,
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
-        plot_log_activations, output_dir_name):
+        min_colour_percentile, max_colour_percentile, plot_in_log_space,
+        output_dir_name):
     """Plots class-activation map for one example.
 
     P = number of points in border set
@@ -159,7 +181,9 @@ def _plot_cam_one_example(
         (deg east).
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
-    :param plot_log_activations: See documentation at top of file.
+    :param min_colour_percentile: See documentation at top of file.
+    :param max_colour_percentile: Same.
+    :param plot_in_log_space: Same.
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     """
@@ -175,16 +199,9 @@ def _plot_cam_one_example(
         None if p is None else p[[predictor_example_index], ...]
         for p in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
-    cam_matrix_one_example = (
-        class_activation_dict[gradcam.CLASS_ACTIVATION_KEY][
-            [cam_example_index], ...
-        ]
-    )
-
-    if plot_log_activations:
-        cam_matrix_one_example = numpy.log10(
-            numpy.maximum(cam_matrix_one_example, 1e-6)
-        )
+    class_activation_matrix = class_activation_dict[
+        gradcam.CLASS_ACTIVATION_KEY
+    ][cam_example_index, ...]
 
     grid_latitude_matrix_deg_n = data_dict[
         neural_net.GRID_LATITUDE_MATRIX_KEY
@@ -214,25 +231,35 @@ def _plot_cam_one_example(
     num_model_lag_times = len(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
-    max_contour_value = numpy.percentile(
-        cam_matrix_one_example, MAX_COLOUR_PERCENTILE
-    )
-    min_contour_value = numpy.percentile(
-        cam_matrix_one_example, 100 - MAX_COLOUR_PERCENTILE
-    )
+
+    if plot_in_log_space:
+        max_colour_value = numpy.percentile(
+            numpy.log10(1 + class_activation_matrix), max_colour_percentile
+        )
+        min_colour_value = numpy.percentile(
+            numpy.log10(1 + class_activation_matrix), min_colour_percentile
+        )
+    else:
+        max_colour_value = numpy.percentile(
+            class_activation_matrix, max_colour_percentile
+        )
+        min_colour_value = numpy.percentile(
+            class_activation_matrix, min_colour_percentile
+        )
 
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        min_contour_value, max_contour_value = (
+        min_colour_value, max_colour_value = (
             satellite_plotting.plot_class_activation(
-                class_activation_matrix=cam_matrix_one_example[0, ...],
+                class_activation_matrix=class_activation_matrix,
                 axes_object=axes_objects[k],
                 latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
                 longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                min_contour_value=min_contour_value,
-                max_contour_value=max_contour_value,
-                num_contours=15, colour_map_object=colour_map_object
+                colour_map_object=colour_map_object,
+                min_contour_value=min_colour_value,
+                max_contour_value=max_colour_value,
+                num_contours=15, plot_in_log_space=plot_in_log_space
             )
         )
 
@@ -280,25 +307,21 @@ def _plot_cam_one_example(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_contour_value, vmax=max_contour_value
-    )
-    label_string = (
-        r'log$_{10}$(class activation)' if plot_log_activations
-        else 'Class activation'
+        vmin=min_colour_value, vmax=max_colour_value
     )
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
         colour_norm_object=colour_norm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string=label_string,
-        tick_label_format_string='{0:.2g}'
+        cbar_label_string='Class activation',
+        tick_label_format_string='{0:.2g}', log_space=plot_in_log_space
     )
 
 
 def _run(gradcam_file_name, example_dir_name, normalization_file_name,
-         colour_map_name, plot_log_activations, smoothing_radius_px,
-         output_dir_name):
+         colour_map_name, min_colour_percentile, max_colour_percentile,
+         plot_in_log_space, smoothing_radius_px, output_dir_name):
     """Plots class-activation maps.
 
     This is effectively the main method.
@@ -307,10 +330,18 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
     :param colour_map_name: Same.
-    :param plot_log_activations: Same.
+    :param min_colour_percentile: Same.
+    :param max_colour_percentile: Same.
+    :param plot_in_log_space: Same.
     :param smoothing_radius_px: Same.
     :param output_dir_name: Same.
     """
+
+    error_checking.assert_is_geq(min_colour_percentile, 0.)
+    error_checking.assert_is_leq(max_colour_percentile, 100.)
+    error_checking.assert_is_greater(
+        max_colour_percentile, min_colour_percentile
+    )
 
     colour_map_object = pyplot.get_cmap(colour_map_name)
     file_system_utils.mkdir_recursive_if_necessary(
@@ -386,7 +417,9 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 colour_map_object=colour_map_object,
-                plot_log_activations=plot_log_activations,
+                min_colour_percentile=min_colour_percentile,
+                max_colour_percentile=max_colour_percentile,
+                plot_in_log_space=plot_in_log_space,
                 output_dir_name=output_dir_name
             )
 
@@ -401,7 +434,15 @@ if __name__ == '__main__':
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
         colour_map_name=getattr(INPUT_ARG_OBJECT, COLOUR_MAP_ARG_NAME),
-        plot_log_activations=bool(getattr(INPUT_ARG_OBJECT, PLOT_LOG_ARG_NAME)),
+        min_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MIN_COLOUR_PERCENTILE_ARG_NAME
+        ),
+        max_colour_percentile=getattr(
+            INPUT_ARG_OBJECT, MAX_COLOUR_PERCENTILE_ARG_NAME
+        ),
+        plot_in_log_space=bool(getattr(
+            INPUT_ARG_OBJECT, PLOT_IN_LOG_SPACE_ARG_NAME
+        )),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME
         ),
