@@ -410,7 +410,8 @@ def plot_saliency(
 def plot_class_activation(
         class_activation_matrix, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, min_contour_value, max_contour_value,
-        num_contours, colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
+        num_contours, plot_in_log_space=False,
+        colour_map_object=DEFAULT_CONTOUR_CMAP_OBJECT,
         line_width=DEFAULT_CONTOUR_WIDTH):
     """Plots class-activation map on 2-D grid.
 
@@ -424,6 +425,8 @@ def plot_class_activation(
     :param min_contour_value: Minimum class activation to plot.
     :param max_contour_value: Max class activation to plot.
     :param num_contours: Number of contours.
+    :param plot_in_log_space: Boolean flag.  If True (False), colour scale will
+        be logarithmic in base 10 (linear).
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
@@ -431,6 +434,7 @@ def plot_class_activation(
     :return: max_contour_value: Same as input but maybe changed.
     """
 
+    error_checking.assert_is_boolean(plot_in_log_space)
     error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
     regular_grid = len(latitude_array_deg_n.shape) == 1
 
@@ -479,10 +483,6 @@ def plot_class_activation(
         class_activation_matrix, exact_dimensions=expected_dim
     )
 
-    # if min_contour_value < 0.001 or max_contour_value < 0.01:
-    #     min_contour_value = 0.001
-    #     max_contour_value = 0.01
-
     min_contour_value = max([min_contour_value, TOLERANCE])
     max_contour_value = max([max_contour_value, min_contour_value + TOLERANCE])
 
@@ -492,8 +492,13 @@ def plot_class_activation(
     contour_levels = numpy.linspace(
         min_contour_value, max_contour_value, num=num_contours
     )
+
+    matrix_to_plot = (
+        numpy.log10(1 + class_activation_matrix) if plot_in_log_space
+        else class_activation_matrix
+    )
     axes_object.contour(
-        longitude_matrix_deg_e, latitude_matrix_deg_n, class_activation_matrix,
+        longitude_matrix_deg_e, latitude_matrix_deg_n, matrix_to_plot,
         contour_levels, cmap=colour_map_object,
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='solid', zorder=1e6
