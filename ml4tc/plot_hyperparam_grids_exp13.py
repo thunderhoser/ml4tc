@@ -186,7 +186,7 @@ def _print_ranking_one_score(score_matrix, score_name):
         ).format(
             m + 1, score_name, score_matrix[i, j, k],
             LAGGED_PREDICTOR_GROUP_STRINGS[i], LAG_TIME_COUNTS[j],
-            USE_DATA_AUG_FLAGS[k]
+            int(USE_DATA_AUG_FLAGS[k])
         ))
 
 
