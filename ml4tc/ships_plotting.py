@@ -135,6 +135,9 @@ def plot_lagged_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
+    y_tick_labels = [l.replace('inf', 'Climo') for l in y_tick_labels]
+    y_tick_labels = [l.replace('nan', 'Merged') for l in y_tick_labels]
+
     pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=lag_time_tick_font_size
     )
