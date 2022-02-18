@@ -25,14 +25,7 @@ from ml4tc.plotting import ships_plotting
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-MAX_COLOUR_PERCENTILE = 99.
-ALL_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
-
 COLOUR_BAR_FONT_SIZE = 12
-SCALAR_SATELLITE_FONT_SIZE = 20
-LAGGED_SHIPS_FONT_SIZE = 20
-FORECAST_SHIPS_FONT_SIZE = 20
-
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
 
@@ -511,11 +504,9 @@ def _plot_lagged_ships_map(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-
-    if validation_option_dict[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY]:
-        builtin_lag_times_hours = ALL_BUILTIN_LAG_TIMES_HOURS
-    else:
-        builtin_lag_times_hours = numpy.array([0.])
+    builtin_lag_times_hours = (
+        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
+    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_lagged_ships_one_example(
@@ -666,11 +657,9 @@ def _plot_forecast_ships_map(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-
-    if validation_option_dict[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY]:
-        builtin_lag_times_hours = ALL_BUILTIN_LAG_TIMES_HOURS
-    else:
-        builtin_lag_times_hours = numpy.array([0.])
+    builtin_lag_times_hours = (
+        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
+    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_forecast_ships_one_example(

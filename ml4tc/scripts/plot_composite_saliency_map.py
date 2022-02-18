@@ -16,12 +16,7 @@ from ml4tc.plotting import satellite_plotting
 from ml4tc.plotting import predictor_plotting
 
 MAX_COLOUR_PERCENTILE = 99.
-SHIPS_BUILTIN_LAG_TIMES_HOURS = numpy.array([numpy.nan, 0, 1.5, 3])
-
 COLOUR_BAR_FONT_SIZE = 12
-SCALAR_SATELLITE_FONT_SIZE = 20
-LAGGED_SHIPS_FONT_SIZE = 20
-FORECAST_SHIPS_FONT_SIZE = 10
 
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)

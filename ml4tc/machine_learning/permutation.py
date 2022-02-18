@@ -160,9 +160,7 @@ def _permute_values(
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
-    num_builtin_lag_times = (
-        4 if t[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY] else 1
-    )
+    num_builtin_lag_times = len(t[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY])
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(
@@ -270,9 +268,7 @@ def _depermute_values(
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
-    num_builtin_lag_times = (
-        4 if t[neural_net.SHIPS_USE_ALL_PREDICTOR_LAGS_KEY] else 1
-    )
+    num_builtin_lag_times = len(t[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY])
 
     lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
         neural_net.ships_predictors_3d_to_4d(

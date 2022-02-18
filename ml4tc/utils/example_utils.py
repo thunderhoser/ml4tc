@@ -143,6 +143,68 @@ SHIPS_METADATA_AND_FORECAST_KEYS = [
 ]
 
 
+def _merge_lagged_ships_variables(example_table_xarray):
+    """Merges lagged SHIPS variables.
+
+    For each variable, the priority list is:
+
+    - 0-hour lag time if available,
+    - else 1.5-hour lag time if available,
+    - else 3-hour lag time if available,
+    - else climatology if available.
+
+    :param example_table_xarray: xarray table in format created by `merge_data`.
+    :return: example_table_xarray: Same but with additional SHIPS forecast
+        variable.
+    """
+
+    predictor_matrix = example_table_xarray[SHIPS_PREDICTORS_LAGGED_KEY].values
+    lag_times_hours = example_table_xarray.coords[SHIPS_LAG_TIME_DIM].values
+
+    real_indices = numpy.where(
+        numpy.invert(numpy.isnan(lag_times_hours))
+    )[0]
+    predictor_matrix = predictor_matrix[:, real_indices, :]
+    lag_times_hours = lag_times_hours[real_indices]
+
+    lag_times_hours[lag_times_hours < 0] = numpy.inf
+    sort_indices = numpy.argsort(lag_times_hours)
+
+    merged_predictor_matrix = numpy.full(
+        (predictor_matrix.shape[0], predictor_matrix.shape[2]), numpy.nan
+    )
+
+    for j in sort_indices:
+        nan_flag_matrix = numpy.isnan(merged_predictor_matrix)
+        merged_predictor_matrix[nan_flag_matrix] = (
+            predictor_matrix[:, j, :][nan_flag_matrix]
+        )
+
+    predictor_matrix = numpy.concatenate((
+        predictor_matrix,
+        numpy.expand_dims(merged_predictor_matrix, axis=-2)
+    ), axis=-2)
+
+    lag_times_hours = numpy.concatenate((
+        lag_times_hours, numpy.full(1, numpy.nan)
+    ))
+
+    example_table_xarray = example_table_xarray.drop(
+        labels=SHIPS_PREDICTORS_LAGGED_KEY
+    )
+    example_table_xarray = example_table_xarray.assign_coords({
+        SHIPS_LAG_TIME_DIM: lag_times_hours
+    })
+
+    these_dim = (
+        SHIPS_VALID_TIME_DIM, SHIPS_LAG_TIME_DIM,
+        SHIPS_PREDICTOR_LAGGED_DIM
+    )
+    return example_table_xarray.assign({
+        SHIPS_PREDICTORS_LAGGED_KEY: (these_dim, predictor_matrix)
+    })
+
+
 def _create_merged_sst_variable(example_table_xarray):
     """Creates merged SST (sea-surface temperature) variable.
 
@@ -506,7 +568,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
         data_vars=example_dict, coords=example_metadata_dict
     )
     example_table_xarray = _create_merged_sst_variable(example_table_xarray)
-    return _create_merged_ohc_variable(example_table_xarray)
+    example_table_xarray = _create_merged_ohc_variable(example_table_xarray)
+    return _merge_lagged_ships_variables(example_table_xarray)
 
 
 def subset_satellite_times(example_table_xarray, time_interval_sec):

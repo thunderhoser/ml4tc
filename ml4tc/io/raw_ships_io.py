@@ -735,7 +735,7 @@ def read_file(ascii_file_name, seven_day):
     metadata_dict = {
         ships_io.FORECAST_HOUR_DIM: forecast_hours,
         ships_io.THRESHOLD_DIM: intensity_thresholds_m_s01,
-        ships_io.LAG_TIME_DIM: numpy.array([-1, 0, 1.5, 3]),
+        ships_io.LAG_TIME_DIM: numpy.array([numpy.inf, 0, 1.5, 3]),
         ships_io.STORM_OBJECT_DIM: storm_object_indices
     }
 
