@@ -13,6 +13,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import neural_net
 import training_args
 
+NONE_STRINGS = ['', 'none', 'None']
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -93,7 +94,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
 
     if (
             len(satellite_predictor_names) == 1
-            and satellite_predictor_names[0] == ''
+            and satellite_predictor_names[0] in NONE_STRINGS
     ):
         satellite_predictor_names = None
 
@@ -102,13 +103,13 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
 
     if (
             len(ships_predictor_names_lagged) == 1
-            and ships_predictor_names_lagged[0] == ''
+            and ships_predictor_names_lagged[0] in NONE_STRINGS
     ):
         ships_predictor_names_lagged = None
 
     if (
             len(ships_predictor_names_forecast) == 1
-            and ships_predictor_names_forecast[0] == ''
+            and ships_predictor_names_forecast[0] in NONE_STRINGS
     ):
         ships_predictor_names_forecast = None
 
