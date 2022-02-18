@@ -23,12 +23,17 @@ import file_system_utils
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 LAGGED_PREDICTOR_GROUP_STRINGS = [
-    'fractions', 'largerad', 'smallrad', 'fractions-largerad',
-    'fractions-smallrad', 'largerad-smallrad', 'fractions-largerad-smallrad'
+    'none', 'fractions', 'largerad', 'smallrad',
+    'fractions-largerad',
+    'fractions-smallrad',
+    'largerad-smallrad',
+    'fractions-largerad-smallrad'
 ]
 LAGGED_PREDICTOR_GROUP_STRINGS_FANCY = [
-    '% below thres', 'Large rad', 'Small rad', '% below thres, large rad',
-    '% below thres, small rad', 'Large rad, small rad',
+    'None', '% below thres', 'Large rad', 'Small rad',
+    '% below thres, large rad',
+    '% below thres, small rad',
+    'Large rad, small rad',
     '% below thres, large rad, small rad'
 ]
 LAG_TIME_COUNTS = numpy.array([2, 3, 21], dtype=int)
@@ -323,7 +328,7 @@ def _run(experiment_dir_name, output_dir_name):
         '{0:s}'.format(s) for s in LAGGED_PREDICTOR_GROUP_STRINGS_FANCY
     ]
     x_tick_labels = ['{0:d}'.format(l) for l in LAG_TIME_COUNTS]
-    y_axis_label = 'Predictor set'
+    y_axis_label = 'GOES-based SHIPS predictors'
     x_axis_label = 'Number of lag times'
 
     for i in range(num_predictor_sets):

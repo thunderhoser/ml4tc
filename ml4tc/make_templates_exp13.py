@@ -68,7 +68,7 @@ CHANNEL_COUNTS_ARRAY = [
 ]
 
 LAG_TIME_COUNTS = numpy.array([2, 3, 21], dtype=int)
-SHIPS_LAGGED_PREDICTOR_COUNTS = numpy.array([4, 6, 10, 12, 16], dtype=int)
+SHIPS_LAGGED_PREDICTOR_COUNTS = numpy.array([0, 4, 6, 10, 12, 16], dtype=int)
 
 LOSS_FUNCTION = keras.losses.binary_crossentropy
 METRIC_FUNCTION_LIST = [LOSS_FUNCTION] + list(neural_net.METRIC_DICT.values())
@@ -106,7 +106,7 @@ def _run():
 
             option_dict_ships.update({
                 cnn_architecture.INPUT_DIMENSIONS_KEY: numpy.array(
-                    [5, 13 + SHIPS_LAGGED_PREDICTOR_COUNTS[j]], dtype=int
+                    [5, 65 + SHIPS_LAGGED_PREDICTOR_COUNTS[j]], dtype=int
                 )
             })
 
