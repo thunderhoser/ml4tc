@@ -657,7 +657,8 @@ def _read_non_predictors_one_file(
         lead_time_sec, satellite_lag_times_sec, ships_lag_times_sec,
         predict_td_to_ts, satellite_time_tolerance_sec,
         satellite_max_missing_times, ships_time_tolerance_sec,
-        ships_max_missing_times, use_climo_as_backup, class_cutoffs_m_s01=None):
+        ships_max_missing_times, use_climo_as_backup, all_init_times_unix_sec,
+        class_cutoffs_m_s01=None):
     """Reads all but predictors from one example file.
 
     E = number of examples
@@ -676,6 +677,7 @@ def _read_non_predictors_one_file(
     :param ships_time_tolerance_sec: Same.
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
+    :param all_init_times_unix_sec: Same.
     :param class_cutoffs_m_s01: Same.
 
     :return: data_dict: Dictionary with the following keys.
@@ -691,9 +693,11 @@ def _read_non_predictors_one_file(
     """
 
     xt = example_table_xarray
-    all_init_times_unix_sec = (
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
-    )
+
+    if all_init_times_unix_sec is None:
+        all_init_times_unix_sec = (
+            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+        )
     numpy.random.shuffle(all_init_times_unix_sec)
 
     if predict_td_to_ts:
@@ -1159,7 +1163,7 @@ def _read_one_example_file(
         ships_max_forecast_hour, predict_td_to_ts, satellite_time_tolerance_sec,
         satellite_max_missing_times, ships_time_tolerance_sec,
         ships_max_missing_times, use_climo_as_backup, class_cutoffs_m_s01=None,
-        num_grid_rows=None, num_grid_columns=None):
+        num_grid_rows=None, num_grid_columns=None, init_times_unix_sec=None):
     """Reads one example file for generator.
 
     E = number of examples per batch
@@ -1195,6 +1199,8 @@ def _read_one_example_file(
     :param class_cutoffs_m_s01: Same.
     :param num_grid_rows: Same.
     :param num_grid_columns: Same.
+    :param init_times_unix_sec: 1-D numpy array of initial times for which to
+        read examples.  If None, will read all initial times in file.
 
     :return: data_dict: Dictionary with the following keys.
     data_dict['predictor_matrices']: 1-D list with one or more of the following
@@ -1257,6 +1263,7 @@ def _read_one_example_file(
         ships_time_tolerance_sec=ships_time_tolerance_sec,
         ships_max_missing_times=ships_max_missing_times,
         use_climo_as_backup=use_climo_as_backup,
+        all_init_times_unix_sec=init_times_unix_sec,
         class_cutoffs_m_s01=class_cutoffs_m_s01
     )
 
@@ -2248,6 +2255,7 @@ def input_generator(option_dict):
     ]
 
     file_index = 0
+    init_times_by_file_unix_sec = [None] * len(example_file_names)
     num_examples_per_batch = (
         num_positive_examples_per_batch + num_negative_examples_per_batch
     )
@@ -2299,7 +2307,12 @@ def input_generator(option_dict):
                 ships_max_missing_times=ships_max_missing_times,
                 use_climo_as_backup=use_climo_as_backup,
                 class_cutoffs_m_s01=class_cutoffs_m_s01,
-                num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
+                num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
+                init_times_unix_sec=init_times_by_file_unix_sec[file_index]
+            )
+
+            init_times_by_file_unix_sec[file_index] = (
+                this_data_dict[INIT_TIMES_KEY]
             )
 
             these_predictor_matrices = [

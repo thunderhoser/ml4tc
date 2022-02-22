@@ -42,6 +42,24 @@ def compress_file(netcdf_file_name):
             shutil.copyfileobj(netcdf_handle, gzip_handle)
 
 
+def decompress_file(gzip_file_name):
+    """Deompresses gzip file.
+
+    :param gzip_file_name: Path to gzip file.
+    :raises: ValueError: if file is not gzipped.
+    """
+
+    error_checking.assert_is_string(gzip_file_name)
+    if not gzip_file_name.endswith(GZIP_FILE_EXTENSION):
+        raise ValueError('File must be gzipped.')
+
+    unzipped_file_name = gzip_file_name[:-len(GZIP_FILE_EXTENSION)]
+
+    with gzip.open(gzip_file_name, 'rb') as gzip_handle:
+        with open(unzipped_file_name, 'wb') as unzipped_handle:
+            shutil.copyfileobj(gzip_handle, unzipped_handle)
+
+
 def speed_and_heading_to_uv(storm_speeds_m_s01, storm_headings_deg):
     """Converts storm motion from speed-direction to u-v.
 
