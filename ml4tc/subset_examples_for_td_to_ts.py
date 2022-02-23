@@ -20,6 +20,8 @@ import satellite_utils
 import neural_net
 
 LARGE_INTEGER = int(1e10)
+DUMMY_LEAD_TIME_SEC = 666 * 3600
+
 HOURS_TO_SECONDS = 3600
 MINUTES_TO_SECONDS = 60
 
@@ -158,18 +160,12 @@ def _run(input_example_dir_name, cyclone_id_string, year,
         example_table_xarray = example_io.read_file(input_example_file_name)
         xt = example_table_xarray
 
-        print(xt)
-        print(satellite_lag_times_sec)
-        print(ships_lag_times_sec)
-        print(satellite_time_tolerance_sec)
-        print(ships_time_tolerance_sec)
-
         data_dict = neural_net._read_non_predictors_one_file(
             example_table_xarray=xt,
             num_examples_desired=LARGE_INTEGER,
             num_positive_examples_desired=LARGE_INTEGER,
             num_negative_examples_desired=LARGE_INTEGER,
-            lead_time_sec=LARGE_INTEGER,
+            lead_time_sec=DUMMY_LEAD_TIME_SEC,
             satellite_lag_times_sec=satellite_lag_times_sec,
             ships_lag_times_sec=ships_lag_times_sec,
             predict_td_to_ts=True,
