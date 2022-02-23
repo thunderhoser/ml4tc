@@ -158,6 +158,12 @@ def _run(input_example_dir_name, cyclone_id_string, year,
         example_table_xarray = example_io.read_file(input_example_file_name)
         xt = example_table_xarray
 
+        print(xt)
+        print(satellite_lag_times_sec)
+        print(ships_lag_times_sec)
+        print(satellite_time_tolerance_sec)
+        print(ships_time_tolerance_sec)
+
         data_dict = neural_net._read_non_predictors_one_file(
             example_table_xarray=xt,
             num_examples_desired=LARGE_INTEGER,
