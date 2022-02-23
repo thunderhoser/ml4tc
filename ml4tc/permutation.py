@@ -775,7 +775,7 @@ def _run_backwards_test_one_step(
         best_variable_index + 1, best_matrix_index + 1, best_cost
     ))
 
-    permuted_flag_arrays[best_matrix_index][best_variable_index] = True
+    permuted_flag_arrays[best_matrix_index][best_variable_index] = False
     depermuted_matrix_indices = numpy.array(
         depermuted_matrix_indices, dtype=int
     )
