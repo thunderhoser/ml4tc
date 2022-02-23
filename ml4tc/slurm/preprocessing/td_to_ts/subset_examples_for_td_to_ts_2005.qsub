@@ -33,5 +33,5 @@ python3 -u "${CODE_DIR_NAME}/subset_examples_for_td_to_ts.py" \
 --ships_lag_times_hours 0 6 12 18 24 \
 --satellite_lag_times_minutes 0 30 60 90 120 150 180 210 240 270 300 330 360 390 420 450 480 510 540 570 600 \
 --ships_time_tolerance_sec=21610 \
---satellite_time_tolerance_sec=3630 \
+--satellite_time_tolerance_sec=86400 \
 --output_example_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}"

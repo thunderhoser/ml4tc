@@ -550,13 +550,18 @@ def _find_all_desired_times(
 
         return None, None, None
 
-    all_init_times_unix_sec = (
-        xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
-    )
+    if example_utils.SHIPS_METADATA_TIME_DIM in xt.coords:
+        all_metadata_times_unix_sec = (
+            xt.coords[example_utils.SHIPS_METADATA_TIME_DIM].values
+        )
+    else:
+        all_metadata_times_unix_sec = (
+            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+        )
 
     if predict_td_to_ts:
         init_time_index = numpy.where(
-            all_init_times_unix_sec == init_time_unix_sec
+            all_metadata_times_unix_sec == init_time_unix_sec
         )[0][0]
 
         init_intensity_m_s01 = (
@@ -583,7 +588,7 @@ def _find_all_desired_times(
         )
 
         target_indices = _find_desired_times(
-            all_times_unix_sec=all_init_times_unix_sec,
+            all_times_unix_sec=all_metadata_times_unix_sec,
             desired_times_unix_sec=desired_times_unix_sec,
             tolerance_sec=0, max_num_missing_times=int(1e10)
         )
@@ -614,11 +619,11 @@ def _find_all_desired_times(
         num=num_desired_times, dtype=int
     )
     target_indices = _find_desired_times(
-        all_times_unix_sec=all_init_times_unix_sec,
+        all_times_unix_sec=all_metadata_times_unix_sec,
         desired_times_unix_sec=desired_times_unix_sec,
         tolerance_sec=0,
         max_num_missing_times=numpy.sum(
-            desired_times_unix_sec > numpy.max(all_init_times_unix_sec)
+            desired_times_unix_sec > numpy.max(all_metadata_times_unix_sec)
         )
     )
 
@@ -768,9 +773,15 @@ def _read_non_predictors_one_file(
         ships_rows_by_example.append(these_ships_indices)
         init_times_unix_sec.append(t)
 
-        this_index = numpy.where(
-            xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values == t
-        )[0][0]
+        if example_utils.SHIPS_METADATA_TIME_DIM in xt.coords:
+            this_index = numpy.where(
+                xt.coords[example_utils.SHIPS_METADATA_TIME_DIM].values == t
+            )[0][0]
+        else:
+            this_index = numpy.where(
+                xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values == t
+            )[0][0]
+
         storm_latitudes_deg_n.append(
             xt[ships_io.STORM_LATITUDE_KEY].values[this_index]
         )

@@ -218,9 +218,9 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             orig_num_satellite_rows
         ))
 
-        # TODO(thunderhoser): Define constant for new dim.
         xt = xt.rename({
-            example_utils.SATELLITE_TIME_DIM: 'satellite_metadata_time_unix_sec'
+            example_utils.SATELLITE_TIME_DIM:
+                example_utils.SATELLITE_METADATA_TIME_DIM
         })
         xt = xt.drop(labels=SATELLITE_KEYS_TO_REPLACE)
         xt = xt.assign_coords({
@@ -253,7 +253,9 @@ def _run(input_example_dir_name, cyclone_id_string, year,
         ))
 
         xt = xt.rename({
-            example_utils.SHIPS_VALID_TIME_DIM: 'ships_metadata_time_unix_sec'
+            example_utils.SHIPS_VALID_TIME_DIM:
+                example_utils.SHIPS_METADATA_TIME_DIM,
+            'ships_storm_object_index': example_utils.SHIPS_METADATA_TIME_DIM
         })
         xt = xt.drop(labels=SHIPS_KEYS_TO_REPLACE)
         xt = xt.assign_coords({

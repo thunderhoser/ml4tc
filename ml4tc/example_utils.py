@@ -32,6 +32,7 @@ STORM_INTENSITY_KEY = ships_io.STORM_INTENSITY_KEY
 SATELLITE_GRID_ROW_DIM = satellite_utils.GRID_ROW_DIM
 SATELLITE_GRID_COLUMN_DIM = satellite_utils.GRID_COLUMN_DIM
 SATELLITE_TIME_DIM = satellite_utils.TIME_DIM
+SATELLITE_METADATA_TIME_DIM = 'satellite_metadata_time_unix_sec'
 SATELLITE_PREDICTOR_UNGRIDDED_DIM = 'satellite_predictor_name_ungridded'
 SATELLITE_PREDICTOR_GRIDDED_DIM = 'satellite_predictor_name_gridded'
 
@@ -39,6 +40,7 @@ SHIPS_FORECAST_HOUR_DIM = ships_io.FORECAST_HOUR_DIM
 SHIPS_THRESHOLD_DIM = ships_io.THRESHOLD_DIM
 SHIPS_LAG_TIME_DIM = ships_io.LAG_TIME_DIM
 SHIPS_VALID_TIME_DIM = ships_io.VALID_TIME_DIM
+SHIPS_METADATA_TIME_DIM = 'ships_metadata_time_unix_sec'
 SHIPS_PREDICTOR_LAGGED_DIM = 'ships_predictor_name_lagged'
 SHIPS_PREDICTOR_FORECAST_DIM = 'ships_predictor_name_forecast'
 
