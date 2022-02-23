@@ -184,6 +184,13 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             r for r in data_dict[neural_net.SHIPS_ROWS_KEY] if r is not None
         ], axis=0)
 
+        satellite_rows_to_keep = satellite_rows_to_keep[
+            satellite_rows_to_keep != neural_net.MISSING_INDEX
+        ]
+        ships_rows_to_keep = ships_rows_to_keep[
+            ships_rows_to_keep != neural_net.MISSING_INDEX
+        ]
+
         if len(satellite_rows_to_keep) == 0 or len(ships_rows_to_keep) == 0:
             continue
 
