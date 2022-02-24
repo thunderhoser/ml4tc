@@ -26,7 +26,7 @@ set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/m
 set TEMPLATE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment13_td-to-ts/templates"
 set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment13_td-to-ts"
 
-set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
+set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/td_to_ts"
 set VALIDATION_DIR_NAME="${TRAINING_DIR_NAME}"
 
 set LAG_TIME_STRINGS_MINUTES=("0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440" "0-1440" "0-1440" "0-720-1440" "0-720-1440" "0-360-720-1080-1440" "0-360-720-1080-1440")
