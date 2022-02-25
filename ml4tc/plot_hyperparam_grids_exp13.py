@@ -1,4 +1,4 @@
-"""Plots evaluation scores on hyperparameter grid for Experiment 11."""
+"""Plots evaluation scores on hyperparameter grid for Experiment 13."""
 
 import os
 import sys
@@ -27,14 +27,15 @@ LAGGED_PREDICTOR_GROUP_STRINGS = [
     'fractions-largerad',
     'fractions-smallrad',
     'largerad-smallrad',
-    'fractions-largerad-smallrad'
+    'fractions-largerad-smallrad', 'fractions-largerad-smallrad-noimage'
 ]
 LAGGED_PREDICTOR_GROUP_STRINGS_FANCY = [
     'None', '% below thres', 'Large rad', 'Small rad',
     '% below thres, large rad',
     '% below thres, small rad',
     'Large rad, small rad',
-    '% below thres, large rad, small rad'
+    '% below thres, large rad, small rad',
+    '% below thres, large rad, small rad; no image'
 ]
 LAG_TIME_COUNTS = numpy.array([2, 3, 21], dtype=int)
 USE_DATA_AUG_FLAGS = numpy.array([0, 1], dtype=bool)
@@ -301,7 +302,7 @@ def _add_colour_bar(
 
 
 def _run(experiment_dir_name, output_dir_name):
-    """Plots evaluation scores on hyperparameter grid for Experiment 11.
+    """Plots evaluation scores on hyperparameter grid for Experiment 13.
 
     This is effectively the main method.
 

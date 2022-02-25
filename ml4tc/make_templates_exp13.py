@@ -62,12 +62,13 @@ BASE_OPTION_DICT_DENSE = {
 }
 
 CHANNEL_COUNTS_ARRAY = [
+    numpy.array([0], dtype=int),
     numpy.array([8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256], dtype=int),
     numpy.array([8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256], dtype=int),
     numpy.array([8, 8, 16, 16, 32, 32, 64, 64, 128, 128, 256, 256], dtype=int)
 ]
 
-LAG_TIME_COUNTS = numpy.array([2, 3, 21], dtype=int)
+LAG_TIME_COUNTS = numpy.array([0, 2, 3, 21], dtype=int)
 SHIPS_LAGGED_PREDICTOR_COUNTS = numpy.array([0, 4, 6, 10, 12, 16], dtype=int)
 
 LOSS_FUNCTION = keras.losses.binary_crossentropy
@@ -97,12 +98,15 @@ def _run():
             option_dict_ships = copy.deepcopy(BASE_OPTION_DICT_SHIPS)
             option_dict_dense = copy.deepcopy(BASE_OPTION_DICT_DENSE)
 
-            option_dict_gridded_sat.update({
-                cnn_architecture.INPUT_DIMENSIONS_KEY:
-                    numpy.array([380, 540, LAG_TIME_COUNTS[i], 1], dtype=int),
-                cnn_architecture.NUM_CHANNELS_KEY:
-                    CHANNEL_COUNTS_ARRAY[i]
-            })
+            if LAG_TIME_COUNTS[i] == 0:
+                option_dict_gridded_sat = None
+            else:
+                option_dict_gridded_sat.update({
+                    cnn_architecture.INPUT_DIMENSIONS_KEY:
+                        numpy.array([380, 540, LAG_TIME_COUNTS[i], 1], dtype=int),
+                    cnn_architecture.NUM_CHANNELS_KEY:
+                        CHANNEL_COUNTS_ARRAY[i]
+                })
 
             option_dict_ships.update({
                 cnn_architecture.INPUT_DIMENSIONS_KEY: numpy.array(
