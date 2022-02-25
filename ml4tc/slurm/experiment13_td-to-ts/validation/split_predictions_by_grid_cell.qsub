@@ -21,9 +21,9 @@ source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment13"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment13_td-to-ts"
 
-# set LAG_TIME_COUNTS=(2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21 2 2 3 3 21 21)
+# set LAG_TIME_COUNTS=(2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5 2 2 3 3 5 5)
 # set SHIPS_LAGGED_PREDICTOR_GROUP_STRINGS=("none" "none" "none" "none" "none" "none" "fractions" "fractions" "fractions" "fractions" "fractions" "fractions" "largerad" "largerad" "largerad" "largerad" "largerad" "largerad" "smallrad" "smallrad" "smallrad" "smallrad" "smallrad" "smallrad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-largerad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "fractions-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad" "fractions-largerad-smallrad")
 # set USE_DATA_AUG_FLAGS=(0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 
