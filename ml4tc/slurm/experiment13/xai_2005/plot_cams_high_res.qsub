@@ -47,7 +47,7 @@ while ($i <= ${#LAG_TIME_COUNTS})
     --input_gradcam_file_name="${input_file_name}" \
     --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
     --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
-    --smoothing_radius_px=0 \
+    --smoothing_radius_px=2 \
     --output_dir_name="${output_dir_name}"
     
     @ i = $i + 1
