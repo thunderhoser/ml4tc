@@ -1,0 +1,40 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="split_predictions_by_grid_cell"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=01:00:00
+#SBATCH --array=1
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=split_predictions_by_grid_cell_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment12_rotated"
+
+set CHANNEL_COUNT_STRINGS=("008-008-016-016-032-032-064-064-128-128-256-256")
+set LAG_TIME_STRINGS_MINUTES=("0-60-120")
+
+set channel_count_string=${CHANNEL_COUNT_STRINGS[$SLURM_ARRAY_TASK_ID]}
+set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/channels=${channel_count_string}_lag-times-minutes=${lag_time_string_minutes}"
+set input_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
+set output_dir_name="${model_dir_name}/validation_2005-2009"
+
+python3 -u "${CODE_DIR_NAME}/split_predictions_by_space.py" \
+--input_prediction_file_name="${input_file_name}" \
+--latitude_spacing_deg=10 \
+--longitude_spacing_deg=10 \
+--output_prediction_dir_name="${output_dir_name}"

@@ -1,0 +1,117 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="train_neural_nets"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --nodes=1
+#SBATCH --ntasks=8           # 8 tasks per node
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks-per-node=8  # 8 GPUs per node
+#SBATCH --exclusive
+#SBATCH --time=30:00:00
+#SBATCH --array=1-116%64
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=train_neural_nets_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TEMPLATE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment14_no_images/templates"
+set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment14_no_images"
+
+set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
+set VALIDATION_DIR_NAME="${TRAINING_DIR_NAME}"
+
+set USE_DATA_AUG_FLAGS=(0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+set LAG_TIME_STRINGS_MINUTES=("0" "0" "0-30" "0-30" "0-30-60" "0-30-60" "0-30-60-90" "0-30-60-90" "0-30-60-90-120" "0-30-60-90-120" "0-30-60-90-120-150" "0-30-60-90-120-150" "0-30-60-90-120-150-180" "0-30-60-90-120-150-180" "0-30-60-90-120-150-180-210" "0-30-60-90-120-150-180-210" "0-30-60-90-120-150-180-210-240" "0-30-60-90-120-150-180-210-240" "0-30-60-90-120-150-180-210-240-270" "0-30-60-90-120-150-180-210-240-270" "0-30-60-90-120-150-180-210-240-270-300" "0-30-60-90-120-150-180-210-240-270-300" "0-30-60-90-120-150-180-210-240-270-300-330" "0-30-60-90-120-150-180-210-240-270-300-330" "0-30-60-90-120-150-180-210-240-270-300-330-360" "0-30-60-90-120-150-180-210-240-270-300-330-360" "0-30-60-90-120-150-180-210-240-270-300-330-360-390" "0-30-60-90-120-150-180-210-240-270-300-330-360-390" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660-690" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660-690" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660-690-720" "0-30-60-90-120-150-180-210-240-270-300-330-360-390-420-450-480-510-540-570-600-630-660-690-720" "0-60" "0-60" "0-60-120" "0-60-120" "0-60-120-180" "0-60-120-180" "0-60-120-180-240" "0-60-120-180-240" "0-60-120-180-240-300" "0-60-120-180-240-300" "0-60-120-180-240-300-360" "0-60-120-180-240-300-360" "0-60-120-180-240-300-360-420" "0-60-120-180-240-300-360-420" "0-60-120-180-240-300-360-420-480" "0-60-120-180-240-300-360-420-480" "0-60-120-180-240-300-360-420-480-540" "0-60-120-180-240-300-360-420-480-540" "0-60-120-180-240-300-360-420-480-540-600" "0-60-120-180-240-300-360-420-480-540-600" "0-60-120-180-240-300-360-420-480-540-600-660" "0-60-120-180-240-300-360-420-480-540-600-660" "0-60-120-180-240-300-360-420-480-540-600-660-720" "0-60-120-180-240-300-360-420-480-540-600-660-720" "0-90" "0-90" "0-90-180" "0-90-180" "0-90-180-270" "0-90-180-270" "0-90-180-270-360" "0-90-180-270-360" "0-90-180-270-360-450" "0-90-180-270-360-450" "0-90-180-270-360-450-540" "0-90-180-270-360-450-540" "0-90-180-270-360-450-540-630" "0-90-180-270-360-450-540-630" "0-90-180-270-360-450-540-630-720" "0-90-180-270-360-450-540-630-720" "0-120" "0-120" "0-120-240" "0-120-240" "0-120-240-360" "0-120-240-360" "0-120-240-360-480" "0-120-240-360-480" "0-120-240-360-480-600" "0-120-240-360-480-600" "0-120-240-360-480-600-720" "0-120-240-360-480-600-720" "0-180" "0-180" "0-180-360" "0-180-360" "0-180-360-540" "0-180-360-540" "0-180-360-540-720" "0-180-360-540-720" "0-240" "0-240" "0-240-480" "0-240-480" "0-240-480-720" "0-240-480-720")
+set LAG_TIME_COUNTS=(1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 25 25 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 2 2 3 3 4 4 5 5 6 6 7 7 2 2 3 3 4 4 5 5 2 2 3 3 4 4)
+set SATELLITE_TIME_TOLERANCES_SEC=(3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 3630 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 5400 7200 7200 7200 7200 7200 7200 7200 7200 7200 7200 7200 7200 10800 10800 10800 10800 10800 10800 10800 10800 14400 14400 14400 14400 14400 14400)
+set SATELLITE_MAX_MISSING_TIME_COUNTS=(0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 6 6 6 6 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 1 1 1 1 0 0 0 0 1 1)
+
+set use_data_aug_flag=${USE_DATA_AUG_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set lag_time_string_minutes=${LAG_TIME_STRINGS_MINUTES[$SLURM_ARRAY_TASK_ID]}
+set lag_time_count=${LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set satellite_time_tolerance_sec=${SATELLITE_TIME_TOLERANCES_SEC[$SLURM_ARRAY_TASK_ID]}
+set satellite_max_missing_times=${SATELLITE_MAX_MISSING_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+
+set lag_time_count_string=`printf "%02d" $lag_time_count`
+set satellite_time_tolerance_string_sec=`printf "%05d" $satellite_time_tolerance_sec`
+
+set template_file_name="${TEMPLATE_DIR_NAME}/model_num-lag-times=${lag_time_count_string}.h5"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/lag-times-minutes=${lag_time_string_minutes}_use-data-aug=${use_data_aug_flag}"
+echo $output_dir_name
+
+set lag_time_string_minutes="$lag_time_string_minutes:gas/-/ /"
+
+if ($use_data_aug_flag > 0) then
+    python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
+    --input_template_file_name="${template_file_name}" \
+    --output_model_dir_name="${output_dir_name}" \
+    --training_example_dir_name="${TRAINING_DIR_NAME}" \
+    --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
+    --lead_time_hours=24 \
+    --satellite_predictor_names "satellite_azimuth_angle_cos" "satellite_storm_intensity_m_s01" "satellite_solar_azimuth_angle_cos" "satellite_zenith_angle_deg" "satellite_azimuth_angle_sin" "satellite_storm_distance_to_land_metres" "satellite_storm_radius_version1_metres" "satellite_solar_hour_angle_sin" "satellite_solar_azimuth_angle_sin" "satellite_solar_elevation_angle_deg" "satellite_storm_radius_version2_metres" "satellite_solar_hour_angle_cos" "satellite_storm_radius_fractional" "satellite_solar_zenith_angle_deg" \
+    --satellite_lag_times_minutes ${lag_time_string_minutes} \
+    --ships_lag_times_hours 0 6 12 18 24 \
+    --ships_builtin_lag_times_hours nan inf 0 1.5 3 \
+    --ships_max_forecast_hour=24 \
+    --satellite_time_tolerance_training_sec=${satellite_time_tolerance_string_sec} \
+    --satellite_max_missing_times_training=${satellite_max_missing_times} \
+    --ships_time_tolerance_training_sec=0 \
+    --ships_max_missing_times_training=1 \
+    --satellite_time_tolerance_validation_sec=${satellite_time_tolerance_string_sec} \
+    --ships_time_tolerance_validation_sec=21610 \
+    --num_positive_examples_per_batch=8 \
+    --num_negative_examples_per_batch=24 \
+    --max_examples_per_cyclone_in_batch=6 \
+    --class_cutoffs_kt 30 \
+    --num_epochs=1000 \
+    --num_training_batches_per_epoch=32 \
+    --num_validation_batches_per_epoch=16 \
+    --data_aug_num_translations=0 \
+    --data_aug_max_translation_px=6 \
+    --data_aug_num_rotations=0 \
+    --data_aug_max_rotation_deg=50 \
+    --data_aug_num_noisings=3 \
+    --data_aug_noise_stdev=0.5 \
+    --plateau_lr_multiplier=0.6
+else
+    python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
+    --input_template_file_name="${template_file_name}" \
+    --output_model_dir_name="${output_dir_name}" \
+    --training_example_dir_name="${TRAINING_DIR_NAME}" \
+    --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
+    --lead_time_hours=24 \
+    --satellite_predictor_names "satellite_azimuth_angle_cos" "satellite_storm_intensity_m_s01" "satellite_solar_azimuth_angle_cos" "satellite_zenith_angle_deg" "satellite_azimuth_angle_sin" "satellite_storm_distance_to_land_metres" "satellite_storm_radius_version1_metres" "satellite_solar_hour_angle_sin" "satellite_solar_azimuth_angle_sin" "satellite_solar_elevation_angle_deg" "satellite_storm_radius_version2_metres" "satellite_solar_hour_angle_cos" "satellite_storm_radius_fractional" "satellite_solar_zenith_angle_deg" \
+    --satellite_lag_times_minutes ${lag_time_string_minutes} \
+    --ships_lag_times_hours 0 6 12 18 24 \
+    --ships_builtin_lag_times_hours nan inf 0 1.5 3 \
+    --ships_max_forecast_hour=24 \
+    --satellite_time_tolerance_training_sec=${satellite_time_tolerance_string_sec} \
+    --satellite_max_missing_times_training=${satellite_max_missing_times} \
+    --ships_time_tolerance_training_sec=0 \
+    --ships_max_missing_times_training=1 \
+    --satellite_time_tolerance_validation_sec=${satellite_time_tolerance_string_sec} \
+    --ships_time_tolerance_validation_sec=21610 \
+    --num_positive_examples_per_batch=64 \
+    --num_negative_examples_per_batch=64 \
+    --max_examples_per_cyclone_in_batch=24 \
+    --class_cutoffs_kt 30 \
+    --num_epochs=1000 \
+    --num_training_batches_per_epoch=32 \
+    --num_validation_batches_per_epoch=16 \
+    --data_aug_num_translations=0 \
+    --data_aug_max_translation_px=6 \
+    --data_aug_num_rotations=0 \
+    --data_aug_max_rotation_deg=50 \
+    --data_aug_num_noisings=0 \
+    --data_aug_noise_stdev=0.5 \
+    --plateau_lr_multiplier=0.6
+endif

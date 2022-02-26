@@ -31,20 +31,21 @@ TOLERANCE = 1e-6
 TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M'
 MISSING_INDEX = int(1e12)
 
-SHIPS_PREDICTORS_WITH_USABLE_FORECAST = [
-    ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY,
-    ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY,
-    ships_io.TEMP_200MB_OUTER_RING_KEY,
-    ships_io.SHEAR_850TO500MB_U_KEY,
-    ships_io.SHEAR_850TO500MB_V_KEY,
-    ships_io.W_WIND_0TO15KM_INNER_RING_KEY,
-    ships_io.OCEAN_AGE_KEY,
-    ships_io.MAX_TAN_WIND_850MB_KEY,
-    ships_io.REYNOLDS_SST_DAILY_KEY,
-    ships_io.OHC_FROM_SST_AND_CLIMO_KEY,
-    ships_io.FORECAST_LATITUDE_KEY,
-    ships_io.MERGED_OHC_KEY,
-    ships_io.MERGED_SST_KEY
+SHIPS_PREDICTORS_SANS_USABLE_FORECAST = [
+    ships_io.THRESHOLD_EXCEEDANCE_KEY,
+    ships_io.STORM_INTENSITY_KEY,
+    ships_io.INTENSITY_KEY,
+    ships_io.MINIMUM_SLP_KEY,
+    ships_io.STORM_TYPE_KEY,
+    ships_io.INTENSITY_CHANGE_M12HOURS_KEY,
+    ships_io.INTENSITY_CHANGE_6HOURS_KEY,
+    ships_io.VORTICITY_850MB_BIG_RING_KEY,
+    ships_io.DIVERGENCE_200MB_BIG_RING_KEY,
+    ships_io.SURFACE_PRESSURE_EDGE_KEY,
+    ships_io.DIVERGENCE_200MB_CENTERED_BIG_RING_KEY,
+    ships_io.SURFACE_PRESSURE_OUTER_RING_KEY,
+    ships_io.SRH_1000TO700MB_OUTER_RING_KEY,
+    ships_io.SRH_1000TO500MB_OUTER_RING_KEY
 ]
 
 MINUTES_TO_SECONDS = 60
@@ -125,9 +126,9 @@ ALL_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
     set(example_utils.SATELLITE_METADATA_KEYS)
 )
-ALL_SATELLITE_PREDICTOR_NAMES.remove(
-    satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
-)
+# ALL_SATELLITE_PREDICTOR_NAMES.remove(
+#     satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+# )
 ALL_SATELLITE_PREDICTOR_NAMES = list(ALL_SATELLITE_PREDICTOR_NAMES)
 DEFAULT_SATELLITE_PREDICTOR_NAMES = copy.deepcopy(ALL_SATELLITE_PREDICTOR_NAMES)
 
@@ -1281,7 +1282,11 @@ def _read_one_example_file(
     satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
     ships_rows_by_example = data_dict.pop(SHIPS_ROWS_KEY)
 
-    if satellite_lag_times_sec is None:
+    if (
+            satellite_lag_times_sec is None or
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY not in
+            satellite_predictor_names
+    ):
         brightness_temp_matrix = None
         grid_latitude_matrix_deg_n = None
         grid_longitude_matrix_deg_e = None
@@ -1298,13 +1303,24 @@ def _read_one_example_file(
         )
 
     if satellite_predictor_names is None:
+        scalar_predictor_names = None
+    else:
+        scalar_predictor_names = [
+            n for n in satellite_predictor_names
+            if n != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
+
+        if len(scalar_predictor_names) == 0:
+            scalar_predictor_names = None
+
+    if scalar_predictor_names is None:
         satellite_predictor_matrix = None
     else:
         satellite_predictor_matrix = _read_scalar_satellite_one_file(
             example_table_xarray=xt,
             table_rows_by_example=satellite_rows_by_example,
             lag_times_sec=satellite_lag_times_sec,
-            predictor_names=satellite_predictor_names
+            predictor_names=scalar_predictor_names
         )
 
     if ships_lag_times_sec is None:
@@ -1576,7 +1592,10 @@ def _ships_predictors_xarray_to_keras(
                     example_utils.SHIPS_PREDICTOR_FORECAST_DIM
                 ].values[j]
 
-                if this_predictor_name in SHIPS_PREDICTORS_WITH_USABLE_FORECAST:
+                if (
+                        this_predictor_name not in
+                        SHIPS_PREDICTORS_SANS_USABLE_FORECAST
+                ):
                     continue
 
                 print((
@@ -1840,6 +1859,18 @@ def read_metafile(pickle_file_name):
 
         validation_option_dict[NUM_GRID_ROWS_KEY] = None
         validation_option_dict[NUM_GRID_COLUMNS_KEY] = None
+
+    # TODO(thunderhoser): This is a HACK.
+    if (
+            training_option_dict[SATELLITE_LAG_TIMES_KEY] is not None and
+            training_option_dict[SATELLITE_PREDICTORS_KEY] is None
+    ):
+        training_option_dict[SATELLITE_PREDICTORS_KEY] = [
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
+        validation_option_dict[SATELLITE_PREDICTORS_KEY] = [
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
 
     if SHIPS_MAX_FORECAST_HOUR_KEY not in training_option_dict:
         training_option_dict[SHIPS_MAX_FORECAST_HOUR_KEY] = 0
