@@ -16,7 +16,7 @@ import architecture_utils
 import neural_net
 import cnn_architecture
 
-NUM_SHIPS_CHANNELS = 16 * 5 + 131 * 5
+NUM_SHIPS_CHANNELS = 16 * 5 + 128 * 5
 
 BASE_OPTION_DICT_SHIPS = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
