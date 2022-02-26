@@ -20,8 +20,8 @@ source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment12_rotated"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/experiment14_no_images"
 
-python3 -u "${CODE_DIR_NAME}/plot_hyperparam_grids_exp10.py" \
+python3 -u "${CODE_DIR_NAME}/plot_hyperparam_grids_exp14.py" \
 --experiment_dir_name="${TOP_MODEL_DIR_NAME}" \
 --output_dir_name="${TOP_MODEL_DIR_NAME}"
