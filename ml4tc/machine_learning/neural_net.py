@@ -119,9 +119,9 @@ ALL_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
     set(example_utils.SATELLITE_METADATA_KEYS)
 )
-ALL_SATELLITE_PREDICTOR_NAMES.remove(
-    satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
-)
+# ALL_SATELLITE_PREDICTOR_NAMES.remove(
+#     satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+# )
 ALL_SATELLITE_PREDICTOR_NAMES = list(ALL_SATELLITE_PREDICTOR_NAMES)
 DEFAULT_SATELLITE_PREDICTOR_NAMES = copy.deepcopy(ALL_SATELLITE_PREDICTOR_NAMES)
 
@@ -1275,7 +1275,11 @@ def _read_one_example_file(
     satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
     ships_rows_by_example = data_dict.pop(SHIPS_ROWS_KEY)
 
-    if satellite_lag_times_sec is None:
+    if (
+            satellite_lag_times_sec is None or
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY not in
+            satellite_predictor_names
+    ):
         brightness_temp_matrix = None
         grid_latitude_matrix_deg_n = None
         grid_longitude_matrix_deg_e = None
@@ -1292,13 +1296,24 @@ def _read_one_example_file(
         )
 
     if satellite_predictor_names is None:
+        scalar_predictor_names = None
+    else:
+        scalar_predictor_names = [
+            n for n in satellite_predictor_names
+            if n != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
+
+        if len(scalar_predictor_names) == 0:
+            scalar_predictor_names = None
+
+    if scalar_predictor_names is None:
         satellite_predictor_matrix = None
     else:
         satellite_predictor_matrix = _read_scalar_satellite_one_file(
             example_table_xarray=xt,
             table_rows_by_example=satellite_rows_by_example,
             lag_times_sec=satellite_lag_times_sec,
-            predictor_names=satellite_predictor_names
+            predictor_names=scalar_predictor_names
         )
 
     if ships_lag_times_sec is None:
@@ -1837,6 +1852,18 @@ def read_metafile(pickle_file_name):
 
         validation_option_dict[NUM_GRID_ROWS_KEY] = None
         validation_option_dict[NUM_GRID_COLUMNS_KEY] = None
+
+    # TODO(thunderhoser): This is a HACK.
+    if (
+            training_option_dict[SATELLITE_LAG_TIMES_KEY] is not None and
+            training_option_dict[SATELLITE_PREDICTORS_KEY] is None
+    ):
+        training_option_dict[SATELLITE_PREDICTORS_KEY] = [
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
+        validation_option_dict[SATELLITE_PREDICTORS_KEY] = [
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+        ]
 
     if SHIPS_MAX_FORECAST_HOUR_KEY not in training_option_dict:
         training_option_dict[SHIPS_MAX_FORECAST_HOUR_KEY] = 0
