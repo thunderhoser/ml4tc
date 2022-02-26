@@ -340,7 +340,7 @@ def _run(experiment_dir_name, output_dir_name):
                     'data-aug={3:d}/validation_2005-2009/evaluation.nc'
                 ).format(
                     experiment_dir_name,
-                    LAG_TIME_COUNTS[j],
+                    0 if i == num_predictor_sets - 1 else LAG_TIME_COUNTS[j],
                     LAGGED_PREDICTOR_GROUP_STRINGS[i],
                     int(USE_DATA_AUG_FLAGS[k])
                 )
