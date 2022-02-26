@@ -168,13 +168,21 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             all_init_times_unix_sec=None
         )
 
-        satellite_rows_to_keep = numpy.concatenate([
+        these_arrays = [
             r for r in data_dict[neural_net.SATELLITE_ROWS_KEY] if r is not None
-        ], axis=0)
+        ]
+        if len(these_arrays) == 0:
+            satellite_rows_to_keep = numpy.array([], dtype=int)
+        else:
+            satellite_rows_to_keep = numpy.concatenate(these_arrays, axis=0)
 
-        ships_rows_to_keep = numpy.concatenate([
+        these_arrays = [
             r for r in data_dict[neural_net.SHIPS_ROWS_KEY] if r is not None
-        ], axis=0)
+        ]
+        if len(these_arrays) == 0:
+            ships_rows_to_keep = numpy.array([], dtype=int)
+        else:
+            ships_rows_to_keep = numpy.concatenate(these_arrays, axis=0)
 
         satellite_rows_to_keep = satellite_rows_to_keep[
             satellite_rows_to_keep != neural_net.MISSING_INDEX
