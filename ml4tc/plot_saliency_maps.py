@@ -29,6 +29,7 @@ import ships_plotting
 import satellite_plotting
 import scalar_satellite_plotting
 import predictor_plotting
+import plot_predictors
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -40,6 +41,7 @@ PANEL_SIZE_PX = int(2.5e6)
 SALIENCY_FILE_ARG_NAME = 'input_saliency_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 PLOT_INPUT_GRAD_ARG_NAME = 'plot_input_times_grad'
 SPATIAL_COLOUR_MAP_ARG_NAME = 'spatial_colour_map_name'
 NONSPATIAL_COLOUR_MAP_ARG_NAME = 'nonspatial_colour_map_name'
@@ -60,6 +62,11 @@ NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be used to denormalize '
     'brightness-temperature maps before plotting).  Will be read by '
     '`normalization.read_file`.'
+)
+PREDICTION_FILE_HELP_STRING = (
+    'Path to file with predictions and targets, to be shown in figure titles.  '
+    'Will be read by `prediction_io.read_file`.  If you do not want fancy '
+    'figure titles, leave this argument alone.'
 )
 PLOT_INPUT_GRAD_HELP_STRING = (
     'Boolean flag.  If 1 (0), will plot input * gradient (saliency).'
@@ -104,6 +111,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
     help=NORMALIZATION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
+    help=PREDICTION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + PLOT_INPUT_GRAD_ARG_NAME, type=int, required=True,
@@ -184,7 +195,7 @@ def _plot_scalar_satellite_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
         init_time_unix_sec, colour_map_object, min_colour_value,
         max_colour_value, plot_in_log_space, plot_input_times_grad,
-        output_dir_name):
+        info_string, output_dir_name):
     """Plots saliency for scalar satellite for each lag time at one init time.
 
     :param data_dict: Dictionary returned by `neural_net.create_inputs`.
@@ -201,6 +212,7 @@ def _plot_scalar_satellite_saliency(
         scaled logarithmically (linearly).
     :param plot_input_times_grad: Boolean flag.  If True (False), will plot
         input * gradient (saliency).
+    :param info_string: Info string (will be appended to title).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     """
@@ -233,14 +245,23 @@ def _plot_scalar_satellite_saliency(
         )[:2]
     )
 
+    this_order = numpy.floor(numpy.log10(max_colour_value))
+    this_multiplier = 10 ** -this_order
+
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
-        data_matrix=saliency_matrix, axes_object=axes_object, font_size=25,
+        data_matrix=saliency_matrix * this_multiplier,
+        axes_object=axes_object, font_size=25,
         colour_map_object=colour_map_object,
-        min_colour_value=min_colour_value,
-        max_colour_value=max_colour_value,
+        min_colour_value=min_colour_value * this_multiplier,
+        max_colour_value=max_colour_value * this_multiplier,
         number_format_string='.1f',
         plot_in_log_space=plot_in_log_space
     )
+
+    if info_string != '':
+        axes_object.set_title('{0:s}; {1:s}'.format(
+            axes_object.get_title(), info_string
+        ))
 
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
@@ -269,11 +290,15 @@ def _plot_scalar_satellite_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         colour_map_object=colour_map_object,
@@ -289,7 +314,7 @@ def _plot_brightness_temp_saliency(
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
         min_colour_value, max_colour_value, plot_in_log_space,
-        plot_input_times_grad, output_dir_name):
+        plot_input_times_grad, info_string, output_dir_name):
     """Plots saliency for brightness temp for each lag time at one init time.
 
     P = number of points in border set
@@ -310,6 +335,7 @@ def _plot_brightness_temp_saliency(
     :param max_colour_value: Same.
     :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     :return: min_colour_value: Same meaning as input variable, except that value
         might have been changed.
@@ -378,6 +404,11 @@ def _plot_brightness_temp_saliency(
             colour_map_object=colour_map_object
         )
 
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
+
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
         )
@@ -443,7 +474,7 @@ def _plot_lagged_ships_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
         init_time_unix_sec, colour_map_object, min_colour_value,
         max_colour_value, plot_in_log_space, plot_input_times_grad,
-        output_dir_name):
+        info_string, output_dir_name):
     """Plots saliency for lagged SHIPS for each lag time at one init time.
 
     :param data_dict: See doc for `_plot_scalar_satellite_saliency`.
@@ -456,6 +487,7 @@ def _plot_lagged_ships_saliency(
     :param max_colour_value: Same.
     :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     """
 
@@ -525,18 +557,26 @@ def _plot_lagged_ships_saliency(
         num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
 
+    this_order = numpy.floor(numpy.log10(max_colour_value))
+    this_multiplier = 10 ** -this_order
+
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=saliency_matrix[k, ...],
+            data_matrix=saliency_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value,
-            max_colour_value=max_colour_value,
+            min_colour_value=min_colour_value * this_multiplier,
+            max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
+
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -580,11 +620,15 @@ def _plot_lagged_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -599,7 +643,7 @@ def _plot_forecast_ships_saliency(
         data_dict, saliency_dict, model_metadata_dict, cyclone_id_string,
         init_time_unix_sec, colour_map_object, min_colour_value,
         max_colour_value, plot_in_log_space, plot_input_times_grad,
-        output_dir_name):
+        info_string, output_dir_name):
     """Plots saliency for forecast SHIPS for each lag time at one init time.
 
     :param data_dict: See doc for `_plot_scalar_satellite_saliency`.
@@ -612,6 +656,7 @@ def _plot_forecast_ships_saliency(
     :param max_colour_value: Same.
     :param plot_in_log_space: Same.
     :param plot_input_times_grad: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     """
 
@@ -681,18 +726,26 @@ def _plot_forecast_ships_saliency(
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
+    this_order = numpy.floor(numpy.log10(max_colour_value))
+    this_multiplier = 10 ** -this_order
+
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=saliency_matrix[k, ...],
+            data_matrix=saliency_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value,
-            max_colour_value=max_colour_value,
+            min_colour_value=min_colour_value * this_multiplier,
+            max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1f',
             plot_in_log_space=plot_in_log_space
         )
+
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -736,11 +789,15 @@ def _plot_forecast_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -752,7 +809,7 @@ def _plot_forecast_ships_saliency(
 
 
 def _run(saliency_file_name, example_dir_name, normalization_file_name,
-         plot_input_times_grad, spatial_colour_map_name,
+         prediction_file_name, plot_input_times_grad, spatial_colour_map_name,
          nonspatial_colour_map_name, min_colour_percentile,
          max_colour_percentile, plot_in_log_space, smoothing_radius_px,
          output_dir_name):
@@ -763,6 +820,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
     :param saliency_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
+    :param prediction_file_name: Same.
     :param plot_input_times_grad: Same.
     :param spatial_colour_map_name: Same.
     :param nonspatial_colour_map_name: Same.
@@ -778,6 +836,9 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
     error_checking.assert_is_greater(
         max_colour_percentile, min_colour_percentile
     )
+
+    if prediction_file_name == '':
+        prediction_file_name = None
 
     spatial_colour_map_object = pyplot.get_cmap(spatial_colour_map_name)
     nonspatial_colour_map_object = pyplot.get_cmap(nonspatial_colour_map_name)
@@ -843,14 +904,36 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
             unique_cyclone_id_strings[i]
         )[0]
 
-        for j in example_indices:
+        info_strings = [''] * len(example_indices)
+
+        if prediction_file_name is not None:
+            forecast_prob_matrix, target_classes = (
+                plot_predictors.get_predictions_and_targets(
+                    prediction_file_name=prediction_file_name,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_times_unix_sec=saliency_dict[saliency.INIT_TIMES_KEY]
+                )
+            )
+
+            for j in range(len(example_indices)):
+                info_strings[j] = 'RI = {0:s}'.format(
+                    'yes' if target_classes[j] == 1 else 'no'
+                )
+                info_strings[j] += r'$p_{RI}$'
+                info_strings[j] += ' = {0:.2f}'.format(
+                    forecast_prob_matrix[j, 1]
+                )
+
+        for j in range(len(example_indices)):
+            k = example_indices[j]
+
             if plot_input_times_grad:
                 this_key = saliency.THREE_INPUT_GRAD_KEY
             else:
                 this_key = saliency.THREE_SALIENCY_KEY
 
             saliency_matrices_example_j = [
-                None if s is None else s[j, ...]
+                None if s is None else s[k, ...]
                 for s in saliency_dict[this_key]
             ]
             saliency_values_example_j = numpy.concatenate([
@@ -877,7 +960,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                         model_metadata_dict=model_metadata_dict,
                         cyclone_id_string=unique_cyclone_id_strings[i],
                         init_time_unix_sec=
-                        saliency_dict[saliency.INIT_TIMES_KEY][j],
+                        saliency_dict[saliency.INIT_TIMES_KEY][k],
                         normalization_table_xarray=normalization_table_xarray,
                         border_latitudes_deg_n=border_latitudes_deg_n,
                         border_longitudes_deg_e=border_longitudes_deg_e,
@@ -886,6 +969,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                         max_colour_value=max_colour_value,
                         plot_in_log_space=plot_in_log_space,
                         plot_input_times_grad=plot_input_times_grad,
+                        info_string=info_strings[j],
                         output_dir_name=output_dir_name
                     )
                 )
@@ -896,12 +980,13 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
+                    info_string=info_strings[j],
                     output_dir_name=output_dir_name
                 )
 
@@ -911,12 +996,13 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
+                    info_string=info_strings[j],
                     output_dir_name=output_dir_name
                 )
 
@@ -929,12 +1015,13 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    saliency_dict[saliency.INIT_TIMES_KEY][j],
+                    saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
+                    info_string=info_strings[j],
                     output_dir_name=output_dir_name
                 )
 
@@ -947,6 +1034,9 @@ if __name__ == '__main__':
         example_dir_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_DIR_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
         plot_input_times_grad=bool(getattr(
             INPUT_ARG_OBJECT, PLOT_INPUT_GRAD_ARG_NAME

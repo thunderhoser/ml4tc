@@ -29,6 +29,7 @@ import satellite_plotting
 import predictor_plotting
 import scalar_satellite_plotting
 import ships_plotting
+import plot_predictors
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -40,6 +41,7 @@ PANEL_SIZE_PX = int(2.5e6)
 OCCLUSION_FILE_ARG_NAME = 'input_occlusion_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 PLOT_NORMALIZED_ARG_NAME = 'plot_normalized_occlusion'
 SPATIAL_COLOUR_MAP_ARG_NAME = 'spatial_colour_map_name'
 NONSPATIAL_COLOUR_MAP_ARG_NAME = 'nonspatial_colour_map_name'
@@ -59,6 +61,11 @@ NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be used to denormalize '
     'brightness-temperature maps before plotting).  Will be read by '
     '`normalization.read_file`.'
+)
+PREDICTION_FILE_HELP_STRING = (
+    'Path to file with predictions and targets, to be shown in figure titles.  '
+    'Will be read by `prediction_io.read_file`.  If you do not want fancy '
+    'figure titles, leave this argument alone.'
 )
 PLOT_NORMALIZED_HELP_STRING = (
     'Boolean flag.  If 1 (0), will plot normalized (standard) occlusion maps.'
@@ -99,6 +106,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
     help=NORMALIZATION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
+    help=PREDICTION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + PLOT_NORMALIZED_ARG_NAME, type=int, required=True,
@@ -184,7 +195,7 @@ def _plot_brightness_temp_map(
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
         normalization_table_xarray, border_latitudes_deg_n,
         border_longitudes_deg_e, colour_map_object, min_colour_value,
-        max_colour_value, output_dir_name):
+        max_colour_value, info_string, output_dir_name):
     """Plots occlusion map for brightness temp, each lag time, one init time.
 
     P = number of points in border set
@@ -208,6 +219,7 @@ def _plot_brightness_temp_map(
         `matplotlib.pyplot.cm`).
     :param min_colour_value: Minimum value in colour scheme.
     :param max_colour_value: Max value in colour scheme.
+    :param info_string: Info string (will be appended to title).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     :return: min_colour_value: Same meaning as input variable, except that value
@@ -295,6 +307,11 @@ def _plot_brightness_temp_map(
                 )
             )
 
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
+
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
         )
@@ -359,7 +376,8 @@ def _plot_brightness_temp_map(
 def _plot_scalar_satellite_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, info_string,
+        output_dir_name):
     """Plots occlusion map for scalar satellite, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -371,6 +389,7 @@ def _plot_scalar_satellite_map(
     :param colour_map_object: Same.
     :param min_colour_value: Same.
     :param max_colour_value: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     """
 
@@ -402,12 +421,26 @@ def _plot_scalar_satellite_map(
         )[:2]
     )
 
+    if plot_normalized_occlusion:
+        this_order = numpy.floor(numpy.log10(max_colour_value))
+        this_multiplier = 10 ** -this_order
+    else:
+        this_multiplier = 100.
+
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
-        data_matrix=occlusion_matrix, axes_object=axes_object, font_size=25,
-        colour_map_object=colour_map_object,
-        min_colour_value=min_colour_value, max_colour_value=max_colour_value,
-        number_format_string='.1f', plot_in_log_space=False
+        data_matrix=occlusion_matrix * this_multiplier,
+        axes_object=axes_object,
+        font_size=25, colour_map_object=colour_map_object,
+        min_colour_value=min_colour_value * this_multiplier,
+        max_colour_value=max_colour_value * this_multiplier,
+        number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+        plot_in_log_space=False
     )
+
+    if info_string != '':
+        axes_object.set_title('{0:s}; {1:s}'.format(
+            axes_object.get_title(), info_string
+        ))
 
     init_time_string = time_conversion.unix_sec_to_string(
         init_time_unix_sec, TIME_FORMAT
@@ -436,12 +469,16 @@ def _plot_scalar_satellite_map(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
         colour_map_object=colour_map_object,
@@ -454,7 +491,8 @@ def _plot_scalar_satellite_map(
 def _plot_lagged_ships_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, info_string,
+        output_dir_name):
     """Plots occlusion map for lagged SHIPS data, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -466,6 +504,7 @@ def _plot_lagged_ships_map(
     :param colour_map_object: Same.
     :param min_colour_value: Same.
     :param max_colour_value: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     """
 
@@ -535,17 +574,29 @@ def _plot_lagged_ships_map(
         num_forecast_hours=len(forecast_hours)
     )[0][0, ...]
 
+    if plot_normalized_occlusion:
+        this_order = numpy.floor(numpy.log10(max_colour_value))
+        this_multiplier = 10 ** -this_order
+    else:
+        this_multiplier = 100.
+
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=occlusion_matrix[k, ...],
+            data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value,
-            max_colour_value=max_colour_value,
-            number_format_string='.1f', plot_in_log_space=False
+            min_colour_value=min_colour_value * this_multiplier,
+            max_colour_value=max_colour_value * this_multiplier,
+            number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+            plot_in_log_space=False
         )
+
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -589,12 +640,16 @@ def _plot_lagged_ships_map(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -607,7 +662,8 @@ def _plot_lagged_ships_map(
 def _plot_forecast_ships_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
         model_metadata_dict, cyclone_id_string, init_time_unix_sec,
-        colour_map_object, min_colour_value, max_colour_value, output_dir_name):
+        colour_map_object, min_colour_value, max_colour_value, info_string,
+        output_dir_name):
     """Plots occlusion map for forecast SHIPS, each lag time, one init time.
 
     :param data_dict: See doc for `_plot_brightness_temp_map`.
@@ -619,6 +675,7 @@ def _plot_forecast_ships_map(
     :param colour_map_object: Same.
     :param min_colour_value: Same.
     :param max_colour_value: Same.
+    :param info_string: Same.
     :param output_dir_name: Same.
     """
 
@@ -688,17 +745,29 @@ def _plot_forecast_ships_map(
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
+    if plot_normalized_occlusion:
+        this_order = numpy.floor(numpy.log10(max_colour_value))
+        this_multiplier = 10 ** -this_order
+    else:
+        this_multiplier = 100.
+
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=occlusion_matrix[k, ...],
+            data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,
             colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value,
-            max_colour_value=max_colour_value,
-            number_format_string='.1f', plot_in_log_space=False
+            min_colour_value=min_colour_value * this_multiplier,
+            max_colour_value=max_colour_value * this_multiplier,
+            number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+            plot_in_log_space=False
         )
+
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
@@ -742,12 +811,16 @@ def _plot_forecast_ships_map(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value, vmax=max_colour_value
+        vmin=min_colour_value * this_multiplier,
+        vmax=max_colour_value * this_multiplier
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
         else 'Post-occlusion probability'
     )
+    label_string += r' $\times$'
+    label_string += '{0:.1g}'.format(this_multiplier)
+
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
         colour_map_object=colour_map_object,
@@ -758,14 +831,16 @@ def _plot_forecast_ships_map(
 
 
 def _run(occlusion_file_name, example_dir_name, normalization_file_name,
-         plot_normalized_occlusion, spatial_colour_map_name,
-         nonspatial_colour_map_name, min_colour_percentile,
-         max_colour_percentile, smoothing_radius_px, output_dir_name):
+         prediction_file_name, plot_normalized_occlusion,
+         spatial_colour_map_name, nonspatial_colour_map_name,
+         min_colour_percentile, max_colour_percentile, smoothing_radius_px,
+         output_dir_name):
     """Plots occlusion maps.
 
     :param occlusion_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
+    :param prediction_file_name: Same.
     :param plot_normalized_occlusion: Same.
     :param spatial_colour_map_name: Same.
     :param nonspatial_colour_map_name: Same.
@@ -780,6 +855,9 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
     error_checking.assert_is_greater(
         max_colour_percentile, min_colour_percentile
     )
+
+    if prediction_file_name == '':
+        prediction_file_name = None
 
     spatial_colour_map_object = pyplot.get_cmap(spatial_colour_map_name)
     nonspatial_colour_map_object = pyplot.get_cmap(nonspatial_colour_map_name)
@@ -845,14 +923,36 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
             unique_cyclone_id_strings[i]
         )[0]
 
-        for j in example_indices:
+        info_strings = [''] * len(example_indices)
+
+        if prediction_file_name is not None:
+            forecast_prob_matrix, target_classes = (
+                plot_predictors.get_predictions_and_targets(
+                    prediction_file_name=prediction_file_name,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_times_unix_sec=occlusion_dict[occlusion.INIT_TIMES_KEY]
+                )
+            )
+
+            for j in range(len(example_indices)):
+                info_strings[j] = 'RI = {0:s}'.format(
+                    'yes' if target_classes[j] == 1 else 'no'
+                )
+                info_strings[j] += r'$p_{RI}$'
+                info_strings[j] += ' = {0:.2f}'.format(
+                    forecast_prob_matrix[j, 1]
+                )
+
+        for j in range(len(example_indices)):
+            k = example_indices[j]
+
             if plot_normalized_occlusion:
                 this_key = occlusion.THREE_NORM_OCCLUSION_KEY
             else:
                 this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
             occlusion_matrices_example_j = [
-                None if s is None else s[[j], ...]
+                None if s is None else s[[k], ...]
                 for s in occlusion_dict[this_key]
             ]
             occlusion_values_example_j = numpy.concatenate([
@@ -885,14 +985,14 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    occlusion_dict[occlusion.INIT_TIMES_KEY][j],
+                    occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     normalization_table_xarray=normalization_table_xarray,
                     border_latitudes_deg_n=border_latitudes_deg_n,
                     border_longitudes_deg_e=border_longitudes_deg_e,
                     colour_map_object=spatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
-                    output_dir_name=output_dir_name
+                    info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][1] is not None:
@@ -902,11 +1002,11 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    occlusion_dict[occlusion.INIT_TIMES_KEY][j],
+                    occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
-                    output_dir_name=output_dir_name
+                    info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
             if option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
@@ -916,11 +1016,11 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    occlusion_dict[occlusion.INIT_TIMES_KEY][j],
+                    occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
-                    output_dir_name=output_dir_name
+                    info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
             if (
@@ -933,11 +1033,11 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=unique_cyclone_id_strings[i],
                     init_time_unix_sec=
-                    occlusion_dict[occlusion.INIT_TIMES_KEY][j],
+                    occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
                     min_colour_value=min_colour_value,
                     max_colour_value=max_colour_value,
-                    output_dir_name=output_dir_name
+                    info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
 
@@ -949,6 +1049,9 @@ if __name__ == '__main__':
         example_dir_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_DIR_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
         plot_normalized_occlusion=bool(getattr(
             INPUT_ARG_OBJECT, PLOT_NORMALIZED_ARG_NAME

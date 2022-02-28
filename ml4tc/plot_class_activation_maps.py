@@ -27,6 +27,7 @@ import neural_net
 import plotting_utils
 import satellite_plotting
 import predictor_plotting
+import plot_predictors
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -40,6 +41,7 @@ PANEL_SIZE_PX = int(2.5e6)
 GRADCAM_FILE_ARG_NAME = 'input_gradcam_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 COLOUR_MAP_ARG_NAME = 'colour_map_name'
 MIN_COLOUR_PERCENTILE_ARG_NAME = 'min_colour_percentile'
 MAX_COLOUR_PERCENTILE_ARG_NAME = 'max_colour_percentile'
@@ -58,6 +60,11 @@ NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be used to denormalize '
     'brightness-temperature maps before plotting).  Will be read by '
     '`normalization.read_file`.'
+)
+PREDICTION_FILE_HELP_STRING = (
+    'Path to file with predictions and targets, to be shown in figure titles.  '
+    'Will be read by `prediction_io.read_file`.  If you do not want fancy '
+    'figure titles, leave this argument alone.'
 )
 COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for class activation.  Must be accepted by '
@@ -95,6 +102,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NORMALIZATION_FILE_ARG_NAME, type=str, required=True,
     help=NORMALIZATION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
+    help=PREDICTION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + COLOUR_MAP_ARG_NAME, type=str, required=False, default='BuGn',
@@ -161,7 +172,7 @@ def _plot_cam_one_example(
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
         min_colour_percentile, max_colour_percentile, plot_in_log_space,
-        output_dir_name):
+        info_string, output_dir_name):
     """Plots class-activation map for one example.
 
     P = number of points in border set
@@ -184,6 +195,7 @@ def _plot_cam_one_example(
     :param min_colour_percentile: See documentation at top of file.
     :param max_colour_percentile: Same.
     :param plot_in_log_space: Same.
+    :param info_string: Info string (will be appended to title).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
     """
@@ -263,6 +275,11 @@ def _plot_cam_one_example(
             )
         )
 
+        if info_string != '':
+            axes_objects[k].set_title('{0:s}; {1:s}'.format(
+                axes_objects[k].get_title(), info_string
+            ))
+
         panel_file_names[k] = '{0:s}/{1:s}'.format(
             output_dir_name, pathless_output_file_names[k]
         )
@@ -320,8 +337,9 @@ def _plot_cam_one_example(
 
 
 def _run(gradcam_file_name, example_dir_name, normalization_file_name,
-         colour_map_name, min_colour_percentile, max_colour_percentile,
-         plot_in_log_space, smoothing_radius_px, output_dir_name):
+         prediction_file_name, colour_map_name, min_colour_percentile,
+         max_colour_percentile, plot_in_log_space, smoothing_radius_px,
+         output_dir_name):
     """Plots class-activation maps.
 
     This is effectively the main method.
@@ -329,6 +347,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     :param gradcam_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param normalization_file_name: Same.
+    :param prediction_file_name: Same.
     :param colour_map_name: Same.
     :param min_colour_percentile: Same.
     :param max_colour_percentile: Same.
@@ -342,6 +361,9 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     error_checking.assert_is_greater(
         max_colour_percentile, min_colour_percentile
     )
+
+    if prediction_file_name == '':
+        prediction_file_name = None
 
     colour_map_object = pyplot.get_cmap(colour_map_name)
     file_system_utils.mkdir_recursive_if_necessary(
@@ -405,14 +427,37 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
             unique_cyclone_id_strings[i]
         )[0]
 
-        for j in example_indices:
+        info_strings = [''] * len(example_indices)
+
+        if prediction_file_name is not None:
+            forecast_prob_matrix, target_classes = (
+                plot_predictors.get_predictions_and_targets(
+                    prediction_file_name=prediction_file_name,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_times_unix_sec=
+                    class_activation_dict[gradcam.INIT_TIMES_KEY]
+                )
+            )
+
+            for j in range(len(example_indices)):
+                info_strings[j] = 'RI = {0:s}'.format(
+                    'yes' if target_classes[j] == 1 else 'no'
+                )
+                info_strings[j] += r'$p_{RI}$'
+                info_strings[j] += ' = {0:.2f}'.format(
+                    forecast_prob_matrix[j, 1]
+                )
+
+        for j in range(len(example_indices)):
+            k = example_indices[j]
+
             _plot_cam_one_example(
                 data_dict=data_dict,
                 class_activation_dict=class_activation_dict,
                 model_metadata_dict=model_metadata_dict,
                 cyclone_id_string=unique_cyclone_id_strings[i],
                 init_time_unix_sec=
-                class_activation_dict[gradcam.INIT_TIMES_KEY][j],
+                class_activation_dict[gradcam.INIT_TIMES_KEY][k],
                 normalization_table_xarray=normalization_table_xarray,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
@@ -420,7 +465,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
                 min_colour_percentile=min_colour_percentile,
                 max_colour_percentile=max_colour_percentile,
                 plot_in_log_space=plot_in_log_space,
-                output_dir_name=output_dir_name
+                info_string=info_strings[j], output_dir_name=output_dir_name
             )
 
 
@@ -432,6 +477,9 @@ if __name__ == '__main__':
         example_dir_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_DIR_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
         colour_map_name=getattr(INPUT_ARG_OBJECT, COLOUR_MAP_ARG_NAME),
         min_colour_percentile=getattr(

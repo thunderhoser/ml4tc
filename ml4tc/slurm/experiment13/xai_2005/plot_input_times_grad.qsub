@@ -40,6 +40,7 @@ while ($i <= ${#LAG_TIME_COUNTS})
     set use_data_aug_flag=${USE_DATA_AUG_FLAGS[$i]}
 
     set model_dir_name="${TOP_MODEL_DIR_NAME}/num-lag-times=${lag_time_count}_lagged-ships-predictors=${ships_lagged_predictor_group_string}_data-aug=${use_data_aug_flag}"
+    set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
     set saliency_file_name="${model_dir_name}/saliency_maps/saliency_maps_${cyclone_id_string}.nc"
     set output_dir_name="${model_dir_name}/saliency_maps/input_times_grad_maps_${cyclone_id_string}"
 
@@ -47,6 +48,7 @@ while ($i <= ${#LAG_TIME_COUNTS})
     --input_saliency_file_name="${saliency_file_name}" \
     --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
     --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+    --input_prediction_file_name="${prediction_file_name}" \
     --plot_input_times_grad=1 \
     --smoothing_radius_px=2 \
     --output_dir_name="${output_dir_name}"
