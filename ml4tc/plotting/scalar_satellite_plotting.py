@@ -356,7 +356,7 @@ def plot_raw_numbers_multi_times(
                 number_format_string.format(data_matrix[i, j]),
                 fontsize=font_size,
                 fontstyle='italic' if data_matrix[i, j] < 0 else 'normal',
-                fontweight='bold' if data_matrix[i, j] > 0 else 'normal',
+                fontweight='bold',
                 color=rgb_matrix[i, j, ...],
                 horizontalalignment='center', verticalalignment='center',
                 transform=axes_object.transAxes

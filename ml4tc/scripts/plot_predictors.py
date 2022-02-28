@@ -7,6 +7,7 @@ matplotlib.use('agg')
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.plotting import imagemagick_utils
 from ml4tc.io import example_io
 from ml4tc.io import border_io
@@ -166,8 +167,8 @@ def _get_intensities(example_table_xarray, init_times_unix_sec,
     return current_intensities_kt, future_intensities_kt
 
 
-def _get_predictions_and_targets(prediction_file_name, cyclone_id_string,
-                                 init_times_unix_sec):
+def get_predictions_and_targets(prediction_file_name, cyclone_id_string,
+                                init_times_unix_sec):
     """Returns prediction and target for each forecast-initialization time.
 
     T = number of forecast-initialization times
@@ -182,6 +183,11 @@ def _get_predictions_and_targets(prediction_file_name, cyclone_id_string,
     :return: target_classes: length-T numpy array of target classes (integers in
         range 0...[K - 1]).
     """
+
+    error_checking.assert_is_string(prediction_file_name)
+    error_checking.assert_is_string(cyclone_id_string)
+    error_checking.assert_is_integer_numpy_array(init_times_unix_sec)
+    error_checking.assert_is_numpy_array(init_times_unix_sec, num_dimensions=1)
 
     print('Reading data from: "{0:s}"...'.format(prediction_file_name))
     prediction_dict = prediction_io.read_file(prediction_file_name)
@@ -560,7 +566,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         )
 
     if prediction_file_name != '':
-        forecast_prob_matrix, target_classes = _get_predictions_and_targets(
+        forecast_prob_matrix, target_classes = get_predictions_and_targets(
             prediction_file_name=prediction_file_name,
             cyclone_id_string=cyclone_id_string,
             init_times_unix_sec=init_times_unix_sec
