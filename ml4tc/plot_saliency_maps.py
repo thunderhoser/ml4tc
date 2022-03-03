@@ -549,20 +549,44 @@ def _plot_lagged_ships_saliency(
         )
     )
 
-    saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
-        num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(builtin_lag_times_hours),
-        num_forecast_predictors=num_forecast_predictors,
-        num_forecast_hours=len(forecast_hours)
-    )[0][0, ...]
+    if len(builtin_lag_times_hours) == 1:
+        orig_saliency_matrix = saliency_matrix + 0.
+        saliency_matrix = numpy.array([], dtype=float)
+
+        for j in range(num_model_lag_times):
+            new_saliency_matrix = numpy.expand_dims(
+                orig_saliency_matrix[j, :], axis=0
+            )
+            new_saliency_matrix = numpy.expand_dims(new_saliency_matrix, axis=0)
+            new_saliency_matrix = neural_net.ships_predictors_3d_to_4d(
+                predictor_matrix_3d=new_saliency_matrix,
+                num_lagged_predictors=num_lagged_predictors,
+                num_builtin_lag_times=len(builtin_lag_times_hours),
+                num_forecast_predictors=num_forecast_predictors,
+                num_forecast_hours=len(forecast_hours)
+            )[0][:, 0, ...]
+
+            if saliency_matrix.size == 0:
+                saliency_matrix = new_saliency_matrix + 0.
+            else:
+                saliency_matrix = numpy.concatenate(
+                    (saliency_matrix, new_saliency_matrix), axis=1
+                )
+    else:
+        saliency_matrix = neural_net.ships_predictors_3d_to_4d(
+            predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
+            num_lagged_predictors=num_lagged_predictors,
+            num_builtin_lag_times=len(builtin_lag_times_hours),
+            num_forecast_predictors=num_forecast_predictors,
+            num_forecast_hours=len(forecast_hours)
+        )[0][0, ...]
 
     this_order = numpy.floor(numpy.log10(max_colour_value))
     this_multiplier = 10 ** -this_order
 
-    panel_file_names = [''] * num_model_lag_times
+    panel_file_names = [''] * len(axes_objects)
 
-    for k in range(num_model_lag_times):
+    for k in range(len(axes_objects)):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,
