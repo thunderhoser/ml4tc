@@ -432,7 +432,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
             )
 
             for j in range(len(example_indices)):
-                info_strings[j] = 'RI = {0:s}'.format(
+                info_strings[j] = 'RI = {0:s}; '.format(
                     'yes' if target_classes[j] == 1 else 'no'
                 )
                 info_strings[j] += r'$p_{RI}$'
