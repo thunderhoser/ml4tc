@@ -566,13 +566,39 @@ def _plot_lagged_ships_map(
         )
     )
 
-    occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
-        num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(builtin_lag_times_hours),
-        num_forecast_predictors=num_forecast_predictors,
-        num_forecast_hours=len(forecast_hours)
-    )[0][0, ...]
+    if len(builtin_lag_times_hours) == 1:
+        orig_occlusion_matrix = occlusion_matrix + 0.
+        occlusion_matrix = numpy.array([], dtype=float)
+
+        for j in range(num_model_lag_times):
+            new_occlusion_matrix = numpy.expand_dims(
+                orig_occlusion_matrix[j, :], axis=0
+            )
+            new_occlusion_matrix = numpy.expand_dims(
+                new_occlusion_matrix, axis=0
+            )
+            new_occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
+                predictor_matrix_3d=new_occlusion_matrix,
+                num_lagged_predictors=num_lagged_predictors,
+                num_builtin_lag_times=len(builtin_lag_times_hours),
+                num_forecast_predictors=num_forecast_predictors,
+                num_forecast_hours=len(forecast_hours)
+            )[0][:, 0, ...]
+
+            if occlusion_matrix.size == 0:
+                occlusion_matrix = new_occlusion_matrix + 0.
+            else:
+                occlusion_matrix = numpy.concatenate(
+                    (occlusion_matrix, new_occlusion_matrix), axis=1
+                )
+    else:
+        occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
+            predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
+            num_lagged_predictors=num_lagged_predictors,
+            num_builtin_lag_times=len(builtin_lag_times_hours),
+            num_forecast_predictors=num_forecast_predictors,
+            num_forecast_hours=len(forecast_hours)
+        )[0][0, ...]
 
     if plot_normalized_occlusion:
         this_order = numpy.floor(numpy.log10(max_colour_value))
@@ -580,9 +606,9 @@ def _plot_lagged_ships_map(
     else:
         this_multiplier = 100.
 
-    panel_file_names = [''] * num_model_lag_times
+    panel_file_names = [''] * len(axes_objects)
 
-    for k in range(num_model_lag_times):
+    for k in range(len(axes_objects)):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k], font_size=25,

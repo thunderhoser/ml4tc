@@ -415,12 +415,20 @@ def _predictor_indices_to_metadata(model_metadata_dict, one_step_result_dict):
                 satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
             ]
         elif i == 1:
-            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
                 continue
 
             predictor_names_by_matrix[i] = (
                 t[neural_net.SATELLITE_PREDICTORS_KEY]
             )
+
+            if (
+                    satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+                    in predictor_names_by_matrix[i]
+            ):
+                predictor_names_by_matrix[i].remove(
+                    satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+                )
         else:
             if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
                 predictor_names_by_matrix[i] += (
@@ -545,12 +553,21 @@ def _run_forward_test_one_step(
         t = training_option_dict
 
         if i == 0:
-            num_variables = three_predictor_matrices[i].shape[-1]
-        elif i == 1:
-            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
                 continue
 
-            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
+                continue
+
+            num_variables = len([
+                p for p in t[neural_net.SATELLITE_PREDICTORS_KEY] if
+                p != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+            ])
+
+            if num_variables == 0:
+                continue
         else:
             num_variables = 0
             if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
@@ -691,12 +708,21 @@ def _run_backwards_test_one_step(
         t = training_option_dict
 
         if i == 0:
-            num_variables = three_predictor_matrices[i].shape[-1]
-        elif i == 1:
-            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
                 continue
 
-            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
+                continue
+
+            num_variables = len([
+                p for p in t[neural_net.SATELLITE_PREDICTORS_KEY] if
+                p != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+            ])
+
+            if num_variables == 0:
+                continue
         else:
             num_variables = 0
             if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
@@ -897,12 +923,21 @@ def run_forward_test(
         t = training_option_dict
 
         if i == 0:
-            num_variables = three_predictor_matrices[i].shape[-1]
-        elif i == 1:
-            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
                 continue
 
-            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
+                continue
+
+            num_variables = len([
+                p for p in t[neural_net.SATELLITE_PREDICTORS_KEY] if
+                p != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+            ])
+
+            if num_variables == 0:
+                continue
         else:
             num_variables = 0
             if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
@@ -1044,12 +1079,21 @@ def run_backwards_test(
         t = training_option_dict
 
         if i == 0:
-            num_variables = three_predictor_matrices[i].shape[-1]
-        elif i == 1:
-            if t[neural_net.SATELLITE_PREDICTORS_KEY] is None:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
                 continue
 
-            num_variables = len(t[neural_net.SATELLITE_PREDICTORS_KEY])
+            num_variables = three_predictor_matrices[i].shape[-1]
+        elif i == 1:
+            if t[neural_net.SATELLITE_LAG_TIMES_KEY] is None:
+                continue
+
+            num_variables = len([
+                p for p in t[neural_net.SATELLITE_PREDICTORS_KEY] if
+                p != satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+            ])
+
+            if num_variables == 0:
+                continue
         else:
             num_variables = 0
             if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
