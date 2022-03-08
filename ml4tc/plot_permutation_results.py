@@ -17,7 +17,29 @@ import file_system_utils
 import gg_permutation
 import gg_plotting_utils
 import permutation_plotting
+import satellite_utils
 import permutation
+import ships_plotting
+
+VARIABLE_ABBREV_TO_VERBOSE = ships_plotting.VARIABLE_ABBREV_TO_VERBOSE
+VARIABLE_ABBREV_TO_VERBOSE.update({
+    satellite_utils.BRIGHTNESS_TEMPERATURE_KEY: 'Satellite image'
+})
+
+for this_key in VARIABLE_ABBREV_TO_VERBOSE:
+    if (
+            VARIABLE_ABBREV_TO_VERBOSE[this_key].endswith(' km') or
+            VARIABLE_ABBREV_TO_VERBOSE[this_key].startswith('Radius of')
+    ):
+        VARIABLE_ABBREV_TO_VERBOSE[this_key] = 'SHIPS satellite: {0:s}'.format(
+            VARIABLE_ABBREV_TO_VERBOSE[this_key]
+        )
+    elif VARIABLE_ABBREV_TO_VERBOSE[this_key] == 'Satellite image':
+        pass
+    else:
+        VARIABLE_ABBREV_TO_VERBOSE[this_key] = 'SHIPS forecast: {0:s}'.format(
+            VARIABLE_ABBREV_TO_VERBOSE[this_key]
+        )
 
 BAR_FACE_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
 FIGURE_RESOLUTION_DPI = 300
@@ -78,6 +100,16 @@ def _results_to_gg_format(permutation_dict):
     permutation_dict[gg_permutation.BACKWARDS_FLAG] = (
         permutation_dict[permutation.BACKWARDS_FLAG_KEY]
     )
+
+    permutation_dict[gg_permutation.BEST_PREDICTORS_KEY] = [
+        VARIABLE_ABBREV_TO_VERBOSE[s] for s in
+        permutation_dict[gg_permutation.BEST_PREDICTORS_KEY]
+    ]
+
+    permutation_dict[gg_permutation.STEP1_PREDICTORS_KEY] = [
+        VARIABLE_ABBREV_TO_VERBOSE[s] for s in
+        permutation_dict[gg_permutation.STEP1_PREDICTORS_KEY]
+    ]
 
     return permutation_dict
 
