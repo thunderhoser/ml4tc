@@ -63,7 +63,7 @@ while ($i <= ${#LAG_TIME_COUNTS})
         --layer_name="${LAYER_NAMES[$i]}" \
         --neuron_indices 0 \
         --ideal_activation=1 \
-        --num_smoothgrad_samples=${sample_size} \
+        --num_smoothgrad_samples=1 \
         --smoothgrad_noise_stdev=${noise_stdev} \
         --output_file_name="${output_file_name}"
     end
