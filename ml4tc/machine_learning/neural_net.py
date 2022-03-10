@@ -103,6 +103,7 @@ PREDICT_TD_TO_TS_KEY = 'predict_td_to_ts'
 CLASS_CUTOFFS_KEY = 'class_cutoffs_m_s01'
 NUM_GRID_ROWS_KEY = 'num_grid_rows'
 NUM_GRID_COLUMNS_KEY = 'num_grid_columns'
+USE_TIME_DIFFS_KEY = 'use_time_diffs_gridded_sat'
 SATELLITE_TIME_TOLERANCE_KEY = 'satellite_time_tolerance_sec'
 SATELLITE_MAX_MISSING_TIMES_KEY = 'satellite_max_missing_times'
 SHIPS_TIME_TOLERANCE_KEY = 'ships_time_tolerance_sec'
@@ -167,6 +168,7 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     CLASS_CUTOFFS_KEY: numpy.array([30 * KT_TO_METRES_PER_SECOND]),
     NUM_GRID_ROWS_KEY: None,
     NUM_GRID_COLUMNS_KEY: None,
+    USE_TIME_DIFFS_KEY: False,
     PREDICT_TD_TO_TS_KEY: False,
     DATA_AUG_NUM_TRANS_KEY: 0,
     DATA_AUG_MAX_TRANS_KEY: None,
@@ -1475,6 +1477,7 @@ def _check_generator_args(option_dict):
         error_checking.assert_is_greater(option_dict[NUM_GRID_COLUMNS_KEY], 0)
         assert numpy.mod(option_dict[NUM_GRID_COLUMNS_KEY], 2) == 0
 
+    error_checking.assert_is_boolean(option_dict[USE_TIME_DIFFS_KEY])
     error_checking.assert_is_integer(option_dict[SATELLITE_TIME_TOLERANCE_KEY])
     error_checking.assert_is_geq(option_dict[SATELLITE_TIME_TOLERANCE_KEY], 0)
     error_checking.assert_is_integer(
@@ -1857,6 +1860,10 @@ def read_metafile(pickle_file_name):
         validation_option_dict[NUM_GRID_ROWS_KEY] = None
         validation_option_dict[NUM_GRID_COLUMNS_KEY] = None
 
+    if USE_TIME_DIFFS_KEY not in training_option_dict:
+        training_option_dict[USE_TIME_DIFFS_KEY] = False
+        validation_option_dict[USE_TIME_DIFFS_KEY] = False
+
     # TODO(thunderhoser): This is a HACK.
     if (
             training_option_dict[SATELLITE_LAG_TIMES_KEY] is not None and
@@ -2085,6 +2092,7 @@ def create_inputs(option_dict):
     option_dict['class_cutoffs_m_s01']: Same.
     option_dict['num_grid_rows']: Same.
     option_dict['num_grid_columns']: Same.
+    option_dict['use_time_diffs_gridded_sat']: Same.
 
     :return: data_dict: See doc for `_read_one_example_file`.
     """
@@ -2115,6 +2123,7 @@ def create_inputs(option_dict):
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
     num_grid_rows = option_dict[NUM_GRID_ROWS_KEY]
     num_grid_columns = option_dict[NUM_GRID_COLUMNS_KEY]
+    use_time_diffs_gridded_sat = option_dict[USE_TIME_DIFFS_KEY]
 
     data_dict = _read_one_example_file(
         example_file_name=example_file_name,
@@ -2136,13 +2145,27 @@ def create_inputs(option_dict):
         ships_max_missing_times=ships_max_missing_times,
         use_climo_as_backup=use_climo_as_backup,
         class_cutoffs_m_s01=class_cutoffs_m_s01,
-        num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
+        num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
+        use_time_diffs_gridded_sat=use_time_diffs_gridded_sat
     )
 
     data_dict[PREDICTOR_MATRICES_KEY] = [
         None if m is None else m.astype('float16')
         for m in data_dict[PREDICTOR_MATRICES_KEY]
     ]
+
+    if (
+            use_time_diffs_gridded_sat and
+            satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+            in satellite_predictor_names
+    ):
+        num_lag_times = len(satellite_lag_times_minutes)
+
+        for j in range(num_lag_times - 1):
+            data_dict[PREDICTOR_MATRICES_KEY][0][..., j, 0] = (
+                data_dict[PREDICTOR_MATRICES_KEY][0][..., -1, 0] -
+                data_dict[PREDICTOR_MATRICES_KEY][0][..., j, 0]
+            )
 
     return data_dict
 
@@ -2207,6 +2230,8 @@ def input_generator(option_dict):
     option_dict['num_grid_rows']: Number of rows to keep in brightness-
         temperature grid.  If you want to keep all rows, make this None.
     option_dict['num_grid_columns']: Same but for columns.
+    option_dict['use_time_diffs_gridded_sat']: Boolean flag.  If True, will turn
+        gridded satellite data at non-zero lag times into temporal differences.
     option_dict['data_aug_num_translations']: Number of translations per example
         for data augmentation.  You can make this 0.
     option_dict['data_aug_max_translation_px']: Max translation (pixels) for
@@ -2254,6 +2279,7 @@ def input_generator(option_dict):
     class_cutoffs_m_s01 = option_dict[CLASS_CUTOFFS_KEY]
     num_grid_rows = option_dict[NUM_GRID_ROWS_KEY]
     num_grid_columns = option_dict[NUM_GRID_COLUMNS_KEY]
+    use_time_diffs_gridded_sat = option_dict[USE_TIME_DIFFS_KEY]
     data_aug_num_translations = option_dict[DATA_AUG_NUM_TRANS_KEY]
     data_aug_max_translation_px = option_dict[DATA_AUG_MAX_TRANS_KEY]
     data_aug_num_rotations = option_dict[DATA_AUG_NUM_ROTATIONS_KEY]
@@ -2347,6 +2373,7 @@ def input_generator(option_dict):
                 use_climo_as_backup=use_climo_as_backup,
                 class_cutoffs_m_s01=class_cutoffs_m_s01,
                 num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
+                use_time_diffs_gridded_sat=use_time_diffs_gridded_sat,
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
             )
 
@@ -2400,6 +2427,19 @@ def input_generator(option_dict):
                 num_noisings=data_aug_num_noisings,
                 noise_stdev=data_aug_noise_stdev
             )
+
+        if (
+                use_time_diffs_gridded_sat and
+                satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
+                in satellite_predictor_names
+        ):
+            num_lag_times = len(satellite_lag_times_minutes)
+
+            for j in range(num_lag_times - 1):
+                predictor_matrices[0][..., j, 0] = (
+                    predictor_matrices[0][..., -1, 0] -
+                    predictor_matrices[0][..., j, 0]
+                )
 
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
         target_array = target_array.astype('float16')
