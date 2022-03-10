@@ -66,6 +66,8 @@ while ($i <= ${#LAG_TIME_COUNTS})
         --num_smoothgrad_samples=1 \
         --smoothgrad_noise_stdev=${noise_stdev} \
         --output_file_name="${output_file_name}"
+        
+        @ j = $j + 1
     end
     
     python3 -u "${CODE_DIR_NAME}/average_smoothgrad_saliency_maps.py" \
