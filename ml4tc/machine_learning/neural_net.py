@@ -2145,8 +2145,7 @@ def create_inputs(option_dict):
         ships_max_missing_times=ships_max_missing_times,
         use_climo_as_backup=use_climo_as_backup,
         class_cutoffs_m_s01=class_cutoffs_m_s01,
-        num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
-        use_time_diffs_gridded_sat=use_time_diffs_gridded_sat
+        num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns
     )
 
     data_dict[PREDICTOR_MATRICES_KEY] = [
@@ -2373,7 +2372,6 @@ def input_generator(option_dict):
                 use_climo_as_backup=use_climo_as_backup,
                 class_cutoffs_m_s01=class_cutoffs_m_s01,
                 num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
-                use_time_diffs_gridded_sat=use_time_diffs_gridded_sat,
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
             )
 
