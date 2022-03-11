@@ -80,6 +80,14 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
             saliency_dict[saliency.CYCLONE_IDS_KEY] ==
             new_saliency_dict[saliency.CYCLONE_IDS_KEY]
         )
+
+        for t in saliency_dict[saliency.INIT_TIMES_KEY]:
+            print(t)
+        print('\n\n\n')
+        for t in new_saliency_dict[saliency.INIT_TIMES_KEY]:
+            print(t)
+        print('\n\n\n**********************\n\n\n')
+
         assert numpy.array_equal(
             saliency_dict[saliency.INIT_TIMES_KEY],
             new_saliency_dict[saliency.INIT_TIMES_KEY]
