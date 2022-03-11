@@ -97,6 +97,9 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
                 ]
             )
 
+        print(new_saliency_dict[saliency.NEURON_INDICES_KEY])
+        print('\n\n\n\n************\n\n\n\n')
+
         if not bool(saliency_dict):
             saliency_dict = copy.deepcopy(new_saliency_dict)
 
