@@ -479,6 +479,10 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
+    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
+        neural_net.USE_TIME_DIFFS_KEY
+    ] = False
+
     validation_option_dict = model_metadata_dict[
         neural_net.VALIDATION_OPTIONS_KEY
     ]

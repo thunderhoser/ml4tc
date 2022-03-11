@@ -387,6 +387,10 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
 
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
+    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
+        neural_net.USE_TIME_DIFFS_KEY
+    ] = False
+
     base_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )

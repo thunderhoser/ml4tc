@@ -45,6 +45,7 @@ MAX_EXAMPLES_PER_CYCLONE_ARG_NAME = 'max_examples_per_cyclone_in_batch'
 CLASS_CUTOFFS_ARG_NAME = 'class_cutoffs_kt'
 NUM_ROWS_ARG_NAME = 'num_grid_rows'
 NUM_COLUMNS_ARG_NAME = 'num_grid_columns'
+USE_TIME_DIFFS_ARG_NAME = 'use_time_diffs_gridded_sat'
 PREDICT_TD_TO_TS_ARG_NAME = 'predict_td_to_ts'
 DATA_AUG_NUM_TRANS_ARG_NAME = 'data_aug_num_translations'
 DATA_AUG_MAX_TRANS_ARG_NAME = 'data_aug_max_translation_px'
@@ -156,6 +157,10 @@ NUM_ROWS_HELP_STRING = (
 NUM_COLUMNS_HELP_STRING = (
     'Number of columns to keep in brightness-temperature grid.  If you want to '
     'keep all columns, leave this alone.'
+)
+USE_TIME_DIFFS_HELP_STRING = (
+    'Boolean flag.  If 1, will turn gridded satellite data at non-zero lag '
+    'times into temporal differences.'
 )
 DATA_AUG_NUM_TRANS_HELP_STRING = (
     'Number of translations per example for data augmentation.  You can make '
@@ -332,6 +337,10 @@ def add_input_args(parser_object):
     parser_object.add_argument(
         '--' + NUM_COLUMNS_ARG_NAME, type=int, required=False, default=-1,
         help=NUM_COLUMNS_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + USE_TIME_DIFFS_ARG_NAME, type=int, required=False, default=0,
+        help=USE_TIME_DIFFS_HELP_STRING
     )
     parser_object.add_argument(
         '--' + NUM_EPOCHS_ARG_NAME, type=int, required=False, default=1000,

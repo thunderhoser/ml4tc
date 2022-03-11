@@ -132,10 +132,6 @@ def get_saliency_one_neuron(
             i + NUM_EXAMPLES_PER_BATCH, num_examples
         ])
 
-        print('Computing saliency for examples {0:d}-{1:d} of {2:d}...'.format(
-            first_index + 1, last_index, num_examples
-        ))
-
         these_matrices = saliency_utils.do_saliency_calculations(
             model_object=model_object, loss_tensor=loss_tensor,
             list_of_input_matrices=[
