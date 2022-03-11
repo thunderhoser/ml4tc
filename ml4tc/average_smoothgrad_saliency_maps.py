@@ -66,8 +66,8 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
     input_file_names.sort()
     assert len(input_file_names) == num_smoothgrad_samples
 
-    three_saliency_matrices = []
-    three_input_grad_matrices = []
+    three_saliency_matrices = [None] * 3
+    three_input_grad_matrices = [None] * 3
     saliency_dict = dict()
 
     for i in range(num_smoothgrad_samples):
@@ -107,20 +107,19 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
             saliency.THREE_INPUT_GRAD_KEY
         ]
 
-        if len(three_saliency_matrices) == 0:
-            for j in range(3):
+        if all([s is None for s in three_saliency_matrices]):
+            for j in range(len(three_saliency_matrices)):
                 if new_saliency_matrices[j] is None:
-                    three_saliency_matrices[j] = None
-                    three_input_grad_matrices[j] = None
-                else:
-                    three_saliency_matrices[j] = new_saliency_matrices[j] + 0.
-                    three_input_grad_matrices[j] = (
-                        new_input_grad_matrices[j] + 0.
-                    )
+                    continue
+
+                three_saliency_matrices[j] = new_saliency_matrices[j] + 0.
+                three_input_grad_matrices[j] = (
+                    new_input_grad_matrices[j] + 0.
+                )
 
             continue
 
-        for j in range(3):
+        for j in range(len(three_saliency_matrices)):
             if new_saliency_matrices[j] is None:
                 continue
 
@@ -157,7 +156,7 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
 
     for this_file_name in input_file_names:
         print('Deleting file: "{0:s}"...'.format(this_file_name))
-        os.remove(this_file_name)
+        # os.remove(this_file_name)
 
 
 if __name__ == '__main__':
