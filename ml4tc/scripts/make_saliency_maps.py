@@ -52,7 +52,7 @@ IDEAL_ACTIVATION_HELP_STRING = (
 )
 NUM_SMOOTHGRAD_SAMPLES_HELP_STRING = (
     'Number of samples for SmoothGrad.  If you do not want to use SmoothGrad, '
-    'make this argument <= 1.'
+    'make this argument <= 0.'
 )
 SMOOTHGRAD_STDEV_HELP_STRING = (
     'Standard deviation of Gaussian noise for SmoothGrad.  If you do not want '
@@ -129,7 +129,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     if len(years) == 1 and years[0] < 0:
         years = None
 
-    use_smoothgrad = num_smoothgrad_samples > 1
+    use_smoothgrad = num_smoothgrad_samples > 0
     if use_smoothgrad:
         error_checking.assert_is_greater(smoothgrad_noise_stdev, 0.)
 

@@ -1,5 +1,6 @@
 """Average saliency maps created with SmoothGrad."""
 
+import os
 import copy
 import glob
 import argparse
@@ -58,13 +59,37 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
     input_file_names.sort()
     assert len(input_file_names) == num_smoothgrad_samples
 
-    three_saliency_matrices = []
-    three_input_grad_matrices = []
+    three_saliency_matrices = [None] * 3
+    three_input_grad_matrices = [None] * 3
     saliency_dict = dict()
 
     for i in range(num_smoothgrad_samples):
         print('Reading data from: "{0:s}"...'.format(input_file_names[i]))
         new_saliency_dict = saliency.read_file(input_file_names[i])
+
+        sort_indices = numpy.argsort(new_saliency_dict[saliency.INIT_TIMES_KEY])
+        new_saliency_dict[saliency.INIT_TIMES_KEY] = (
+            new_saliency_dict[saliency.INIT_TIMES_KEY][sort_indices]
+        )
+        new_saliency_dict[saliency.CYCLONE_IDS_KEY] = [
+            new_saliency_dict[saliency.CYCLONE_IDS_KEY][k] for k in sort_indices
+        ]
+
+        for j in range(len(new_saliency_dict[saliency.THREE_SALIENCY_KEY])):
+            if new_saliency_dict[saliency.THREE_SALIENCY_KEY][j] is None:
+                continue
+
+            new_saliency_dict[saliency.THREE_SALIENCY_KEY][j] = (
+                new_saliency_dict[saliency.THREE_SALIENCY_KEY][j][
+                    sort_indices, ...
+                ]
+            )
+            new_saliency_dict[saliency.THREE_INPUT_GRAD_KEY][j] = (
+                new_saliency_dict[saliency.THREE_INPUT_GRAD_KEY][j][
+                    sort_indices, ...
+                ]
+            )
+
         if not bool(saliency_dict):
             saliency_dict = copy.deepcopy(new_saliency_dict)
 
@@ -99,20 +124,19 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
             saliency.THREE_INPUT_GRAD_KEY
         ]
 
-        if len(three_saliency_matrices) == 0:
-            for j in range(3):
+        if all([s is None for s in three_saliency_matrices]):
+            for j in range(len(three_saliency_matrices)):
                 if new_saliency_matrices[j] is None:
-                    three_saliency_matrices[j] = None
-                    three_input_grad_matrices[j] = None
-                else:
-                    three_saliency_matrices[j] = new_saliency_matrices[j] + 0.
-                    three_input_grad_matrices[j] = (
-                        new_input_grad_matrices[j] + 0.
-                    )
+                    continue
+
+                three_saliency_matrices[j] = new_saliency_matrices[j] + 0.
+                three_input_grad_matrices[j] = (
+                    new_input_grad_matrices[j] + 0.
+                )
 
             continue
 
-        for j in range(3):
+        for j in range(len(three_saliency_matrices)):
             if new_saliency_matrices[j] is None:
                 continue
 
@@ -146,6 +170,10 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
         neuron_indices=saliency_dict[saliency.NEURON_INDICES_KEY],
         ideal_activation=saliency_dict[saliency.IDEAL_ACTIVATION_KEY]
     )
+
+    for this_file_name in input_file_names:
+        print('Deleting file: "{0:s}"...'.format(this_file_name))
+        os.remove(this_file_name)
 
 
 if __name__ == '__main__':
