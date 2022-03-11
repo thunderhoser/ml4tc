@@ -727,6 +727,7 @@ def read_file(netcdf_file_name):
         IDEAL_ACTIVATION_KEY: getattr(dataset_object, IDEAL_ACTIVATION_KEY)
     }
 
+    print(saliency_dict[NEURON_INDICES_KEY])
     print(saliency_dict[NEURON_INDICES_KEY].shape)
 
     dataset_object.close()
