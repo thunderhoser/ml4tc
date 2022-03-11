@@ -67,7 +67,7 @@ if ($use_data_aug_flag > 0) then
         --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
         --lead_time_hours=24 \
         --satellite_lag_times_minutes ${lag_time_string_minutes} \
-        --satellite_predictor_names "" \
+        --satellite_predictor_names "satellite_brightness_temp_kelvins" \
         --use_time_diffs_gridded_sat=1 \
         --ships_lag_times_hours 0 6 12 18 24 \
         --ships_predictor_names_lagged ${ships_lagged_predictor_string} \
@@ -102,7 +102,7 @@ if ($use_data_aug_flag > 0) then
         --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
         --lead_time_hours=24 \
         --satellite_lag_times_minutes ${lag_time_string_minutes} \
-        --satellite_predictor_names "" \
+        --satellite_predictor_names "satellite_brightness_temp_kelvins" \
         --use_time_diffs_gridded_sat=1 \
         --ships_lag_times_hours 0 6 12 18 24 \
         --ships_predictor_names_lagged ${ships_lagged_predictor_string} \
@@ -138,7 +138,7 @@ else
     --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
     --lead_time_hours=24 \
     --satellite_lag_times_minutes ${lag_time_string_minutes} \
-    --satellite_predictor_names "" \
+    --satellite_predictor_names "satellite_brightness_temp_kelvins" \
     --use_time_diffs_gridded_sat=1 \
     --ships_lag_times_hours 0 6 12 18 24 \
     --ships_predictor_names_lagged ${ships_lagged_predictor_string} \
