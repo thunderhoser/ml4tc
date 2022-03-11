@@ -727,8 +727,10 @@ def read_file(netcdf_file_name):
         IDEAL_ACTIVATION_KEY: getattr(dataset_object, IDEAL_ACTIVATION_KEY)
     }
 
-    print(saliency_dict[NEURON_INDICES_KEY])
-    print(saliency_dict[NEURON_INDICES_KEY].shape)
+    if len(saliency_dict[NEURON_INDICES_KEY].shape == 0):
+        saliency_dict[NEURON_INDICES_KEY] = numpy.array(
+            [saliency_dict[NEURON_INDICES_KEY]], dtype=int
+        )
 
     dataset_object.close()
     return saliency_dict
