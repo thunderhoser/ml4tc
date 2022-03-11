@@ -25,11 +25,11 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          num_positive_examples_per_batch,
          num_negative_examples_per_batch, max_examples_per_cyclone_in_batch,
          predict_td_to_ts, class_cutoffs_kt, num_grid_rows, num_grid_columns,
-         data_aug_num_translations, data_aug_max_translation_px,
-         data_aug_num_rotations, data_aug_max_rotation_deg,
-         data_aug_num_noisings, data_aug_noise_stdev, num_epochs,
-         num_training_batches_per_epoch, num_validation_batches_per_epoch,
-         plateau_lr_multiplier):
+         use_time_diffs_gridded_sat, data_aug_num_translations,
+         data_aug_max_translation_px, data_aug_num_rotations,
+         data_aug_max_rotation_deg, data_aug_num_noisings, data_aug_noise_stdev,
+         num_epochs, num_training_batches_per_epoch,
+         num_validation_batches_per_epoch, plateau_lr_multiplier):
     """Trains neural net.
 
     This is effectively the main method.
@@ -61,6 +61,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param class_cutoffs_kt: Same.
     :param num_grid_rows: Same.
     :param num_grid_columns: Same.
+    :param use_time_diffs_gridded_sat: Same.
     :param data_aug_num_translations: Same.
     :param data_aug_max_translation_px: Same.
     :param data_aug_num_rotations: Same.
@@ -126,6 +127,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
             class_cutoffs_kt * KT_TO_METRES_PER_SECOND,
         neural_net.NUM_GRID_ROWS_KEY: num_grid_rows,
         neural_net.NUM_GRID_COLUMNS_KEY: num_grid_columns,
+        neural_net.USE_TIME_DIFFS_KEY: use_time_diffs_gridded_sat,
         neural_net.SATELLITE_TIME_TOLERANCE_KEY:
             satellite_time_tolerance_training_sec,
         neural_net.SATELLITE_MAX_MISSING_TIMES_KEY:
@@ -265,6 +267,9 @@ if __name__ == '__main__':
         num_grid_columns=getattr(
             INPUT_ARG_OBJECT, training_args.NUM_COLUMNS_ARG_NAME
         ),
+        use_time_diffs_gridded_sat=bool(getattr(
+            INPUT_ARG_OBJECT, training_args.USE_TIME_DIFFS_ARG_NAME
+        )),
         data_aug_num_translations=getattr(
             INPUT_ARG_OBJECT, training_args.DATA_AUG_NUM_TRANS_ARG_NAME
         ),
