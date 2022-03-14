@@ -25,6 +25,9 @@ DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
 DEFAULT_CUTOFF_TEMP_KELVINS = 240.
 
+DEFAULT_DIFF_COLOUR_MAP_NAME = 'seismic'
+DEFAULT_MAX_TEMP_DIFF_KELVINS = 50.
+
 DEFAULT_CONTOUR_CMAP_OBJECT = pyplot.get_cmap('binary')
 DEFAULT_CONTOUR_WIDTH = 2
 
@@ -100,6 +103,29 @@ def get_colour_scheme(
     return colour_map_object, colour_norm_object
 
 
+def get_diff_colour_scheme(
+        colour_map_name=DEFAULT_DIFF_COLOUR_MAP_NAME,
+        max_absolute_diff_kelvins=DEFAULT_MAX_TEMP_DIFF_KELVINS):
+    """Returns colour scheme for brightness-temperature differences.
+
+    :param colour_map_name: Name of colour scheme.
+    :param max_absolute_diff_kelvins: Max absolute temperature difference in
+        colour scheme.
+    :return: colour_map_object: See doc for `get_colour_scheme`.
+    :return: colour_norm_object: Same.
+    """
+
+    error_checking.assert_is_string(colour_map_name)
+    error_checking.assert_is_greater(max_absolute_diff_kelvins, 0.)
+
+    colour_map_object = pyplot.get_cmap(name=colour_map_name, lut=1001)
+    colour_norm_object = pyplot.Normalize(
+        vmin=-max_absolute_diff_kelvins, vmax=max_absolute_diff_kelvins
+    )
+
+    return colour_map_object, colour_norm_object
+
+
 def add_colour_bar(
         brightness_temp_matrix_kelvins, axes_object, colour_map_object,
         colour_norm_object, orientation_string, font_size):
@@ -137,13 +163,20 @@ def add_colour_bar(
         extend_min=True, extend_max=True, font_size=font_size, padding=padding
     )
 
+    if hasattr(colour_norm_object, 'boundaries'):
+        min_colour_value = colour_norm_object.boundaries[0]
+        max_colour_value = colour_norm_object.boundaries[-1]
+    else:
+        min_colour_value = colour_norm_object.vmin
+        max_colour_value = colour_norm_object.vmax
+
     num_tick_values = 1 + int(numpy.round(
-        (DEFAULT_MAX_TEMP_KELVINS - DEFAULT_MIN_TEMP_KELVINS) / 10
+        (max_colour_value - min_colour_value) / 10
     ))
     tick_values = numpy.linspace(
-        DEFAULT_MIN_TEMP_KELVINS, DEFAULT_MAX_TEMP_KELVINS, num=num_tick_values,
-        dtype=int
+        min_colour_value, max_colour_value, num=num_tick_values, dtype=float
     )
+    tick_values = numpy.round(tick_values).astype(int)
 
     tick_strings = ['{0:d}'.format(v) for v in tick_values]
     colour_bar_object.set_ticks(tick_values)
@@ -155,7 +188,7 @@ def add_colour_bar(
 def plot_2d_grid(
         brightness_temp_matrix_kelvins, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, cbar_orientation_string='vertical',
-        font_size=30.):
+        font_size=30., plotting_diffs=False):
     """Plots brightness temperature on 2-D grid.
 
     M = number of rows in grid
@@ -174,10 +207,13 @@ def plot_2d_grid(
     :param cbar_orientation_string: Colour-bar orientation.  May be
         "horizontal", "vertical", or None.
     :param font_size: Font size.
+    :param plotting_diffs: Boolean flag.  If True (False), plotting differences
+        (raw values).
     :return: colour_bar_object: Colour-bar handle (instance of
         `matplotlib.pyplot.colorbar`).
     """
 
+    error_checking.assert_is_boolean(plotting_diffs)
     error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
     longitude_array_deg_e = lng_conversion.convert_lng_negative_in_west(
         longitude_array_deg_e
@@ -252,7 +288,11 @@ def plot_2d_grid(
     temp_matrix_to_plot_kelvins = numpy.ma.masked_where(
         numpy.isnan(temp_matrix_to_plot_kelvins), temp_matrix_to_plot_kelvins
     )
-    colour_map_object, colour_norm_object = get_colour_scheme()
+
+    if plotting_diffs:
+        colour_map_object, colour_norm_object = get_diff_colour_scheme()
+    else:
+        colour_map_object, colour_norm_object = get_colour_scheme()
 
     if hasattr(colour_norm_object, 'boundaries'):
         min_colour_value = colour_norm_object.boundaries[0]

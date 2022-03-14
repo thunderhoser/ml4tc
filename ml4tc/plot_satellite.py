@@ -90,7 +90,8 @@ INPUT_ARG_PARSER.add_argument(
 def plot_one_satellite_image(
         satellite_table_xarray, time_index, border_latitudes_deg_n,
         border_longitudes_deg_e, output_dir_name,
-        cbar_orientation_string='vertical', info_string=None):
+        cbar_orientation_string='vertical', info_string=None,
+        plotting_diffs=False):
     """Plots one satellite image.
 
     P = number of points in border set
@@ -105,6 +106,8 @@ def plot_one_satellite_image(
     :param output_dir_name: Name of output directory.  Image will be saved here.
         If you do not want to save image right away, make this None.
     :param info_string: Info string (to be appended to title).
+    :param plotting_diffs: Boolean flag.  If True (False), plotting differences
+        (raw values).
     :return: figure_object: Figure handle (instance of
         `matplotlib.figure.Figure`).
     :return: axes_object: Axes handle (instance of
@@ -138,7 +141,7 @@ def plot_one_satellite_image(
         axes_object=axes_object, latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string=cbar_orientation_string,
-        font_size=DEFAULT_FONT_SIZE
+        font_size=DEFAULT_FONT_SIZE, plotting_diffs=plotting_diffs
     )
     plotting_utils.plot_grid_lines(
         plot_latitudes_deg_n=numpy.ravel(grid_latitudes_deg_n),
