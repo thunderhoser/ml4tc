@@ -30,7 +30,7 @@ set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
 set LAG_TIME_COUNTS=(3 2)
 set SHIPS_LAGGED_PREDICTOR_GROUP_STRINGS=("largerad-smallrad" "none")
 set USE_DATA_AUG_FLAGS=(1 1)
-set LAYER_NAMES=("batch_normalization_163" "batch_normalization_1")
+set LAYER_NAMES=("batch_normalization_199" "batch_normalization_37")
 set i=1
 
 while ($i <= ${#LAG_TIME_COUNTS})
