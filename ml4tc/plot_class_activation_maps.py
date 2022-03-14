@@ -46,6 +46,7 @@ COLOUR_MAP_ARG_NAME = 'colour_map_name'
 MIN_COLOUR_PERCENTILE_ARG_NAME = 'min_colour_percentile'
 MAX_COLOUR_PERCENTILE_ARG_NAME = 'max_colour_percentile'
 PLOT_IN_LOG_SPACE_ARG_NAME = 'plot_in_log_space'
+PLOT_TIME_DIFFS_ARG_NAME = 'plot_time_diffs_if_used'
 SMOOTHING_RADIUS_ARG_NAME = 'smoothing_radius_px'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -83,6 +84,10 @@ MAX_COLOUR_PERCENTILE_HELP_STRING = (
 PLOT_IN_LOG_SPACE_HELP_STRING = (
     'Boolean flag.  If 1 (0), colours for class activation will be scaled '
     'logarithmically (linearly).'
+)
+PLOT_TIME_DIFFS_HELP_STRING = (
+    'Boolean flag.  If 1, will plot temporal differences of satellite images '
+    'at non-zero lag times, assuming temporal diffs were used in training.'
 )
 SMOOTHING_RADIUS_HELP_STRING = (
     'Smoothing radius (number of pixels) for class-activation maps.  If you do '
@@ -122,6 +127,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + PLOT_IN_LOG_SPACE_ARG_NAME, type=int, required=False, default=0,
     help=PLOT_IN_LOG_SPACE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_TIME_DIFFS_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_TIME_DIFFS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SMOOTHING_RADIUS_ARG_NAME, type=float, required=False, default=-1,
@@ -172,7 +181,7 @@ def _plot_cam_one_example(
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         border_latitudes_deg_n, border_longitudes_deg_e, colour_map_object,
         min_colour_percentile, max_colour_percentile, plot_in_log_space,
-        info_string, output_dir_name):
+        plot_time_diffs_at_lags, info_string, output_dir_name):
     """Plots class-activation map for one example.
 
     P = number of points in border set
@@ -195,6 +204,9 @@ def _plot_cam_one_example(
     :param min_colour_percentile: See documentation at top of file.
     :param max_colour_percentile: Same.
     :param plot_in_log_space: Same.
+    :param plot_time_diffs_at_lags: Boolean flag.  If True, at each lag time t
+        before the most recent one, will plot temporal difference:
+        (brightness temp at most recent lag time) - (brightness temp at t).
     :param info_string: Info string (will be appended to title).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
@@ -223,6 +235,16 @@ def _plot_cam_one_example(
         neural_net.GRID_LONGITUDE_MATRIX_KEY
     ][predictor_example_index, ...]
 
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+    num_model_lag_times = len(
+        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
+    )
+    plot_time_diffs_at_lags = (
+        plot_time_diffs_at_lags and num_model_lag_times > 1
+    )
+
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_brightness_temp_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
@@ -233,15 +255,9 @@ def _plot_cam_one_example(
             grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
             normalization_table_xarray=normalization_table_xarray,
             border_latitudes_deg_n=border_latitudes_deg_n,
-            border_longitudes_deg_e=border_longitudes_deg_e
+            border_longitudes_deg_e=border_longitudes_deg_e,
+            plot_time_diffs_at_lags=plot_time_diffs_at_lags
         )
-    )
-
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
-    )
-    num_model_lag_times = len(
-        validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
 
     if plot_in_log_space:
@@ -311,6 +327,19 @@ def _plot_cam_one_example(
         concat_figure_file_name=concat_figure_file_name
     )
 
+    if plot_time_diffs_at_lags:
+        this_colour_map_object, colour_norm_object = (
+            satellite_plotting.get_diff_colour_scheme()
+        )
+        plotting_utils.add_colour_bar(
+            figure_file_name=concat_figure_file_name,
+            colour_map_object=this_colour_map_object,
+            colour_norm_object=colour_norm_object,
+            orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+            cbar_label_string='Brightness-temp difference (K)',
+            tick_label_format_string='{0:d}'
+        )
+
     this_colour_map_object, colour_norm_object = (
         satellite_plotting.get_colour_scheme()
     )
@@ -338,8 +367,8 @@ def _plot_cam_one_example(
 
 def _run(gradcam_file_name, example_dir_name, normalization_file_name,
          prediction_file_name, colour_map_name, min_colour_percentile,
-         max_colour_percentile, plot_in_log_space, smoothing_radius_px,
-         output_dir_name):
+         max_colour_percentile, plot_in_log_space, plot_time_diffs_if_used,
+         smoothing_radius_px, output_dir_name):
     """Plots class-activation maps.
 
     This is effectively the main method.
@@ -352,6 +381,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
     :param min_colour_percentile: Same.
     :param max_colour_percentile: Same.
     :param plot_in_log_space: Same.
+    :param plot_time_diffs_if_used: Same.
     :param smoothing_radius_px: Same.
     :param output_dir_name: Same.
     """
@@ -387,13 +417,14 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
 
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
-    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
-        neural_net.USE_TIME_DIFFS_KEY
-    ] = False
 
-    base_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    base_option_dict = model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    plot_time_diffs = (
+        base_option_dict[neural_net.USE_TIME_DIFFS_KEY]
+        and plot_time_diffs_if_used
     )
+    base_option_dict[neural_net.USE_TIME_DIFFS_KEY] = False
+    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY] = base_option_dict
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
     normalization_table_xarray = normalization.read_file(
@@ -469,6 +500,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
                 min_colour_percentile=min_colour_percentile,
                 max_colour_percentile=max_colour_percentile,
                 plot_in_log_space=plot_in_log_space,
+                plot_time_diffs_at_lags=plot_time_diffs,
                 info_string=info_strings[j], output_dir_name=output_dir_name
             )
 
@@ -494,6 +526,9 @@ if __name__ == '__main__':
         ),
         plot_in_log_space=bool(getattr(
             INPUT_ARG_OBJECT, PLOT_IN_LOG_SPACE_ARG_NAME
+        )),
+        plot_time_diffs_if_used=bool(getattr(
+            INPUT_ARG_OBJECT, PLOT_TIME_DIFFS_ARG_NAME
         )),
         smoothing_radius_px=getattr(
             INPUT_ARG_OBJECT, SMOOTHING_RADIUS_ARG_NAME

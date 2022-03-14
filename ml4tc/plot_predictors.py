@@ -49,6 +49,7 @@ PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 INIT_TIMES_ARG_NAME = 'init_time_strings'
 FIRST_TIME_ARG_NAME = 'first_init_time_string'
 LAST_TIME_ARG_NAME = 'last_init_time_string'
+PLOT_TIME_DIFFS_ARG_NAME = 'plot_time_diffs_if_used'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 MODEL_METAFILE_HELP_STRING = (
@@ -82,6 +83,10 @@ LAST_TIME_HELP_STRING = (
     '"yyyy-mm-dd-HHMMSS").'
 ).format(INIT_TIMES_ARG_NAME)
 
+PLOT_TIME_DIFFS_HELP_STRING = (
+    'Boolean flag.  If 1, will plot temporal differences of satellite images '
+    'at non-zero lag times, assuming temporal diffs were used in training.'
+)
 OUTPUT_DIR_HELP_STRING = 'Name of output directory.  Images will be saved here.'
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -112,6 +117,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + LAST_TIME_ARG_NAME, type=str, required=False, default='',
     help=LAST_TIME_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_TIME_DIFFS_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_TIME_DIFFS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -269,7 +278,7 @@ def _finish_figure_scalar_satellite(figure_object, output_dir_name,
 
 def _finish_figure_brightness_temp(
         figure_objects, pathless_panel_file_names, output_dir_name,
-        init_time_unix_sec, cyclone_id_string):
+        init_time_unix_sec, cyclone_id_string, plotted_time_diffs):
     """Finishes one figure for brightness temperature.
 
     One figure corresponds to one forecast-initialization time.
@@ -283,6 +292,8 @@ def _finish_figure_brightness_temp(
     :param output_dir_name: Name of output directory.
     :param init_time_unix_sec: Forecast-initialization time.
     :param cyclone_id_string: Cyclone ID.
+    :param plotted_time_diffs: Boolean flag.  If True, temporal differences were
+        plotted at lag times before the most recent one.
     """
 
     num_model_lag_times = len(figure_objects)
@@ -320,6 +331,19 @@ def _finish_figure_brightness_temp(
         concat_figure_file_name=concat_figure_file_name
     )
 
+    if plotted_time_diffs:
+        this_cmap_object, this_cnorm_object = (
+            satellite_plotting.get_diff_colour_scheme()
+        )
+        plotting_utils.add_colour_bar(
+            figure_file_name=concat_figure_file_name,
+            colour_map_object=this_cmap_object,
+            colour_norm_object=this_cnorm_object,
+            orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
+            cbar_label_string='Brightness-temp difference (K)',
+            tick_label_format_string='{0:d}'
+        )
+
     this_cmap_object, this_cnorm_object = (
         satellite_plotting.get_colour_scheme()
     )
@@ -328,7 +352,8 @@ def _finish_figure_brightness_temp(
         colour_map_object=this_cmap_object,
         colour_norm_object=this_cnorm_object,
         orientation_string='vertical', font_size=COLOUR_BAR_FONT_SIZE,
-        cbar_label_string='', tick_label_format_string='{0:d}'
+        cbar_label_string='Brightness temperature (K)',
+        tick_label_format_string='{0:d}'
     )
 
 
@@ -458,7 +483,7 @@ def _finish_figure_forecast_ships(
 
 def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
          prediction_file_name, init_time_strings, first_init_time_string,
-         last_init_time_string, output_dir_name):
+         last_init_time_string, plot_time_diffs_if_used, output_dir_name):
     """Plots all predictors (scalars and brightness temps) for a given model.
 
     This is effectively the main method.
@@ -470,6 +495,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
     :param init_time_strings: Same.
     :param first_init_time_string: Same.
     :param last_init_time_string: Same.
+    :param plot_time_diffs_if_used: Same.
     :param output_dir_name: Same.
     """
 
@@ -479,9 +505,15 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
-    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
-        neural_net.USE_TIME_DIFFS_KEY
-    ] = False
+    v = model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+
+    plot_time_diffs = (
+        v[neural_net.USE_TIME_DIFFS_KEY]
+        and len(v[neural_net.SATELLITE_LAG_TIMES_KEY]) > 1
+        and plot_time_diffs_if_used
+    )
+    v[neural_net.USE_TIME_DIFFS_KEY] = False
+    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY] = v
 
     validation_option_dict = model_metadata_dict[
         neural_net.VALIDATION_OPTIONS_KEY
@@ -635,7 +667,8 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                     grid_longitude_matrix_deg_e=
                     grid_longitude_matrix_deg_e[i, ...],
                     border_latitudes_deg_n=border_latitudes_deg_n,
-                    border_longitudes_deg_e=border_longitudes_deg_e
+                    border_longitudes_deg_e=border_longitudes_deg_e,
+                    plot_time_diffs_at_lags=plot_time_diffs
                 )
             )
 
@@ -649,7 +682,8 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 pathless_panel_file_names=pathless_panel_file_names,
                 output_dir_name=output_dir_name,
                 init_time_unix_sec=init_times_unix_sec[i],
-                cyclone_id_string=cyclone_id_string
+                cyclone_id_string=cyclone_id_string,
+                plotted_time_diffs=plot_time_diffs
             )
 
         v = validation_option_dict
@@ -748,5 +782,8 @@ if __name__ == '__main__':
         init_time_strings=getattr(INPUT_ARG_OBJECT, INIT_TIMES_ARG_NAME),
         first_init_time_string=getattr(INPUT_ARG_OBJECT, FIRST_TIME_ARG_NAME),
         last_init_time_string=getattr(INPUT_ARG_OBJECT, LAST_TIME_ARG_NAME),
+        plot_time_diffs_if_used=bool(getattr(
+            INPUT_ARG_OBJECT, PLOT_TIME_DIFFS_ARG_NAME
+        )),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )

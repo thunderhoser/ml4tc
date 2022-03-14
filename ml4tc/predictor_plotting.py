@@ -10,6 +10,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import time_conversion
 import error_checking
 import ships_io
 import example_utils
@@ -23,6 +24,7 @@ import plot_satellite
 MINUTES_TO_SECONDS = 60
 HOURS_TO_SECONDS = 3600
 SECONDS_TO_HOURS = 1. / 3600
+TITLE_TIME_FORMAT = '%Y-%m-%d-%H%M'
 
 
 def plot_scalar_satellite_one_example(
@@ -121,7 +123,8 @@ def plot_brightness_temp_one_example(
         predictor_matrices_one_example, model_metadata_dict,
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e,
-        border_latitudes_deg_n, border_longitudes_deg_e):
+        border_latitudes_deg_n, border_longitudes_deg_e,
+        plot_time_diffs_at_lags=False):
     """Plots brightness-temperature maps for one example.
 
     "For one example" means for each lag time and one forecast-initialization
@@ -150,6 +153,9 @@ def plot_brightness_temp_one_example(
         (deg north).
     :param border_longitudes_deg_e: length-P numpy array of longitudes
         (deg east).
+    :param plot_time_diffs_at_lags: Boolean flag.  If True, at each lag time t
+        before the most recent one, will plot temporal difference:
+        (brightness temp at most recent lag time) - (brightness temp at t).
     :return: figure_objects: length-L list of figure handles (instances of
         `matplotlib.figure.Figure`).
     :return: axes_objects: length-L list of axes handles (instances of
@@ -169,6 +175,7 @@ def plot_brightness_temp_one_example(
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_integer(init_time_unix_sec)
+    error_checking.assert_is_boolean(plot_time_diffs_at_lags)
 
     error_checking.assert_is_numpy_array(grid_latitude_matrix_deg_n)
     regular_grids = len(grid_latitude_matrix_deg_n.shape) == 2
@@ -222,6 +229,16 @@ def plot_brightness_temp_one_example(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
     num_model_lag_times = len(model_lag_times_sec)
+    plot_time_diffs_at_lags = (
+        plot_time_diffs_at_lags and num_model_lag_times > 1
+    )
+
+    if plot_time_diffs_at_lags:
+        for j in range(num_model_lag_times - 1):
+            brightness_temp_matrix_kelvins[..., j] = (
+                brightness_temp_matrix_kelvins[..., -1] -
+                brightness_temp_matrix_kelvins[..., j]
+            )
 
     num_grid_rows = brightness_temp_matrix_kelvins.shape[1]
     num_grid_columns = brightness_temp_matrix_kelvins.shape[2]
@@ -302,9 +319,24 @@ def plot_brightness_temp_one_example(
                 satellite_table_xarray=example_table_xarray, time_index=0,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
-                cbar_orientation_string=None, output_dir_name=None
+                cbar_orientation_string=None, output_dir_name=None,
+                plotting_diffs=plot_time_diffs_at_lags
             )
         )
+
+        if plot_time_diffs_at_lags:
+            first_time_string = time_conversion.unix_sec_to_string(
+                init_time_unix_sec - model_lag_times_sec[k],
+                TITLE_TIME_FORMAT
+            )
+            second_time_string = time_conversion.unix_sec_to_string(
+                init_time_unix_sec - model_lag_times_sec[-1],
+                TITLE_TIME_FORMAT
+            )
+            title_string = r'{0:s}: $T_b$ change from {1:s} to {2:s}'.format(
+                cyclone_id_string, first_time_string, second_time_string
+            )
+            axes_objects[j].set_title(title_string)
 
     return figure_objects, axes_objects, pathless_output_file_names
 
