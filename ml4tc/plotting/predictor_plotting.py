@@ -116,7 +116,7 @@ def plot_brightness_temp_one_example(
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e,
         border_latitudes_deg_n, border_longitudes_deg_e,
-        plot_time_diffs_at_lags):
+        plot_time_diffs_at_lags=False):
     """Plots brightness-temperature maps for one example.
 
     "For one example" means for each lag time and one forecast-initialization

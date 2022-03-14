@@ -416,6 +416,7 @@ def _run(gradcam_file_name, example_dir_name, normalization_file_name,
         and plot_time_diffs_if_used
     )
     base_option_dict[neural_net.USE_TIME_DIFFS_KEY] = False
+    model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY] = base_option_dict
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
     normalization_table_xarray = normalization.read_file(
