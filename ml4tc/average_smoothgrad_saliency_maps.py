@@ -64,6 +64,7 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
 
     error_checking.assert_is_greater(num_smoothgrad_samples, 1)
 
+    print(input_file_pattern)
     input_file_names = glob.glob(input_file_pattern)
     input_file_names.sort()
 
