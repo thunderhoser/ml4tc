@@ -143,9 +143,6 @@ def add_colour_bar(
     error_checking.assert_is_numpy_array(
         brightness_temp_matrix_kelvins, num_dimensions=2
     )
-    error_checking.assert_is_geq_numpy_array(
-        brightness_temp_matrix_kelvins, 0, allow_nan=True
-    )
     error_checking.assert_is_string(orientation_string)
     error_checking.assert_is_greater(font_size, 0)
 
@@ -250,9 +247,6 @@ def plot_2d_grid(
     expected_dim = numpy.array([num_rows, num_columns], dtype=int)
     error_checking.assert_is_numpy_array(
         brightness_temp_matrix_kelvins, exact_dimensions=expected_dim
-    )
-    error_checking.assert_is_greater_numpy_array(
-        brightness_temp_matrix_kelvins, 0., allow_nan=True
     )
 
     if cbar_orientation_string is not None:
