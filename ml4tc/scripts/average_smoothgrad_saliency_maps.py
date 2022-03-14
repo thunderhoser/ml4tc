@@ -51,13 +51,21 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
     :param input_file_pattern: See documentation at top of file.
     :param num_smoothgrad_samples: Same.
     :param output_file_name: Same.
+    :raises: ValueError: if number of files found != number of expected
+        SmoothGrad samples.
     """
 
     error_checking.assert_is_greater(num_smoothgrad_samples, 1)
 
     input_file_names = glob.glob(input_file_pattern)
     input_file_names.sort()
-    assert len(input_file_names) == num_smoothgrad_samples
+
+    if len(input_file_names) != num_smoothgrad_samples:
+        error_string = (
+            'Expected {0:d} SmoothGrad samples, got {1:d} samples instead.'
+        ).format(num_smoothgrad_samples, len(input_file_names))
+
+        raise ValueError(error_string)
 
     three_saliency_matrices = [None] * 3
     three_input_grad_matrices = [None] * 3
