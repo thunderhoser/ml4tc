@@ -51,7 +51,7 @@ while ($i <= ${#GRID_ROWS})
 
             python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
             --input_prediction_file_name="${this_input_file_name}" \
-            --event_freq_in_training=0.07267640234 \
+            --event_freq_in_training=0.48416887 \
             --num_prob_thresholds=1001 \
             --num_reliability_bins=20 \
             --num_bootstrap_reps=1 \
