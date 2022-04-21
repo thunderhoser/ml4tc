@@ -43,7 +43,7 @@ while ($i <= ${#LAG_TIME_COUNTS})
     set model_metafile_name="${model_dir_name}/model_metadata.p"
     
     set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
-    set example_file_name="${EXAMPLE_DIR_NAME}/learning_examples_${cyclone_id_string}.nc"
+    set example_file_name="${EXAMPLE_DIR_NAME}/learning_examples_${cyclone_id_string}.nc.gz"
     set output_dir_name="${model_dir_name}/predictor_plots/${cyclone_id_string}"
 
     python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
