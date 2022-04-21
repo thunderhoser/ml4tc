@@ -620,19 +620,17 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
         for i in range(num_init_times):
             if predict_td_to_ts:
-                info_strings[i] += (
-                    r'future TS = {0:s}; $p_{TS}$ = {1:.2f}'
-                ).format(
-                    'yes' if target_classes[i] == 1 else 'no',
-                    forecast_prob_matrix[i, 1]
+                info_strings[i] += 'future TS = {0:s}'.format(
+                    'yes' if target_classes[i] == 1 else 'no'
                 )
+                info_strings[i] += r'; $p_{TS}$ = '
+            else:
+                info_strings[i] += 'RI = {0:s}'.format(
+                    'yes' if target_classes[i] == 1 else 'no'
+                )
+                info_strings[i] += r'; $p_{RI}$ = '
 
-            info_strings[i] += (
-                r'RI = {0:s}; $p_{RI}$ = {1:.2f}'
-            ).format(
-                'yes' if target_classes[i] == 1 else 'no',
-                forecast_prob_matrix[i, 1]
-            )
+            info_strings[i] += '{0:.2f}'.format(forecast_prob_matrix[i, 1])
 
     for i in range(num_init_times):
         if predictor_matrices[1] is not None:
