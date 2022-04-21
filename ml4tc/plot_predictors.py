@@ -595,19 +595,21 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
             grid_longitude_matrix_deg_e[sort_indices, ...]
         )
 
-    current_intensities_kt, future_intensities_kt = _get_intensities(
-        example_table_xarray=example_table_xarray,
-        init_times_unix_sec=init_times_unix_sec,
-        model_metadata_dict=model_metadata_dict
-    )
-
     num_init_times = len(init_times_unix_sec)
-    info_strings = [''] * num_init_times
+    predict_td_to_ts = validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
 
-    for i in range(num_init_times):
-        info_strings[i] = r'$I$ = {0:d} to {1:d} kt'.format(
-            current_intensities_kt[i], future_intensities_kt[i]
+    if predict_td_to_ts:
+        info_strings = [''] * num_init_times
+    else:
+        current_intensities_kt, future_intensities_kt = _get_intensities(
+            example_table_xarray=example_table_xarray,
+            init_times_unix_sec=init_times_unix_sec,
+            model_metadata_dict=model_metadata_dict
         )
+        info_strings = [
+            r'$I$ = {0:d} to {1:d} kt; '.format(c, f) for c, f in
+            zip(current_intensities_kt, future_intensities_kt)
+        ]
 
     if prediction_file_name != '':
         forecast_prob_matrix, target_classes = get_predictions_and_targets(
@@ -617,11 +619,19 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         )
 
         for i in range(num_init_times):
+            if predict_td_to_ts:
+                info_strings[i] += (
+                    r'future TS = {0:s}; $p_{TS}$ = {1:.2f}'
+                ).format(
+                    'yes' if target_classes[i] == 1 else 'no',
+                    forecast_prob_matrix[i, 1]
+                )
+
             info_strings[i] += (
-                '; class = {0:d} of {1:d}; score = {2:.2f}'
+                r'RI = {0:s}; $p_{RI}$ = {1:.2f}'
             ).format(
-                target_classes[i] + 1, forecast_prob_matrix.shape[1],
-                forecast_prob_matrix[i, target_classes[i]]
+                'yes' if target_classes[i] == 1 else 'no',
+                forecast_prob_matrix[i, 1]
             )
 
     for i in range(num_init_times):
