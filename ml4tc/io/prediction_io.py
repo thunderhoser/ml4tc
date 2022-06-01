@@ -1,17 +1,24 @@
 """Input/output methods for model predictions."""
 
 import os
+import math
 import numpy
 import netCDF4
+from scipy.stats import norm
+from scipy.integrate import simps
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.utils import satellite_utils
 
+TOLERANCE = 1e-6
+
 EXAMPLE_DIMENSION_KEY = 'example'
 CLASS_DIMENSION_KEY = 'class'
 CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_character'
+PREDICTION_SET_DIMENSION_KEY = 'prediction_set'
+QUANTILE_DIMENSION_KEY = 'quantile'
 
 PROBABILITY_MATRIX_KEY = 'forecast_probability_matrix'
 TARGET_CLASSES_KEY = 'target_classes'
@@ -20,6 +27,7 @@ INIT_TIMES_KEY = 'init_times_unix_sec'
 STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
 MODEL_FILE_KEY = 'model_file_name'
+QUANTILE_LEVELS_KEY = 'quantile_levels'
 
 ONE_PER_EXAMPLE_KEYS = [
     PROBABILITY_MATRIX_KEY, TARGET_CLASSES_KEY, CYCLONE_IDS_KEY, INIT_TIMES_KEY,
@@ -153,15 +161,16 @@ def file_name_to_metadata(prediction_file_name):
 def write_file(
         netcdf_file_name, forecast_probability_matrix, target_classes,
         cyclone_id_strings, init_times_unix_sec, storm_latitudes_deg_n,
-        storm_longitudes_deg_e, model_file_name):
+        storm_longitudes_deg_e, model_file_name, quantile_levels):
     """Writes predictions to NetCDF file.
 
     E = number of examples
     K = number of classes
+    S = number of prediction sets
 
     :param netcdf_file_name: Path to output file.
-    :param forecast_probability_matrix: E-by-K numpy array of forecast
-        probabilities.
+    :param forecast_probability_matrix: E-by-K or E-by-K-by-S numpy array of
+        forecast probabilities.
     :param target_classes: length-E numpy array of target classes, all integers
         in range [0, K - 1].
     :param cyclone_id_strings: length-E list of cyclone IDs.
@@ -171,16 +180,26 @@ def write_file(
     :param storm_longitudes_deg_e: length-E numpy array of longitudes (deg E).
     :param model_file_name: Path to file with trained model (readable by
         `neural_net.read_model`).
+    :param quantile_levels: If `forecast_probability_matrix` contains quantiles,
+        this should be a length-(S - 1) numpy array of quantile levels, ranging
+        from (0, 1).  Otherwise, this should be None.
     """
 
+    error_checking.assert_is_numpy_array(forecast_probability_matrix)
+    if len(forecast_probability_matrix.shape) == 2:
+        forecast_probability_matrix = numpy.expand_dims(
+            forecast_probability_matrix, axis=-1
+        )
+
     error_checking.assert_is_numpy_array(
-        forecast_probability_matrix, num_dimensions=2
+        forecast_probability_matrix, num_dimensions=3
     )
     error_checking.assert_is_geq_numpy_array(forecast_probability_matrix, 0.)
     error_checking.assert_is_leq_numpy_array(forecast_probability_matrix, 1.)
 
     num_examples = forecast_probability_matrix.shape[0]
     num_classes = forecast_probability_matrix.shape[1]
+    num_prediction_sets = forecast_probability_matrix.shape[2]
     expected_dim = numpy.array([num_examples], dtype=int)
 
     error_checking.assert_is_integer_numpy_array(target_classes)
@@ -217,6 +236,14 @@ def write_file(
 
     error_checking.assert_is_string(model_file_name)
 
+    if quantile_levels is not None:
+        expected_dim = numpy.array([num_prediction_sets - 1], dtype=int)
+        error_checking.assert_is_numpy_array(
+            quantile_levels, exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_greater_numpy_array(quantile_levels, 0.)
+        error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
+
     # Write to NetCDF file.
     file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
     dataset_object = netCDF4.Dataset(
@@ -226,10 +253,15 @@ def write_file(
     dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
     dataset_object.createDimension(EXAMPLE_DIMENSION_KEY, num_examples)
     dataset_object.createDimension(CLASS_DIMENSION_KEY, num_classes)
+    dataset_object.createDimension(
+        PREDICTION_SET_DIMENSION_KEY, num_prediction_sets
+    )
 
+    these_dim = (
+        EXAMPLE_DIMENSION_KEY, CLASS_DIMENSION_KEY, PREDICTION_SET_DIMENSION_KEY
+    )
     dataset_object.createVariable(
-        PROBABILITY_MATRIX_KEY, datatype=numpy.float32,
-        dimensions=(EXAMPLE_DIMENSION_KEY, CLASS_DIMENSION_KEY)
+        PROBABILITY_MATRIX_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[PROBABILITY_MATRIX_KEY][:] = (
         forecast_probability_matrix
@@ -281,6 +313,17 @@ def write_file(
         cyclone_ids_char_array
     )
 
+    if quantile_levels is not None:
+        dataset_object.createDimension(
+            QUANTILE_DIMENSION_KEY, num_prediction_sets - 1
+        )
+
+        dataset_object.createVariable(
+            QUANTILE_LEVELS_KEY, datatype=numpy.float32,
+            dimensions=QUANTILE_DIMENSION_KEY
+        )
+        dataset_object.variables[QUANTILE_LEVELS_KEY][:] = quantile_levels
+
     dataset_object.close()
 
 
@@ -296,6 +339,7 @@ def read_file(netcdf_file_name):
     prediction_dict['storm_latitudes_deg_n']: Same.
     prediction_dict['storm_longitudes_deg_e']: Same.
     prediction_dict['model_file_name']: Same.
+    prediction_dict['quantile_levels']: Same.
     """
 
     dataset_object = netCDF4.Dataset(netcdf_file_name)
@@ -311,8 +355,19 @@ def read_file(netcdf_file_name):
         INIT_TIMES_KEY: dataset_object.variables[INIT_TIMES_KEY][:],
         STORM_LATITUDES_KEY: dataset_object.variables[STORM_LATITUDES_KEY][:],
         STORM_LONGITUDES_KEY: dataset_object.variables[STORM_LONGITUDES_KEY][:],
-        MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY))
+        MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
+        QUANTILE_LEVELS_KEY: None
     }
+
+    if len(prediction_dict[PROBABILITY_MATRIX_KEY].shape) == 2:
+        prediction_dict[PROBABILITY_MATRIX_KEY] = numpy.expand_dims(
+            prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
+        )
+
+    if QUANTILE_LEVELS_KEY in dataset_object.variables:
+        prediction_dict[QUANTILE_LEVELS_KEY] = (
+            dataset_object.variables[QUANTILE_LEVELS_KEY][:]
+        )
 
     dataset_object.close()
     return prediction_dict
@@ -490,3 +545,151 @@ def read_grid_metafile(netcdf_file_name):
     dataset_object.close()
 
     return grid_latitudes_deg_n, grid_longitudes_deg_e
+
+
+def get_mean_predictions(prediction_dict):
+    """Computes mean of predictive distribution for each example.
+
+    E = number of examples
+
+    :param prediction_dict: Dictionary returned by `read_file`.
+    :return: mean_probabilities: length-E numpy array of mean forecast
+        probabilities.
+    :raises: ValueError: if there are more than 2 classes.
+    """
+
+    num_classes = prediction_dict[PROBABILITY_MATRIX_KEY].shape[1]
+    if num_classes > 2:
+        raise ValueError('Cannot do this with more than 2 classes.')
+
+    if prediction_dict[QUANTILE_LEVELS_KEY] is None:
+        return numpy.mean(
+            prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
+        )[:, 1]
+
+    return prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, 0]
+
+
+def get_median_predictions(prediction_dict):
+    """Computes median of predictive distribution for each example.
+
+    E = number of examples
+
+    :param prediction_dict: Dictionary returned by `read_file`.
+    :return: median_probabilities: length-E numpy array of median forecast
+        probabilities.
+    :raises: ValueError: if there are more than 2 classes.
+    """
+
+    num_classes = prediction_dict[PROBABILITY_MATRIX_KEY].shape[1]
+    if num_classes > 2:
+        raise ValueError('Cannot do this with more than 2 classes.')
+
+    if QUANTILE_LEVELS_KEY in prediction_dict:
+        quantile_levels = prediction_dict[QUANTILE_LEVELS_KEY]
+    else:
+        quantile_levels = None
+
+    if quantile_levels is None:
+        return numpy.median(
+            prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
+        )[:, 1]
+
+    median_index = 1 + numpy.where(
+        numpy.absolute(quantile_levels - 0.5) <= TOLERANCE
+    )[0][0]
+
+    return prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, median_index]
+
+
+def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
+                          assume_large_sample_size=True):
+    """Computes stdev of predictive distribution for each example.
+
+    E = number of examples
+
+    :param prediction_dict: Dictionary returned by `read_file`.
+    :param use_fancy_quantile_method: Boolean flag.  If True, will use Equation
+        15 from https://doi.org/10.1186/1471-2288-14-135.  If False, will treat
+        each quantile-based estimate as a Monte Carlo estimate.
+    :param assume_large_sample_size: [used only for fancy quantile method]
+        Boolean flag.  If True, will assume large (essentially infinite) sample
+        size.
+    :return: prob_stdevs: length-E numpy array with standard deviations of
+        forecast probabilities.
+    :raises: ValueError: if there are more than 2 classes.
+    :raises: ValueError: if there is only one prediction, rather than a
+        distribution, per scalar example.
+    """
+
+    num_classes = prediction_dict[PROBABILITY_MATRIX_KEY].shape[1]
+    if num_classes > 2:
+        raise ValueError('Cannot do this with more than 2 classes.')
+
+    num_prediction_sets = prediction_dict[PROBABILITY_MATRIX_KEY].shape[2]
+    if num_prediction_sets == 1:
+        raise ValueError(
+            'There is only one prediction, rather than a distribution, per '
+            'scalar example.'
+        )
+
+    if QUANTILE_LEVELS_KEY in prediction_dict:
+        quantile_levels = prediction_dict[QUANTILE_LEVELS_KEY]
+    else:
+        quantile_levels = None
+
+    if quantile_levels is None:
+        return numpy.std(
+            prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1, ddof=1
+        )[:, 1]
+
+    error_checking.assert_is_boolean(use_fancy_quantile_method)
+
+    if not use_fancy_quantile_method:
+        return numpy.std(
+            prediction_dict[PROBABILITY_MATRIX_KEY][..., 1:], axis=-1, ddof=1
+        )[:, 1]
+
+    error_checking.assert_is_boolean(assume_large_sample_size)
+
+    first_quartile_index = 1 + numpy.where(
+        numpy.absolute(quantile_levels - 0.25) <= TOLERANCE
+    )[0][0]
+    third_quartile_index = 1 + numpy.where(
+        numpy.absolute(quantile_levels - 0.75) <= TOLERANCE
+    )[0][0]
+
+    if assume_large_sample_size:
+        psuedo_sample_size = 100
+    else:
+        psuedo_sample_size = int(numpy.round(
+            0.25 * (len(quantile_levels) - 1)
+        ))
+
+    coeff_numerator = 2 * math.factorial(4 * psuedo_sample_size + 1)
+    coeff_denominator = (
+        math.factorial(psuedo_sample_size) *
+        math.factorial(3 * psuedo_sample_size)
+    )
+
+    z_scores = numpy.linspace(-10, 10, num=1001, dtype=float)
+    cumulative_densities = norm.cdf(z_scores, loc=0., scale=1.)
+    prob_densities = norm.pdf(z_scores, loc=0., scale=1.)
+    integrands = (
+        z_scores *
+        (cumulative_densities ** (3 * psuedo_sample_size)) *
+        ((1. - cumulative_densities) ** psuedo_sample_size) *
+        prob_densities
+    )
+
+    eta_value = (
+        (coeff_numerator / coeff_denominator) *
+        simps(y=integrands, x=z_scores, even='avg')
+    )
+
+    prob_iqr_values = (
+        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, third_quartile_index] -
+        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, first_quartile_index]
+    )
+
+    return prob_iqr_values / eta_value

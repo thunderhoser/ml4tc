@@ -19,6 +19,7 @@ from ml4tc.io import example_io
 from ml4tc.io import ships_io
 from ml4tc.utils import example_utils
 from ml4tc.utils import satellite_utils
+from ml4tc.machine_learning import custom_losses
 
 TOLERANCE = 1e-6
 TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M'
@@ -179,6 +180,7 @@ DEFAULT_GENERATOR_OPTION_DICT = {
 }
 
 NUM_EPOCHS_KEY = 'num_epochs'
+QUANTILE_LEVELS_KEY = 'quantile_levels'
 NUM_TRAINING_BATCHES_KEY = 'num_training_batches_per_epoch'
 TRAINING_OPTIONS_KEY = 'training_option_dict'
 NUM_VALIDATION_BATCHES_KEY = 'num_validation_batches_per_epoch'
@@ -187,9 +189,9 @@ EARLY_STOPPING_KEY = 'do_early_stopping'
 PLATEAU_LR_MUTIPLIER_KEY = 'plateau_lr_multiplier'
 
 METADATA_KEYS = [
-    NUM_EPOCHS_KEY, NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
-    NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY, EARLY_STOPPING_KEY,
-    PLATEAU_LR_MUTIPLIER_KEY
+    NUM_EPOCHS_KEY, QUANTILE_LEVELS_KEY, NUM_TRAINING_BATCHES_KEY,
+    TRAINING_OPTIONS_KEY, NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY,
+    EARLY_STOPPING_KEY, PLATEAU_LR_MUTIPLIER_KEY
 ]
 
 
@@ -1613,13 +1615,15 @@ def _ships_predictors_xarray_to_keras(
 
 
 def _write_metafile(
-        pickle_file_name, num_epochs, num_training_batches_per_epoch,
-        training_option_dict, num_validation_batches_per_epoch,
-        validation_option_dict, do_early_stopping, plateau_lr_multiplier):
+        pickle_file_name, num_epochs, quantile_levels,
+        num_training_batches_per_epoch, training_option_dict,
+        num_validation_batches_per_epoch, validation_option_dict,
+        do_early_stopping, plateau_lr_multiplier):
     """Writes metadata to Pickle file.
 
     :param pickle_file_name: Path to output file.
     :param num_epochs: See doc for `train_model`.
+    :param quantile_levels: Same.
     :param num_training_batches_per_epoch: Same.
     :param training_option_dict: Same.
     :param num_validation_batches_per_epoch: Same.
@@ -1630,6 +1634,7 @@ def _write_metafile(
 
     metadata_dict = {
         NUM_EPOCHS_KEY: num_epochs,
+        QUANTILE_LEVELS_KEY: quantile_levels,
         NUM_TRAINING_BATCHES_KEY: num_training_batches_per_epoch,
         TRAINING_OPTIONS_KEY: training_option_dict,
         NUM_VALIDATION_BATCHES_KEY: num_validation_batches_per_epoch,
@@ -1801,6 +1806,7 @@ def read_metafile(pickle_file_name):
     :param pickle_file_name: Path to input file.
     :return: metadata_dict: Dictionary with the following keys.
     metadata_dict['num_epochs']: See doc for `train_model`.
+    metadata_dict['quantile_levels']: Same.
     metadata_dict['num_training_batches_per_epoch']: Same.
     metadata_dict['training_option_dict']: Same.
     metadata_dict['num_validation_batches_per_epoch']: Same.
@@ -1816,6 +1822,9 @@ def read_metafile(pickle_file_name):
     pickle_file_handle = open(pickle_file_name, 'rb')
     metadata_dict = pickle.load(pickle_file_handle)
     pickle_file_handle.close()
+
+    if QUANTILE_LEVELS_KEY not in metadata_dict:
+        metadata_dict[QUANTILE_LEVELS_KEY] = None
 
     training_option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     validation_option_dict = metadata_dict[VALIDATION_OPTIONS_KEY]
@@ -2463,7 +2472,7 @@ def train_model(
         model_object, output_dir_name, num_epochs,
         num_training_batches_per_epoch, training_option_dict,
         num_validation_batches_per_epoch, validation_option_dict,
-        do_early_stopping=True,
+        do_early_stopping=True, quantile_levels=None,
         plateau_lr_multiplier=DEFAULT_LEARNING_RATE_MULTIPLIER):
     """Trains neural net.
 
@@ -2487,6 +2496,9 @@ def train_model(
     :param do_early_stopping: Boolean flag.  If True, will stop training early
         if validation loss has not improved over last several epochs (see
         constants at top of file for what exactly this means).
+    :param quantile_levels: 1-D numpy array of quantile levels for quantile
+        regression.  Levels must range from (0, 1).  If the model is not doing
+        quantile regression, make this None.
     :param plateau_lr_multiplier: Multiplier for learning rate.  Learning
         rate will be multiplied by this factor upon plateau in validation
         performance.
@@ -2507,6 +2519,14 @@ def train_model(
     if do_early_stopping:
         error_checking.assert_is_greater(plateau_lr_multiplier, 0.)
         error_checking.assert_is_less_than(plateau_lr_multiplier, 1.)
+
+    if quantile_levels is not None:
+        error_checking.assert_is_numpy_array(quantile_levels, num_dimensions=1)
+        error_checking.assert_is_greater_numpy_array(quantile_levels, 0.)
+        error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
+        error_checking.assert_is_greater_numpy_array(
+            numpy.diff(quantile_levels), 0.
+        )
 
     training_option_dict = _check_generator_args(training_option_dict)
 
@@ -2579,6 +2599,7 @@ def train_model(
 
     _write_metafile(
         pickle_file_name=metafile_name, num_epochs=num_epochs,
+        quantile_levels=quantile_levels,
         num_training_batches_per_epoch=num_training_batches_per_epoch,
         training_option_dict=training_option_dict,
         num_validation_batches_per_epoch=num_validation_batches_per_epoch,
@@ -2605,25 +2626,65 @@ def read_model(hdf5_file_name):
     """
 
     error_checking.assert_file_exists(hdf5_file_name)
-    return tf_keras.models.load_model(
-        hdf5_file_name, custom_objects=METRIC_DICT
+
+    metafile_name = find_metafile(
+        model_file_name=hdf5_file_name, raise_error_if_missing=True
     )
+    metadata_dict = read_metafile(metafile_name)
+    quantile_levels = metadata_dict[QUANTILE_LEVELS_KEY]
+
+    if quantile_levels is None:
+        return tf_keras.models.load_model(
+            hdf5_file_name, custom_objects=METRIC_DICT
+        )
+
+    custom_object_dict = {
+        'central_output_loss': keras.losses.binary_crossentropy
+    }
+    loss_dict = {'central_output': keras.losses.binary_crossentropy}
+    metric_list = []
+
+    for k in range(len(quantile_levels)):
+        this_loss_function = custom_losses.quantile_loss(
+            quantile_level=quantile_levels[k]
+        )
+        loss_dict['quantile_output{0:03d}'.format(k + 1)] = (
+            this_loss_function
+        )
+        custom_object_dict['quantile_output{0:03d}_loss'.format(k + 1)] = (
+            this_loss_function
+        )
+
+    custom_object_dict['loss'] = loss_dict
+
+    model_object = tf_keras.models.load_model(
+        hdf5_file_name, custom_objects=custom_object_dict, compile=False
+    )
+    model_object.compile(
+        loss=custom_object_dict['loss'], optimizer=keras.optimizers.Adam(),
+        metrics=metric_list
+    )
+
+    return model_object
 
 
 def apply_model(model_object, predictor_matrices, num_examples_per_batch,
-                verbose=False):
+                use_dropout=False, verbose=False):
     """Applies trained neural net.
 
     K = number of classes
+    S = number of prediction sets
 
     :param model_object: Trained neural net (instance of `keras.models.Model` or
         `keras.models.Sequential`).
     :param predictor_matrices: See output doc for `input_generator`.
     :param num_examples_per_batch: Batch size.
+    :param use_dropout: Boolean flag.  If True, will keep dropout in all layers
+        turned on.  Using dropout at inference time is called "Monte Carlo
+        dropout".
     :param verbose: Boolean flag.  If True, will print progress messages.
-    :return: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
-        class probabilities.  If K = 2, this is a length-E numpy array of
-        positive-class probabilities.
+    :return: forecast_prob_matrix: E-by-K-by-S (or E-by-K, if S = 1) numpy array
+        of class probabilities.
     """
 
     for this_matrix in predictor_matrices:
@@ -2634,9 +2695,18 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
     num_examples = predictor_matrices[0].shape[0]
     num_examples_per_batch = min([num_examples_per_batch, num_examples])
 
+    error_checking.assert_is_boolean(use_dropout)
     error_checking.assert_is_boolean(verbose)
 
-    forecast_prob_array = None
+    if use_dropout:
+        for layer_object in model_object.layers:
+            if 'batch' in layer_object.name.lower():
+                print('Layer "{0:s}" set to NON-TRAINABLE!'.format(
+                    layer_object.name
+                ))
+                layer_object.trainable = False
+
+    forecast_prob_matrix = None
 
     for i in range(0, num_examples, num_examples_per_batch):
         first_index = i
@@ -2653,24 +2723,42 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
                 first_index + 1, last_index + 1, num_examples
             ))
 
-        this_prob_array = model_object.predict(
-            [a[these_indices, ...] for a in predictor_matrices],
-            batch_size=len(these_indices)
-        )
+        if use_dropout:
+            these_predictions = model_object(
+                [a[these_indices, ...] for a in predictor_matrices],
+                training=True
+            ).numpy()
+        else:
+            these_predictions = model_object.predict_on_batch(
+                [a[these_indices, ...] for a in predictor_matrices]
+            )
 
-        if forecast_prob_array is None:
-            dimensions = (num_examples,) + this_prob_array.shape[1:]
-            forecast_prob_array = numpy.full(dimensions, numpy.nan)
+        if isinstance(these_predictions, list):
+            this_prob_matrix = numpy.stack(these_predictions, axis=-1)
+            if len(this_prob_matrix.shape) == 2:
+                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+        else:
+            this_prob_matrix = these_predictions + 0.
+            if len(this_prob_matrix.shape) == 1:
+                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
 
-        forecast_prob_array[these_indices, ...] = this_prob_array
+        if forecast_prob_matrix is None:
+            dimensions = (num_examples,) + this_prob_matrix.shape[1:]
+            forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
+
+        forecast_prob_matrix[these_indices, ...] = this_prob_matrix
 
     if verbose:
         print('Have applied model to all {0:d} examples!'.format(num_examples))
 
-    if (
-            len(forecast_prob_array.shape) == 2 and
-            forecast_prob_array.shape[1] == 1
-    ):
-        forecast_prob_array = forecast_prob_array[:, 0]
+    for k in range(1, len(forecast_prob_matrix.shape)):
+        if forecast_prob_matrix.shape[k] > 1:
+            continue
 
-    return forecast_prob_array
+        forecast_prob_matrix = numpy.concatenate(
+            (1. - forecast_prob_matrix, forecast_prob_matrix), axis=k
+        )
+
+    forecast_prob_matrix = numpy.maximum(forecast_prob_matrix, 0.)
+    forecast_prob_matrix = numpy.minimum(forecast_prob_matrix, 1.)
+    return forecast_prob_matrix
