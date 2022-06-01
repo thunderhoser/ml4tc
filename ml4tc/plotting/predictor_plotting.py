@@ -306,17 +306,20 @@ def plot_brightness_temp_one_example(
         example_table_xarray = xarray.Dataset(
             data_vars=main_data_dict, coords=metadata_dict
         )
+        plot_time_diffs_here = (
+            plot_time_diffs_at_lags and j != num_model_lag_times - 1
+        )
         figure_objects[j], axes_objects[j], pathless_output_file_names[j] = (
             plot_satellite.plot_one_satellite_image(
                 satellite_table_xarray=example_table_xarray, time_index=0,
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 cbar_orientation_string=None, output_dir_name=None,
-                plotting_diffs=plot_time_diffs_at_lags
+                plotting_diffs=plot_time_diffs_here
             )
         )
 
-        if plot_time_diffs_at_lags:
+        if plot_time_diffs_here:
             first_time_string = time_conversion.unix_sec_to_string(
                 init_time_unix_sec - model_lag_times_sec[k],
                 TITLE_TIME_FORMAT

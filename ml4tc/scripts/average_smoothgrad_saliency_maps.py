@@ -62,8 +62,11 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
 
     if len(input_file_names) != num_smoothgrad_samples:
         error_string = (
-            'Expected {0:d} SmoothGrad samples, got {1:d} samples instead.'
-        ).format(num_smoothgrad_samples, len(input_file_names))
+            'Expected {0:d} SmoothGrad samples.  Instead, found {1:d} files '
+            'with pattern: "{2:s}"'
+        ).format(
+            num_smoothgrad_samples, len(input_file_names), input_file_pattern
+        )
 
         raise ValueError(error_string)
 
@@ -181,7 +184,7 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
 
     for this_file_name in input_file_names:
         print('Deleting file: "{0:s}"...'.format(this_file_name))
-        os.remove(this_file_name)
+        # os.remove(this_file_name)
 
 
 if __name__ == '__main__':
