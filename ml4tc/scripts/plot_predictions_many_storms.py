@@ -208,8 +208,8 @@ def _subset_data(
         return None
 
     data_dict[neural_net.PREDICTOR_MATRICES_KEY] = [
-        a[good_indices, ...] for a in
-        data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+        None if a is None else a[good_indices, ...]
+        for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     ]
 
     for this_key in [
@@ -239,6 +239,10 @@ def _concat_data(data_dicts):
     }
 
     for k in range(num_matrices):
+        if data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY][k] is None:
+            data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = None
+            continue
+
         data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = numpy.concatenate(
             [d[neural_net.PREDICTOR_MATRICES_KEY][k] for d in data_dicts],
             axis=0
@@ -450,7 +454,7 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         good_indices = numpy.where(good_flags)[0]
         cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     else:
-        first_init_time_string = '0000-01-01-00'
+        first_init_time_string = '1000-01-01-00'
         last_init_time_string = '3000-01-01-00'
 
         first_init_time_unix_sec = time_conversion.string_to_unix_sec(
@@ -550,8 +554,8 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
 
         for i in these_indices:
             these_predictor_matrices = [
-                a[[i], ...] for a in
-                data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+                None if a is None else a[[i], ...]
+                for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             ]
 
             _plot_brightness_temp_one_example(
