@@ -252,6 +252,8 @@ def _concat_data(data_dicts):
             data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = None
             continue
 
+        print(data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY][k])
+
         data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = numpy.concatenate(
             [d[neural_net.PREDICTOR_MATRICES_KEY][k] for d in data_dicts],
             axis=0
