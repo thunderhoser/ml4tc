@@ -48,6 +48,5 @@ python3 -u "${CODE_DIR_NAME}/plot_predictions_many_storms.py" \
 --max_latitude_deg_n=60 \
 --min_longitude_deg_e=105 \
 --max_longitude_deg_e=179.999999 \
---first_init_time_string="2005-01-01-00" \
---last_init_time_string="2005-12-31-18" \
+--cyclone_id_strings "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24" \
 --output_dir_name="${output_dir_name}"
