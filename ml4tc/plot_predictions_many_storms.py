@@ -318,7 +318,6 @@ def _plot_brightness_temp_one_example(
 
     M = number of rows in grid
     N = number of columns in grid
-    L = number of lag times
     P = number of points in border set
 
     :param predictor_matrices_one_example: length-3 list, where each element is
@@ -328,11 +327,11 @@ def _plot_brightness_temp_one_example(
     :param normalization_table_xarray: xarray table returned by
         `normalization.read_file`.
     :param grid_latitude_matrix_deg_n: numpy array of latitudes (deg north).  If
-        regular grids, this should have dimensions M x L.  If irregular grids,
-        should have dimensions M x N x L.
+        regular grids, this should have length M.  If irregular grids, should
+        have dimensions M x N.
     :param grid_longitude_matrix_deg_e: numpy array of longitudes (deg east).
-        If regular grids, this should have dimensions N x L.  If irregular
-        grids, should have dimensions M x N x L.
+        If regular grids, this should have length N.  If irregular grids, should
+        have dimensions M x N.
     :param axes_object: Axes handle (instance of
         `matplotlib.axes._subplots.AxesSubplot`).
     """
@@ -358,8 +357,8 @@ def _plot_brightness_temp_one_example(
     satellite_plotting.plot_2d_grid(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object,
-        latitude_array_deg_n=grid_latitude_matrix_deg_n[..., -1],
-        longitude_array_deg_e=grid_longitude_matrix_deg_e[..., -1],
+        latitude_array_deg_n=grid_latitude_matrix_deg_n,
+        longitude_array_deg_e=grid_longitude_matrix_deg_e,
         cbar_orientation_string=None
     )
 
