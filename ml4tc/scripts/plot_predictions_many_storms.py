@@ -3,15 +3,23 @@
 import copy
 import argparse
 import numpy
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import time_periods
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
+from gewittergefahr.gg_utils import number_rounding
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import example_io
 from ml4tc.io import prediction_io
+from ml4tc.io import border_io
 from ml4tc.utils import satellite_utils
+from ml4tc.utils import normalization
 from ml4tc.machine_learning import neural_net
+from ml4tc.plotting import plotting_utils
+from ml4tc.plotting import satellite_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -21,6 +29,27 @@ TIME_INTERVAL_SEC = 21600
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
 FORECAST_PROBS_KEY = 'forecast_probabilities'
 
+LABEL_COLOUR = numpy.full(3, 0.)
+LABEL_BOUNDING_BOX_DICT = {
+    'alpha': 0.5,
+    'edgecolor': numpy.full(3, 0.),
+    'linewidth': 1,
+    'facecolor': numpy.full(3, 1.)
+}
+
+FIGURE_WIDTH_INCHES = 15
+FIGURE_HEIGHT_INCHES = 15
+FIGURE_RESOLUTION_DPI = 300
+
+FONT_SIZE = 30
+pyplot.rc('font', size=FONT_SIZE)
+pyplot.rc('axes', titlesize=FONT_SIZE)
+pyplot.rc('axes', labelsize=FONT_SIZE)
+pyplot.rc('xtick', labelsize=FONT_SIZE)
+pyplot.rc('ytick', labelsize=FONT_SIZE)
+pyplot.rc('legend', fontsize=FONT_SIZE)
+pyplot.rc('figure', titlesize=FONT_SIZE)
+
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_DIR_ARG_NAME = 'input_norm_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
@@ -29,6 +58,7 @@ MIN_LATITUDE_ARG_NAME = 'min_latitude_deg_n'
 MAX_LATITUDE_ARG_NAME = 'max_latitude_deg_n'
 MIN_LONGITUDE_ARG_NAME = 'min_longitude_deg_e'
 MAX_LONGITUDE_ARG_NAME = 'max_longitude_deg_e'
+CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
 FIRST_TIME_ARG_NAME = 'first_init_time_string'
 LAST_TIME_ARG_NAME = 'last_init_time_string'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
@@ -53,6 +83,10 @@ MIN_LATITUDE_HELP_STRING = 'Minimum latitude (deg north) in map.'
 MAX_LATITUDE_HELP_STRING = 'Max latitude (deg north) in map.'
 MIN_LONGITUDE_HELP_STRING = 'Minimum longitude (deg east) in map.'
 MAX_LONGITUDE_HELP_STRING = 'Max longitude (deg east) in map.'
+CYCLONE_IDS_HELP_STRING = (
+    'List of IDs for cyclones to plot.  If you would rather specify a start/end'
+    ' time, leave this argument alone.'
+)
 FIRST_TIME_HELP_STRING = (
     'First initialization time to plot (format "yyyy-mm-dd-HH").'
 )
@@ -97,11 +131,15 @@ INPUT_ARG_PARSER.add_argument(
     help=MAX_LONGITUDE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + FIRST_TIME_ARG_NAME, type=str, required=True,
+    '--' + CYCLONE_IDS_ARG_NAME, type=str, nargs='+', required=False,
+    default=[''], help=CYCLONE_IDS_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + FIRST_TIME_ARG_NAME, type=str, required=False, default='',
     help=FIRST_TIME_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + LAST_TIME_ARG_NAME, type=str, required=True,
+    '--' + LAST_TIME_ARG_NAME, type=str, required=False, default='',
     help=LAST_TIME_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
@@ -261,10 +299,63 @@ def _match_predictors_to_predictions(data_dict, prediction_file_name):
     return data_dict
 
 
+def _plot_brightness_temp_one_example(
+        predictor_matrices_one_example, normalization_table_xarray,
+        grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e, axes_object):
+    """Plots brightness-temperature map at 0-minute lag time for one example.
+
+    M = number of rows in grid
+    N = number of columns in grid
+    L = number of lag times
+    P = number of points in border set
+
+    :param predictor_matrices_one_example: length-3 list, where each element is
+        either None or a numpy array formatted in the same way as the training
+        data.  The first axis (i.e., the example axis) of each numpy array
+        should have length 1.
+    :param normalization_table_xarray: xarray table returned by
+        `normalization.read_file`.
+    :param grid_latitude_matrix_deg_n: numpy array of latitudes (deg north).  If
+        regular grids, this should have dimensions M x L.  If irregular grids,
+        should have dimensions M x N x L.
+    :param grid_longitude_matrix_deg_e: numpy array of longitudes (deg east).
+        If regular grids, this should have dimensions N x L.  If irregular
+        grids, should have dimensions M x N x L.
+    :param axes_object: Axes handle (instance of
+        `matplotlib.axes._subplots.AxesSubplot`).
+    """
+
+    # Denormalize brightness temperatures.
+    nt = normalization_table_xarray
+    predictor_names_norm = list(
+        nt.coords[normalization.SATELLITE_PREDICTOR_GRIDDED_DIM].values
+    )
+
+    k = predictor_names_norm.index(satellite_utils.BRIGHTNESS_TEMPERATURE_KEY)
+    training_values = (
+        nt[normalization.SATELLITE_PREDICTORS_GRIDDED_KEY].values[:, k]
+    )
+    training_values = training_values[numpy.isfinite(training_values)]
+
+    brightness_temp_matrix_kelvins = normalization._denorm_one_variable(
+        normalized_values_new=predictor_matrices_one_example[0][0, ..., -1, 0],
+        actual_values_training=training_values
+    )
+
+    # Plot brightness temperatures.
+    satellite_plotting.plot_2d_grid(
+        brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
+        axes_object=axes_object,
+        latitude_array_deg_n=grid_latitude_matrix_deg_n[..., -1],
+        longitude_array_deg_e=grid_longitude_matrix_deg_e[..., -1],
+        cbar_orientation_string=None
+    )
+
+
 def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
          prediction_file_name, min_latitude_deg_n, max_latitude_deg_n,
-         min_longitude_deg_e, max_longitude_deg_e, first_init_time_string,
-         last_init_time_string, output_dir_name):
+         min_longitude_deg_e, max_longitude_deg_e, cyclone_id_strings,
+         first_init_time_string, last_init_time_string, output_dir_name):
     """Plots predictions for many storms, one map per time step.
 
     This is effectively the main method.
@@ -277,11 +368,13 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     :param max_latitude_deg_n: Same.
     :param min_longitude_deg_e: Same.
     :param max_longitude_deg_e: Same.
+    :param cyclone_id_strings: Same.
     :param first_init_time_string: Same.
     :param last_init_time_string: Same.
     :param output_dir_name: Same.
     """
 
+    # Check input args.
     error_checking.assert_is_valid_latitude(min_latitude_deg_n)
     error_checking.assert_is_valid_latitude(max_latitude_deg_n)
     error_checking.assert_is_greater(max_latitude_deg_n, min_latitude_deg_n)
@@ -310,43 +403,63 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         directory_name=output_dir_name
     )
 
+    # Read necessary files other than example files.
+    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
+    normalization_table_xarray = normalization.read_file(
+        normalization_file_name
+    )
+
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+
     # Find example files.
-    first_init_time_unix_sec = time_conversion.string_to_unix_sec(
-        first_init_time_string, TIME_FORMAT
-    )
-    last_init_time_unix_sec = time_conversion.string_to_unix_sec(
-        last_init_time_string, TIME_FORMAT
-    )
-    init_times_unix_sec = time_periods.range_and_interval_to_list(
-        start_time_unix_sec=first_init_time_unix_sec,
-        end_time_unix_sec=last_init_time_unix_sec,
-        time_interval_sec=TIME_INTERVAL_SEC, include_endpoint=True
-    )
+    if len(cyclone_id_strings) == 1 and cyclone_id_strings[0] == '':
+        first_init_time_unix_sec = time_conversion.string_to_unix_sec(
+            first_init_time_string, TIME_FORMAT
+        )
+        last_init_time_unix_sec = time_conversion.string_to_unix_sec(
+            last_init_time_string, TIME_FORMAT
+        )
+        init_times_unix_sec = time_periods.range_and_interval_to_list(
+            start_time_unix_sec=first_init_time_unix_sec,
+            end_time_unix_sec=last_init_time_unix_sec,
+            time_interval_sec=TIME_INTERVAL_SEC, include_endpoint=True
+        )
 
-    first_year = int(time_conversion.unix_sec_to_string(
-        init_times_unix_sec[0], '%Y'
-    ))
-    last_year = int(time_conversion.unix_sec_to_string(
-        init_times_unix_sec[-1], '%Y'
-    ))
-    years = numpy.linspace(
-        first_year, last_year, num=last_year - first_year + 1, dtype=int
-    )
+        first_year = int(time_conversion.unix_sec_to_string(
+            init_times_unix_sec[0], '%Y'
+        ))
+        last_year = int(time_conversion.unix_sec_to_string(
+            init_times_unix_sec[-1], '%Y'
+        ))
+        years = numpy.linspace(
+            first_year, last_year, num=last_year - first_year + 1, dtype=int
+        )
 
-    cyclone_id_strings = example_io.find_cyclones(
-        directory_name=norm_example_dir_name,
-        raise_error_if_all_missing=True
-    )
-    cyclone_years = numpy.array([
-        satellite_utils.parse_cyclone_id(c)[0]
-        for c in cyclone_id_strings
-    ], dtype=int)
+        cyclone_id_strings = example_io.find_cyclones(
+            directory_name=norm_example_dir_name,
+            raise_error_if_all_missing=True
+        )
+        cyclone_years = numpy.array([
+            satellite_utils.parse_cyclone_id(c)[0]
+            for c in cyclone_id_strings
+        ], dtype=int)
 
-    good_flags = numpy.array(
-        [c in years for c in cyclone_years], dtype=float
-    )
-    good_indices = numpy.where(good_flags)[0]
-    cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
+        good_flags = numpy.array(
+            [c in years for c in cyclone_years], dtype=float
+        )
+        good_indices = numpy.where(good_flags)[0]
+        cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
+    else:
+        first_init_time_string = '0000-01-01-00'
+        last_init_time_string = '3000-01-01-00'
+
+        first_init_time_unix_sec = time_conversion.string_to_unix_sec(
+            first_init_time_string, TIME_FORMAT
+        )
+        last_init_time_unix_sec = time_conversion.string_to_unix_sec(
+            last_init_time_string, TIME_FORMAT
+        )
+
     cyclone_id_strings.sort()
 
     example_file_names = [
@@ -404,7 +517,112 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     )
     print(SEPARATOR_STRING)
 
-    # TODO(thunderhoser): Now do the plotting.
+    unique_init_times_unix_sec = numpy.unique(
+        data_dict[neural_net.INIT_TIMES_KEY]
+    )
+    parallel_spacing_deg = number_rounding.round_to_half_integer(
+        0.1 * (max_latitude_deg_n - min_latitude_deg_n)
+    )
+    meridian_spacing_deg = number_rounding.round_to_half_integer(
+        0.1 * (max_longitude_deg_e - min_longitude_deg_e)
+    )
+    target_variable_string = (
+        'TD-to-TS' if validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
+        else 'RI'
+    )
+
+    for this_time_unix_sec in unique_init_times_unix_sec:
+        these_indices = numpy.where(
+            data_dict[neural_net.INIT_TIMES_KEY] == this_time_unix_sec
+        )[0]
+
+        if len(these_indices) == 0:
+            continue
+
+        figure_object, axes_object = pyplot.subplots(
+            1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+        )
+        plotting_utils.plot_borders(
+            border_latitudes_deg_n=border_latitudes_deg_n,
+            border_longitudes_deg_e=border_longitudes_deg_e,
+            axes_object=axes_object
+        )
+
+        for i in these_indices:
+            these_predictor_matrices = [
+                a[[i], ...] for a in
+                data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+            ]
+
+            _plot_brightness_temp_one_example(
+                predictor_matrices_one_example=these_predictor_matrices,
+                normalization_table_xarray=normalization_table_xarray,
+                grid_latitude_matrix_deg_n=
+                data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY][i, ..., -1],
+                grid_longitude_matrix_deg_e=
+                data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][i, ..., -1],
+                axes_object=axes_object
+            )
+
+        for i in these_indices:
+            label_string = r'$p$ = '
+            label_string += '{0:.2f}\n'.format(data_dict[FORECAST_PROBS_KEY][i])
+            label_string += r'$y$ = '
+            label_string += (
+                'yes' if data_dict[neural_net.TARGET_ARRAY_KEY][i] == 1
+                else 'no'
+            )
+
+            axes_object.text(
+                data_dict[neural_net.STORM_LONGITUDES_KEY][i],
+                data_dict[neural_net.STORM_LATITUDES_KEY][i],
+                label_string,
+                fontsize=FONT_SIZE, color=LABEL_COLOUR,
+                bbox=LABEL_BOUNDING_BOX_DICT,
+                horizontalalignment='center', verticalalignment='center',
+                zorder=1e10
+            )
+
+        plotting_utils.plot_grid_lines(
+            plot_latitudes_deg_n=
+            numpy.linspace(min_latitude_deg_n, max_latitude_deg_n, num=100),
+            plot_longitudes_deg_e=
+            numpy.linspace(min_longitude_deg_e, max_longitude_deg_e, num=100),
+            axes_object=axes_object,
+            parallel_spacing_deg=parallel_spacing_deg,
+            meridian_spacing_deg=meridian_spacing_deg,
+            font_size=FONT_SIZE
+        )
+
+        colour_map_object, colour_norm_object = (
+            satellite_plotting.get_colour_scheme()
+        )
+        satellite_plotting.add_colour_bar(
+            brightness_temp_matrix_kelvins=numpy.full((2, 2), 273.15),
+            axes_object=axes_object,
+            colour_map_object=colour_map_object,
+            colour_norm_object=colour_norm_object,
+            orientation_string='vertical', font_size=FONT_SIZE
+        )
+
+        init_time_string = time_conversion.unix_sec_to_string(
+            this_time_unix_sec, TIME_FORMAT
+        )
+        title_string = (
+            'Forecast probs and labels for {0:s}, init {1:s}'
+        ).format(target_variable_string, init_time_string)
+
+        axes_object.set_title(title_string)
+
+        output_file_name = '{0:s}/{1:s}.jpg'.format(
+            output_dir_name, init_time_string
+        )
+        print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+        figure_object.savefig(
+            output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_object)
 
 
 if __name__ == '__main__':
@@ -423,6 +641,7 @@ if __name__ == '__main__':
         max_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MAX_LATITUDE_ARG_NAME),
         min_longitude_deg_e=getattr(INPUT_ARG_OBJECT, MIN_LONGITUDE_ARG_NAME),
         max_longitude_deg_e=getattr(INPUT_ARG_OBJECT, MAX_LONGITUDE_ARG_NAME),
+        cyclone_id_strings=getattr(INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME),
         first_init_time_string=getattr(INPUT_ARG_OBJECT, FIRST_TIME_ARG_NAME),
         last_init_time_string=getattr(INPUT_ARG_OBJECT, LAST_TIME_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
