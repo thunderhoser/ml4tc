@@ -458,7 +458,7 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         good_indices = numpy.where(good_flags)[0]
         cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     else:
-        first_init_time_string = '0000-01-01-00'
+        first_init_time_string = '1000-01-01-00'
         last_init_time_string = '3000-01-01-00'
 
         first_init_time_unix_sec = time_conversion.string_to_unix_sec(
