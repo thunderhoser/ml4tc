@@ -4,6 +4,7 @@ import os
 import sys
 import copy
 import argparse
+import warnings
 import numpy
 import matplotlib
 matplotlib.use('agg')
@@ -516,9 +517,15 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         )
 
         if this_data_dict is None:
+            print('\n\n\n\n\n\nNONE NONE NONE\n\n\n\n\n\n\n')
             continue
 
         data_dicts.append(this_data_dict)
+
+    if len(data_dicts) == 0:
+        warning_string = 'Cannot find any data to plot.  RETURNING.'
+        warnings.warn(warning_string)
+        return
 
     print(SEPARATOR_STRING)
     data_dict = _concat_data(data_dicts)
