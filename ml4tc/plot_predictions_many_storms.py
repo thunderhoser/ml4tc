@@ -572,6 +572,9 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
                 for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             ]
 
+            print(data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY][i, ..., -1].shape)
+            print(data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][i, ..., -1].shape)
+
             _plot_brightness_temp_one_example(
                 predictor_matrices_one_example=these_predictor_matrices,
                 normalization_table_xarray=normalization_table_xarray,
