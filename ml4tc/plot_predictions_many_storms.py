@@ -50,14 +50,16 @@ FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
-FONT_SIZE = 30
-pyplot.rc('font', size=FONT_SIZE)
-pyplot.rc('axes', titlesize=FONT_SIZE)
-pyplot.rc('axes', labelsize=FONT_SIZE)
-pyplot.rc('xtick', labelsize=FONT_SIZE)
-pyplot.rc('ytick', labelsize=FONT_SIZE)
-pyplot.rc('legend', fontsize=FONT_SIZE)
-pyplot.rc('figure', titlesize=FONT_SIZE)
+DEFAULT_FONT_SIZE = 30
+LABEL_FONT_SIZE = 20
+
+pyplot.rc('font', size=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
+pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_DIR_ARG_NAME = 'input_norm_example_dir_name'
@@ -515,7 +517,6 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         )
 
         if this_data_dict is None:
-            print('\n\n\n\n\n\nNONE NONE NONE\n\n\n\n\n\n\n')
             continue
 
         data_dicts.append(this_data_dict)
@@ -571,9 +572,6 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
                 for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             ]
 
-            print(data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY][i, ..., -1].shape)
-            print(data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][i, ..., -1].shape)
-
             _plot_brightness_temp_one_example(
                 predictor_matrices_one_example=these_predictor_matrices,
                 normalization_table_xarray=normalization_table_xarray,
@@ -597,9 +595,9 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
                 data_dict[neural_net.STORM_LONGITUDES_KEY][i],
                 data_dict[neural_net.STORM_LATITUDES_KEY][i],
                 label_string,
-                fontsize=FONT_SIZE, color=LABEL_COLOUR,
+                fontsize=LABEL_FONT_SIZE, color=LABEL_COLOUR,
                 bbox=LABEL_BOUNDING_BOX_DICT,
-                horizontalalignment='center', verticalalignment='center',
+                horizontalalignment='left', verticalalignment='top',
                 zorder=1e10
             )
 
@@ -611,25 +609,26 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
             axes_object=axes_object,
             parallel_spacing_deg=parallel_spacing_deg,
             meridian_spacing_deg=meridian_spacing_deg,
-            font_size=FONT_SIZE
+            font_size=DEFAULT_FONT_SIZE
         )
 
         colour_map_object, colour_norm_object = (
             satellite_plotting.get_colour_scheme()
         )
-        satellite_plotting.add_colour_bar(
+        colour_bar_object = satellite_plotting.add_colour_bar(
             brightness_temp_matrix_kelvins=numpy.full((2, 2), 273.15),
             axes_object=axes_object,
             colour_map_object=colour_map_object,
             colour_norm_object=colour_norm_object,
-            orientation_string='vertical', font_size=FONT_SIZE
+            orientation_string='vertical', font_size=DEFAULT_FONT_SIZE
         )
+        colour_bar_object.set_label('Brightness temp (K)')
 
         init_time_string = time_conversion.unix_sec_to_string(
             this_time_unix_sec, TIME_FORMAT
         )
         title_string = (
-            'Forecast probs and labels for {0:s}, init {1:s}'
+            'Forecasts and labels for {0:s}, init {1:s}'
         ).format(target_variable_string, init_time_string)
 
         axes_object.set_title(title_string)
