@@ -151,6 +151,7 @@ def _run():
                     raise_error_if_missing=False
                 )
                 dummy_option_dict = neural_net.DEFAULT_GENERATOR_OPTION_DICT
+                dummy_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY] = None
     
                 print('Writing metadata to: "{0:s}"...'.format(
                     model_metafile_name
