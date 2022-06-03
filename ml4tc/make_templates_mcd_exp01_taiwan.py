@@ -53,7 +53,7 @@ BASE_OPTION_DICT_DENSE = {
     #     numpy.array([1428, 232, 38, 6, 1], dtype=int),
     # cnn_architecture.DROPOUT_RATES_KEY:
     #     numpy.array([0.5, 0.5, 0.5, 0.5, 0]),
-    cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.full(
+    cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.array(
         [0, 0, 1, 1, 1], dtype=bool
     ),
     cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
