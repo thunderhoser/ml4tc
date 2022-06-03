@@ -77,7 +77,7 @@ def _run(prediction_file_name, event_freq_in_training, num_prob_thresholds,
     print('Reading data from: "{0:s}"...'.format(prediction_file_name))
     prediction_dict = prediction_io.read_file(prediction_file_name)
 
-    forecast_prob_matrix = prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY]
+    forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)
     assert forecast_prob_matrix.shape[1] == 2
 
     print(SEPARATOR_STRING)
