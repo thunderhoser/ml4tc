@@ -157,8 +157,8 @@ def _run():
                     model_metafile_name
                 ))
                 neural_net._write_metafile(
-                    pickle_file_name=model_metafile_name,
-                    num_epochs=100, quantile_levels=None,
+                    pickle_file_name=model_metafile_name, num_epochs=100,
+                    quantile_levels=None, central_loss_function_weight=None,
                     num_training_batches_per_epoch=100,
                     training_option_dict=dummy_option_dict,
                     num_validation_batches_per_epoch=100,

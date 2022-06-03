@@ -227,11 +227,9 @@ def get_predictions_and_targets(prediction_file_name, cyclone_id_string,
     target_classes = (
         prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
     )
-    forecast_prob_matrix = (
-        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
-            good_indices, ...
-        ]
-    )
+    forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)[
+        good_indices, ...
+    ]
 
     return forecast_prob_matrix, target_classes
 

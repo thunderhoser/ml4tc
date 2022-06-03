@@ -165,9 +165,18 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     print('Reading model template from: "{0:s}"...'.format(template_file_name))
     model_object = neural_net.read_model(hdf5_file_name=template_file_name)
 
+    model_metafile_name = neural_net.find_metafile(
+        model_file_name=template_file_name, raise_error_if_missing=True
+    )
+    print('Reading model metadata from: "{0:s}"...'.format(model_metafile_name))
+    model_metadata_dict = neural_net.read_metafile(model_metafile_name)
+
     neural_net.train_model(
         model_object=model_object, output_dir_name=output_dir_name,
         num_epochs=num_epochs,
+        quantile_levels=model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY],
+        central_loss_function_weight=
+        model_metadata_dict[neural_net.CENTRAL_LOSS_WEIGHT_KEY],
         num_training_batches_per_epoch=num_training_batches_per_epoch,
         training_option_dict=training_option_dict,
         num_validation_batches_per_epoch=num_validation_batches_per_epoch,
