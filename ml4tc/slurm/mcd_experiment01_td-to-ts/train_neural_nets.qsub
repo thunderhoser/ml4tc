@@ -41,7 +41,7 @@ set third_last_layer_dropout_rate=`printf "%.3f" $third_last_layer_dropout_rate`
 set second_last_layer_dropout_rate=`printf "%.3f" $second_last_layer_dropout_rate`
 set last_layer_dropout_rate=`printf "%.3f" $last_layer_dropout_rate`
 
-set template_file_name="${TEMPLATE_DIR_NAME}/model_dropout-rates=${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}-${last_layer_dropout_rate}.h5"
+set template_file_name="${TEMPLATE_DIR_NAME}/dropout-rates=${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}-${last_layer_dropout_rate}/model.h5"
 set output_dir_name="${TOP_OUTPUT_DIR_NAME}/dropout-rates=${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}-${last_layer_dropout_rate}"
 echo $output_dir_name
 

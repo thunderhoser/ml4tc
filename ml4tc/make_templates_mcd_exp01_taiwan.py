@@ -127,19 +127,42 @@ def _run():
                     metric_functions=METRIC_FUNCTION_LIST
                 )
 
-                output_file_name = (
-                    '{0:s}/model_dropout-rates={1:.3f}-{2:.3f}-{3:.3f}.h5'
+                model_file_name = (
+                    '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}/model.h5'
                 ).format(
                     OUTPUT_DIR_NAME,
                     THIRD_LAST_LAYER_DROPOUT_RATES[k],
                     SECOND_LAST_LAYER_DROPOUT_RATES[j],
                     LAST_LAYER_DROPOUT_RATES[i]
                 )
+                
+                file_system_utils.mkdir_recursive_if_necessary(
+                    file_name=model_file_name
+                )
 
-                print('Writing model to: "{0:s}"...'.format(output_file_name))
+                print('Writing model to: "{0:s}"...'.format(model_file_name))
                 model_object.save(
-                    filepath=output_file_name, overwrite=True,
+                    filepath=model_file_name, overwrite=True,
                     include_optimizer=True
+                )
+
+                model_metafile_name = neural_net.find_metafile(
+                    model_file_name=model_file_name,
+                    raise_error_if_missing=False
+                )
+                dummy_option_dict = neural_net.DEFAULT_GENERATOR_OPTION_DICT
+    
+                print('Writing metadata to: "{0:s}"...'.format(
+                    model_metafile_name
+                ))
+                neural_net._write_metafile(
+                    pickle_file_name=model_metafile_name,
+                    num_epochs=100, quantile_levels=None,
+                    num_training_batches_per_epoch=100,
+                    training_option_dict=dummy_option_dict,
+                    num_validation_batches_per_epoch=100,
+                    validation_option_dict=dummy_option_dict,
+                    do_early_stopping=True, plateau_lr_multiplier=0.6
                 )
 
 
