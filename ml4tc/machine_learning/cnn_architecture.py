@@ -471,13 +471,14 @@ def create_model(
 
 def create_quantile_regression_model(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
-        option_dict_dense, quantile_levels):
+        option_dict_dense, central_loss_function, quantile_levels):
     """Creates CNN for quantile regression.
 
     :param option_dict_gridded_sat: See doc for `create_model`.
     :param option_dict_ungridded_sat: Same.
     :param option_dict_ships: Same.
     :param option_dict_dense: Same.
+    :param central_loss_function: Loss function for central prediction.
     :param quantile_levels: 1-D numpy array of quantile levels, ranging from
         (0, 1).
     :return: model_object: Untrained CNN (instance of `keras.models.Model`).
@@ -647,7 +648,7 @@ def create_quantile_regression_model(
         )(pre_activn_out_layers[k])
 
         if k == 0:
-            loss_dict[output_layer_names[k]] = keras.losses.binary_crossentropy
+            loss_dict[output_layer_names[k]] = central_loss_function
         else:
             loss_dict[output_layer_names[k]] = custom_losses.quantile_loss(
                 quantile_level=quantile_levels[k - 1]
