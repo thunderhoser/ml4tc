@@ -2581,9 +2581,7 @@ def train_model(
             numpy.diff(quantile_levels), 0.
         )
 
-        error_checking.assert_is_geq_numpy_array(
-            central_loss_function_weight, 1.
-        )
+        error_checking.assert_is_geq(central_loss_function_weight, 1.)
 
     training_option_dict = _check_generator_args(training_option_dict)
 
