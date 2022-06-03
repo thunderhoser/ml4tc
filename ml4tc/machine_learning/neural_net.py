@@ -181,6 +181,7 @@ DEFAULT_GENERATOR_OPTION_DICT = {
 
 NUM_EPOCHS_KEY = 'num_epochs'
 QUANTILE_LEVELS_KEY = 'quantile_levels'
+CENTRAL_LOSS_WEIGHT_KEY = 'central_loss_function_weight'
 NUM_TRAINING_BATCHES_KEY = 'num_training_batches_per_epoch'
 TRAINING_OPTIONS_KEY = 'training_option_dict'
 NUM_VALIDATION_BATCHES_KEY = 'num_validation_batches_per_epoch'
@@ -189,8 +190,9 @@ EARLY_STOPPING_KEY = 'do_early_stopping'
 PLATEAU_LR_MUTIPLIER_KEY = 'plateau_lr_multiplier'
 
 METADATA_KEYS = [
-    NUM_EPOCHS_KEY, QUANTILE_LEVELS_KEY, NUM_TRAINING_BATCHES_KEY,
-    TRAINING_OPTIONS_KEY, NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY,
+    NUM_EPOCHS_KEY, QUANTILE_LEVELS_KEY, CENTRAL_LOSS_WEIGHT_KEY,
+    NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
+    NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY,
     EARLY_STOPPING_KEY, PLATEAU_LR_MUTIPLIER_KEY
 ]
 
@@ -1285,6 +1287,7 @@ def _read_one_example_file(
 
     if (
             satellite_lag_times_sec is None or
+            satellite_predictor_names is None or
             satellite_utils.BRIGHTNESS_TEMPERATURE_KEY not in
             satellite_predictor_names
     ):
@@ -1616,14 +1619,15 @@ def _ships_predictors_xarray_to_keras(
 
 def _write_metafile(
         pickle_file_name, num_epochs, quantile_levels,
-        num_training_batches_per_epoch, training_option_dict,
-        num_validation_batches_per_epoch, validation_option_dict,
-        do_early_stopping, plateau_lr_multiplier):
+        central_loss_function_weight, num_training_batches_per_epoch,
+        training_option_dict, num_validation_batches_per_epoch,
+        validation_option_dict, do_early_stopping, plateau_lr_multiplier):
     """Writes metadata to Pickle file.
 
     :param pickle_file_name: Path to output file.
     :param num_epochs: See doc for `train_model`.
     :param quantile_levels: Same.
+    :param central_loss_function_weight: Same.
     :param num_training_batches_per_epoch: Same.
     :param training_option_dict: Same.
     :param num_validation_batches_per_epoch: Same.
@@ -1635,6 +1639,7 @@ def _write_metafile(
     metadata_dict = {
         NUM_EPOCHS_KEY: num_epochs,
         QUANTILE_LEVELS_KEY: quantile_levels,
+        CENTRAL_LOSS_WEIGHT_KEY: central_loss_function_weight,
         NUM_TRAINING_BATCHES_KEY: num_training_batches_per_epoch,
         TRAINING_OPTIONS_KEY: training_option_dict,
         NUM_VALIDATION_BATCHES_KEY: num_validation_batches_per_epoch,
@@ -1648,6 +1653,38 @@ def _write_metafile(
     pickle_file_handle = open(pickle_file_name, 'wb')
     pickle.dump(metadata_dict, pickle_file_handle)
     pickle_file_handle.close()
+
+
+def _create_multiply_function(real_number):
+    """Creates function that multiplies input by real number.
+
+    :param real_number: Multiplier.
+    :return: multiply_function: Function handle.
+    """
+
+    def multiply_function(input_array):
+        """Multiplies input array by real number.
+
+        :param input_array: numpy array.
+        :return: output_array: numpy array.
+        """
+
+        return input_array * real_number
+
+    return multiply_function
+
+
+def _multiply_a_function(orig_function_handle, real_number):
+    """Multiplies function by a real number.
+
+    :param orig_function_handle: Handle for function to be multiplied.
+    :param real_number: Real number.
+    :return: new_function_handle: Handle for new function, which is the original
+        function multiplied by the given number.
+    """
+
+    this_function_handle = _create_multiply_function(real_number)
+    return lambda x, y: this_function_handle(orig_function_handle(x, y))
 
 
 def find_metafile(model_file_name, raise_error_if_missing=True):
@@ -1807,6 +1844,7 @@ def read_metafile(pickle_file_name):
     :return: metadata_dict: Dictionary with the following keys.
     metadata_dict['num_epochs']: See doc for `train_model`.
     metadata_dict['quantile_levels']: Same.
+    metadata_dict['central_loss_function_weight']: Same.
     metadata_dict['num_training_batches_per_epoch']: Same.
     metadata_dict['training_option_dict']: Same.
     metadata_dict['num_validation_batches_per_epoch']: Same.
@@ -1825,6 +1863,8 @@ def read_metafile(pickle_file_name):
 
     if QUANTILE_LEVELS_KEY not in metadata_dict:
         metadata_dict[QUANTILE_LEVELS_KEY] = None
+    if CENTRAL_LOSS_WEIGHT_KEY not in metadata_dict:
+        metadata_dict[CENTRAL_LOSS_WEIGHT_KEY] = None
 
     training_option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     validation_option_dict = metadata_dict[VALIDATION_OPTIONS_KEY]
@@ -2164,6 +2204,7 @@ def create_inputs(option_dict):
 
     if (
             use_time_diffs_gridded_sat and
+            satellite_predictor_names is not None and
             satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
             in satellite_predictor_names
     ):
@@ -2437,6 +2478,7 @@ def input_generator(option_dict):
 
         if (
                 use_time_diffs_gridded_sat and
+                satellite_predictor_names is not None and
                 satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
                 in satellite_predictor_names
         ):
@@ -2473,6 +2515,7 @@ def train_model(
         num_training_batches_per_epoch, training_option_dict,
         num_validation_batches_per_epoch, validation_option_dict,
         do_early_stopping=True, quantile_levels=None,
+        central_loss_function_weight=None,
         plateau_lr_multiplier=DEFAULT_LEARNING_RATE_MULTIPLIER):
     """Trains neural net.
 
@@ -2499,6 +2542,9 @@ def train_model(
     :param quantile_levels: 1-D numpy array of quantile levels for quantile
         regression.  Levels must range from (0, 1).  If the model is not doing
         quantile regression, make this None.
+    :param central_loss_function_weight: Weight for loss function used to
+        penalize central output.  If the model is not doing quantile regression,
+        make this None.
     :param plateau_lr_multiplier: Multiplier for learning rate.  Learning
         rate will be multiplied by this factor upon plateau in validation
         performance.
@@ -2526,6 +2572,10 @@ def train_model(
         error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
         error_checking.assert_is_greater_numpy_array(
             numpy.diff(quantile_levels), 0.
+        )
+
+        error_checking.assert_is_geq_numpy_array(
+            central_loss_function_weight, 1.
         )
 
     training_option_dict = _check_generator_args(training_option_dict)
@@ -2600,6 +2650,7 @@ def train_model(
     _write_metafile(
         pickle_file_name=metafile_name, num_epochs=num_epochs,
         quantile_levels=quantile_levels,
+        central_loss_function_weight=central_loss_function_weight,
         num_training_batches_per_epoch=num_training_batches_per_epoch,
         training_option_dict=training_option_dict,
         num_validation_batches_per_epoch=num_validation_batches_per_epoch,
@@ -2638,10 +2689,15 @@ def read_model(hdf5_file_name):
             hdf5_file_name, custom_objects=METRIC_DICT
         )
 
+    central_loss_function = _multiply_a_function(
+        orig_function_handle=keras.losses.binary_crossentropy,
+        real_number=metadata_dict[CENTRAL_LOSS_WEIGHT_KEY]
+    )
+
     custom_object_dict = {
-        'central_output_loss': keras.losses.binary_crossentropy
+        'central_output_loss': central_loss_function
     }
-    loss_dict = {'central_output': keras.losses.binary_crossentropy}
+    loss_dict = {'central_output': central_loss_function}
     metric_list = []
 
     for k in range(len(quantile_levels)):
