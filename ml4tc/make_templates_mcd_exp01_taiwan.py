@@ -34,7 +34,7 @@ BASE_OPTION_DICT_GRIDDED_SAT = {
 
 BASE_OPTION_DICT_SHIPS = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
-        numpy.array([2, 289], dtype=int),
+        numpy.array([5, 289], dtype=int),
     cnn_architecture.NUM_NEURONS_KEY: numpy.array([500, 1000], dtype=int),
     cnn_architecture.DROPOUT_RATES_KEY: numpy.array([0.5, 0.5]),
     cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.array([0, 0], dtype=bool),
