@@ -1292,6 +1292,7 @@ def _read_one_example_file(
 
     if (
             satellite_lag_times_sec is None or
+            satellite_predictor_names is None or
             satellite_utils.BRIGHTNESS_TEMPERATURE_KEY not in
             satellite_predictor_names
     ):
@@ -2171,6 +2172,7 @@ def create_inputs(option_dict):
 
     if (
             use_time_diffs_gridded_sat and
+            satellite_predictor_names is not None and
             satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
             in satellite_predictor_names
     ):
@@ -2445,6 +2447,7 @@ def input_generator(option_dict):
 
         if (
                 use_time_diffs_gridded_sat and
+                satellite_predictor_names is not None and
                 satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
                 in satellite_predictor_names
         ):

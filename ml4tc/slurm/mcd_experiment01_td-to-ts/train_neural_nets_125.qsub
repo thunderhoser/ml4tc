@@ -52,7 +52,7 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
 --lead_time_hours=60000 \
 --satellite_lag_times_minutes 0 1440 \
---satellite_predictor_names "" \
+--satellite_predictor_names "satellite_brightness_temp_kelvins" \
 --ships_lag_times_hours 0 6 12 18 24 \
 --ships_predictor_names_lagged "ships_goes_ch4_fraction_temp_below_m10c_50to200km" "ships_goes_ch4_fraction_temp_below_m20c_50to200km" "ships_goes_ch4_fraction_temp_below_m30c_50to200km" "ships_goes_ch4_fraction_temp_below_m40c_50to200km" "ships_goes_ch4_fraction_temp_below_m50c_50to200km" "ships_goes_ch4_fraction_temp_below_m60c_50to200km" "ships_goes_ch4_temp_0to200km_kelvins" "ships_goes_ch4_temp_stdev_0to200km_kelvins" "ships_goes_ch4_temp_100to300km_kelvins" "ships_goes_ch4_temp_stdev_100to300km_kelvins" "ships_goes_ch4_max_temp_0to30km_kelvins" "ships_goes_ch4_mean_temp_0to30km_kelvins" "ships_goes_ch4_max_temp_radius_metres" "ships_goes_ch4_min_temp_20to120km_kelvins" "ships_goes_ch4_mean_temp_20to120km_kelvins" "ships_goes_ch4_min_temp_radius_metres" \
 --ships_builtin_lag_times_hours nan \
