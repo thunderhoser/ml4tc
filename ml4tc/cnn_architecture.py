@@ -1,20 +1,12 @@
 """Methods for building CNN."""
 
-import os
-import sys
 import copy
 import numpy
 import keras
 from keras.layers import Add
-
-THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
-    os.path.join(os.getcwd(), os.path.expanduser(__file__))
-))
-sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
-
-import error_checking
-import architecture_utils
-import custom_losses
+from gewittergefahr.gg_utils import error_checking
+from gewittergefahr.deep_learning import architecture_utils
+from ml4tc.machine_learning import custom_losses
 
 INPUT_DIMENSIONS_KEY = 'input_dimensions'
 NUM_LAYERS_BY_BLOCK_KEY = 'num_layers_by_block'
@@ -31,6 +23,7 @@ INNER_ACTIV_FUNCTION_KEY = 'inner_activ_function_name'
 INNER_ACTIV_FUNCTION_ALPHA_KEY = 'inner_activ_function_alpha'
 OUTPUT_ACTIV_FUNCTION_KEY = 'output_activ_function_name'
 OUTPUT_ACTIV_FUNCTION_ALPHA_KEY = 'output_activ_function_alpha'
+LAST_DROPOUT_BEFORE_ACTIV_KEY = 'last_dropout_before_activation'
 
 DEFAULT_OPTION_DICT_GRIDDED_SAT = {
     NUM_LAYERS_BY_BLOCK_KEY: numpy.array([2, 2, 2, 2, 2, 2, 2], dtype=int),
@@ -52,7 +45,8 @@ DEFAULT_OPTION_DICT_UNGRIDDED_SAT = {
     OUTPUT_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
     DROPOUT_RATES_KEY: numpy.full(2, 0.),
     DROPOUT_MC_FLAGS_KEY: numpy.full(2, 0, dtype=bool),
-    USE_BATCH_NORM_KEY: True
+    USE_BATCH_NORM_KEY: True,
+    LAST_DROPOUT_BEFORE_ACTIV_KEY: False
 }
 
 DEFAULT_OPTION_DICT_SHIPS = {
@@ -63,7 +57,8 @@ DEFAULT_OPTION_DICT_SHIPS = {
     OUTPUT_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
     DROPOUT_RATES_KEY: numpy.full(2, 0.),
     DROPOUT_MC_FLAGS_KEY: numpy.full(2, 0, dtype=bool),
-    USE_BATCH_NORM_KEY: True
+    USE_BATCH_NORM_KEY: True,
+    LAST_DROPOUT_BEFORE_ACTIV_KEY: False
 }
 
 DEFAULT_OPTION_DICT_DENSE = {
@@ -88,7 +83,7 @@ def _create_layers_gridded_sat(option_dict):
     option_dict['num_channels_by_layer']: length-C numpy array with number
         of channels for each conv layer.
     option_dict['dropout_rate_by_layer']: length-C numpy array with dropout
-        rate for each conv layer.  Use number <= 0 for no dropout.
+        rate for each conv layer.  Usenumber <= 0 for no dropout.
     option_dict['dropout_mc_flag_by_layer']: length-C numpy array with Boolean
         flag for each conv layer, indicating whether or not to use Monte Carlo
         dropout (i.e., leave dropout on at inference time).
@@ -246,6 +241,10 @@ def create_dense_layers(input_layer_object, option_dict):
     option_dict['l2_weight']: Weight for L_2 regularization in dense layers.
     option_dict['use_batch_normalization']: Boolean flag.  If True, will use
         batch normalization after each inner (non-output) dense layer.
+    option_dict['last_dropout_before_activation']: Boolean flag.  If True
+        (False), will apply dropout to last layer before (after) activation
+        function.  Obviously, if there is no dropout for the last layer, this is
+        a moot point.
 
     :return: last_layer_object: Last layer (instance of `keras.layers`).
     """
@@ -260,6 +259,7 @@ def create_dense_layers(input_layer_object, option_dict):
     output_activ_function_alpha = option_dict[OUTPUT_ACTIV_FUNCTION_ALPHA_KEY]
     l2_weight = option_dict[L2_WEIGHT_KEY]
     use_batch_normalization = option_dict[USE_BATCH_NORM_KEY]
+    last_dropout_before_activation = option_dict[LAST_DROPOUT_BEFORE_ACTIV_KEY]
 
     error_checking.assert_is_numpy_array(
         num_neurons_by_layer, num_dimensions=1
@@ -282,6 +282,7 @@ def create_dense_layers(input_layer_object, option_dict):
 
     error_checking.assert_is_geq(l2_weight, 0.)
     error_checking.assert_is_boolean(use_batch_normalization)
+    error_checking.assert_is_boolean(last_dropout_before_activation)
 
     # Do actual stuff.
     regularization_func = architecture_utils.get_weight_regularizer(
@@ -303,6 +304,21 @@ def create_dense_layers(input_layer_object, option_dict):
         )(this_input_layer_object)
 
         if i == num_layers - 1:
+            use_dropout_now = (
+                dropout_rate_by_layer[i] > 0 and
+                last_dropout_before_activation
+            )
+        else:
+            use_dropout_now = False
+
+        if use_dropout_now:
+            this_mc_flag = bool(dropout_mc_flag_by_layer[i])
+
+            layer_object = architecture_utils.get_dropout_layer(
+                dropout_fraction=dropout_rate_by_layer[i]
+            )(layer_object, training=this_mc_flag)
+
+        if i == num_layers - 1:
             layer_object = architecture_utils.get_activation_layer(
                 activation_function_string=output_activ_function_name,
                 alpha_for_relu=output_activ_function_alpha,
@@ -315,7 +331,15 @@ def create_dense_layers(input_layer_object, option_dict):
                 alpha_for_elu=inner_activ_function_alpha
             )(layer_object)
 
-        if dropout_rate_by_layer[i] > 0:
+        if i == num_layers - 1:
+            use_dropout_now = (
+                dropout_rate_by_layer[i] > 0 and
+                not last_dropout_before_activation
+            )
+        else:
+            use_dropout_now = dropout_rate_by_layer[i] > 0
+
+        if use_dropout_now:
             this_mc_flag = bool(dropout_mc_flag_by_layer[i])
 
             layer_object = architecture_utils.get_dropout_layer(
