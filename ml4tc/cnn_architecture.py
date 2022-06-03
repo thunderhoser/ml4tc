@@ -1,12 +1,20 @@
 """Methods for building CNN."""
 
+import os
+import sys
 import copy
 import numpy
 import keras
 from keras.layers import Add
-from gewittergefahr.gg_utils import error_checking
-from gewittergefahr.deep_learning import architecture_utils
-from ml4tc.machine_learning import custom_losses
+
+THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
+    os.path.join(os.getcwd(), os.path.expanduser(__file__))
+))
+sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
+
+import error_checking
+import architecture_utils
+import custom_losses
 
 INPUT_DIMENSIONS_KEY = 'input_dimensions'
 NUM_LAYERS_BY_BLOCK_KEY = 'num_layers_by_block'
