@@ -2359,10 +2359,12 @@ def input_generator(option_dict):
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     random.shuffle(cyclone_id_strings)
 
+    # TODO(thunderhoser): Do not allow zipped!
+
     example_file_names = [
         example_io.find_file(
             directory_name=example_dir_name, cyclone_id_string=c,
-            prefer_zipped=False, allow_other_format=False,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
         for c in cyclone_id_strings
@@ -2574,9 +2576,7 @@ def train_model(
             numpy.diff(quantile_levels), 0.
         )
 
-        error_checking.assert_is_geq_numpy_array(
-            central_loss_function_weight, 1.
-        )
+        error_checking.assert_is_geq(central_loss_function_weight, 1.)
 
     training_option_dict = _check_generator_args(training_option_dict)
 
