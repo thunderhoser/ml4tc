@@ -38,7 +38,7 @@ FORECAST_PROBS_KEY = 'forecast_probabilities'
 
 LABEL_COLOUR = numpy.full(3, 0.)
 LABEL_BOUNDING_BOX_DICT = {
-    'alpha': 0.75,
+    'alpha': 0.25,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
     'facecolor': numpy.full(3, 1.)
@@ -421,9 +421,9 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             )
             axes_object.text(
                 this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 0.5,
                 label_string,
-                fontsize=FONT_SIZE, fontweight='bold', color=numpy.full(3, 1.),
+                fontsize=16, color=LABEL_COLOUR, bbox=LABEL_BOUNDING_BOX_DICT,
                 horizontalalignment='center', verticalalignment='bottom',
                 zorder=1e10
             )
