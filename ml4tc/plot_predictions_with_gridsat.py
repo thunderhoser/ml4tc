@@ -309,6 +309,41 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         prediction_dict=prediction_dict, desired_indices=good_indices
     )
 
+    if longitude_positive_in_west:
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] = (
+            lng_conversion.convert_lng_positive_in_west(
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+            )
+        )
+    else:
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] = (
+            lng_conversion.convert_lng_negative_in_west(
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+            )
+        )
+
+    good_indices = numpy.where(numpy.logical_and(
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] >=
+        min_longitude_deg_e,
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] <=
+        max_longitude_deg_e
+    ))[0]
+
+    prediction_dict = prediction_io.subset_by_index(
+        prediction_dict=prediction_dict, desired_indices=good_indices
+    )
+
+    good_indices = numpy.where(numpy.logical_and(
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] >=
+        min_latitude_deg_n,
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] <=
+        max_latitude_deg_n
+    ))[0]
+
+    prediction_dict = prediction_io.subset_by_index(
+        prediction_dict=prediction_dict, desired_indices=good_indices
+    )
+
     # Read other necessary files.
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
