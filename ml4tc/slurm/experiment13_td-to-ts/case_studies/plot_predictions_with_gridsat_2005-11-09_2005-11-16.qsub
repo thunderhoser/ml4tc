@@ -47,5 +47,5 @@ python3 -u "${CODE_DIR_NAME}/plot_predictions_with_gridsat.py" \
 --min_longitude_deg_e=105 \
 --max_longitude_deg_e=179.999999 \
 --first_init_time_string="2005-11-09-00" \
---last_init_time_string="2005-11-15-18" \
+--last_init_time_string="2005-11-16-18" \
 --output_dir_name="${output_dir_name}"
