@@ -367,7 +367,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
         for i in example_indices:
             this_forecast_prob = (
-                prediction_io.get_mean_predictions(prediction_dict)[i, ..., -1]
+                prediction_io.get_mean_predictions(prediction_dict)[i]
             )
             this_target_class = (
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
