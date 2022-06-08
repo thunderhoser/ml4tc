@@ -144,7 +144,7 @@ def _find_gridsat_file(directory_name, valid_time_unix_sec):
     :raises: ValueError: if file is not found.
     """
 
-    gridsat_file_name = '{0:s}GRIDSAT-B1.{1:s}.v02r01.nc'.format(
+    gridsat_file_name = '{0:s}/GRIDSAT-B1.{1:s}.v02r01.nc'.format(
         directory_name,
         time_conversion.unix_sec_to_string(
             valid_time_unix_sec, GRIDSAT_TIME_FORMAT
