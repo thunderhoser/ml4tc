@@ -1,31 +1,24 @@
 """Plots predictions with GridSat in background, one map per time step."""
 
 import os
-import sys
 import argparse
 import numpy
 import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
-
-THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
-    os.path.join(os.getcwd(), os.path.expanduser(__file__))
-))
-sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
-
-import time_conversion
-import time_periods
-import longitude_conversion as lng_conversion
-import number_rounding
-import file_system_utils
-import error_checking
-import prediction_io
-import border_io
-import general_utils
-import neural_net
-import plotting_utils
-import satellite_plotting
+from gewittergefahr.gg_utils import time_conversion
+from gewittergefahr.gg_utils import time_periods
+from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
+from gewittergefahr.gg_utils import number_rounding
+from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.gg_utils import error_checking
+from ml4tc.io import prediction_io
+from ml4tc.io import border_io
+from ml4tc.utils import general_utils
+from ml4tc.machine_learning import neural_net
+from ml4tc.plotting import plotting_utils
+from ml4tc.plotting import satellite_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -37,7 +30,14 @@ CYCLONE_IDS_KEY = 'cyclone_id_strings'
 FORECAST_PROBS_KEY = 'forecast_probabilities'
 
 LABEL_COLOUR = numpy.full(3, 0.)
-LABEL_BOUNDING_BOX_DICT = {
+MORE_OPAQUE_BOUNDING_BOX_DICT = {
+    'alpha': 0.5,
+    'edgecolor': numpy.full(3, 0.),
+    'linewidth': 1,
+    'facecolor': numpy.full(3, 1.)
+}
+
+LESS_OPAQUE_BOUNDING_BOX_DICT = {
     'alpha': 0.25,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
@@ -421,9 +421,10 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             )
             axes_object.text(
                 this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 0.5,
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 1,
                 label_string,
-                fontsize=16, color=LABEL_COLOUR, bbox=LABEL_BOUNDING_BOX_DICT,
+                fontsize=16, color=LABEL_COLOUR,
+                bbox=MORE_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment='center', verticalalignment='bottom',
                 zorder=1e10
             )
@@ -448,7 +449,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3,
                 label_string,
                 fontsize=FONT_SIZE, color=LABEL_COLOUR,
-                bbox=LABEL_BOUNDING_BOX_DICT,
+                bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment='left', verticalalignment='top',
                 zorder=1e10
             )
