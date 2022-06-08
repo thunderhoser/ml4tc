@@ -416,15 +416,15 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 markeredgecolor=numpy.full(3, 1.)
             )
 
-            label_string = '  {0:s}'.format(
+            label_string = '{0:s}'.format(
                 prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
             )
             axes_object.text(
                 this_longitude_deg_e,
                 prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
                 label_string,
-                fontsize=FONT_SIZE, color=numpy.full(3, 1.),
-                horizontalalignment='left', verticalalignment='bottom',
+                fontsize=FONT_SIZE, fontweight='bold', color=numpy.full(3, 1.),
+                horizontalalignment='center', verticalalignment='bottom',
                 zorder=1e10
             )
 
