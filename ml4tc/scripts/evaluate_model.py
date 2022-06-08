@@ -76,14 +76,12 @@ def _run(prediction_file_name, event_freq_in_training, num_prob_thresholds,
 
     print('Reading data from: "{0:s}"...'.format(prediction_file_name))
     prediction_dict = prediction_io.read_file(prediction_file_name)
-
-    forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)
-    assert forecast_prob_matrix.shape[1] == 2
+    forecast_probabilities = prediction_io.get_mean_predictions(prediction_dict)
 
     print(SEPARATOR_STRING)
 
     evaluation_table_xarray = evaluation.evaluate_model_binary(
-        forecast_probabilities=forecast_prob_matrix[:, 1],
+        forecast_probabilities=forecast_probabilities,
         target_classes=prediction_dict[prediction_io.TARGET_CLASSES_KEY],
         event_freq_in_training=event_freq_in_training,
         cyclone_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY],

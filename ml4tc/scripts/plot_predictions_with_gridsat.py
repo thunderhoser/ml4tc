@@ -30,8 +30,15 @@ CYCLONE_IDS_KEY = 'cyclone_id_strings'
 FORECAST_PROBS_KEY = 'forecast_probabilities'
 
 LABEL_COLOUR = numpy.full(3, 0.)
-LABEL_BOUNDING_BOX_DICT = {
-    'alpha': 0.75,
+MORE_OPAQUE_BOUNDING_BOX_DICT = {
+    'alpha': 0.5,
+    'edgecolor': numpy.full(3, 0.),
+    'linewidth': 1,
+    'facecolor': numpy.full(3, 1.)
+}
+
+LESS_OPAQUE_BOUNDING_BOX_DICT = {
+    'alpha': 0.25,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
     'facecolor': numpy.full(3, 1.)
@@ -409,15 +416,16 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 markeredgecolor=numpy.full(3, 1.)
             )
 
-            label_string = '  {0:s}'.format(
+            label_string = '{0:s}'.format(
                 prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
             )
             axes_object.text(
                 this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 1,
                 label_string,
-                fontsize=FONT_SIZE, color=numpy.full(3, 1.),
-                horizontalalignment='left', verticalalignment='bottom',
+                fontsize=16, color=LABEL_COLOUR,
+                bbox=MORE_OPAQUE_BOUNDING_BOX_DICT,
+                horizontalalignment='center', verticalalignment='bottom',
                 zorder=1e10
             )
 
@@ -441,7 +449,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3,
                 label_string,
                 fontsize=FONT_SIZE, color=LABEL_COLOUR,
-                bbox=LABEL_BOUNDING_BOX_DICT,
+                bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment='left', verticalalignment='top',
                 zorder=1e10
             )

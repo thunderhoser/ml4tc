@@ -181,16 +181,15 @@ def get_predictions_and_targets(prediction_file_name, cyclone_id_string,
     """Returns prediction and target for each forecast-initialization time.
 
     T = number of forecast-initialization times
-    K = number of classes
 
     :param prediction_file_name: Path to input file.  Will be read by
         `prediction_io.read_file`.
     :param cyclone_id_string: ID for desired cyclone.
     :param init_times_unix_sec: length-T numpy array of desired init times.
-    :return: forecast_prob_matrix: T-by-K numpy array of forecast class
+    :return: forecast_probabilities: length-T numpy array of forecast class
         probabilities.
     :return: target_classes: length-T numpy array of target classes (integers in
-        range 0...[K - 1]).
+        range 0...1).
     """
 
     error_checking.assert_is_string(prediction_file_name)
@@ -219,11 +218,11 @@ def get_predictions_and_targets(prediction_file_name, cyclone_id_string,
     target_classes = (
         prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
     )
-    forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)[
-        good_indices, ...
-    ]
+    forecast_probabilities = prediction_io.get_mean_predictions(
+        prediction_dict
+    )[good_indices]
 
-    return forecast_prob_matrix, target_classes
+    return forecast_probabilities, target_classes
 
 
 def _finish_figure_scalar_satellite(figure_object, output_dir_name,
@@ -602,7 +601,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
         ]
 
     if prediction_file_name != '':
-        forecast_prob_matrix, target_classes = get_predictions_and_targets(
+        forecast_probabilities, target_classes = get_predictions_and_targets(
             prediction_file_name=prediction_file_name,
             cyclone_id_string=cyclone_id_string,
             init_times_unix_sec=init_times_unix_sec
@@ -620,7 +619,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 )
                 info_strings[i] += r'; $p_{RI}$ = '
 
-            info_strings[i] += '{0:.2f}'.format(forecast_prob_matrix[i, 1])
+            info_strings[i] += '{0:.2f}'.format(forecast_probabilities[i])
 
     for i in range(num_init_times):
         if predictor_matrices[1] is not None:

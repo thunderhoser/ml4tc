@@ -2728,6 +2728,7 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
                 use_dropout=False, verbose=False):
     """Applies trained neural net.
 
+    E = number of examples
     K = number of classes
     S = number of prediction sets
 
