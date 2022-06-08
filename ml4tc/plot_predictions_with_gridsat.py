@@ -22,6 +22,7 @@ import file_system_utils
 import error_checking
 import prediction_io
 import border_io
+import general_utils
 import neural_net
 import plotting_utils
 import satellite_plotting
@@ -186,6 +187,9 @@ def _read_gridsat_file(
     brightness_temp_matrix_kelvins = gridsat_table_xarray['irwin_cdr'].values[
         0, ...
     ]
+    brightness_temp_matrix_kelvins = general_utils.fill_nans(
+        brightness_temp_matrix_kelvins
+    )
 
     if longitude_positive_in_west:
         lng_conversion.convert_lng_positive_in_west(
