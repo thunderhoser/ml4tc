@@ -2366,10 +2366,12 @@ def input_generator(option_dict):
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     random.shuffle(cyclone_id_strings)
 
+    # TODO(thunderhoser): Do not allow zipped!
+
     example_file_names = [
         example_io.find_file(
             directory_name=example_dir_name, cyclone_id_string=c,
-            prefer_zipped=False, allow_other_format=False,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
         for c in cyclone_id_strings
@@ -2733,6 +2735,7 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
                 use_dropout=False, verbose=False):
     """Applies trained neural net.
 
+    E = number of examples
     K = number of classes
     S = number of prediction sets
 
