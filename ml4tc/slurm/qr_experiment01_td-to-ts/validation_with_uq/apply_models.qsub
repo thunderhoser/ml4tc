@@ -38,5 +38,5 @@ python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --years 2005 2006 2007 2008 2009 \
---use_quantiles=0 \
+--use_quantiles=1 \
 --output_dir_name="${output_dir_name}"
