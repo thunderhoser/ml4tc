@@ -38,7 +38,7 @@ FORECAST_PROBS_KEY = 'forecast_probabilities'
 
 LABEL_COLOUR = numpy.full(3, 0.)
 LABEL_BOUNDING_BOX_DICT = {
-    'alpha': 0.5,
+    'alpha': 0.75,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
     'facecolor': numpy.full(3, 1.)
@@ -405,6 +405,29 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         )
 
         for i in example_indices:
+            this_longitude_deg_e = lng_conversion.convert_lng_negative_in_west(
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
+            )
+            axes_object.plot(
+                this_longitude_deg_e,
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                linestyle='None', marker='*', markersize=16, markeredgewidth=0,
+                markerfacecolor=numpy.full(3, 1.),
+                markeredgecolor=numpy.full(3, 1.)
+            )
+
+            label_string = '  {0:s}'.format(
+                prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
+            )
+            axes_object.text(
+                this_longitude_deg_e,
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                label_string,
+                fontsize=FONT_SIZE, color=numpy.full(3, 1.),
+                horizontalalignment='left', verticalalignment='bottom',
+                zorder=1e10
+            )
+
             this_forecast_prob = (
                 prediction_io.get_mean_predictions(prediction_dict)[i]
             )
@@ -412,21 +435,21 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
             )
 
-            label_string = r'$p$ = '
+            label_string = 'Storm {0:s}\n'.format(
+                label_string.strip()
+            )
+            label_string += r'$p$ = '
             label_string += '{0:.2f}\n'.format(this_forecast_prob)
             label_string += r'$y$ = '
             label_string += 'yes' if this_target_class else 'no'
 
-            this_longitude_deg_e = lng_conversion.convert_lng_negative_in_west(
-                prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
-            )
             axes_object.text(
-                this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                this_longitude_deg_e + 3,
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3,
                 label_string,
                 fontsize=FONT_SIZE, color=LABEL_COLOUR,
                 bbox=LABEL_BOUNDING_BOX_DICT,
-                horizontalalignment='center', verticalalignment='center',
+                horizontalalignment='left', verticalalignment='top',
                 zorder=1e10
             )
 
