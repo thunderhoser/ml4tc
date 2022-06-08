@@ -15,6 +15,7 @@ from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import prediction_io
 from ml4tc.io import border_io
+from ml4tc.utils import general_utils
 from ml4tc.machine_learning import neural_net
 from ml4tc.plotting import plotting_utils
 from ml4tc.plotting import satellite_plotting
@@ -137,7 +138,7 @@ def _find_gridsat_file(directory_name, valid_time_unix_sec):
     :raises: ValueError: if file is not found.
     """
 
-    gridsat_file_name = '{0:s}GRIDSAT-B1.{1:s}.v02r01.nc'.format(
+    gridsat_file_name = '{0:s}/GRIDSAT-B1.{1:s}.v02r01.nc'.format(
         directory_name,
         time_conversion.unix_sec_to_string(
             valid_time_unix_sec, GRIDSAT_TIME_FORMAT
@@ -179,6 +180,9 @@ def _read_gridsat_file(
     brightness_temp_matrix_kelvins = gridsat_table_xarray['irwin_cdr'].values[
         0, ...
     ]
+    brightness_temp_matrix_kelvins = general_utils.fill_nans(
+        brightness_temp_matrix_kelvins
+    )
 
     if longitude_positive_in_west:
         lng_conversion.convert_lng_positive_in_west(
@@ -298,6 +302,41 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         prediction_dict=prediction_dict, desired_indices=good_indices
     )
 
+    if longitude_positive_in_west:
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] = (
+            lng_conversion.convert_lng_positive_in_west(
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+            )
+        )
+    else:
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] = (
+            lng_conversion.convert_lng_negative_in_west(
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+            )
+        )
+
+    good_indices = numpy.where(numpy.logical_and(
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] >=
+        min_longitude_deg_e,
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY] <=
+        max_longitude_deg_e
+    ))[0]
+
+    prediction_dict = prediction_io.subset_by_index(
+        prediction_dict=prediction_dict, desired_indices=good_indices
+    )
+
+    good_indices = numpy.where(numpy.logical_and(
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] >=
+        min_latitude_deg_n,
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] <=
+        max_latitude_deg_n
+    ))[0]
+
+    prediction_dict = prediction_io.subset_by_index(
+        prediction_dict=prediction_dict, desired_indices=good_indices
+    )
+
     # Read other necessary files.
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
@@ -360,7 +399,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
         for i in example_indices:
             this_forecast_prob = (
-                prediction_io.get_mean_predictions(prediction_dict)[i, ..., -1]
+                prediction_io.get_mean_predictions(prediction_dict)[i]
             )
             this_target_class = (
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
