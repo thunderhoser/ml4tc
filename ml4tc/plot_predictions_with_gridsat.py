@@ -8,6 +8,7 @@ import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
+from scipy.interpolate import interp1d
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -67,6 +68,7 @@ pyplot.rc('figure', titlesize=FONT_SIZE)
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 GRIDSAT_DIR_ARG_NAME = 'input_gridsat_dir_name'
+CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 MIN_LATITUDE_ARG_NAME = 'min_latitude_deg_n'
 MAX_LATITUDE_ARG_NAME = 'max_latitude_deg_n'
 MIN_LONGITUDE_ARG_NAME = 'min_longitude_deg_e'
@@ -85,6 +87,12 @@ PREDICTION_FILE_HELP_STRING = (
 GRIDSAT_DIR_HELP_STRING = (
     'Name of directory with GridSat data.  Files therein will be found '
     '`_find_gridsat_file` and read by `_read_gridsat_file`.'
+)
+CONFIDENCE_LEVEL_HELP_STRING = (
+    'Confidence level to plot.  For example, if this is 0.95, will plot 95% '
+    'confidence interval of probabilities for each cyclone.  If you want to '
+    'plot only the mean and not a confidence interval, leave this argument '
+    'alone.'
 )
 MIN_LATITUDE_HELP_STRING = 'Minimum latitude (deg north) in map.'
 MAX_LATITUDE_HELP_STRING = 'Max latitude (deg north) in map.'
@@ -112,6 +120,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
     help=PREDICTION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=-1,
+    help=CONFIDENCE_LEVEL_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + MIN_LATITUDE_ARG_NAME, type=float, required=True,
@@ -241,7 +253,7 @@ def _read_gridsat_file(
 
 
 def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
-         min_latitude_deg_n, max_latitude_deg_n,
+         confidence_level, min_latitude_deg_n, max_latitude_deg_n,
          min_longitude_deg_e, max_longitude_deg_e,
          first_init_time_string, last_init_time_string, output_dir_name):
     """Plots predictions for many storms, one map per time step.
@@ -251,6 +263,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
     :param model_metafile_name: See documentation at top of file.
     :param gridsat_dir_name: Same.
     :param prediction_file_name: Same.
+    :param confidence_level: Same.
     :param min_latitude_deg_n: Same.
     :param max_latitude_deg_n: Same.
     :param min_longitude_deg_e: Same.
@@ -261,6 +274,12 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
     """
 
     # Check input args.
+    if confidence_level <= 0:
+        confidence_level = None
+    if confidence_level is not None:
+        error_checking.assert_is_geq(confidence_level, 0.8)
+        error_checking.assert_is_less_than(confidence_level, 1.)
+
     error_checking.assert_is_valid_latitude(min_latitude_deg_n)
     error_checking.assert_is_valid_latitude(max_latitude_deg_n)
     error_checking.assert_is_greater(max_latitude_deg_n, min_latitude_deg_n)
@@ -454,11 +473,37 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
             )
 
-            label_string = 'Storm {0:s}\n'.format(label_string)
+            label_string = 'Storm {0:s}\nFuture TS? {1:s}\n'.format(
+                label_string,
+                'Yes' if this_target_class else 'No'
+            )
             label_string += r'$p$ = '
-            label_string += '{0:.2f}\n'.format(this_forecast_prob)
-            label_string += r'$y$ = '
-            label_string += 'yes' if this_target_class else 'no'
+            label_string += '{0:.2f}'.format(this_forecast_prob).lstrip('0')
+
+            if confidence_level is not None:
+                interp_object = interp1d(
+                    x=prediction_dict[prediction_io.QUANTILE_LEVELS_KEY],
+                    y=prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
+                        i, 1, 1:
+                    ],
+                    kind='linear', bounds_error=False, assume_sorted=True,
+                    fill_value='extrapolate'
+                )
+
+                min_probability = interp_object(0.5 * (1. - confidence_level))
+                min_probability = numpy.maximum(min_probability, 0.)
+                min_probability = numpy.minimum(min_probability, 1.)
+
+                max_probability = interp_object(0.5 * (1. + confidence_level))
+                max_probability = numpy.maximum(max_probability, 0.)
+                max_probability = numpy.minimum(max_probability, 1.)
+
+                min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
+                max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
+
+                label_string += '\n{0:.1f}% CI: {1:s} to {2:s}'.format(
+                    100 * confidence_level, min_prob_string, max_prob_string
+                )
 
             this_latitude_deg_n = (
                 prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3.
@@ -488,7 +533,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
             axes_object.text(
                 this_longitude_deg_e, this_latitude_deg_n, label_string,
-                fontsize=FONT_SIZE, color=LABEL_COLOUR,
+                fontsize=24, color=LABEL_COLOUR,
                 bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment=horiz_alignment_string,
                 verticalalignment=vertical_alignment_string,
@@ -546,6 +591,7 @@ if __name__ == '__main__':
         prediction_file_name=getattr(
             INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
+        confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         min_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MIN_LATITUDE_ARG_NAME),
         max_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MAX_LATITUDE_ARG_NAME),
         min_longitude_deg_e=getattr(INPUT_ARG_OBJECT, MIN_LONGITUDE_ARG_NAME),
