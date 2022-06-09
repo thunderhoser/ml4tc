@@ -149,6 +149,13 @@ def _apply_nn_one_example_file(
                 prediction_dict
             )
 
+            forecast_prob_matrix = numpy.expand_dims(
+                forecast_prob_matrix, axis=-1
+            )
+            forecast_prob_matrix = numpy.concatenate(
+                (1. - forecast_prob_matrix, forecast_prob_matrix), axis=-1
+            )
+
     return forecast_prob_matrix, target_classes, data_dict
 
 
