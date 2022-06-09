@@ -473,7 +473,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
             )
 
-            label_string = 'Storm {0:s}\nFuture TS? {1:s}\n'.format(
+            label_string = 'Storm {0:s}\nFuture TS? {1:s}; '.format(
                 label_string,
                 'Yes' if this_target_class else 'No'
             )
@@ -533,7 +533,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
             axes_object.text(
                 this_longitude_deg_e, this_latitude_deg_n, label_string,
-                fontsize=24, color=LABEL_COLOUR,
+                fontsize=20, color=LABEL_COLOUR,
                 bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment=horiz_alignment_string,
                 verticalalignment=vertical_alignment_string,
