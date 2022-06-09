@@ -598,6 +598,9 @@ def _run(experiment_dir_name, output_dir_name):
     this_offset = numpy.nanpercentile(
         numpy.absolute(1. - frequency_bias_matrix), 99.
     )
+    if numpy.isnan(this_offset):
+        this_offset = 1.
+
     colour_map_object, colour_norm_object = _get_bias_colour_scheme(
         colour_map_name=BIAS_COLOUR_MAP_NAME,
         max_colour_value=1. + this_offset
