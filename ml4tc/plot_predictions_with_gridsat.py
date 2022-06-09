@@ -473,7 +473,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
             )
 
-            label_string = 'Storm {0:s}\nFuture TS? {1:s}; '.format(
+            label_string = 'Storm {0:s}\nFuture TS? {1:s}\n'.format(
                 label_string,
                 'Yes' if this_target_class else 'No'
             )
@@ -501,8 +501,11 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
                 max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
 
-                label_string += '\n{0:.1f}% CI: {1:s} to {2:s}'.format(
-                    100 * confidence_level, min_prob_string, max_prob_string
+                label_string += (
+                    '\n{0:.1f}'.format(100 * confidence_level).rstrip('.0')
+                )
+                label_string += '% CI: {0:s}-{1:s}'.format(
+                    min_prob_string, max_prob_string
                 )
 
             this_latitude_deg_n = (
