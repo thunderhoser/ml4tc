@@ -2823,6 +2823,8 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
             (1. - forecast_prob_matrix, forecast_prob_matrix), axis=k
         )
 
+    print(forecast_prob_matrix.shape)
+
     forecast_prob_matrix = numpy.maximum(forecast_prob_matrix, 0.)
     forecast_prob_matrix = numpy.minimum(forecast_prob_matrix, 1.)
     return forecast_prob_matrix
