@@ -1,24 +1,31 @@
 """Plots predictions with GridSat in background, one map per time step."""
 
 import os
+import sys
 import argparse
 import numpy
 import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
-from gewittergefahr.gg_utils import time_conversion
-from gewittergefahr.gg_utils import time_periods
-from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
-from gewittergefahr.gg_utils import number_rounding
-from gewittergefahr.gg_utils import file_system_utils
-from gewittergefahr.gg_utils import error_checking
-from ml4tc.io import prediction_io
-from ml4tc.io import border_io
-from ml4tc.utils import general_utils
-from ml4tc.machine_learning import neural_net
-from ml4tc.plotting import plotting_utils
-from ml4tc.plotting import satellite_plotting
+
+THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
+    os.path.join(os.getcwd(), os.path.expanduser(__file__))
+))
+sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
+
+import time_conversion
+import time_periods
+import longitude_conversion as lng_conversion
+import number_rounding
+import file_system_utils
+import error_checking
+import prediction_io
+import border_io
+import general_utils
+import neural_net
+import plotting_utils
+import satellite_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
