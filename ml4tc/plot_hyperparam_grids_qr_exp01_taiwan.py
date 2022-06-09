@@ -472,7 +472,7 @@ def _run(experiment_dir_name, output_dir_name):
     )
     print(SEPARATOR_STRING)
 
-    _print_ranking_one_score(score_matrix=aupd_matrix, score_name='AUC')
+    _print_ranking_one_score(score_matrix=auc_matrix, score_name='AUC')
     print(SEPARATOR_STRING)
 
     _print_ranking_one_score(score_matrix=aupd_matrix, score_name='AUPD')
