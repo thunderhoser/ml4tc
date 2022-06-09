@@ -161,7 +161,7 @@ def _plot_scores_2d(
     else:
         axes_object.imshow(
             score_matrix, cmap=colour_map_object, origin='lower',
-            cnorm=colour_norm_object
+            norm=colour_norm_object
         )
 
     x_tick_values = numpy.linspace(
