@@ -1,31 +1,24 @@
 """Plots predictions with GridSat in background, one map per time step."""
 
 import os
-import sys
 import argparse
 import numpy
 import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
-
-THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
-    os.path.join(os.getcwd(), os.path.expanduser(__file__))
-))
-sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
-
-import time_conversion
-import time_periods
-import longitude_conversion as lng_conversion
-import number_rounding
-import file_system_utils
-import error_checking
-import prediction_io
-import border_io
-import general_utils
-import neural_net
-import plotting_utils
-import satellite_plotting
+from gewittergefahr.gg_utils import time_conversion
+from gewittergefahr.gg_utils import time_periods
+from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
+from gewittergefahr.gg_utils import number_rounding
+from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.gg_utils import error_checking
+from ml4tc.io import prediction_io
+from ml4tc.io import border_io
+from ml4tc.utils import general_utils
+from ml4tc.machine_learning import neural_net
+from ml4tc.plotting import plotting_utils
+from ml4tc.plotting import satellite_plotting
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -426,13 +419,24 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             label_string = '{0:s}'.format(
                 prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
             )
+
+            this_latitude_deg_n = (
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 1.
+            )
+            vertical_alignment_string = 'bottom'
+
+            if this_latitude_deg_n > max_latitude_deg_n:
+                this_latitude_deg_n = (
+                    prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 1.
+                )
+                vertical_alignment_string = 'top'
+
             axes_object.text(
-                this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 1,
-                label_string,
+                this_longitude_deg_e, this_latitude_deg_n, label_string,
                 fontsize=16, color=LABEL_COLOUR,
                 bbox=MORE_OPAQUE_BOUNDING_BOX_DICT,
-                horizontalalignment='center', verticalalignment='bottom',
+                horizontalalignment='center',
+                verticalalignment=vertical_alignment_string,
                 zorder=1e10
             )
 
@@ -443,21 +447,44 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
             )
 
-            label_string = 'Storm {0:s}\n'.format(
-                label_string.strip()
-            )
+            label_string = 'Storm {0:s}\n'.format(label_string)
             label_string += r'$p$ = '
             label_string += '{0:.2f}\n'.format(this_forecast_prob)
             label_string += r'$y$ = '
             label_string += 'yes' if this_target_class else 'no'
 
+            this_latitude_deg_n = (
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3.
+            )
+            vertical_alignment_string = 'top'
+
+            if this_latitude_deg_n < min_latitude_deg_n + 6:
+                this_latitude_deg_n = (
+                    prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 3.
+                )
+                vertical_alignment_string = 'bottom'
+
+            this_longitude_deg_e = (
+                3. + lng_conversion.convert_lng_negative_in_west(
+                    prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
+                )
+            )
+            horiz_alignment_string = 'left'
+
+            if this_longitude_deg_e > max_longitude_deg_e - 15:
+                this_longitude_deg_e = (
+                    -3. + lng_conversion.convert_lng_negative_in_west(
+                        prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
+                    )
+                )
+                horiz_alignment_string = 'right'
+
             axes_object.text(
-                this_longitude_deg_e + 3,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3,
-                label_string,
+                this_longitude_deg_e, this_latitude_deg_n, label_string,
                 fontsize=FONT_SIZE, color=LABEL_COLOUR,
                 bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
-                horizontalalignment='left', verticalalignment='top',
+                horizontalalignment=horiz_alignment_string,
+                verticalalignment=vertical_alignment_string,
                 zorder=1e10
             )
 
