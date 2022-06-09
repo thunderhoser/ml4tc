@@ -192,7 +192,6 @@ def write_file(
         from (0, 1).  Otherwise, this should be None.
     """
 
-    print(forecast_probability_matrix.shape)
 
     error_checking.assert_is_numpy_array(forecast_probability_matrix)
     if len(forecast_probability_matrix.shape) == 2:

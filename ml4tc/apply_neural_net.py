@@ -163,7 +163,6 @@ def _apply_nn_one_example_file(
             forecast_prob_matrix = numpy.concatenate(
                 (1. - forecast_prob_matrix, forecast_prob_matrix), axis=-1
             )
-            print(forecast_prob_matrix.shape)
 
     return forecast_prob_matrix, target_classes, data_dict
 
