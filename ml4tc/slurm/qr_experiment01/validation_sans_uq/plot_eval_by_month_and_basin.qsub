@@ -23,8 +23,8 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/qr_experiment01"
 
-# set CENTRAL_LOSS_WEIGHTS=("04.0" "04.0" "04.0")
-# set QUANTILE_LEVEL_COUNTS=("026" "030" "101")
+# set CENTRAL_LOSS_WEIGHTS=("01.0" "07.0" "10.0")
+# set QUANTILE_LEVEL_COUNTS=("038" "038" "019")
 
 set central_loss_weight=${CENTRAL_LOSS_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
 set num_quantile_levels=${QUANTILE_LEVEL_COUNTS[$SLURM_ARRAY_TASK_ID]}
