@@ -84,8 +84,6 @@ def _apply_nn_one_example_file(
         num_dropout_iterations, use_quantiles):
     """Applies neural net to all examples in one file.
 
-    E = number of examples
-
     :param model_object: Trained instance of `keras.models.Model` or
         `keras.models.Sequential`.
     :param model_metadata_dict: Dictionary returned by
@@ -93,9 +91,8 @@ def _apply_nn_one_example_file(
     :param example_file_name: Path to example file.
     :param num_dropout_iterations: See documentation at top of this script.
     :param use_quantiles: Same.
-    :return: forecast_prob_matrix: numpy array of forecast probabilities.  The
-        first axis will have length E.
-    :return: target_classes: length-E numpy array of true classes (integers).
+    :return: forecast_prob_matrix: numpy array of forecast probabilities.
+    :return: target_class_matrix: numpy array of true classes (integers).
     :return: data_dict: Dictionary returned by `neural_net.create_inputs`.
     """
 
@@ -104,18 +101,23 @@ def _apply_nn_one_example_file(
     option_dict = copy.deepcopy(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
+    lead_times_hours = option_dict[neural_net.LEAD_TIMES_KEY]
     option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_name
     data_dict = neural_net.create_inputs(option_dict)
 
     if data_dict[neural_net.TARGET_ARRAY_KEY].size == 0:
         return None, None, None
 
-    if len(data_dict[neural_net.TARGET_ARRAY_KEY].shape) == 1:
-        target_classes = data_dict[neural_net.TARGET_ARRAY_KEY] + 0
-    else:
-        target_classes = numpy.argmax(
+    class_cutoffs_m_s01 = option_dict[neural_net.CLASS_CUTOFFS_KEY]
+    if class_cutoffs_m_s01 is not None and len(class_cutoffs_m_s01) > 1:
+        target_class_matrix = numpy.argmax(
             data_dict[neural_net.TARGET_ARRAY_KEY], axis=1
         )
+    else:
+        target_class_matrix = data_dict[neural_net.TARGET_ARRAY_KEY] + 0
+
+    if len(target_class_matrix.shape) == 1:
+        target_class_matrix = numpy.expand_dims(target_class_matrix, axis=-1)
 
     predictor_matrices = [
         m for m in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
@@ -130,12 +132,13 @@ def _apply_nn_one_example_file(
                 model_object=model_object,
                 predictor_matrices=predictor_matrices,
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
+                num_lead_times=len(lead_times_hours),
                 use_dropout=True, verbose=True
             )
 
             if k == 0:
                 forecast_prob_matrix = numpy.full(
-                    new_prob_matrix.shape + (num_dropout_iterations,),
+                    new_prob_matrix.shape[:-1] + (num_dropout_iterations,),
                     numpy.nan
                 )
 
@@ -145,6 +148,7 @@ def _apply_nn_one_example_file(
             model_object=model_object,
             predictor_matrices=predictor_matrices,
             num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
+            num_lead_times=len(lead_times_hours),
             use_dropout=False, verbose=True
         )
 
@@ -158,13 +162,13 @@ def _apply_nn_one_example_file(
             )
 
             forecast_prob_matrix = numpy.expand_dims(
-                forecast_prob_matrix, axis=-1
+                forecast_prob_matrix, axis=-2
             )
             forecast_prob_matrix = numpy.concatenate(
-                (1. - forecast_prob_matrix, forecast_prob_matrix), axis=-1
+                (1. - forecast_prob_matrix, forecast_prob_matrix), axis=-2
             )
 
-    return forecast_prob_matrix, target_classes, data_dict
+    return forecast_prob_matrix, target_class_matrix, data_dict
 
 
 def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
@@ -221,7 +225,7 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         for c in cyclone_id_string_by_file
     ]
 
-    target_classes = numpy.array([], dtype=int)
+    target_class_matrix = None
     forecast_prob_matrix = None
     cyclone_id_string_by_example = []
     init_times_unix_sec = numpy.array([], dtype=int)
@@ -233,7 +237,7 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         num_dropout_iterations = 0
 
     for i in range(len(example_file_names)):
-        this_prob_matrix, these_target_classes, this_data_dict = (
+        this_prob_matrix, this_target_matrix, this_data_dict = (
             _apply_nn_one_example_file(
                 model_object=model_object,
                 model_metadata_dict=model_metadata_dict,
@@ -243,9 +247,6 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
             )
         )
 
-        target_classes = numpy.concatenate(
-            (target_classes, these_target_classes), axis=0
-        )
         cyclone_id_string_by_example += (
             [cyclone_id_string_by_file[i]] *
             len(this_data_dict[neural_net.INIT_TIMES_KEY])
@@ -265,10 +266,14 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         ), axis=0)
 
         if forecast_prob_matrix is None:
+            target_class_matrix = this_target_matrix + 0
             forecast_prob_matrix = this_prob_matrix + 0.
         else:
             forecast_prob_matrix = numpy.concatenate(
                 (forecast_prob_matrix, this_prob_matrix), axis=0
+            )
+            target_class_matrix = numpy.concatenate(
+                (target_class_matrix, this_target_matrix), axis=0
             )
 
         print(SEPARATOR_STRING)
@@ -281,6 +286,9 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
     output_file_name = prediction_io.find_file(
         directory_name=output_dir_name, raise_error_if_missing=False
     )
+    lead_times_hours = model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
+        neural_net.LEAD_TIMES_KEY
+    ]
 
     print('Writing predictions and target values to: "{0:s}"...'.format(
         output_file_name
@@ -288,12 +296,13 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
     prediction_io.write_file(
         netcdf_file_name=output_file_name,
         forecast_probability_matrix=forecast_prob_matrix,
-        target_classes=target_classes,
+        target_class_matrix=target_class_matrix,
         cyclone_id_strings=cyclone_id_string_by_example,
         init_times_unix_sec=init_times_unix_sec,
         storm_latitudes_deg_n=storm_latitudes_deg_n,
         storm_longitudes_deg_e=storm_longitudes_deg_e,
         model_file_name=model_file_name,
+        lead_times_hours=lead_times_hours,
         quantile_levels=quantile_levels_to_write
     )
 

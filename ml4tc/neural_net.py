@@ -96,7 +96,7 @@ LOSS_PATIENCE = 0.
 EXAMPLE_FILE_KEY = 'example_file_name'
 EXAMPLE_DIRECTORY_KEY = 'example_dir_name'
 YEARS_KEY = 'years'
-LEAD_TIME_KEY = 'lead_time_hours'
+LEAD_TIMES_KEY = 'lead_times_hours'
 SATELLITE_LAG_TIMES_KEY = 'satellite_lag_times_minutes'
 SHIPS_LAG_TIMES_KEY = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_KEY = 'satellite_predictor_names'
@@ -164,7 +164,7 @@ DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST = copy.deepcopy(
 )
 
 DEFAULT_GENERATOR_OPTION_DICT = {
-    LEAD_TIME_KEY: 24,
+    LEAD_TIMES_KEY: numpy.array([24], dtype=int),
     SATELLITE_PREDICTORS_KEY: DEFAULT_SATELLITE_PREDICTOR_NAMES,
     SHIPS_PREDICTORS_LAGGED_KEY: DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
     SHIPS_BUILTIN_LAG_TIMES_KEY: numpy.full(1, numpy.nan),
@@ -464,7 +464,7 @@ def _discretize_intensity_change(intensity_change_m_s01, class_cutoffs_m_s01):
 
 
 def _find_all_desired_times(
-        example_table_xarray, init_time_unix_sec, lead_time_sec,
+        example_table_xarray, init_time_unix_sec, lead_times_sec,
         satellite_lag_times_sec, ships_lag_times_sec, predict_td_to_ts,
         satellite_time_tolerance_sec, satellite_max_missing_times,
         ships_time_tolerance_sec, ships_max_missing_times,
@@ -473,12 +473,14 @@ def _find_all_desired_times(
 
     T = number of lag times for satellite data
     U = number of lag times for SHIPS data
+    L = number of lead times
+    K = number of classes
 
     :param example_table_xarray: xarray table returned by
         `example_io.read_file`.
     :param init_time_unix_sec: Desired times will be found for this
         forecast-initialization time.
-    :param lead_time_sec: See doc for `_read_one_example_file`.
+    :param lead_times_sec: See doc for `_read_one_example_file`.
     :param satellite_lag_times_sec: Same.
     :param ships_lag_times_sec: Same.
     :param class_cutoffs_m_s01: Same.
@@ -493,7 +495,7 @@ def _find_all_desired_times(
     :return: ships_indices: length-U numpy array of indices for SHIPS-based
         predictors.  These are indices into the SHIPS times in
         `example_table_xarray`.
-    :return: target_flags: See doc for `_discretize_intensity_change`.
+    :return: target_flag_matrix: L-by-K numpy array of integers in 0...1.
     """
 
     xt = example_table_xarray
@@ -590,37 +592,41 @@ def _find_all_desired_times(
         if init_storm_type_enum != 1:
             return None, None, None
 
-        num_desired_times = 1 + int(numpy.round(
-            float(lead_time_sec) / (6 * HOURS_TO_SECONDS)
-        ))
-        desired_times_unix_sec = numpy.linspace(
-            init_time_unix_sec, init_time_unix_sec + lead_time_sec,
-            num=num_desired_times, dtype=int
-        )
+        num_lead_times = len(lead_times_sec)
+        target_flag_matrix = numpy.full((num_lead_times, 2), 0, dtype=bool)
 
-        target_indices = _find_desired_times(
-            all_times_unix_sec=all_metadata_times_unix_sec,
-            desired_times_unix_sec=desired_times_unix_sec,
-            tolerance_sec=0, max_num_missing_times=int(1e10)
-        )
-        target_indices = target_indices[target_indices != MISSING_INDEX]
+        for k in range(num_lead_times):
+            num_desired_times = 1 + int(numpy.round(
+                float(lead_times_sec[k]) / (6 * HOURS_TO_SECONDS)
+            ))
+            desired_times_unix_sec = numpy.linspace(
+                init_time_unix_sec, init_time_unix_sec + lead_times_sec[k],
+                num=num_desired_times, dtype=int
+            )
 
-        intensities_m_s01 = (
-            xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
-        )
-        storm_type_enums = xt[ships_io.STORM_TYPE_KEY].values[
-            target_indices, zero_hour_index
-        ]
+            target_indices = _find_desired_times(
+                all_times_unix_sec=all_metadata_times_unix_sec,
+                desired_times_unix_sec=desired_times_unix_sec,
+                tolerance_sec=0, max_num_missing_times=int(1e10)
+            )
+            target_indices = target_indices[target_indices != MISSING_INDEX]
 
-        target_flag = numpy.any(numpy.logical_and(
-            intensities_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
-            storm_type_enums == 1
-        ))
-        target_flags = numpy.array(
-            [numpy.invert(target_flag), target_flag], dtype=bool
-        )
+            intensities_m_s01 = (
+                xt[example_utils.STORM_INTENSITY_KEY].values[target_indices]
+            )
+            storm_type_enums = xt[ships_io.STORM_TYPE_KEY].values[
+                target_indices, zero_hour_index
+            ]
 
-        return satellite_indices, ships_indices, target_flags
+            target_flag_matrix[k, 1] = numpy.any(numpy.logical_and(
+                intensities_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
+                storm_type_enums == 1
+            ))
+            target_flag_matrix[k, 0] = numpy.invert(target_flag_matrix[k, 1])
+
+        return satellite_indices, ships_indices, target_flag_matrix.astype(int)
+
+    lead_time_sec = lead_times_sec[0]
 
     num_desired_times = 1 + int(numpy.round(
         float(lead_time_sec) / (6 * HOURS_TO_SECONDS)
@@ -663,14 +669,15 @@ def _find_all_desired_times(
         intensity_change_m_s01=intensity_change_m_s01,
         class_cutoffs_m_s01=class_cutoffs_m_s01
     )
+    target_flag_matrix = numpy.expand_dims(target_flags, axis=0)
 
-    return satellite_indices, ships_indices, target_flags
+    return satellite_indices, ships_indices, target_flag_matrix
 
 
 def _read_non_predictors_one_file(
         example_table_xarray, num_examples_desired,
         num_positive_examples_desired, num_negative_examples_desired,
-        lead_time_sec, satellite_lag_times_sec, ships_lag_times_sec,
+        lead_times_sec, satellite_lag_times_sec, ships_lag_times_sec,
         predict_td_to_ts, satellite_time_tolerance_sec,
         satellite_max_missing_times, ships_time_tolerance_sec,
         ships_max_missing_times, use_climo_as_backup, all_init_times_unix_sec,
@@ -684,7 +691,7 @@ def _read_non_predictors_one_file(
     :param num_examples_desired: See doc for `_read_one_example_file`.
     :param num_positive_examples_desired: Same.
     :param num_negative_examples_desired: Same.
-    :param lead_time_sec: Same.
+    :param lead_times_sec: Same.
     :param satellite_lag_times_sec: Same.
     :param ships_lag_times_sec: Same.
     :param predict_td_to_ts: Same.
@@ -736,10 +743,10 @@ def _read_non_predictors_one_file(
         target_array = numpy.full(0, -1, dtype=int)
 
     for t in all_init_times_unix_sec:
-        these_satellite_indices, these_ships_indices, these_flags = (
+        these_satellite_indices, these_ships_indices, this_flag_matrix = (
             _find_all_desired_times(
                 example_table_xarray=xt, init_time_unix_sec=t,
-                lead_time_sec=lead_time_sec,
+                lead_times_sec=lead_times_sec,
                 satellite_lag_times_sec=satellite_lag_times_sec,
                 ships_lag_times_sec=ships_lag_times_sec,
                 predict_td_to_ts=predict_td_to_ts,
@@ -752,7 +759,7 @@ def _read_non_predictors_one_file(
             )
         )
 
-        if these_flags is None:
+        if this_flag_matrix is None:
             continue
 
         if (
@@ -762,24 +769,31 @@ def _read_non_predictors_one_file(
         ):
             continue
 
-        if these_flags[-1] == 1:
+        if numpy.any(this_flag_matrix[:, -1] == 1):
             if num_positive_examples_found >= num_positive_examples_desired:
                 continue
 
             num_positive_examples_found += 1
 
-        if these_flags[-1] == 0:
+        if not numpy.any(this_flag_matrix[:, -1] == 1):
             if num_negative_examples_found >= num_negative_examples_desired:
                 continue
 
             num_negative_examples_found += 1
 
-        if num_classes > 2:
-            these_flags = numpy.expand_dims(these_flags, axis=0)
-        else:
-            these_flags = numpy.array([numpy.argmax(these_flags)], dtype=int)
+        if num_classes == 2:
+            # From L x 2 to length-L.
+            this_flag_matrix = numpy.argmax(this_flag_matrix, axis=1)
 
-        target_array = numpy.concatenate((target_array, these_flags), axis=0)
+        this_flag_matrix = numpy.expand_dims(this_flag_matrix, axis=0)
+        target_array = numpy.concatenate(
+            (target_array, this_flag_matrix), axis=0
+        )
+
+        if not predict_td_to_ts:
+            # Remove lead-time dimension.
+            target_array = target_array[:, 0, ...]
+
         satellite_rows_by_example.append(these_satellite_indices)
         ships_rows_by_example.append(these_ships_indices)
         init_times_unix_sec.append(t)
@@ -1178,7 +1192,7 @@ def _read_ships_one_file(
 
 def _read_one_example_file(
         example_file_name, num_examples_desired, num_positive_examples_desired,
-        num_negative_examples_desired, lead_time_hours,
+        num_negative_examples_desired, lead_times_hours,
         satellite_lag_times_minutes, ships_lag_times_hours,
         satellite_predictor_names, ships_predictor_names_lagged,
         ships_builtin_lag_times_hours, ships_predictor_names_forecast,
@@ -1196,6 +1210,7 @@ def _read_one_example_file(
     C_sat = number of channels for ungridded satellite-based predictors
     C_ships = number of channels for SHIPS predictors
     K = number of classes
+    L = number of lead times
 
     :param example_file_name: Path to input file.  Will be read by
         `example_io.read_file`.
@@ -1204,7 +1219,7 @@ def _read_one_example_file(
         highest class) desired.
     :param num_negative_examples_desired: Number of negative examples (not in
         highest class) desired.
-    :param lead_time_hours: See doc for `input_generator`.
+    :param lead_times_hours: See doc for `input_generator`.
     :param satellite_lag_times_minutes: Same.
     :param ships_lag_times_hours: Same.
     :param satellite_predictor_names: Same.
@@ -1237,9 +1252,10 @@ def _read_one_example_file(
         ships_predictor_matrix: numpy array (E x T_ships x C_ships) of
         SHIPS predictors.
 
-    data_dict['target_array']: If K > 2, this is an E-by-K numpy array of
-        integers (0 or 1), indicating true classes.  If K = 2, this is a
-        length-E numpy array of integers (0 or 1).
+    data_dict['target_array']: If L > 2, this is an E-by-L numpy array of
+        integers (0 or 1), indicating true classes.  Else, if K > 2, this is an
+        E-by-K numpy array of integers (0 or 1),  Else, this is a length-E numpy
+        array of integers (0 or 1).
     data_dict['init_times_unix_sec']: length-E numpy array of forecast-
         initialization times.
     data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
@@ -1266,7 +1282,7 @@ def _read_one_example_file(
     else:
         ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
 
-    lead_time_sec = lead_time_hours * HOURS_TO_SECONDS
+    lead_times_sec = lead_times_hours * HOURS_TO_SECONDS
 
     print('Reading data from: "{0:s}"...'.format(example_file_name))
     xt = example_io.read_file(example_file_name)
@@ -1276,7 +1292,7 @@ def _read_one_example_file(
         num_examples_desired=num_examples_desired,
         num_positive_examples_desired=num_positive_examples_desired,
         num_negative_examples_desired=num_negative_examples_desired,
-        lead_time_sec=lead_time_sec,
+        lead_times_sec=lead_times_sec,
         satellite_lag_times_sec=satellite_lag_times_sec,
         ships_lag_times_sec=ships_lag_times_sec,
         predict_td_to_ts=predict_td_to_ts,
@@ -1377,8 +1393,9 @@ def _check_generator_args(option_dict):
         option_dict[YEARS_KEY], num_dimensions=1
     )
 
-    error_checking.assert_is_integer(option_dict[LEAD_TIME_KEY])
-    assert numpy.mod(option_dict[LEAD_TIME_KEY], 6) == 0
+    error_checking.assert_is_integer_numpy_array(option_dict[LEAD_TIMES_KEY])
+    error_checking.assert_is_greater_numpy_array(option_dict[LEAD_TIMES_KEY], 0)
+    assert numpy.all(numpy.mod(option_dict[LEAD_TIMES_KEY], 6) == 0)
 
     if option_dict[SATELLITE_LAG_TIMES_KEY] is None:
         option_dict[SATELLITE_PREDICTORS_KEY] = None
@@ -1876,6 +1893,13 @@ def read_metafile(pickle_file_name):
     training_option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     validation_option_dict = metadata_dict[VALIDATION_OPTIONS_KEY]
 
+    if LEAD_TIMES_KEY not in training_option_dict:
+        lead_times_hours = numpy.array(
+            [training_option_dict['lead_time_hours']], dtype=int
+        )
+        training_option_dict[LEAD_TIMES_KEY] = lead_times_hours
+        validation_option_dict[LEAD_TIMES_KEY] = lead_times_hours
+
     if SATELLITE_TIME_TOLERANCE_KEY not in training_option_dict:
         training_option_dict[SATELLITE_TIME_TOLERANCE_KEY] = 930
         training_option_dict[SATELLITE_MAX_MISSING_TIMES_KEY] = 1
@@ -2132,7 +2156,7 @@ def create_inputs(option_dict):
     :param option_dict: Dictionary with the following keys.
     option_dict['example_file_name']: Path to example file (will be read by
         `example_io.read_file`).
-    option_dict['lead_time_hours']: See doc for `input_generator`.
+    option_dict['lead_times_hours']: See doc for `input_generator`.
     option_dict['satellite_lag_times_minutes']: Same.
     option_dict['ships_lag_times_hours']: Same.
     option_dict['satellite_predictor_names']: Same.
@@ -2162,7 +2186,7 @@ def create_inputs(option_dict):
     option_dict = _check_generator_args(option_dict)
 
     example_file_name = option_dict[EXAMPLE_FILE_KEY]
-    lead_time_hours = option_dict[LEAD_TIME_KEY]
+    lead_times_hours = option_dict[LEAD_TIMES_KEY]
     satellite_lag_times_minutes = option_dict[SATELLITE_LAG_TIMES_KEY]
     ships_lag_times_hours = option_dict[SHIPS_LAG_TIMES_KEY]
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
@@ -2186,7 +2210,7 @@ def create_inputs(option_dict):
         num_examples_desired=int(1e10),
         num_positive_examples_desired=int(1e10),
         num_negative_examples_desired=int(1e10),
-        lead_time_hours=lead_time_hours,
+        lead_times_hours=lead_times_hours,
         satellite_lag_times_minutes=satellite_lag_times_minutes,
         ships_lag_times_hours=ships_lag_times_hours,
         satellite_predictor_names=satellite_predictor_names,
@@ -2236,7 +2260,7 @@ def input_generator(option_dict):
         Files therein will be found by `example_io.find_file` and read by
         `example_io.read_file`.
     option_dict['years']: 1-D numpy array of training years.
-    option_dict['lead_time_hours']: Lead time for predicting storm intensity.
+    option_dict['lead_times_hours']: Lead times for predicting storm intensity.
     option_dict['satellite_lag_times_minutes']: 1-D numpy array of lag times for
         satellite-based predictors.  If you do not want any satellite predictors
         (brightness-temperature grids or scalars), make this None.
@@ -2313,7 +2337,7 @@ def input_generator(option_dict):
 
     example_dir_name = option_dict[EXAMPLE_DIRECTORY_KEY]
     years = option_dict[YEARS_KEY]
-    lead_time_hours = option_dict[LEAD_TIME_KEY]
+    lead_times_hours = option_dict[LEAD_TIMES_KEY]
     satellite_lag_times_minutes = option_dict[SATELLITE_LAG_TIMES_KEY]
     ships_lag_times_hours = option_dict[SHIPS_LAG_TIMES_KEY]
     satellite_predictor_names = option_dict[SATELLITE_PREDICTORS_KEY]
@@ -2366,12 +2390,10 @@ def input_generator(option_dict):
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     random.shuffle(cyclone_id_strings)
 
-    # TODO(thunderhoser): Do not allow zipped!
-
     example_file_names = [
         example_io.find_file(
             directory_name=example_dir_name, cyclone_id_string=c,
-            prefer_zipped=False, allow_other_format=True,
+            prefer_zipped=False, allow_other_format=False,
             raise_error_if_missing=True
         )
         for c in cyclone_id_strings
@@ -2414,7 +2436,7 @@ def input_generator(option_dict):
                 num_examples_desired=num_examples_to_read,
                 num_positive_examples_desired=num_positive_examples_to_read,
                 num_negative_examples_desired=num_negative_examples_to_read,
-                lead_time_hours=lead_time_hours,
+                lead_times_hours=lead_times_hours,
                 satellite_lag_times_minutes=satellite_lag_times_minutes,
                 ships_lag_times_hours=ships_lag_times_hours,
                 satellite_predictor_names=satellite_predictor_names,
@@ -2720,6 +2742,48 @@ def read_model(hdf5_file_name):
 
     custom_object_dict['loss'] = loss_dict
 
+    try:
+        model_object = tf_keras.models.load_model(
+            hdf5_file_name, custom_objects=custom_object_dict, compile=False
+        )
+        model_object.compile(
+            loss=custom_object_dict['loss'], optimizer=keras.optimizers.Adam(),
+            metrics=metric_list
+        )
+
+        return model_object
+    except:
+        pass
+
+    num_lead_times = len(metadata_dict[TRAINING_OPTIONS_KEY][LEAD_TIMES_KEY])
+
+    custom_object_dict = {}
+    loss_dict = {}
+    metric_list = []
+
+    for j in range(num_lead_times):
+        loss_dict['central_output_lead{0:03d}'.format(j + 1)] = (
+            central_loss_function
+        )
+        custom_object_dict['central_output_lead{0:03d}_loss'.format(j + 1)] = (
+            central_loss_function
+        )
+
+        for k in range(len(quantile_levels)):
+            this_loss_function = custom_losses.quantile_loss(
+                quantile_level=quantile_levels[k]
+            )
+
+            loss_dict[
+                'quantile_output{0:03d}_lead{1:03d}'.format(k + 1, j + 1)
+            ] = this_loss_function
+
+            custom_object_dict[
+                'quantile_output{0:03d}_lead{1:03d}_loss'.format(k + 1, j + 1)
+            ] = this_loss_function
+
+    custom_object_dict['loss'] = loss_dict
+
     model_object = tf_keras.models.load_model(
         hdf5_file_name, custom_objects=custom_object_dict, compile=False
     )
@@ -2732,11 +2796,12 @@ def read_model(hdf5_file_name):
 
 
 def apply_model(model_object, predictor_matrices, num_examples_per_batch,
-                use_dropout=False, verbose=False):
+                num_lead_times, use_dropout=False, verbose=False):
     """Applies trained neural net.
 
     E = number of examples
     K = number of classes
+    L = number of lead times
     S = number of prediction sets
 
     :param model_object: Trained neural net (instance of `keras.models.Model` or
@@ -2747,8 +2812,9 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
         turned on.  Using dropout at inference time is called "Monte Carlo
         dropout".
     :param verbose: Boolean flag.  If True, will print progress messages.
-    :return: forecast_prob_matrix: E-by-K-by-S (or E-by-K, if S = 1) numpy array
-        of class probabilities.
+    :param num_lead_times: Number of lead times.
+    :return: forecast_prob_matrix: E-by-K-by-L-by-S numpy array of class
+        probabilities.
     """
 
     for this_matrix in predictor_matrices:
@@ -2758,6 +2824,9 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
     error_checking.assert_is_geq(num_examples_per_batch, 1)
     num_examples = predictor_matrices[0].shape[0]
     num_examples_per_batch = min([num_examples_per_batch, num_examples])
+
+    error_checking.assert_is_integer(num_lead_times)
+    error_checking.assert_is_greater(num_lead_times, 0)
 
     error_checking.assert_is_boolean(use_dropout)
     error_checking.assert_is_boolean(verbose)
@@ -2797,14 +2866,47 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
                 [a[these_indices, ...] for a in predictor_matrices]
             )
 
-        if isinstance(these_predictions, list):
+        many_output_channels = isinstance(these_predictions, list)
+
+        if many_output_channels:
             this_prob_matrix = numpy.stack(these_predictions, axis=-1)
+
             if len(this_prob_matrix.shape) == 2:
                 this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+                this_prob_matrix = numpy.concatenate(
+                    (1. - this_prob_matrix, this_prob_matrix), axis=-2
+                )
+
+            num_output_channels = this_prob_matrix.shape[-1]
+            num_prediction_sets_float = (
+                float(num_output_channels) / num_lead_times
+            )
+            num_prediction_sets = int(numpy.round(
+                num_prediction_sets_float
+            ))
+
+            assert numpy.isclose(
+                num_prediction_sets, num_prediction_sets_float,
+                atol=TOLERANCE
+            )
+
+            dimensions = (
+                this_prob_matrix.shape[:-1], num_lead_times, num_prediction_sets
+            )
+            this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
         else:
             this_prob_matrix = these_predictions + 0.
+
+            # Add class axis.
             if len(this_prob_matrix.shape) == 1:
                 this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+                this_prob_matrix = numpy.concatenate(
+                    (1. - this_prob_matrix, this_prob_matrix), axis=-1
+                )
+
+            # Add lead-time and prediction-set axes.
+            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
 
         if forecast_prob_matrix is None:
             dimensions = (num_examples,) + this_prob_matrix.shape[1:]
@@ -2814,14 +2916,6 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
 
     if verbose:
         print('Have applied model to all {0:d} examples!'.format(num_examples))
-
-    for k in range(1, len(forecast_prob_matrix.shape)):
-        if forecast_prob_matrix.shape[k] > 1:
-            continue
-
-        forecast_prob_matrix = numpy.concatenate(
-            (1. - forecast_prob_matrix, forecast_prob_matrix), axis=k
-        )
 
     forecast_prob_matrix = numpy.maximum(forecast_prob_matrix, 0.)
     forecast_prob_matrix = numpy.minimum(forecast_prob_matrix, 1.)

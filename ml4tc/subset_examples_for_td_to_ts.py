@@ -20,7 +20,7 @@ import satellite_utils
 import neural_net
 
 LARGE_INTEGER = int(1e10)
-DUMMY_LEAD_TIME_SEC = 666 * 3600
+DUMMY_LEAD_TIMES_SEC = numpy.array([666 * 3600], dtype=int)
 
 HOURS_TO_SECONDS = 3600
 MINUTES_TO_SECONDS = 60
@@ -165,7 +165,7 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             num_examples_desired=LARGE_INTEGER,
             num_positive_examples_desired=LARGE_INTEGER,
             num_negative_examples_desired=LARGE_INTEGER,
-            lead_time_sec=DUMMY_LEAD_TIME_SEC,
+            lead_times_sec=DUMMY_LEAD_TIMES_SEC,
             satellite_lag_times_sec=satellite_lag_times_sec,
             ships_lag_times_sec=ships_lag_times_sec,
             predict_td_to_ts=True,
