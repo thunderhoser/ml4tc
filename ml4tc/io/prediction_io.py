@@ -383,9 +383,14 @@ def read_file(netcdf_file_name):
         QUANTILE_LEVELS_KEY: None
     }
 
-    while len(prediction_dict[PROBABILITY_MATRIX_KEY].shape) < 4:
+    if PREDICTION_SET_DIMENSION_KEY not in dataset_object.dimensions:
         prediction_dict[PROBABILITY_MATRIX_KEY] = numpy.expand_dims(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
+        )
+
+    if LEAD_TIME_DIMENSION_KEY not in dataset_object.dimensions:
+        prediction_dict[PROBABILITY_MATRIX_KEY] = numpy.expand_dims(
+            prediction_dict[PROBABILITY_MATRIX_KEY], axis=-2
         )
 
     if QUANTILE_LEVELS_KEY in dataset_object.variables:

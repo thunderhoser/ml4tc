@@ -245,6 +245,77 @@ def _read_gridsat_file(
     )
 
 
+def _get_prediction_string(prediction_dict, example_index, confidence_level):
+    """Returns string with predictions and targets.
+
+    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
+    :param example_index: Will create string for the [i]th example, where
+        i = `example_index`.
+    :param confidence_level: See documentation at top of file.
+    """
+
+    i = example_index
+    mean_forecast_probs = (
+        prediction_io.get_mean_predictions(prediction_dict)[i, :]
+    )
+    forecast_prob_matrix = (
+        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][i, 1, ...]
+    )
+    target_classes = (
+        prediction_dict[prediction_io.TARGET_MATRIX_KEY][i, :]
+    )
+    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
+    quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
+
+    label_string = 'Storm {0:s}'.format(
+        prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
+    )
+
+    for k in range(len(lead_times_hours)):
+        label_string += '\nTS in next {0:d} h? {1:s}; '.format(
+            lead_times_hours[k],
+            'Yes' if target_classes[k] else 'No'
+        )
+
+        label_string += r'$p$ = '
+        label_string += '{0:.2f}'.format(mean_forecast_probs[k]).lstrip('0')
+
+        if confidence_level is not None:
+            if quantile_levels is None:
+                min_probability = numpy.percentile(
+                    forecast_prob_matrix[k, :], 50 * (1. - confidence_level)
+                )
+                max_probability = numpy.percentile(
+                    forecast_prob_matrix[k, :], 50 * (1. + confidence_level)
+                )
+            else:
+                interp_object = interp1d(
+                    x=quantile_levels, y=forecast_prob_matrix[k, 1:],
+                    kind='linear', bounds_error=False, assume_sorted=True,
+                    fill_value='extrapolate'
+                )
+
+                min_probability = interp_object(0.5 * (1. - confidence_level))
+                max_probability = interp_object(0.5 * (1. + confidence_level))
+
+            min_probability = numpy.maximum(min_probability, 0.)
+            min_probability = numpy.minimum(min_probability, 1.)
+            max_probability = numpy.maximum(max_probability, 0.)
+            max_probability = numpy.minimum(max_probability, 1.)
+
+            min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
+            max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
+
+            label_string += (
+                ' ({0:.1f}'.format(100 * confidence_level).rstrip('.0')
+            )
+            label_string += '% CI: {0:s}-{1:s})'.format(
+                min_prob_string, max_prob_string
+            )
+
+    return label_string
+
+
 def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
          confidence_level, min_latitude_deg_n, max_latitude_deg_n,
          min_longitude_deg_e, max_longitude_deg_e,
@@ -423,30 +494,34 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             cbar_orientation_string=None
         )
 
-        for i in example_indices:
+        for i in range(len(example_indices)):
+            j = example_indices[i]
+
+            # Plot star at center of tropical cyclone.
             this_longitude_deg_e = lng_conversion.convert_lng_negative_in_west(
-                prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
+                prediction_dict[prediction_io.STORM_LONGITUDES_KEY][j]
             )
             axes_object.plot(
                 this_longitude_deg_e,
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i],
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][j],
                 linestyle='None', marker='*', markersize=16, markeredgewidth=0,
                 markerfacecolor=numpy.full(3, 1.),
                 markeredgecolor=numpy.full(3, 1.)
             )
 
+            # Print cyclone ID near star.
             label_string = '{0:s}'.format(
-                prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
+                prediction_dict[prediction_io.CYCLONE_IDS_KEY][j][-2:]
             )
 
             this_latitude_deg_n = (
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 1.
+                prediction_dict[prediction_io.STORM_LATITUDES_KEY][j] + 1.
             )
             vertical_alignment_string = 'bottom'
 
             if this_latitude_deg_n > max_latitude_deg_n:
                 this_latitude_deg_n = (
-                    prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 1.
+                    prediction_dict[prediction_io.STORM_LATITUDES_KEY][j] - 1.
                 )
                 vertical_alignment_string = 'top'
 
@@ -459,81 +534,40 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 zorder=1e10
             )
 
-            this_forecast_prob = (
-                prediction_io.get_mean_predictions(prediction_dict)[i]
+            # Print predictions and targets to side of map.
+            label_string = _get_prediction_string(
+                prediction_dict=prediction_dict, example_index=j,
+                confidence_level=confidence_level
             )
-            this_target_class = (
-                prediction_dict[prediction_io.TARGET_CLASSES_KEY][i]
-            )
 
-            label_string = 'Storm {0:s}\nFuture TS? {1:s}\n'.format(
-                label_string,
-                'Yes' if this_target_class else 'No'
-            )
-            label_string += r'$p$ = '
-            label_string += '{0:.2f}'.format(this_forecast_prob).lstrip('0')
-
-            if confidence_level is not None:
-                interp_object = interp1d(
-                    x=prediction_dict[prediction_io.QUANTILE_LEVELS_KEY],
-                    y=prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][
-                        i, 1, 1:
-                    ],
-                    kind='linear', bounds_error=False, assume_sorted=True,
-                    fill_value='extrapolate'
-                )
-
-                min_probability = interp_object(0.5 * (1. - confidence_level))
-                min_probability = numpy.maximum(min_probability, 0.)
-                min_probability = numpy.minimum(min_probability, 1.)
-
-                max_probability = interp_object(0.5 * (1. + confidence_level))
-                max_probability = numpy.maximum(max_probability, 0.)
-                max_probability = numpy.minimum(max_probability, 1.)
-
-                min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
-                max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
-
-                label_string += (
-                    '\n{0:.1f}'.format(100 * confidence_level).rstrip('.0')
-                )
-                label_string += '% CI: {0:s}-{1:s}'.format(
-                    min_prob_string, max_prob_string
-                )
-
-            this_latitude_deg_n = (
-                prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] - 3.
-            )
-            vertical_alignment_string = 'top'
-
-            if this_latitude_deg_n < min_latitude_deg_n + 6:
-                this_latitude_deg_n = (
-                    prediction_dict[prediction_io.STORM_LATITUDES_KEY][i] + 3.
-                )
-                vertical_alignment_string = 'bottom'
-
-            this_longitude_deg_e = (
-                3. + lng_conversion.convert_lng_negative_in_west(
-                    prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
-                )
-            )
-            horiz_alignment_string = 'left'
-
-            if this_longitude_deg_e > max_longitude_deg_e - 15:
-                this_longitude_deg_e = (
-                    -3. + lng_conversion.convert_lng_negative_in_west(
-                        prediction_dict[prediction_io.STORM_LONGITUDES_KEY][i]
-                    )
-                )
+            if i == 0 or i > 3:
+                x_coord = -0.05
+                y_coord = 0.5
                 horiz_alignment_string = 'right'
+                vertical_alignment_string = 'center'
+            elif i == 1:
+                x_coord = 1.05
+                y_coord = 0.5
+                horiz_alignment_string = 'left'
+                vertical_alignment_string = 'center'
+            elif i == 2:
+                x_coord = 0.5
+                y_coord = 1.05
+                horiz_alignment_string = 'center'
+                vertical_alignment_string = 'bottom'
+            else:
+                x_coord = 0.5
+                y_coord = -0.05
+                horiz_alignment_string = 'center'
+                vertical_alignment_string = 'top'
 
             axes_object.text(
-                this_longitude_deg_e, this_latitude_deg_n, label_string,
-                fontsize=20, color=LABEL_COLOUR,
+                x_coord, y_coord, label_string,
+                fontsize=16, color=LABEL_COLOUR,
                 bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment=horiz_alignment_string,
                 verticalalignment=vertical_alignment_string,
-                zorder=1e10
+                zorder=1e10, transform=axes_object.transAxes
             )
 
         plotting_utils.plot_grid_lines(
