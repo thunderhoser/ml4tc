@@ -491,6 +491,35 @@ def subset_by_basin(prediction_dict, desired_basin_id_string):
     )
 
 
+def subset_by_lead_time(prediction_dict, lead_times_hours):
+    """Subsets data by lead time.
+
+    :param prediction_dict: See doc for `write_file`.
+    :param lead_times_hours: 1-D numpy array of desired lead times.
+    :return: prediction_dict: Same as input but with fewer lead times.
+    """
+
+    error_checking.assert_is_numpy_array(lead_times_hours, num_dimensions=1)
+    error_checking.assert_is_integer(lead_times_hours)
+    error_checking.assert_is_greater_numpy_array(lead_times_hours, 0)
+    lead_times_hours = numpy.unique(lead_times_hours)
+
+    good_indices = numpy.array([
+        numpy.where(prediction_dict[LEAD_TIMES_KEY] == t)[0][0]
+        for t in lead_times_hours
+    ], dtype=int)
+
+    prediction_dict[PROBABILITY_MATRIX_KEY] = (
+        prediction_dict[PROBABILITY_MATRIX_KEY][:, :, good_indices, :]
+    )
+    prediction_dict[TARGET_MATRIX_KEY] = (
+        prediction_dict[TARGET_MATRIX_KEY][..., good_indices]
+    )
+    prediction_dict[LEAD_TIMES_KEY] = lead_times_hours
+
+    return prediction_dict
+
+
 def find_grid_metafile(prediction_dir_name, raise_error_if_missing=True):
     """Finds file with metadata for grid.
 

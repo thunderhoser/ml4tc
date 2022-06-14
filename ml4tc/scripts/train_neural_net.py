@@ -14,7 +14,7 @@ INPUT_ARG_PARSER = training_args.add_input_args(parser_object=INPUT_ARG_PARSER)
 
 def _run(template_file_name, output_dir_name, training_example_dir_name,
          validation_example_dir_name, training_years, validation_years,
-         lead_time_hours, satellite_lag_times_minutes, ships_lag_times_hours,
+         lead_times_hours, satellite_lag_times_minutes, ships_lag_times_hours,
          satellite_predictor_names, ships_predictor_names_lagged,
          ships_builtin_lag_times_hours, ships_predictor_names_forecast,
          ships_max_forecast_hour, satellite_time_tolerance_training_sec,
@@ -40,7 +40,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param validation_example_dir_name: Same.
     :param training_years: Same.
     :param validation_years: Same.
-    :param lead_time_hours: Same.
+    :param lead_times_hours: Same.
     :param satellite_lag_times_minutes: Same.
     :param ships_lag_times_hours: Same.
     :param satellite_predictor_names: Same.
@@ -109,7 +109,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     training_option_dict = {
         neural_net.EXAMPLE_DIRECTORY_KEY: training_example_dir_name,
         neural_net.YEARS_KEY: training_years,
-        neural_net.LEAD_TIME_KEY: lead_time_hours,
+        neural_net.LEAD_TIMES_KEY: lead_times_hours,
         neural_net.SATELLITE_LAG_TIMES_KEY: satellite_lag_times_minutes,
         neural_net.SHIPS_LAG_TIMES_KEY: ships_lag_times_hours,
         neural_net.SATELLITE_PREDICTORS_KEY: satellite_predictor_names,
@@ -202,8 +202,9 @@ if __name__ == '__main__':
             getattr(INPUT_ARG_OBJECT, training_args.VALIDATION_YEARS_ARG_NAME),
             dtype=int
         ),
-        lead_time_hours=getattr(
-            INPUT_ARG_OBJECT, training_args.LEAD_TIME_ARG_NAME
+        lead_times_hours=numpy.array(
+            getattr(INPUT_ARG_OBJECT, training_args.LEAD_TIMES_ARG_NAME),
+            dtype=int
         ),
         satellite_lag_times_minutes=numpy.array(
             getattr(

@@ -97,11 +97,6 @@ def _apply_nn_one_example_file(
     option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_name
     data_dict = neural_net.create_inputs(option_dict)
 
-    # If L > 2, this is an E-by-L numpy array of
-    # integers (0 or 1), indicating true classes.  Else, if K > 2, this is an
-    # E-by-K numpy array of integers (0 or 1),  Else, this is a length-E numpy
-    # array of integers (0 or 1).
-
     if data_dict[neural_net.TARGET_ARRAY_KEY].size == 0:
         return None, None, None
 

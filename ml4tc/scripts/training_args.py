@@ -15,7 +15,7 @@ TRAINING_DIR_ARG_NAME = 'training_example_dir_name'
 VALIDATION_DIR_ARG_NAME = 'validation_example_dir_name'
 TRAINING_YEARS_ARG_NAME = 'training_years'
 VALIDATION_YEARS_ARG_NAME = 'validation_years'
-LEAD_TIME_ARG_NAME = 'lead_time_hours'
+LEAD_TIMES_ARG_NAME = 'lead_times_hours'
 SATELLITE_LAG_TIMES_ARG_NAME = 'satellite_lag_times_minutes'
 SHIPS_LAG_TIMES_ARG_NAME = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_ARG_NAME = 'satellite_predictor_names'
@@ -65,7 +65,7 @@ VALIDATION_DIR_HELP_STRING = (
 )
 TRAINING_YEARS_HELP_STRING = 'List of training years.'
 VALIDATION_YEARS_HELP_STRING = 'List of validation years.'
-LEAD_TIME_HELP_STRING = 'Lead time for predicting storm intensity.'
+LEAD_TIMES_HELP_STRING = 'Lead times for predicting storm intensity.'
 SATELLITE_LAG_TIMES_HELP_STRING = (
     'List of lag times for satellite predictors.  If you do not want satellite '
     'predictors (brightness-temperature grids or scalars), make this a one-item'
@@ -217,8 +217,8 @@ def add_input_args(parser_object):
         default=DEFAULT_VALIDATION_YEARS, help=VALIDATION_YEARS_HELP_STRING
     )
     parser_object.add_argument(
-        '--' + LEAD_TIME_ARG_NAME, type=int, required=True,
-        help=LEAD_TIME_HELP_STRING
+        '--' + LEAD_TIMES_ARG_NAME, type=int, nargs='+', required=True,
+        help=LEAD_TIMES_HELP_STRING
     )
     parser_object.add_argument(
         '--' + SATELLITE_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,

@@ -2383,12 +2383,10 @@ def input_generator(option_dict):
     cyclone_id_strings = [cyclone_id_strings[k] for k in good_indices]
     random.shuffle(cyclone_id_strings)
 
-    # TODO(thunderhoser): Do not allow zipped!
-
     example_file_names = [
         example_io.find_file(
             directory_name=example_dir_name, cyclone_id_string=c,
-            prefer_zipped=False, allow_other_format=True,
+            prefer_zipped=False, allow_other_format=False,
             raise_error_if_missing=True
         )
         for c in cyclone_id_strings
@@ -2808,8 +2806,8 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
         dropout".
     :param verbose: Boolean flag.  If True, will print progress messages.
     :param num_lead_times: Number of lead times.
-    :return: forecast_prob_matrix: numpy array of class probabilities.
-        Dimensions may E-by-L-by-S, E-by-L, E-by-K-by-S, or E-by-K.
+    :return: forecast_prob_matrix: E-by-K-by-L-by-S numpy array of class
+        probabilities.
     """
 
     for this_matrix in predictor_matrices:

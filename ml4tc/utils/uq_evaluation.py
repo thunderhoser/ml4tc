@@ -49,21 +49,26 @@ def _get_squared_errors(prediction_dict, use_median):
     """Returns squared errors.
 
     E = number of examples
+    L = number of lead times.
 
     :param prediction_dict: Dictionary in format returned by
         `prediction_io.read_file`.
     :param use_median: Boolean flag.  If True (False), will use median (mean) of
         each predictive distribution.
-    :return: squared_errors: length-E numpy array of squared errors.
+    :return: squared_error_matrix: E-by-L numpy array of squared errors.
     """
 
     if use_median:
-        forecast_probs = prediction_io.get_median_predictions(prediction_dict)
+        forecast_prob_matrix = prediction_io.get_median_predictions(
+            prediction_dict
+        )
     else:
-        forecast_probs = prediction_io.get_mean_predictions(prediction_dict)
+        forecast_prob_matrix = prediction_io.get_mean_predictions(
+            prediction_dict
+        )
 
-    target_values = prediction_dict[prediction_io.TARGET_CLASSES_KEY]
-    return (forecast_probs - target_values) ** 2
+    target_class_matrix = prediction_dict[prediction_io.TARGET_MATRIX_KEY]
+    return (forecast_prob_matrix - target_class_matrix) ** 2
 
 
 def _get_crps_monte_carlo(prediction_dict):
@@ -77,9 +82,9 @@ def _get_crps_monte_carlo(prediction_dict):
     """
 
     forecast_prob_matrix = (
-        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][:, 1, :]
+        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][:, 1, ...]
     )
-    target_values = prediction_dict[prediction_io.TARGET_CLASSES_KEY]
+    target_class_matrix = prediction_dict[prediction_io.TARGET_MATRIX_KEY]
     num_examples = forecast_prob_matrix.shape[0]
 
     crps_numerator = 0.
@@ -103,7 +108,7 @@ def _get_crps_monte_carlo(prediction_dict):
         ], axis=-1)
 
         this_target_matrix = numpy.expand_dims(
-            target_values[first_index:last_index], axis=-1
+            target_class_matrix[first_index:last_index, :], axis=-1
         )
         integrated_cdf_matrix = simps(
             y=(cdf_matrix + (this_target_matrix - 1)) ** 2,
@@ -131,26 +136,29 @@ def _get_crps_quantile_regression_1batch(
 
     forecast_prob_matrix = prediction_dict[
         prediction_io.PROBABILITY_MATRIX_KEY
-    ][first_example_index:last_example_index, 1, :]
+    ][first_example_index:last_example_index, 1, ...]
 
-    target_values = prediction_dict[prediction_io.TARGET_CLASSES_KEY][
+    target_class_matrix = prediction_dict[prediction_io.TARGET_MATRIX_KEY][
         first_example_index:last_example_index, ...
     ]
-    target_matrix = numpy.expand_dims(target_values, axis=-1)
+    target_class_matrix = numpy.expand_dims(target_class_matrix, axis=-1)
 
     num_examples = forecast_prob_matrix.shape[0]
+    num_lead_times = forecast_prob_matrix.shape[1]
     cdf_matrix = numpy.full(
-        (num_examples, len(PROB_LEVELS_TO_INTEG_FOR_QR)), numpy.nan
+        (num_examples, num_lead_times, len(PROB_LEVELS_TO_INTEG_FOR_QR)),
+        numpy.nan
     )
 
     for i in range(num_examples):
-        interp_object = interp1d(
-            x=forecast_prob_matrix[i, 1:],
-            y=prediction_dict[prediction_io.QUANTILE_LEVELS_KEY],
-            kind='linear', bounds_error=False, assume_sorted=True,
-            fill_value='extrapolate'
-        )
-        cdf_matrix[i, :] = interp_object(PROB_LEVELS_TO_INTEG_FOR_QR)
+        for j in range(num_lead_times):
+            interp_object = interp1d(
+                x=forecast_prob_matrix[i, j, 1:],
+                y=prediction_dict[prediction_io.QUANTILE_LEVELS_KEY],
+                kind='linear', bounds_error=False, assume_sorted=True,
+                fill_value='extrapolate'
+            )
+            cdf_matrix[i, j, :] = interp_object(PROB_LEVELS_TO_INTEG_FOR_QR)
 
     cdf_matrix = numpy.maximum(cdf_matrix, 0.)
     cdf_matrix = numpy.minimum(cdf_matrix, 1.)
@@ -158,7 +166,7 @@ def _get_crps_quantile_regression_1batch(
     cdf_matrix[..., 0] = 0.
 
     integrated_cdf_matrix = simps(
-        y=(cdf_matrix + (target_matrix - 1)) ** 2,
+        y=(cdf_matrix + (target_class_matrix - 1)) ** 2,
         x=PROB_LEVELS_TO_INTEG_FOR_QR, axis=-1
     )
 
@@ -175,7 +183,7 @@ def _get_crps_quantile_regression(prediction_dict):
     :return: crps_value: CRPS (scalar).
     """
 
-    num_examples = len(prediction_dict[prediction_io.TARGET_CLASSES_KEY])
+    num_examples = prediction_dict[prediction_io.TARGET_MATRIX_KEY].shape[0]
     crps_numerator = 0.
     crps_denominator = 0.
 
@@ -205,15 +213,16 @@ def get_xentropy_error_function(use_median):
     :return: error_function: Function handle.
     """
 
-    def error_function(prediction_dict, use_example_flags):
+    def error_function(prediction_dict, use_flag_matrix):
         """Computes cross-entropy.
 
         E = number of examples
+        L = number of lead times
 
         :param prediction_dict: Dictionary in format returned by
             `prediction_io.read_file`.
-        :param use_example_flags: length-E numpy array of Boolean flags,
-            indicating which examples to use.
+        :param use_flag_matrix: E-by-L numpy array of Boolean flags, indicating
+            which examples to use.
         :return: cross_entropy: Cross-entropy (scalar).
         :raises: ValueError: if there are more than 2 classes.
         """
@@ -224,24 +233,25 @@ def get_xentropy_error_function(use_median):
         if num_classes > 2:
             raise ValueError('Cannot do this with more than 2 classes.')
 
-        num_examples = len(prediction_dict[prediction_io.TARGET_CLASSES_KEY])
-        expected_dim = numpy.array([num_examples], dtype=int)
-        error_checking.assert_is_numpy_array(
-            use_example_flags, exact_dimensions=expected_dim
+        expected_dim = numpy.array(
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY].shape, dtype=int
         )
-        error_checking.assert_is_boolean_numpy_array(use_example_flags)
+        error_checking.assert_is_numpy_array(
+            use_flag_matrix, exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_boolean_numpy_array(use_flag_matrix)
 
         if use_median:
             forecast_probs = prediction_io.get_median_predictions(
                 prediction_dict
-            )[use_example_flags == True]
+            )[use_flag_matrix == True]
         else:
             forecast_probs = prediction_io.get_mean_predictions(
                 prediction_dict
-            )[use_example_flags == True]
+            )[use_flag_matrix == True]
 
-        target_values = prediction_dict[prediction_io.TARGET_CLASSES_KEY][
-            use_example_flags == True
+        target_values = prediction_dict[prediction_io.TARGET_MATRIX_KEY][
+            use_flag_matrix == True
         ]
 
         return -numpy.mean(
@@ -305,6 +315,7 @@ def run_discard_test(
 
     F = number of discard fractions
     E = number of examples
+    L = number of lead times.
 
     :param prediction_dict: Dictionary in format returned by
         `prediction_io.read_file`.
@@ -314,16 +325,16 @@ def run_discard_test(
 
     :param error_function: Function with the following inputs and outputs...
     Input: prediction_dict: See above.
-    Input: eroded_eval_mask_matrix: length-E numpy array of Boolean flags,
-        indicating which examples to use.
+    Input: use_flag_matrix: E-by-L numpy array of Boolean flags, indicating
+        which data points to use.
     Output: error_value: Scalar value of error metric.
 
     :param uncertainty_function: Function with the following inputs and
         outputs...
     Input: prediction_dict: See above.
-    Output: uncertainty_values: length-E numpy array with values of
-        uncertainty metric.  The metric must be oriented so that higher value =
-        more uncertainty.
+    Output: uncertainty_matrix: E-by-L numpy array with values of uncertainty
+        metric.  The metric must be oriented so that higher value = more
+        uncertainty.
 
     :param use_median: Boolean flag.  If True (False), central predictions will
         be medians (means).
@@ -370,15 +381,14 @@ def run_discard_test(
     assert num_fractions >= 2
 
     # Do actual stuff.
-    uncertainty_values = uncertainty_function(prediction_dict)
-    num_examples = len(uncertainty_values)
+    uncertainty_matrix = uncertainty_function(prediction_dict)
 
     if use_median:
-        central_predictions = prediction_io.get_median_predictions(
+        central_prediction_matrix = prediction_io.get_median_predictions(
             prediction_dict
         )
     else:
-        central_predictions = prediction_io.get_mean_predictions(
+        central_prediction_matrix = prediction_io.get_mean_predictions(
             prediction_dict
         )
 
@@ -387,26 +397,25 @@ def run_discard_test(
     example_fractions = numpy.full(num_fractions, numpy.nan)
     mean_central_predictions = numpy.full(num_fractions, numpy.nan)
     mean_target_values = numpy.full(num_fractions, numpy.nan)
-    use_example_flags = numpy.full(num_examples, 1, dtype=bool)
+    use_flag_matrix = numpy.full(uncertainty_matrix.shape, 1, dtype=bool)
 
     for k in range(num_fractions):
         this_percentile_level = 100 * (1 - discard_fractions[k])
         this_inverted_mask = (
-            uncertainty_values >
-            numpy.percentile(uncertainty_values, this_percentile_level)
+            uncertainty_matrix >
+            numpy.percentile(uncertainty_matrix, this_percentile_level)
         )
-        use_example_flags[this_inverted_mask] = False
+        use_flag_matrix[this_inverted_mask] = False
 
-        this_num_examples = numpy.sum(use_example_flags == True)
-        example_fractions[k] = float(this_num_examples) / num_examples
+        example_fractions[k] = numpy.mean(use_flag_matrix)
 
-        error_values[k] = error_function(prediction_dict, use_example_flags)
+        error_values[k] = error_function(prediction_dict, use_flag_matrix)
         mean_central_predictions[k] = numpy.mean(
-            central_predictions[use_example_flags == True]
+            central_prediction_matrix[use_flag_matrix == True]
         )
         mean_target_values[k] = numpy.mean(
-            prediction_dict[prediction_io.TARGET_CLASSES_KEY][
-                use_example_flags == True
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][
+                use_flag_matrix == True
             ]
         )
 
@@ -484,26 +493,26 @@ def get_spread_vs_skill(
     num_bins = len(bin_edge_prediction_stdevs) - 1
     assert num_bins >= 2
 
-    num_monte_carlo_iters = (
-        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY].shape[2]
+    num_prediction_sets = (
+        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY].shape[3]
     )
-    assert num_monte_carlo_iters > 2
+    assert num_prediction_sets > 2
 
     # Do actual stuff.
     if use_median:
-        central_predictions = prediction_io.get_median_predictions(
+        central_prediction_matrix = prediction_io.get_median_predictions(
             prediction_dict
         )
     else:
-        central_predictions = prediction_io.get_mean_predictions(
+        central_prediction_matrix = prediction_io.get_mean_predictions(
             prediction_dict
         )
 
-    prediction_stdevs = prediction_io.get_predictive_stdevs(
+    predictive_stdev_matrix = prediction_io.get_predictive_stdevs(
         prediction_dict=prediction_dict,
         use_fancy_quantile_method=use_fancy_quantile_method_for_stdev
     )
-    squared_errors = _get_squared_errors(
+    squared_error_matrix = _get_squared_errors(
         prediction_dict=prediction_dict, use_median=use_median
     )
 
@@ -515,18 +524,22 @@ def get_spread_vs_skill(
 
     for k in range(num_bins):
         these_indices = numpy.where(numpy.logical_and(
-            prediction_stdevs >= bin_edge_prediction_stdevs[k],
-            prediction_stdevs < bin_edge_prediction_stdevs[k + 1]
-        ))[0]
+            predictive_stdev_matrix >= bin_edge_prediction_stdevs[k],
+            predictive_stdev_matrix < bin_edge_prediction_stdevs[k + 1]
+        ))
 
-        mean_prediction_stdevs[k] = numpy.mean(prediction_stdevs[these_indices])
-        rmse_values[k] = numpy.sqrt(numpy.mean(squared_errors[these_indices]))
+        mean_prediction_stdevs[k] = numpy.mean(
+            predictive_stdev_matrix[these_indices]
+        )
+        rmse_values[k] = numpy.sqrt(numpy.mean(
+            squared_error_matrix[these_indices]
+        ))
         example_counts[k] = len(these_indices)
         mean_central_predictions[k] = numpy.mean(
-            central_predictions[these_indices]
+            central_prediction_matrix[these_indices]
         )
         mean_target_values[k] = numpy.mean(
-            prediction_dict[prediction_io.TARGET_CLASSES_KEY][these_indices]
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][these_indices]
         )
 
     these_diffs = numpy.absolute(mean_prediction_stdevs - rmse_values)
