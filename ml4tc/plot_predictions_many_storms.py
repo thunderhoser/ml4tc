@@ -4,11 +4,11 @@ import os
 import sys
 import copy
 import argparse
-import warnings
 import numpy
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
+from scipy.interpolate import interp1d
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -35,12 +35,24 @@ SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H'
 TIME_INTERVAL_SEC = 21600
 
-CYCLONE_IDS_KEY = 'cyclone_id_strings'
-FORECAST_PROBS_KEY = 'forecast_probabilities'
+CYCLONE_IDS_KEY = prediction_io.CYCLONE_IDS_KEY
+PROBABILITY_MATRIX_KEY = prediction_io.PROBABILITY_MATRIX_KEY
+TARGET_MATRIX_KEY = prediction_io.TARGET_MATRIX_KEY
+LEAD_TIMES_KEY = prediction_io.LEAD_TIMES_KEY
+QUANTILE_LEVELS_KEY = prediction_io.QUANTILE_LEVELS_KEY
 
 LABEL_COLOUR = numpy.full(3, 0.)
-LABEL_BOUNDING_BOX_DICT = {
+LABEL_FONT_SIZE = 16
+
+CYCLONE_ID_BOUNDING_BOX_DICT = {
     'alpha': 0.5,
+    'edgecolor': numpy.full(3, 0.),
+    'linewidth': 1,
+    'facecolor': numpy.full(3, 1.)
+}
+
+PREDICTION_BOUNDING_BOX_DICT = {
+    'alpha': 0.25,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
     'facecolor': numpy.full(3, 1.)
@@ -51,8 +63,6 @@ FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
 DEFAULT_FONT_SIZE = 30
-LABEL_FONT_SIZE = 20
-
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
@@ -65,6 +75,7 @@ MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_DIR_ARG_NAME = 'input_norm_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
+CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 MIN_LATITUDE_ARG_NAME = 'min_latitude_deg_n'
 MAX_LATITUDE_ARG_NAME = 'max_latitude_deg_n'
 MIN_LONGITUDE_ARG_NAME = 'min_longitude_deg_e'
@@ -89,6 +100,12 @@ NORMALIZATION_FILE_HELP_STRING = (
 PREDICTION_FILE_HELP_STRING = (
     'Path to file with predictions and targets.  Will be read by '
     '`prediction_io.read_file`.'
+)
+CONFIDENCE_LEVEL_HELP_STRING = (
+    'Confidence level to plot.  For example, if this is 0.95, will plot 95% '
+    'confidence interval of probabilities for each cyclone.  If you want to '
+    'plot only the mean and not a confidence interval, leave this argument '
+    'alone.'
 )
 MIN_LATITUDE_HELP_STRING = 'Minimum latitude (deg north) in map.'
 MAX_LATITUDE_HELP_STRING = 'Max latitude (deg north) in map.'
@@ -124,6 +141,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
     help=PREDICTION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=-1,
+    help=CONFIDENCE_LEVEL_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + MIN_LATITUDE_ARG_NAME, type=float, required=True,
@@ -246,11 +267,12 @@ def _concat_data(data_dicts):
 
     num_matrices = len(data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY])
     data_dict = {
-        neural_net.PREDICTOR_MATRICES_KEY: [None] * num_matrices
+        neural_net.PREDICTOR_MATRICES_KEY: []
     }
 
     for k in range(num_matrices):
         if data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY][k] is None:
+            data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = None
             continue
 
         data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = numpy.concatenate(
@@ -280,12 +302,20 @@ def _match_predictors_to_predictions(data_dict, prediction_file_name):
     """Matches predictors to predictions.
 
     E = number of examples
+    K = number of classes
+    L = number of lead times
+    S = number of prediction sets
 
     :param data_dict: Dictionary returned by `_concat_data`.
     :param prediction_file_name: See documentation at top of file.
-    :return: data_dict: Same as input but with an extra key.
-    data_dict['forecast_probabilities']: length-E numpy array of forecast event
-        probabilities.
+    :return: data_dict: Same as input but with extra keys.
+    data_dict['forecast_prob_matrix']: E-by-K-by-L-by-S numpy array of forecast
+        event probabilities.
+    data_dict['target_class_matrix']: E-by-L numpy array of target classes, all
+        integers in range [0, K - 1].
+    data_dict['lead_times_hours']: length-L numpy array of lead times.
+    data_dict['quantile_levels']: length-(S + 1) numpy array of quantile levels.
+        This may also be None.
     """
 
     print('Reading data from: "{0:s}"...'.format(prediction_file_name))
@@ -293,7 +323,6 @@ def _match_predictors_to_predictions(data_dict, prediction_file_name):
     prediction_dict[prediction_io.CYCLONE_IDS_KEY] = numpy.array(
         prediction_dict[prediction_io.CYCLONE_IDS_KEY]
     )
-    all_forecast_probs = prediction_io.get_mean_predictions(prediction_dict)
 
     good_indices = []
     num_examples = len(data_dict[neural_net.INIT_TIMES_KEY])
@@ -308,8 +337,18 @@ def _match_predictors_to_predictions(data_dict, prediction_file_name):
 
         good_indices.append(this_index)
 
-    good_indices = numpy.array(good_indices, dtype=int)
-    data_dict[FORECAST_PROBS_KEY] = all_forecast_probs[good_indices]
+    idxs = numpy.array(good_indices, dtype=int)
+    data_dict.pop(neural_net.TARGET_ARRAY_KEY)
+
+    data_dict.update({
+        PROBABILITY_MATRIX_KEY:
+            prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][idxs, ...],
+        TARGET_MATRIX_KEY:
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][idxs, ...],
+        LEAD_TIMES_KEY: prediction_dict[prediction_io.LEAD_TIMES_KEY],
+        QUANTILE_LEVELS_KEY: prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
+    })
+
     return data_dict
 
 
@@ -320,6 +359,7 @@ def _plot_brightness_temp_one_example(
 
     M = number of rows in grid
     N = number of columns in grid
+    L = number of lag times
     P = number of points in border set
 
     :param predictor_matrices_one_example: length-3 list, where each element is
@@ -329,11 +369,11 @@ def _plot_brightness_temp_one_example(
     :param normalization_table_xarray: xarray table returned by
         `normalization.read_file`.
     :param grid_latitude_matrix_deg_n: numpy array of latitudes (deg north).  If
-        regular grids, this should have length M.  If irregular grids, should
-        have dimensions M x N.
+        regular grids, this should have dimensions M x L.  If irregular grids,
+        should have dimensions M x N x L.
     :param grid_longitude_matrix_deg_e: numpy array of longitudes (deg east).
-        If regular grids, this should have length N.  If irregular grids, should
-        have dimensions M x N.
+        If regular grids, this should have dimensions N x L.  If irregular
+        grids, should have dimensions M x N x L.
     :param axes_object: Axes handle (instance of
         `matplotlib.axes._subplots.AxesSubplot`).
     """
@@ -359,14 +399,132 @@ def _plot_brightness_temp_one_example(
     satellite_plotting.plot_2d_grid(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object,
-        latitude_array_deg_n=grid_latitude_matrix_deg_n,
-        longitude_array_deg_e=grid_longitude_matrix_deg_e,
+        latitude_array_deg_n=grid_latitude_matrix_deg_n[..., -1],
+        longitude_array_deg_e=grid_longitude_matrix_deg_e[..., -1],
         cbar_orientation_string=None
     )
 
 
+def _get_prediction_string(data_dict, example_index, predict_td_to_ts,
+                           confidence_level):
+    """Returns string with predictions and targets.
+
+    :param data_dict: Dictionary returned by `_match_predictors_to_predictions`.
+    :param example_index: Will create string for the [i]th example, where
+        i = `example_index`.
+    :param predict_td_to_ts: Boolean flag.  If True (False), prediction task is
+        TD-to-TS (rapid intensification).
+    :param confidence_level: See documentation at top of file.
+    :return: prediction_string: String with predictions and targets.
+    """
+
+    i = example_index
+
+    dummy_prediction_dict = {
+        prediction_io.PROBABILITY_MATRIX_KEY: data_dict[PROBABILITY_MATRIX_KEY],
+        prediction_io.QUANTILE_LEVELS_KEY: data_dict[QUANTILE_LEVELS_KEY]
+    }
+    mean_forecast_probs = (
+        prediction_io.get_mean_predictions(dummy_prediction_dict)[i, :]
+    )
+
+    forecast_prob_matrix = data_dict[PROBABILITY_MATRIX_KEY][i, 1, ...]
+    target_classes = data_dict[TARGET_MATRIX_KEY][i, :]
+    lead_times_hours = data_dict[LEAD_TIMES_KEY]
+    quantile_levels = data_dict[QUANTILE_LEVELS_KEY]
+
+    label_string = 'Storm {0:s}'.format(
+        data_dict[CYCLONE_IDS_KEY][i][-2:]
+    )
+
+    for k in range(len(lead_times_hours)):
+        label_string += '\n{0:s} in next {1:d} h? {2:s}; '.format(
+            'TS' if predict_td_to_ts else 'RI',
+            lead_times_hours[k],
+            'Yes' if target_classes[k] else 'No'
+        )
+
+        label_string += r'$p$ = '
+        label_string += '{0:.2f}'.format(mean_forecast_probs[k]).lstrip('0')
+
+        if confidence_level is not None:
+            if quantile_levels is None:
+                min_probability = numpy.percentile(
+                    forecast_prob_matrix[k, :], 50 * (1. - confidence_level)
+                )
+                max_probability = numpy.percentile(
+                    forecast_prob_matrix[k, :], 50 * (1. + confidence_level)
+                )
+            else:
+                interp_object = interp1d(
+                    x=quantile_levels, y=forecast_prob_matrix[k, 1:],
+                    kind='linear', bounds_error=False, assume_sorted=True,
+                    fill_value='extrapolate'
+                )
+
+                min_probability = interp_object(0.5 * (1. - confidence_level))
+                max_probability = interp_object(0.5 * (1. + confidence_level))
+
+            min_probability = numpy.maximum(min_probability, 0.)
+            min_probability = numpy.minimum(min_probability, 1.)
+            max_probability = numpy.maximum(max_probability, 0.)
+            max_probability = numpy.minimum(max_probability, 1.)
+
+            min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
+            max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
+
+            label_string += (
+                ' ({0:.1f}'.format(100 * confidence_level).rstrip('.0')
+            )
+            label_string += '% CI: {0:s}-{1:s})'.format(
+                min_prob_string, max_prob_string
+            )
+
+    return label_string
+
+
+def _get_swmost_index(data_dict):
+    """Returns index of southwesternmost tropical cyclone.
+
+    :param data_dict: Dictionary returned by `_match_predictors_to_predictions`.
+    :return: swmost_index: Index of southwesternmost tropical cyclone.
+    """
+
+    return numpy.argmin(
+        data_dict[neural_net.STORM_LATITUDES_KEY] +
+        data_dict[neural_net.STORM_LONGITUDES_KEY]
+    )
+
+
+def _get_nwmost_index(data_dict):
+    """Returns index of northwesternmost tropical cyclone.
+
+    :param data_dict: Dictionary returned by `_match_predictors_to_predictions`.
+    :return: nwmost_index: Index of northwesternmost tropical cyclone.
+    """
+
+    return numpy.argmax(
+        data_dict[neural_net.STORM_LATITUDES_KEY] -
+        data_dict[neural_net.STORM_LONGITUDES_KEY]
+    )
+
+
+def _get_nemost_index(data_dict):
+    """Returns index of northeasternmost tropical cyclone.
+
+    :param data_dict: Dictionary returned by `_match_predictors_to_predictions`.
+    :return: nemost_index: Index of northeasternmost tropical cyclone.
+    """
+
+    return numpy.argmax(
+        data_dict[neural_net.STORM_LATITUDES_KEY] +
+        data_dict[neural_net.STORM_LONGITUDES_KEY]
+    )
+
+
 def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
-         prediction_file_name, min_latitude_deg_n, max_latitude_deg_n,
+         prediction_file_name, confidence_level,
+         min_latitude_deg_n, max_latitude_deg_n,
          min_longitude_deg_e, max_longitude_deg_e, cyclone_id_strings,
          first_init_time_string, last_init_time_string, output_dir_name):
     """Plots predictions for many storms, one map per time step.
@@ -377,6 +535,7 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     :param norm_example_dir_name: Same.
     :param normalization_file_name: Same.
     :param prediction_file_name: Same.
+    :param confidence_level: Same.
     :param min_latitude_deg_n: Same.
     :param max_latitude_deg_n: Same.
     :param min_longitude_deg_e: Same.
@@ -388,6 +547,13 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     """
 
     # Check input args.
+    if confidence_level <= 0:
+        confidence_level = None
+
+    if confidence_level is not None:
+        error_checking.assert_is_geq(confidence_level, 0.8)
+        error_checking.assert_is_less_than(confidence_level, 1.)
+
     error_checking.assert_is_valid_latitude(min_latitude_deg_n)
     error_checking.assert_is_valid_latitude(max_latitude_deg_n)
     error_checking.assert_is_greater(max_latitude_deg_n, min_latitude_deg_n)
@@ -415,14 +581,6 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
-
-    # Read necessary files other than example files.
-    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
-    normalization_table_xarray = normalization.read_file(
-        normalization_file_name
-    )
-
-    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
 
     # Find example files.
     if len(cyclone_id_strings) == 1 and cyclone_id_strings[0] == '':
@@ -484,17 +642,36 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         for c in cyclone_id_strings
     ]
 
-    # Read model metadata.
+    # Read model metadata and determine target variable.
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
     model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY][
         neural_net.USE_TIME_DIFFS_KEY
     ] = False
 
-    # Read examples.
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
+
+    predict_td_to_ts = validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
+    target_variable_string = 'TD-to-TS' if predict_td_to_ts else 'RI'
+
+    # Read borders and determine spacing of grid lines (parallels/meridians).
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+    parallel_spacing_deg = number_rounding.round_to_half_integer(
+        0.1 * (max_latitude_deg_n - min_latitude_deg_n)
+    )
+    meridian_spacing_deg = number_rounding.round_to_half_integer(
+        0.1 * (max_longitude_deg_e - min_longitude_deg_e)
+    )
+
+    # Read normalization params (will be used to denormalize brightness temps).
+    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
+    normalization_table_xarray = normalization.read_file(
+        normalization_file_name
+    )
+
+    # Read examples.
     data_dicts = []
 
     for i in range(len(example_file_names)):
@@ -521,11 +698,6 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
 
         data_dicts.append(this_data_dict)
 
-    if len(data_dicts) == 0:
-        warning_string = 'Cannot find any data to plot.  RETURNING.'
-        warnings.warn(warning_string)
-        return
-
     print(SEPARATOR_STRING)
     data_dict = _concat_data(data_dicts)
     del data_dicts
@@ -535,27 +707,27 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
     )
     print(SEPARATOR_STRING)
 
+    # Do actual plotting.
     unique_init_times_unix_sec = numpy.unique(
         data_dict[neural_net.INIT_TIMES_KEY]
     )
-    parallel_spacing_deg = number_rounding.round_to_half_integer(
-        0.1 * (max_latitude_deg_n - min_latitude_deg_n)
-    )
-    meridian_spacing_deg = number_rounding.round_to_half_integer(
-        0.1 * (max_longitude_deg_e - min_longitude_deg_e)
-    )
-    target_variable_string = (
-        'TD-to-TS' if validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
-        else 'RI'
-    )
 
     for this_time_unix_sec in unique_init_times_unix_sec:
-        these_indices = numpy.where(
+        example_indices_this_time = numpy.where(
             data_dict[neural_net.INIT_TIMES_KEY] == this_time_unix_sec
         )[0]
 
-        if len(these_indices) == 0:
+        if len(example_indices_this_time) == 0:
             continue
+
+        data_dict_this_time = {}
+
+        for this_key in [
+                neural_net.STORM_LATITUDES_KEY, neural_net.STORM_LONGITUDES_KEY
+        ]:
+            data_dict_this_time[this_key] = data_dict[this_key][
+                example_indices_this_time, ...
+            ]
 
         figure_object, axes_object = pyplot.subplots(
             1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
@@ -566,9 +738,9 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
             axes_object=axes_object
         )
 
-        for i in these_indices:
+        for j in example_indices_this_time:
             these_predictor_matrices = [
-                None if a is None else a[[i], ...]
+                None if a is None else a[[j], ...]
                 for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             ]
 
@@ -576,29 +748,76 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
                 predictor_matrices_one_example=these_predictor_matrices,
                 normalization_table_xarray=normalization_table_xarray,
                 grid_latitude_matrix_deg_n=
-                data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY][i, ..., -1],
+                data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY][j, ..., -1],
                 grid_longitude_matrix_deg_e=
-                data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][i, ..., -1],
+                data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][j, ..., -1],
                 axes_object=axes_object
             )
 
-        for i in these_indices:
-            label_string = r'$p$ = '
-            label_string += '{0:.2f}\n'.format(data_dict[FORECAST_PROBS_KEY][i])
-            label_string += r'$y$ = '
-            label_string += (
-                'yes' if data_dict[neural_net.TARGET_ARRAY_KEY][i] == 1
-                else 'no'
+        for i in range(len(example_indices_this_time)):
+            j = example_indices_this_time[i]
+
+            # Plot cyclone ID near center.
+            label_string = '{0:s}'.format(
+                data_dict[CYCLONE_IDS_KEY][j][-2:]
             )
 
+            this_latitude_deg_n = (
+                data_dict[neural_net.STORM_LATITUDES_KEY][j] + 1.
+            )
+            vertical_alignment_string = 'bottom'
+
+            if this_latitude_deg_n > max_latitude_deg_n:
+                this_latitude_deg_n = (
+                    data_dict[neural_net.STORM_LATITUDES_KEY][j] - 1.
+                )
+                vertical_alignment_string = 'top'
+
             axes_object.text(
-                data_dict[neural_net.STORM_LONGITUDES_KEY][i],
-                data_dict[neural_net.STORM_LATITUDES_KEY][i],
-                label_string,
-                fontsize=LABEL_FONT_SIZE, color=LABEL_COLOUR,
-                bbox=LABEL_BOUNDING_BOX_DICT,
-                horizontalalignment='left', verticalalignment='top',
+                data_dict[neural_net.STORM_LONGITUDES_KEY][j],
+                this_latitude_deg_n, label_string,
+                color=LABEL_COLOUR, fontsize=LABEL_FONT_SIZE,
+                bbox=CYCLONE_ID_BOUNDING_BOX_DICT,
+                horizontalalignment='center',
+                verticalalignment=vertical_alignment_string,
                 zorder=1e10
+            )
+
+            # Print predictions and targets off side of map.
+            label_string = _get_prediction_string(
+                data_dict=data_dict, example_index=j,
+                predict_td_to_ts=predict_td_to_ts,
+                confidence_level=confidence_level
+            )
+
+            if i == _get_swmost_index(data_dict_this_time):
+                x_coord = -0.1
+                y_coord = 0.5
+                horiz_alignment_string = 'right'
+                vertical_alignment_string = 'center'
+            elif i == _get_nwmost_index(data_dict_this_time):
+                x_coord = 1.1
+                y_coord = 0.5
+                horiz_alignment_string = 'left'
+                vertical_alignment_string = 'center'
+            elif i == _get_nemost_index(data_dict_this_time):
+                x_coord = 0.5
+                y_coord = 1.1
+                horiz_alignment_string = 'center'
+                vertical_alignment_string = 'bottom'
+            else:
+                x_coord = 0.5
+                y_coord = -0.1
+                horiz_alignment_string = 'center'
+                vertical_alignment_string = 'top'
+
+            axes_object.text(
+                x_coord, y_coord, label_string,
+                color=LABEL_COLOUR, fontsize=LABEL_FONT_SIZE,
+                bbox=PREDICTION_BOUNDING_BOX_DICT,
+                horizontalalignment=horiz_alignment_string,
+                verticalalignment=vertical_alignment_string,
+                zorder=1e10, transform=axes_object.transAxes
             )
 
         plotting_utils.plot_grid_lines(
@@ -615,20 +834,19 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
         colour_map_object, colour_norm_object = (
             satellite_plotting.get_colour_scheme()
         )
-        colour_bar_object = satellite_plotting.add_colour_bar(
+        satellite_plotting.add_colour_bar(
             brightness_temp_matrix_kelvins=numpy.full((2, 2), 273.15),
             axes_object=axes_object,
             colour_map_object=colour_map_object,
             colour_norm_object=colour_norm_object,
             orientation_string='vertical', font_size=DEFAULT_FONT_SIZE
         )
-        colour_bar_object.set_label('Brightness temp (K)')
 
         init_time_string = time_conversion.unix_sec_to_string(
             this_time_unix_sec, TIME_FORMAT
         )
         title_string = (
-            'Forecasts and labels for {0:s}, init {1:s}'
+            'Forecast probs and labels for {0:s}, init {1:s}'
         ).format(target_variable_string, init_time_string)
 
         axes_object.set_title(title_string)
@@ -656,6 +874,7 @@ if __name__ == '__main__':
         prediction_file_name=getattr(
             INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
+        confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         min_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MIN_LATITUDE_ARG_NAME),
         max_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MAX_LATITUDE_ARG_NAME),
         min_longitude_deg_e=getattr(INPUT_ARG_OBJECT, MIN_LONGITUDE_ARG_NAME),
