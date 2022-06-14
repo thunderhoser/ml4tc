@@ -1,6 +1,7 @@
 """Plots predictions with GridSat in background, one map per time step."""
 
 import os
+import copy
 import argparse
 import numpy
 import xarray
@@ -30,15 +31,21 @@ GRIDSAT_TIME_FORMAT = '%Y.%m.%d.%H'
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
 FORECAST_PROBS_KEY = 'forecast_probabilities'
 
+TC_CENTER_MARKER_TYPE = '*'
+TC_CENTER_MARKER_SIZE = 16
+TC_CENTER_MARKER_COLOUR = numpy.full(3, 1.)
+
 LABEL_COLOUR = numpy.full(3, 0.)
-MORE_OPAQUE_BOUNDING_BOX_DICT = {
+LABEL_FONT_SIZE = 16
+
+CYCLONE_ID_BOUNDING_BOX_DICT = {
     'alpha': 0.5,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
     'facecolor': numpy.full(3, 1.)
 }
 
-LESS_OPAQUE_BOUNDING_BOX_DICT = {
+PREDICTION_BOUNDING_BOX_DICT = {
     'alpha': 0.25,
     'edgecolor': numpy.full(3, 0.),
     'linewidth': 1,
@@ -49,14 +56,14 @@ FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
-FONT_SIZE = 30
-pyplot.rc('font', size=FONT_SIZE)
-pyplot.rc('axes', titlesize=FONT_SIZE)
-pyplot.rc('axes', labelsize=FONT_SIZE)
-pyplot.rc('xtick', labelsize=FONT_SIZE)
-pyplot.rc('ytick', labelsize=FONT_SIZE)
-pyplot.rc('legend', fontsize=FONT_SIZE)
-pyplot.rc('figure', titlesize=FONT_SIZE)
+DEFAULT_FONT_SIZE = 30
+pyplot.rc('font', size=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
+pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
@@ -245,13 +252,17 @@ def _read_gridsat_file(
     )
 
 
-def _get_prediction_string(prediction_dict, example_index, confidence_level):
+def _get_prediction_string(prediction_dict, example_index, predict_td_to_ts,
+                           confidence_level):
     """Returns string with predictions and targets.
 
     :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
     :param example_index: Will create string for the [i]th example, where
         i = `example_index`.
+    :param predict_td_to_ts: Boolean flag.  If True (False), prediction task is
+        TD-to-TS (rapid intensification).
     :param confidence_level: See documentation at top of file.
+    :return: prediction_string: String with predictions and targets.
     """
 
     i = example_index
@@ -272,7 +283,8 @@ def _get_prediction_string(prediction_dict, example_index, confidence_level):
     )
 
     for k in range(len(lead_times_hours)):
-        label_string += '\nTS in next {0:d} h? {1:s}; '.format(
+        label_string += '\n{0:s} in next {1:d} h? {2:s}; '.format(
+            'TS' if predict_td_to_ts else 'RI',
             lead_times_hours[k],
             'Yes' if target_classes[k] else 'No'
         )
@@ -316,6 +328,45 @@ def _get_prediction_string(prediction_dict, example_index, confidence_level):
     return label_string
 
 
+def _get_swmost_index(prediction_dict):
+    """Returns index of southwesternmost tropical cyclone.
+
+    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
+    :return: swmost_index: Index of southwesternmost tropical cyclone.
+    """
+
+    return numpy.argmin(
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] +
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+
+
+def _get_nwmost_index(prediction_dict):
+    """Returns index of northwesternmost tropical cyclone.
+
+    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
+    :return: nwmost_index: Index of northwesternmost tropical cyclone.
+    """
+
+    return numpy.argmax(
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] -
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+
+
+def _get_nemost_index(prediction_dict):
+    """Returns index of northeasternmost tropical cyclone.
+
+    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
+    :return: nemost_index: Index of northeasternmost tropical cyclone.
+    """
+
+    return numpy.argmax(
+        prediction_dict[prediction_io.STORM_LATITUDES_KEY] +
+        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+
+
 def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
          confidence_level, min_latitude_deg_n, max_latitude_deg_n,
          min_longitude_deg_e, max_longitude_deg_e,
@@ -340,6 +391,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
     # Check input args.
     if confidence_level <= 0:
         confidence_level = None
+
     if confidence_level is not None:
         error_checking.assert_is_geq(confidence_level, 0.8)
         error_checking.assert_is_less_than(confidence_level, 1.)
@@ -434,11 +486,17 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         prediction_dict=prediction_dict, desired_indices=good_indices
     )
 
-    # Read other necessary files.
+    # Read model metadata and determine target variable.
     print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
     model_metadata_dict = neural_net.read_metafile(model_metafile_name)
-    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+    validation_option_dict = (
+        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
+    )
+    predict_td_to_ts = validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
+    target_variable_string = 'TD-to-TS' if predict_td_to_ts else 'RI'
 
+    # Read borders and determine spacing of grid lines (parallels/meridians).
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
     parallel_spacing_deg = number_rounding.round_to_half_integer(
         0.1 * (max_latitude_deg_n - min_latitude_deg_n)
     )
@@ -446,16 +504,9 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         0.1 * (max_longitude_deg_e - min_longitude_deg_e)
     )
 
-    validation_option_dict = (
-        model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
-    )
-    target_variable_string = (
-        'TD-to-TS' if validation_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
-        else 'RI'
-    )
-
+    # Do actual plotting.
     for this_time_unix_sec in init_times_unix_sec:
-        example_indices = numpy.where(
+        example_indices_this_time = numpy.where(
             prediction_dict[prediction_io.INIT_TIMES_KEY] == this_time_unix_sec
         )[0]
 
@@ -494,22 +545,28 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             cbar_orientation_string=None
         )
 
-        for i in range(len(example_indices)):
-            j = example_indices[i]
+        prediction_dict_this_time = prediction_io.subset_by_index(
+            prediction_dict=copy.deepcopy(prediction_dict),
+            desired_indices=example_indices_this_time
+        )
 
-            # Plot star at center of tropical cyclone.
+        for i in range(len(example_indices_this_time)):
+            j = example_indices_this_time[i]
+
+            # Plot marker at TC center.
             this_longitude_deg_e = lng_conversion.convert_lng_negative_in_west(
                 prediction_dict[prediction_io.STORM_LONGITUDES_KEY][j]
             )
             axes_object.plot(
                 this_longitude_deg_e,
                 prediction_dict[prediction_io.STORM_LATITUDES_KEY][j],
-                linestyle='None', marker='*', markersize=16, markeredgewidth=0,
-                markerfacecolor=numpy.full(3, 1.),
-                markeredgecolor=numpy.full(3, 1.)
+                linestyle='None', marker=TC_CENTER_MARKER_TYPE,
+                markersize=TC_CENTER_MARKER_SIZE, markeredgewidth=0,
+                markerfacecolor=TC_CENTER_MARKER_COLOUR,
+                markeredgecolor=TC_CENTER_MARKER_COLOUR
             )
 
-            # Print cyclone ID near star.
+            # Plot cyclone ID near center.
             label_string = '{0:s}'.format(
                 prediction_dict[prediction_io.CYCLONE_IDS_KEY][j][-2:]
             )
@@ -527,44 +584,45 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
             axes_object.text(
                 this_longitude_deg_e, this_latitude_deg_n, label_string,
-                fontsize=16, color=LABEL_COLOUR,
-                bbox=MORE_OPAQUE_BOUNDING_BOX_DICT,
+                color=LABEL_COLOUR, fontsize=LABEL_FONT_SIZE,
+                bbox=CYCLONE_ID_BOUNDING_BOX_DICT,
                 horizontalalignment='center',
                 verticalalignment=vertical_alignment_string,
                 zorder=1e10
             )
 
-            # Print predictions and targets to side of map.
+            # Print predictions and targets off side of map.
             label_string = _get_prediction_string(
                 prediction_dict=prediction_dict, example_index=j,
+                predict_td_to_ts=predict_td_to_ts,
                 confidence_level=confidence_level
             )
 
-            if i == 0 or i > 3:
-                x_coord = -0.05
+            if i == _get_swmost_index(prediction_dict_this_time):
+                x_coord = -0.1
                 y_coord = 0.5
                 horiz_alignment_string = 'right'
                 vertical_alignment_string = 'center'
-            elif i == 1:
-                x_coord = 1.05
+            elif i == _get_nwmost_index(prediction_dict_this_time):
+                x_coord = 1.1
                 y_coord = 0.5
                 horiz_alignment_string = 'left'
                 vertical_alignment_string = 'center'
-            elif i == 2:
+            elif i == _get_nemost_index(prediction_dict_this_time):
                 x_coord = 0.5
-                y_coord = 1.05
+                y_coord = 1.1
                 horiz_alignment_string = 'center'
                 vertical_alignment_string = 'bottom'
             else:
                 x_coord = 0.5
-                y_coord = -0.05
+                y_coord = -0.1
                 horiz_alignment_string = 'center'
                 vertical_alignment_string = 'top'
 
             axes_object.text(
                 x_coord, y_coord, label_string,
-                fontsize=16, color=LABEL_COLOUR,
-                bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
+                color=LABEL_COLOUR, fontsize=LABEL_FONT_SIZE,
+                bbox=PREDICTION_BOUNDING_BOX_DICT,
                 horizontalalignment=horiz_alignment_string,
                 verticalalignment=vertical_alignment_string,
                 zorder=1e10, transform=axes_object.transAxes
@@ -578,7 +636,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             axes_object=axes_object,
             parallel_spacing_deg=parallel_spacing_deg,
             meridian_spacing_deg=meridian_spacing_deg,
-            font_size=FONT_SIZE
+            font_size=DEFAULT_FONT_SIZE
         )
 
         colour_map_object, colour_norm_object = (
@@ -589,7 +647,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             axes_object=axes_object,
             colour_map_object=colour_map_object,
             colour_norm_object=colour_norm_object,
-            orientation_string='vertical', font_size=FONT_SIZE
+            orientation_string='vertical', font_size=DEFAULT_FONT_SIZE
         )
 
         init_time_string = time_conversion.unix_sec_to_string(
