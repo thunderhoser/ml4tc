@@ -42,7 +42,7 @@ INIT_TIMES_UNIX_SEC = numpy.array([
 ], dtype=int)
 
 FULL_PREDICTION_DICT = {
-    prediction_io.TARGET_CLASSES_KEY: TARGET_CLASSES + 0,
+    prediction_io.TARGET_MATRIX_KEY: numpy.expand_dims(TARGET_CLASSES, axis=-1),
     prediction_io.PROBABILITY_MATRIX_KEY: FORECAST_PROB_MATRIX + 0.,
     prediction_io.CYCLONE_IDS_KEY: copy.deepcopy(CYCLONE_ID_STRINGS),
     prediction_io.STORM_LATITUDES_KEY: LATITUDES_DEG_N + 0.,
@@ -55,7 +55,8 @@ DESIRED_MONTH = 11
 THESE_INDICES = numpy.array([10], dtype=int)
 
 PREDICTION_DICT_SUBSET_BY_MONTH = {
-    prediction_io.TARGET_CLASSES_KEY: TARGET_CLASSES[THESE_INDICES],
+    prediction_io.TARGET_MATRIX_KEY:
+        numpy.expand_dims(TARGET_CLASSES[THESE_INDICES], axis=-1),
     prediction_io.PROBABILITY_MATRIX_KEY:
         FORECAST_PROB_MATRIX[THESE_INDICES, ...],
     prediction_io.CYCLONE_IDS_KEY:
@@ -70,7 +71,8 @@ DESIRED_BASIN_ID_STRING = 'SL'
 THESE_INDICES = numpy.array([], dtype=int)
 
 PREDICTION_DICT_SUBSET_BY_BASIN = {
-    prediction_io.TARGET_CLASSES_KEY: TARGET_CLASSES[THESE_INDICES],
+    prediction_io.TARGET_MATRIX_KEY:
+        numpy.expand_dims(TARGET_CLASSES[THESE_INDICES], axis=-1),
     prediction_io.PROBABILITY_MATRIX_KEY:
         FORECAST_PROB_MATRIX[THESE_INDICES, ...],
     prediction_io.CYCLONE_IDS_KEY:
@@ -145,7 +147,7 @@ def _compare_prediction_dicts(first_prediction_dict, second_prediction_dict):
         return False
 
     these_keys = [
-        prediction_io.TARGET_CLASSES_KEY, prediction_io.INIT_TIMES_KEY
+        prediction_io.TARGET_MATRIX_KEY, prediction_io.INIT_TIMES_KEY
     ]
     for this_key in these_keys:
         if not numpy.array_equal(

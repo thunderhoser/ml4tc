@@ -63,12 +63,13 @@ def _run(input_file_name, output_dir_name):
         prediction_io.write_file(
             netcdf_file_name=this_output_file_name,
             forecast_probability_matrix=d[prediction_io.PROBABILITY_MATRIX_KEY],
-            target_classes=d[prediction_io.TARGET_CLASSES_KEY],
+            target_class_matrix=d[prediction_io.TARGET_MATRIX_KEY],
             cyclone_id_strings=d[prediction_io.CYCLONE_IDS_KEY],
             init_times_unix_sec=d[prediction_io.INIT_TIMES_KEY],
             storm_latitudes_deg_n=d[prediction_io.STORM_LATITUDES_KEY],
             storm_longitudes_deg_e=d[prediction_io.STORM_LONGITUDES_KEY],
             model_file_name=d[prediction_io.MODEL_FILE_KEY],
+            lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
             quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY]
         )
 
@@ -97,12 +98,13 @@ def _run(input_file_name, output_dir_name):
         prediction_io.write_file(
             netcdf_file_name=this_output_file_name,
             forecast_probability_matrix=d[prediction_io.PROBABILITY_MATRIX_KEY],
-            target_classes=d[prediction_io.TARGET_CLASSES_KEY],
+            target_class_matrix=d[prediction_io.TARGET_MATRIX_KEY],
             cyclone_id_strings=d[prediction_io.CYCLONE_IDS_KEY],
             init_times_unix_sec=d[prediction_io.INIT_TIMES_KEY],
             storm_latitudes_deg_n=d[prediction_io.STORM_LATITUDES_KEY],
             storm_longitudes_deg_e=d[prediction_io.STORM_LONGITUDES_KEY],
             model_file_name=d[prediction_io.MODEL_FILE_KEY],
+            lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
             quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY]
         )
 

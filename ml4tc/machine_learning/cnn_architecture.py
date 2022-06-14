@@ -3,7 +3,7 @@
 import copy
 import numpy
 import keras
-from keras.layers import Add
+from keras.layers import Add, Maximum
 from gewittergefahr.gg_utils import error_checking
 from gewittergefahr.deep_learning import architecture_utils
 from ml4tc.machine_learning import custom_losses
@@ -469,7 +469,7 @@ def create_model(
     return model_object
 
 
-def create_quantile_regression_model(
+def create_quantile_regression_model_old(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
         option_dict_dense, central_loss_function, quantile_levels):
     """Creates CNN for quantile regression.
@@ -656,6 +656,277 @@ def create_quantile_regression_model(
 
     model_object = keras.models.Model(
         inputs=input_layer_objects, outputs=output_layers
+    )
+    model_object.compile(
+        loss=loss_dict, optimizer=keras.optimizers.Adam()
+    )
+    model_object.summary()
+
+    return model_object
+
+
+def create_quantile_regression_model(
+        option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
+        option_dict_dense, central_loss_function, quantile_levels,
+        num_lead_times):
+    """Creates CNN for quantile regression.
+
+    :param option_dict_gridded_sat: See doc for `create_model`.
+    :param option_dict_ungridded_sat: Same.
+    :param option_dict_ships: Same.
+    :param option_dict_dense: Same.
+    :param central_loss_function: Loss function for central prediction.
+    :param quantile_levels: 1-D numpy array of quantile levels, ranging from
+        (0, 1).
+    :param num_lead_times: Number of lead times.
+    :return: model_object: Untrained CNN (instance of `keras.models.Model`).
+    """
+
+    error_checking.assert_is_numpy_array(quantile_levels, num_dimensions=1)
+    error_checking.assert_is_greater_numpy_array(quantile_levels, 0.)
+    error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
+    quantile_levels = numpy.sort(quantile_levels)
+
+    error_checking.assert_is_integer(num_lead_times)
+    error_checking.assert_is_greater(num_lead_times, 0)
+
+    input_layer_objects = []
+    flattening_layer_objects = []
+
+    if option_dict_gridded_sat is not None:
+        option_dict_gridded_sat_orig = option_dict_gridded_sat.copy()
+        option_dict_gridded_sat = DEFAULT_OPTION_DICT_GRIDDED_SAT.copy()
+        option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
+
+        option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
+
+        this_input_layer_object, this_flattening_layer_object = (
+            _create_layers_gridded_sat(option_dict_gridded_sat)
+        )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
+
+    if option_dict_ungridded_sat is not None:
+        option_dict_ungridded_sat_orig = option_dict_ungridded_sat.copy()
+        option_dict_ungridded_sat = DEFAULT_OPTION_DICT_UNGRIDDED_SAT.copy()
+        option_dict_ungridded_sat.update(option_dict_ungridded_sat_orig)
+
+        option_dict_ungridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
+
+        input_dimensions = option_dict_ungridded_sat[INPUT_DIMENSIONS_KEY]
+        this_input_layer_object = keras.layers.Input(
+            shape=tuple(input_dimensions.tolist())
+        )
+        new_dimensions = (numpy.prod(input_dimensions),)
+        this_layer_object = keras.layers.Reshape(target_shape=new_dimensions)(
+            this_input_layer_object
+        )
+
+        this_flattening_layer_object = create_dense_layers(
+            input_layer_object=this_layer_object,
+            option_dict=option_dict_ungridded_sat
+        )
+
+        if option_dict_ungridded_sat[USE_BATCH_NORM_KEY]:
+            this_flattening_layer_object = (
+                architecture_utils.get_batch_norm_layer()(
+                    this_flattening_layer_object
+                )
+            )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
+
+    if option_dict_ships is not None:
+        option_dict_ships_orig = option_dict_ships.copy()
+        option_dict_ships = DEFAULT_OPTION_DICT_SHIPS.copy()
+        option_dict_ships.update(option_dict_ships_orig)
+
+        option_dict_ships[DROPOUT_MC_FLAGS_KEY][:] = False
+
+        input_dimensions = option_dict_ships[INPUT_DIMENSIONS_KEY]
+        this_input_layer_object = keras.layers.Input(
+            shape=tuple(input_dimensions.tolist())
+        )
+        new_dimensions = (numpy.prod(input_dimensions),)
+        this_layer_object = keras.layers.Reshape(target_shape=new_dimensions)(
+            this_input_layer_object
+        )
+
+        this_flattening_layer_object = create_dense_layers(
+            input_layer_object=this_layer_object,
+            option_dict=option_dict_ships
+        )
+
+        if option_dict_ships[USE_BATCH_NORM_KEY]:
+            this_flattening_layer_object = (
+                architecture_utils.get_batch_norm_layer()(
+                    this_flattening_layer_object
+                )
+            )
+
+        input_layer_objects.append(this_input_layer_object)
+        flattening_layer_objects.append(this_flattening_layer_object)
+
+    option_dict_dense_orig = option_dict_dense.copy()
+    option_dict_dense = DEFAULT_OPTION_DICT_DENSE.copy()
+    option_dict_dense.update(option_dict_dense_orig)
+
+    option_dict_dense[DROPOUT_MC_FLAGS_KEY][:] = False
+
+    num_output_neurons = option_dict_dense[NUM_NEURONS_KEY][-1] + 0
+    output_activ_function_name = copy.deepcopy(
+        option_dict_dense[OUTPUT_ACTIV_FUNCTION_KEY]
+    )
+    output_activ_function_alpha = copy.deepcopy(
+        option_dict_dense[OUTPUT_ACTIV_FUNCTION_ALPHA_KEY]
+    )
+
+    option_dict_dense[NUM_NEURONS_KEY] = (
+        option_dict_dense[NUM_NEURONS_KEY][:-1]
+    )
+    option_dict_dense[DROPOUT_RATES_KEY] = (
+        option_dict_dense[DROPOUT_RATES_KEY][:-1]
+    )
+    option_dict_dense[DROPOUT_MC_FLAGS_KEY] = (
+        option_dict_dense[DROPOUT_MC_FLAGS_KEY][:-1]
+    )
+    option_dict_dense[OUTPUT_ACTIV_FUNCTION_KEY] = (
+        option_dict_dense[INNER_ACTIV_FUNCTION_KEY]
+    )
+    option_dict_dense[OUTPUT_ACTIV_FUNCTION_ALPHA_KEY] = (
+        option_dict_dense[INNER_ACTIV_FUNCTION_ALPHA_KEY]
+    )
+
+    if len(flattening_layer_objects) > 1:
+        current_layer_object = keras.layers.concatenate(
+            flattening_layer_objects
+        )
+    else:
+        current_layer_object = flattening_layer_objects[0]
+
+    current_layer_object = create_dense_layers(
+        input_layer_object=current_layer_object, option_dict=option_dict_dense
+    )
+
+    num_quantile_levels = len(quantile_levels)
+    dimensions = (num_lead_times, num_quantile_levels + 1)
+
+    output_layer_name_matrix = numpy.full(dimensions, '', dtype=object)
+    pre_activn_out_layer_matrix = numpy.full(dimensions, None, dtype=object)
+    output_layer_matrix = numpy.full(dimensions, None, dtype=object)
+    loss_dict = {}
+
+    regularization_func = architecture_utils.get_weight_regularizer(
+        l2_weight=option_dict_dense[L2_WEIGHT_KEY]
+    )
+
+    for k in range(num_quantile_levels + 1):
+        pre_activn_out_layer_matrix[0, k] = architecture_utils.get_dense_layer(
+            num_output_units=num_output_neurons,
+            weight_regularizer=regularization_func
+        )(current_layer_object)
+
+        if k > 1:
+            pre_activn_out_layer_matrix[0, k] = (
+                architecture_utils.get_activation_layer(
+                    activation_function_string=
+                    architecture_utils.RELU_FUNCTION_STRING,
+                    alpha_for_relu=0., alpha_for_elu=0.
+                )(pre_activn_out_layer_matrix[0, k])
+            )
+
+            pre_activn_out_layer_matrix[0, k] = Add()([
+                pre_activn_out_layer_matrix[0, k - 1],
+                pre_activn_out_layer_matrix[0, k]
+            ])
+
+        if k == 0:
+            output_layer_name_matrix[0, k] = 'central_output_lead001'
+        else:
+            output_layer_name_matrix[0, k] = (
+                'quantile_output{0:03d}_lead001'.format(k)
+            )
+
+        output_layer_matrix[0, k] = architecture_utils.get_activation_layer(
+            activation_function_string=output_activ_function_name,
+            alpha_for_relu=output_activ_function_alpha,
+            alpha_for_elu=output_activ_function_alpha,
+            layer_name=output_layer_name_matrix[0, k]
+        )(pre_activn_out_layer_matrix[0, k])
+
+        if k == 0:
+            loss_dict[output_layer_name_matrix[0, k]] = central_loss_function
+        else:
+            loss_dict[output_layer_name_matrix[0, k]] = (
+                custom_losses.quantile_loss(
+                    quantile_level=quantile_levels[k - 1]
+                )
+            )
+
+    for j in range(1, num_lead_times):
+        for k in range(num_quantile_levels + 1):
+            pre_activn_out_layer_matrix[j, k] = (
+                architecture_utils.get_dense_layer(
+                    num_output_units=num_output_neurons,
+                    weight_regularizer=regularization_func
+                )(current_layer_object)
+            )
+
+            pre_activn_out_layer_matrix[j, k] = (
+                architecture_utils.get_activation_layer(
+                    activation_function_string=
+                    architecture_utils.RELU_FUNCTION_STRING,
+                    alpha_for_relu=0., alpha_for_elu=0.
+                )(pre_activn_out_layer_matrix[j, k])
+            )
+
+            if k <= 1:
+                pre_activn_out_layer_matrix[j, k] = Add()([
+                    pre_activn_out_layer_matrix[j - 1, k],
+                    pre_activn_out_layer_matrix[j, k]
+                ])
+            else:
+                this_layer_object = Maximum()([
+                    pre_activn_out_layer_matrix[j - 1, k],
+                    pre_activn_out_layer_matrix[j, k - 1]
+                ])
+                pre_activn_out_layer_matrix[j, k] = Add()([
+                    this_layer_object,
+                    pre_activn_out_layer_matrix[j, k]
+                ])
+
+            if k == 0:
+                output_layer_name_matrix[j, k] = (
+                    'central_output_lead{0:03d}'.format(j + 1)
+                )
+            else:
+                output_layer_name_matrix[j, k] = (
+                    'quantile_output{0:03d}_lead{1:03d}'.format(k, j + 1)
+                )
+
+            output_layer_matrix[j, k] = architecture_utils.get_activation_layer(
+                activation_function_string=output_activ_function_name,
+                alpha_for_relu=output_activ_function_alpha,
+                alpha_for_elu=output_activ_function_alpha,
+                layer_name=output_layer_name_matrix[j, k]
+            )(pre_activn_out_layer_matrix[j, k])
+
+            if k == 0:
+                loss_dict[output_layer_name_matrix[j, k]] = (
+                    central_loss_function
+                )
+            else:
+                loss_dict[output_layer_name_matrix[j, k]] = (
+                    custom_losses.quantile_loss(
+                        quantile_level=quantile_levels[k - 1]
+                    )
+                )
+
+    model_object = keras.models.Model(
+        inputs=input_layer_objects,
+        outputs=numpy.ravel(output_layer_matrix).tolist()
     )
     model_object.compile(
         loss=loss_dict, optimizer=keras.optimizers.Adam()

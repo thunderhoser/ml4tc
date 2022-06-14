@@ -54,13 +54,7 @@ def _run(input_file_name, output_file_name):
     else:
         axes_object.set_ylabel('Skill (RMSE of mean prediction)')
 
-    this_string = 'Spread (stdev of predictive distribution,\ncomputed '
-    if result_dict[uq_evaluation.USE_FANCY_QUANTILES_KEY]:
-        this_string += 'with fancy quantile-based method)'
-    else:
-        this_string += 'the simple way)'
-
-    axes_object.set_ylabel(this_string)
+    axes_object.set_xlabel('Spread (stdev of predictive distribution)')
 
     title_string = 'Spread-skill plot (SSREL = {0:.2g})'.format(
         result_dict[uq_evaluation.SPREAD_SKILL_RELIABILITY_KEY]

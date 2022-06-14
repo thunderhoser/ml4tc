@@ -18,19 +18,21 @@ EXAMPLE_DIMENSION_KEY = 'example'
 CLASS_DIMENSION_KEY = 'class'
 CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_character'
 PREDICTION_SET_DIMENSION_KEY = 'prediction_set'
+LEAD_TIME_DIMENSION_KEY = 'lead_time'
 QUANTILE_DIMENSION_KEY = 'quantile'
 
 PROBABILITY_MATRIX_KEY = 'forecast_probability_matrix'
-TARGET_CLASSES_KEY = 'target_classes'
+TARGET_MATRIX_KEY = 'target_class_matrix'
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
 INIT_TIMES_KEY = 'init_times_unix_sec'
 STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
 MODEL_FILE_KEY = 'model_file_name'
+LEAD_TIMES_KEY = 'lead_times_hours'
 QUANTILE_LEVELS_KEY = 'quantile_levels'
 
 ONE_PER_EXAMPLE_KEYS = [
-    PROBABILITY_MATRIX_KEY, TARGET_CLASSES_KEY, CYCLONE_IDS_KEY, INIT_TIMES_KEY,
+    PROBABILITY_MATRIX_KEY, TARGET_MATRIX_KEY, CYCLONE_IDS_KEY, INIT_TIMES_KEY,
     STORM_LATITUDES_KEY, STORM_LONGITUDES_KEY
 ]
 
@@ -159,20 +161,22 @@ def file_name_to_metadata(prediction_file_name):
 
 
 def write_file(
-        netcdf_file_name, forecast_probability_matrix, target_classes,
+        netcdf_file_name, forecast_probability_matrix, target_class_matrix,
         cyclone_id_strings, init_times_unix_sec, storm_latitudes_deg_n,
-        storm_longitudes_deg_e, model_file_name, quantile_levels):
+        storm_longitudes_deg_e, model_file_name, lead_times_hours,
+        quantile_levels):
     """Writes predictions to NetCDF file.
 
     E = number of examples
     K = number of classes
+    L = number of lead times
     S = number of prediction sets
 
     :param netcdf_file_name: Path to output file.
-    :param forecast_probability_matrix: E-by-K or E-by-K-by-S numpy array of
-        forecast probabilities.
-    :param target_classes: length-E numpy array of target classes, all integers
-        in range [0, K - 1].
+    :param forecast_probability_matrix: E-by-K-by-L-by-S numpy array of forecast
+        probabilities.
+    :param target_class_matrix: E-by-L numpy array of target classes, all
+        integers in range [0, K - 1].
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_times_unix_sec: length-E numpy array of forecast-initialization
         times.
@@ -180,34 +184,40 @@ def write_file(
     :param storm_longitudes_deg_e: length-E numpy array of longitudes (deg E).
     :param model_file_name: Path to file with trained model (readable by
         `neural_net.read_model`).
+    :paran lead_times_hours: length-L numpy array of lead times.
     :param quantile_levels: If `forecast_probability_matrix` contains quantiles,
         this should be a length-(S - 1) numpy array of quantile levels, ranging
         from (0, 1).  Otherwise, this should be None.
     """
 
     error_checking.assert_is_numpy_array(forecast_probability_matrix)
-    if len(forecast_probability_matrix.shape) == 2:
+
+    while len(forecast_probability_matrix.shape) < 4:
         forecast_probability_matrix = numpy.expand_dims(
             forecast_probability_matrix, axis=-1
         )
 
     error_checking.assert_is_numpy_array(
-        forecast_probability_matrix, num_dimensions=3
+        forecast_probability_matrix, num_dimensions=4
     )
     error_checking.assert_is_geq_numpy_array(forecast_probability_matrix, 0.)
     error_checking.assert_is_leq_numpy_array(forecast_probability_matrix, 1.)
 
     num_examples = forecast_probability_matrix.shape[0]
     num_classes = forecast_probability_matrix.shape[1]
-    num_prediction_sets = forecast_probability_matrix.shape[2]
-    expected_dim = numpy.array([num_examples], dtype=int)
+    num_lead_times = forecast_probability_matrix.shape[2]
+    num_prediction_sets = forecast_probability_matrix.shape[3]
 
-    error_checking.assert_is_integer_numpy_array(target_classes)
+    expected_dim = numpy.array([num_examples, num_lead_times], dtype=int)
+
+    error_checking.assert_is_integer_numpy_array(target_class_matrix)
     error_checking.assert_is_numpy_array(
-        target_classes, exact_dimensions=expected_dim
+        target_class_matrix, exact_dimensions=expected_dim
     )
-    error_checking.assert_is_geq_numpy_array(target_classes, 0)
-    error_checking.assert_is_less_than_numpy_array(target_classes, num_classes)
+    error_checking.assert_is_geq_numpy_array(target_class_matrix, 0)
+    error_checking.assert_is_less_than_numpy_array(
+        target_class_matrix, num_classes
+    )
 
     error_checking.assert_is_numpy_array(
         numpy.array(cyclone_id_strings), exact_dimensions=expected_dim
@@ -236,6 +246,13 @@ def write_file(
 
     error_checking.assert_is_string(model_file_name)
 
+    expected_dim = numpy.array([num_lead_times], dtype=int)
+    error_checking.assert_is_numpy_array(
+        lead_times_hours, exact_dimensions=expected_dim
+    )
+    error_checking.assert_is_integer_numpy_array(lead_times_hours)
+    error_checking.assert_is_greater_numpy_array(lead_times_hours, 0)
+
     if quantile_levels is not None:
         expected_dim = numpy.array([num_prediction_sets - 1], dtype=int)
         error_checking.assert_is_numpy_array(
@@ -253,12 +270,14 @@ def write_file(
     dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
     dataset_object.createDimension(EXAMPLE_DIMENSION_KEY, num_examples)
     dataset_object.createDimension(CLASS_DIMENSION_KEY, num_classes)
+    dataset_object.createDimension(LEAD_TIME_DIMENSION_KEY, num_lead_times)
     dataset_object.createDimension(
         PREDICTION_SET_DIMENSION_KEY, num_prediction_sets
     )
 
     these_dim = (
-        EXAMPLE_DIMENSION_KEY, CLASS_DIMENSION_KEY, PREDICTION_SET_DIMENSION_KEY
+        EXAMPLE_DIMENSION_KEY, CLASS_DIMENSION_KEY, LEAD_TIME_DIMENSION_KEY,
+        PREDICTION_SET_DIMENSION_KEY
     )
     dataset_object.createVariable(
         PROBABILITY_MATRIX_KEY, datatype=numpy.float32, dimensions=these_dim
@@ -268,10 +287,10 @@ def write_file(
     )
 
     dataset_object.createVariable(
-        TARGET_CLASSES_KEY, datatype=numpy.int32,
-        dimensions=EXAMPLE_DIMENSION_KEY
+        TARGET_MATRIX_KEY, datatype=numpy.int32,
+        dimensions=(EXAMPLE_DIMENSION_KEY, LEAD_TIME_DIMENSION_KEY)
     )
-    dataset_object.variables[TARGET_CLASSES_KEY][:] = target_classes
+    dataset_object.variables[TARGET_MATRIX_KEY][:] = target_class_matrix
 
     dataset_object.createVariable(
         INIT_TIMES_KEY, datatype=numpy.int32,
@@ -313,6 +332,11 @@ def write_file(
         cyclone_ids_char_array
     )
 
+    dataset_object.createVariable(
+        LEAD_TIMES_KEY, datatype=numpy.int32, dimensions=LEAD_TIME_DIMENSION_KEY
+    )
+    dataset_object.variables[LEAD_TIMES_KEY][:] = lead_times_hours
+
     if quantile_levels is not None:
         dataset_object.createDimension(
             QUANTILE_DIMENSION_KEY, num_prediction_sets - 1
@@ -333,12 +357,13 @@ def read_file(netcdf_file_name):
     :param netcdf_file_name: Path to input file.
     :return: prediction_dict: Dictionary with the following keys.
     prediction_dict['forecast_probability_matrix']: See doc for `write_file`.
-    prediction_dict['target_classes']: Same.
+    prediction_dict['target_class_matrix']: Same.
     prediction_dict['cyclone_id_strings']: Same.
     prediction_dict['init_times_unix_sec']: Same.
     prediction_dict['storm_latitudes_deg_n']: Same.
     prediction_dict['storm_longitudes_deg_e']: Same.
     prediction_dict['model_file_name']: Same.
+    prediction_dict['lead_times_hours']: Same.
     prediction_dict['quantile_levels']: Same.
     """
 
@@ -347,7 +372,6 @@ def read_file(netcdf_file_name):
     prediction_dict = {
         PROBABILITY_MATRIX_KEY:
             dataset_object.variables[PROBABILITY_MATRIX_KEY][:],
-        TARGET_CLASSES_KEY: dataset_object.variables[TARGET_CLASSES_KEY][:],
         CYCLONE_IDS_KEY: [
             str(id) for id in
             netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
@@ -359,7 +383,7 @@ def read_file(netcdf_file_name):
         QUANTILE_LEVELS_KEY: None
     }
 
-    if len(prediction_dict[PROBABILITY_MATRIX_KEY].shape) == 2:
+    while len(prediction_dict[PROBABILITY_MATRIX_KEY].shape) < 4:
         prediction_dict[PROBABILITY_MATRIX_KEY] = numpy.expand_dims(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
         )
@@ -368,6 +392,25 @@ def read_file(netcdf_file_name):
         prediction_dict[QUANTILE_LEVELS_KEY] = (
             dataset_object.variables[QUANTILE_LEVELS_KEY][:]
         )
+
+    if TARGET_MATRIX_KEY in dataset_object.variables:
+        prediction_dict[TARGET_MATRIX_KEY] = (
+            dataset_object.variables[TARGET_MATRIX_KEY][:]
+        )
+    else:
+        prediction_dict[TARGET_MATRIX_KEY] = numpy.expand_dims(
+            dataset_object.variables['target_classes'][:], axis=-1
+        )
+
+    if LEAD_TIMES_KEY in dataset_object.variables:
+        prediction_dict[LEAD_TIMES_KEY] = (
+            dataset_object.variables[LEAD_TIMES_KEY][:]
+        )
+    else:
+        if numpy.mean(prediction_dict[TARGET_MATRIX_KEY] > 0) > 0.25:
+            prediction_dict[LEAD_TIMES_KEY] = numpy.array([60000], dtype=int)
+        else:
+            prediction_dict[LEAD_TIMES_KEY] = numpy.array([24], dtype=int)
 
     dataset_object.close()
     return prediction_dict
@@ -551,9 +594,10 @@ def get_mean_predictions(prediction_dict):
     """Computes mean of predictive distribution for each example.
 
     E = number of examples
+    L = number of lead times
 
     :param prediction_dict: Dictionary returned by `read_file`.
-    :return: mean_probabilities: length-E numpy array of mean forecast
+    :return: mean_probabilities: E-by-L numpy array of mean forecast
         probabilities.
     :raises: ValueError: if there are more than 2 classes.
     """
@@ -565,18 +609,19 @@ def get_mean_predictions(prediction_dict):
     if prediction_dict[QUANTILE_LEVELS_KEY] is None:
         return numpy.mean(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
-        )[:, 1]
+        )[:, 1, :]
 
-    return prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, 0]
+    return prediction_dict[PROBABILITY_MATRIX_KEY][:, 1, :, 0]
 
 
 def get_median_predictions(prediction_dict):
     """Computes median of predictive distribution for each example.
 
     E = number of examples
+    L = number of lead times
 
     :param prediction_dict: Dictionary returned by `read_file`.
-    :return: median_probabilities: length-E numpy array of median forecast
+    :return: median_probabilities: E-by-L numpy array of median forecast
         probabilities.
     :raises: ValueError: if there are more than 2 classes.
     """
@@ -593,13 +638,13 @@ def get_median_predictions(prediction_dict):
     if quantile_levels is None:
         return numpy.median(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1
-        )[:, 1]
+        )[:, 1, :]
 
     median_index = 1 + numpy.where(
         numpy.absolute(quantile_levels - 0.5) <= TOLERANCE
     )[0][0]
 
-    return prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, median_index]
+    return prediction_dict[PROBABILITY_MATRIX_KEY][:, 1, :, median_index]
 
 
 def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
@@ -626,7 +671,7 @@ def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
     if num_classes > 2:
         raise ValueError('Cannot do this with more than 2 classes.')
 
-    num_prediction_sets = prediction_dict[PROBABILITY_MATRIX_KEY].shape[2]
+    num_prediction_sets = prediction_dict[PROBABILITY_MATRIX_KEY].shape[-1]
     if num_prediction_sets == 1:
         raise ValueError(
             'There is only one prediction, rather than a distribution, per '
@@ -641,14 +686,14 @@ def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
     if quantile_levels is None:
         return numpy.std(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-1, ddof=1
-        )[:, 1]
+        )[:, 1, :]
 
     error_checking.assert_is_boolean(use_fancy_quantile_method)
 
     if not use_fancy_quantile_method:
         return numpy.std(
             prediction_dict[PROBABILITY_MATRIX_KEY][..., 1:], axis=-1, ddof=1
-        )[:, 1]
+        )[:, 1, :]
 
     error_checking.assert_is_boolean(assume_large_sample_size)
 
@@ -688,8 +733,9 @@ def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
     )
 
     prob_iqr_values = (
-        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, third_quartile_index] -
-        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, first_quartile_index]
+        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, :, third_quartile_index]
+        -
+        prediction_dict[PROBABILITY_MATRIX_KEY][..., 1, :, first_quartile_index]
     )
 
     return prob_iqr_values / eta_value

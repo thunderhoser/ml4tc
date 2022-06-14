@@ -494,8 +494,11 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
                 max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
 
-                label_string += '\n{0:.1f}% CI: {1:s} to {2:s}'.format(
-                    100 * confidence_level, min_prob_string, max_prob_string
+                label_string += (
+                    '\n{0:.1f}'.format(100 * confidence_level).rstrip('.0')
+                )
+                label_string += '% CI: {0:s}-{1:s}'.format(
+                    min_prob_string, max_prob_string
                 )
 
             this_latitude_deg_n = (
@@ -526,7 +529,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
             axes_object.text(
                 this_longitude_deg_e, this_latitude_deg_n, label_string,
-                fontsize=24, color=LABEL_COLOUR,
+                fontsize=20, color=LABEL_COLOUR,
                 bbox=LESS_OPAQUE_BOUNDING_BOX_DICT,
                 horizontalalignment=horiz_alignment_string,
                 verticalalignment=vertical_alignment_string,
