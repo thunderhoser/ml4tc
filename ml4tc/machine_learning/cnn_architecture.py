@@ -354,10 +354,10 @@ def create_dense_layers(input_layer_object, option_dict):
     return layer_object
 
 
-def create_model(
+def create_basic_model_ri(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
         option_dict_dense, loss_function, metric_functions):
-    """Creates CNN.
+    """Creates basic CNN (no quantile regression) for rapid intensification.
 
     :param option_dict_gridded_sat: See doc for `_create_layers_gridded_sat`.
         If you do not want to use gridded satellite data, make this None.
@@ -469,10 +469,10 @@ def create_model(
     return model_object
 
 
-def create_quantile_regression_model_old(
+def create_qr_model_ri(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
         option_dict_dense, central_loss_function, quantile_levels):
-    """Creates CNN for quantile regression.
+    """Creates quantile-regression CNN for rapid intensification.
 
     :param option_dict_gridded_sat: See doc for `create_model`.
     :param option_dict_ungridded_sat: Same.
@@ -665,11 +665,11 @@ def create_quantile_regression_model_old(
     return model_object
 
 
-def create_quantile_regression_model(
+def create_qr_model_td_to_ts(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
         option_dict_dense, central_loss_function, quantile_levels,
         num_lead_times):
-    """Creates CNN for quantile regression.
+    """Creates quantile-regression CNN for TD-to-TS prediction.
 
     :param option_dict_gridded_sat: See doc for `create_model`.
     :param option_dict_ungridded_sat: Same.
@@ -860,8 +860,8 @@ def create_quantile_regression_model(
             loss_dict[output_layer_name_matrix[0, k]] = central_loss_function
         else:
             loss_dict[output_layer_name_matrix[0, k]] = (
-                custom_losses.quantile_loss(
-                    quantile_level=quantile_levels[k - 1]
+                custom_losses.quantile_loss_one_variable(
+                    quantile_level=quantile_levels[k - 1], variable_index=0
                 )
             )
 
@@ -919,8 +919,8 @@ def create_quantile_regression_model(
                 )
             else:
                 loss_dict[output_layer_name_matrix[j, k]] = (
-                    custom_losses.quantile_loss(
-                        quantile_level=quantile_levels[k - 1]
+                    custom_losses.quantile_loss_one_variable(
+                        quantile_level=quantile_levels[k - 1], variable_index=j
                     )
                 )
 

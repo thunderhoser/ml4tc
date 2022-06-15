@@ -522,8 +522,7 @@ class NeuralNetTests(unittest.TestCase):
 
         this_lagged_pred_matrix, this_forecast_pred_matrix = (
             neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=SCALAR_PREDICTOR_MATRIX_ALL_LAGS
-                ,
+                predictor_matrix_3d=SCALAR_PREDICTOR_MATRIX_ALL_LAGS,
                 num_lagged_predictors=LAGGED_PRED_MATRIX_STANDARD.shape[2],
                 num_builtin_lag_times=LAGGED_PRED_MATRIX_STANDARD.shape[1],
                 num_forecast_predictors=

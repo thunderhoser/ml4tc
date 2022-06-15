@@ -73,7 +73,7 @@ SATELLITE_ROWS_KEY = 'satellite_rows_by_example'
 SHIPS_ROWS_KEY = 'ships_rows_by_example'
 
 PREDICTOR_MATRICES_KEY = 'predictor_matrices'
-TARGET_ARRAY_KEY = 'target_array'
+TARGET_MATRIX_KEY = 'target_class_matrix'
 INIT_TIMES_KEY = 'init_times_unix_sec'
 STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
@@ -488,7 +488,7 @@ def _find_all_desired_times(
     :return: ships_indices: length-U numpy array of indices for SHIPS-based
         predictors.  These are indices into the SHIPS times in
         `example_table_xarray`.
-    :return: target_flag_matrix: L-by-K numpy array of integers in 0...1.
+    :return: target_class_matrix: L-by-K numpy array of integers in 0...1.
     """
 
     xt = example_table_xarray
@@ -586,7 +586,7 @@ def _find_all_desired_times(
             return None, None, None
 
         num_lead_times = len(lead_times_sec)
-        target_flag_matrix = numpy.full((num_lead_times, 2), 0, dtype=bool)
+        target_class_matrix = numpy.full((num_lead_times, 2), 0, dtype=bool)
 
         for k in range(num_lead_times):
             num_desired_times = 1 + int(numpy.round(
@@ -611,13 +611,13 @@ def _find_all_desired_times(
                 target_indices, zero_hour_index
             ]
 
-            target_flag_matrix[k, 1] = numpy.any(numpy.logical_and(
+            target_class_matrix[k, 1] = numpy.any(numpy.logical_and(
                 intensities_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
                 storm_type_enums == 1
             ))
-            target_flag_matrix[k, 0] = numpy.invert(target_flag_matrix[k, 1])
+            target_class_matrix[k, 0] = numpy.invert(target_class_matrix[k, 1])
 
-        return satellite_indices, ships_indices, target_flag_matrix.astype(int)
+        return satellite_indices, ships_indices, target_class_matrix.astype(int)
 
     lead_time_sec = lead_times_sec[0]
 
@@ -662,9 +662,9 @@ def _find_all_desired_times(
         intensity_change_m_s01=intensity_change_m_s01,
         class_cutoffs_m_s01=class_cutoffs_m_s01
     )
-    target_flag_matrix = numpy.expand_dims(target_flags, axis=0)
+    target_class_matrix = numpy.expand_dims(target_flags, axis=0)
 
-    return satellite_indices, ships_indices, target_flag_matrix
+    return satellite_indices, ships_indices, target_class_matrix
 
 
 def _read_non_predictors_one_file(
@@ -702,7 +702,7 @@ def _read_non_predictors_one_file(
         for the given example.  These are row indices into
         `example_table_xarray`.
     data_dict['ships_rows_by_example']: Same but for SHIPS times.
-    data_dict['target_array']: See doc for `_read_one_example_file`.
+    data_dict['target_class_matrix']: See doc for `_read_one_example_file`.
     data_dict['init_times_unix_sec']: Same.
     data_dict['storm_latitudes_deg_n']: Same.
     data_dict['storm_longitudes_deg_e']: Same.
@@ -716,11 +716,6 @@ def _read_non_predictors_one_file(
         )
     numpy.random.shuffle(all_init_times_unix_sec)
 
-    if predict_td_to_ts:
-        num_classes = 2
-    else:
-        num_classes = len(class_cutoffs_m_s01) + 1
-
     num_positive_examples_found = 0
     num_negative_examples_found = 0
 
@@ -729,30 +724,28 @@ def _read_non_predictors_one_file(
     init_times_unix_sec = []
     storm_latitudes_deg_n = []
     storm_longitudes_deg_e = []
-
-    if num_classes > 2:
-        target_array = numpy.full((0, num_classes), -1, dtype=int)
-    else:
-        target_array = numpy.full(0, -1, dtype=int)
+    target_class_matrix = None
 
     for t in all_init_times_unix_sec:
-        these_satellite_indices, these_ships_indices, this_flag_matrix = (
-            _find_all_desired_times(
-                example_table_xarray=xt, init_time_unix_sec=t,
-                lead_times_sec=lead_times_sec,
-                satellite_lag_times_sec=satellite_lag_times_sec,
-                ships_lag_times_sec=ships_lag_times_sec,
-                predict_td_to_ts=predict_td_to_ts,
-                satellite_time_tolerance_sec=satellite_time_tolerance_sec,
-                satellite_max_missing_times=satellite_max_missing_times,
-                ships_time_tolerance_sec=ships_time_tolerance_sec,
-                ships_max_missing_times=ships_max_missing_times,
-                use_climo_as_backup=use_climo_as_backup,
-                class_cutoffs_m_s01=class_cutoffs_m_s01
-            )
+        (
+            these_satellite_indices,
+            these_ships_indices,
+            this_target_class_matrix
+        ) = _find_all_desired_times(
+            example_table_xarray=xt, init_time_unix_sec=t,
+            lead_times_sec=lead_times_sec,
+            satellite_lag_times_sec=satellite_lag_times_sec,
+            ships_lag_times_sec=ships_lag_times_sec,
+            predict_td_to_ts=predict_td_to_ts,
+            satellite_time_tolerance_sec=satellite_time_tolerance_sec,
+            satellite_max_missing_times=satellite_max_missing_times,
+            ships_time_tolerance_sec=ships_time_tolerance_sec,
+            ships_max_missing_times=ships_max_missing_times,
+            use_climo_as_backup=use_climo_as_backup,
+            class_cutoffs_m_s01=class_cutoffs_m_s01
         )
 
-        if this_flag_matrix is None:
+        if this_target_class_matrix is None:
             continue
 
         if (
@@ -762,30 +755,24 @@ def _read_non_predictors_one_file(
         ):
             continue
 
-        if numpy.any(this_flag_matrix[:, -1] == 1):
+        if numpy.any(this_target_class_matrix[:, -1] == 1):
             if num_positive_examples_found >= num_positive_examples_desired:
                 continue
 
             num_positive_examples_found += 1
 
-        if not numpy.any(this_flag_matrix[:, -1] == 1):
+        if not numpy.any(this_target_class_matrix[:, -1] == 1):
             if num_negative_examples_found >= num_negative_examples_desired:
                 continue
 
             num_negative_examples_found += 1
 
-        if num_classes == 2:
-            # From L x 2 to length-L.
-            this_flag_matrix = numpy.argmax(this_flag_matrix, axis=1)
-
-        this_flag_matrix = numpy.expand_dims(this_flag_matrix, axis=0)
-        target_array = numpy.concatenate(
-            (target_array, this_flag_matrix), axis=0
-        )
-
-        if not predict_td_to_ts:
-            # Remove lead-time dimension.
-            target_array = target_array[:, 0, ...]
+        if target_class_matrix is None:
+            target_class_matrix = this_target_class_matrix + 0
+        else:
+            target_class_matrix = numpy.concatenate(
+                (target_class_matrix, this_target_class_matrix), axis=0
+            )
 
         satellite_rows_by_example.append(these_satellite_indices)
         ships_rows_by_example.append(these_ships_indices)
@@ -826,7 +813,7 @@ def _read_non_predictors_one_file(
     return {
         SATELLITE_ROWS_KEY: satellite_rows_by_example,
         SHIPS_ROWS_KEY: ships_rows_by_example,
-        TARGET_ARRAY_KEY: target_array,
+        TARGET_MATRIX_KEY: target_class_matrix,
         INIT_TIMES_KEY: init_times_unix_sec,
         STORM_LATITUDES_KEY: storm_latitudes_deg_n,
         STORM_LONGITUDES_KEY: storm_longitudes_deg_e
@@ -1245,10 +1232,8 @@ def _read_one_example_file(
         ships_predictor_matrix: numpy array (E x T_ships x C_ships) of
         SHIPS predictors.
 
-    data_dict['target_array']: If L > 2, this is an E-by-L numpy array of
-        integers (0 or 1), indicating true classes.  Else, if K > 2, this is an
-        E-by-K numpy array of integers (0 or 1),  Else, this is a length-E numpy
-        array of integers (0 or 1).
+    data_dict['target_class_matrix']: E-by-L-by-K numpy array of integers
+        (0 or 1), indicating true classes.
     data_dict['init_times_unix_sec']: length-E numpy array of forecast-
         initialization times.
     data_dict['storm_latitudes_deg_n']: length-E numpy array of storm latitudes
@@ -1481,6 +1466,8 @@ def _check_generator_args(option_dict):
     if option_dict[PREDICT_TD_TO_TS_KEY]:
         option_dict[CLASS_CUTOFFS_KEY] = None
     else:
+        assert len(option_dict[LEAD_TIMES_KEY]) == 1
+
         error_checking.assert_is_numpy_array(
             option_dict[CLASS_CUTOFFS_KEY], num_dimensions=1
         )
@@ -1740,7 +1727,8 @@ def _augment_data(
     the three.
 
     :param predictor_matrices: See doc for `input_generator`.
-    :param target_array: Same.
+    :param target_array: numpy array of target values, where the first axis is
+        the example axis.
     :param num_translations: Number of translations per example.  This argument
         applies only to satellite images.
     :param max_translation_px: Max translation (pixels).  This argument applies
@@ -1852,6 +1840,159 @@ def _augment_data(
         )
 
     return predictor_matrices, target_array
+
+
+def _apply_model_td_to_ts(
+        model_object, predictor_matrices, num_examples_per_batch,
+        use_dropout, verbose, num_lead_times, num_prediction_sets):
+    """Applies trained model (inference mode) for TD-to-TS prediction.
+
+    :param model_object: See doc for `apply_model`.
+    :param predictor_matrices: Same.
+    :param num_examples_per_batch: Same.
+    :param use_dropout: Same.
+    :param verbose: Same.
+    :param num_lead_times: Number of lead times.
+    :param num_prediction_sets: Number of prediction sets.
+    :return: forecast_prob_matrix: See doc for `apply_model`.
+    """
+
+    num_examples = predictor_matrices[0].shape[0]
+    forecast_prob_matrix = None
+
+    for i in range(0, num_examples, num_examples_per_batch):
+        first_index = i
+        last_index = min([
+            i + num_examples_per_batch - 1, num_examples - 1
+        ])
+        these_indices = numpy.linspace(
+            first_index, last_index,
+            num=last_index - first_index + 1, dtype=int
+        )
+
+        if verbose:
+            print('Applying model to examples {0:d}-{1:d} of {2:d}...'.format(
+                first_index + 1, last_index + 1, num_examples
+            ))
+
+        if use_dropout:
+            output_list = model_object(
+                [a[these_indices, ...] for a in predictor_matrices],
+                training=True
+            ).numpy()
+        else:
+            output_list = model_object.predict_on_batch(
+                [a[these_indices, ...] for a in predictor_matrices]
+            )
+
+        # Current shape is E x LS.
+        this_prob_matrix = numpy.stack(output_list, axis=-1)
+
+        # Add class axis to get shape E x K x LS.
+        this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+        this_prob_matrix = numpy.concatenate(
+            (1. - this_prob_matrix, this_prob_matrix), axis=-2
+        )
+
+        # Reshape to E x K x L x S.
+        dimensions = (
+            this_prob_matrix.shape[:-1], num_lead_times, num_prediction_sets
+        )
+        this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
+
+        if forecast_prob_matrix is None:
+            dimensions = (num_examples,) + this_prob_matrix.shape[1:]
+            forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
+
+        forecast_prob_matrix[these_indices, ...] = this_prob_matrix
+
+    if verbose:
+        print('Have applied model to all {0:d} examples!'.format(num_examples))
+
+    return forecast_prob_matrix
+
+
+def _apply_model_ri(
+        model_object, predictor_matrices, num_examples_per_batch,
+        use_dropout, verbose):
+    """Applies trained model (inference mode) for rapid intensification.
+
+    :param model_object: See doc for `apply_model`.
+    :param predictor_matrices: Same.
+    :param num_examples_per_batch: Same.
+    :param use_dropout: Same.
+    :param verbose: Same.
+    :return: forecast_prob_matrix: See doc for `apply_model`.
+    """
+
+    num_examples = predictor_matrices[0].shape[0]
+    forecast_prob_matrix = None
+
+    for i in range(0, num_examples, num_examples_per_batch):
+        first_index = i
+        last_index = min([
+            i + num_examples_per_batch - 1, num_examples - 1
+        ])
+        these_indices = numpy.linspace(
+            first_index, last_index,
+            num=last_index - first_index + 1, dtype=int
+        )
+
+        if verbose:
+            print('Applying model to examples {0:d}-{1:d} of {2:d}...'.format(
+                first_index + 1, last_index + 1, num_examples
+            ))
+
+        if use_dropout:
+            these_predictions = model_object(
+                [a[these_indices, ...] for a in predictor_matrices],
+                training=True
+            ).numpy()
+        else:
+            these_predictions = model_object.predict_on_batch(
+                [a[these_indices, ...] for a in predictor_matrices]
+            )
+
+        if isinstance(these_predictions, list):
+
+            # Current shape is E x S or E x K x S.
+            this_prob_matrix = numpy.stack(these_predictions, axis=-1)
+
+            # If necessary, add class axis to get shape E x K x S.
+            if len(this_prob_matrix.shape) == 2:
+                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+                this_prob_matrix = numpy.concatenate(
+                    (1. - this_prob_matrix, this_prob_matrix), axis=-2
+                )
+
+            # Add lead-time axis to get shape E x K x L x S.
+            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+        else:
+
+            # Current shape is length-E or E x K.
+            this_prob_matrix = these_predictions + 0.
+
+            # If necessary, add class axis to get shape E x K.
+            if len(this_prob_matrix.shape) == 1:
+                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+                this_prob_matrix = numpy.concatenate(
+                    (1. - this_prob_matrix, this_prob_matrix), axis=-1
+                )
+
+            # Add lead-time and prediction-set axes to get shape E x K x L x S.
+            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+
+        if forecast_prob_matrix is None:
+            dimensions = (num_examples,) + this_prob_matrix.shape[1:]
+            forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
+
+        forecast_prob_matrix[these_indices, ...] = this_prob_matrix
+
+    if verbose:
+        print('Have applied model to all {0:d} examples!'.format(num_examples))
+
+    return forecast_prob_matrix
 
 
 def read_metafile(pickle_file_name):
@@ -2246,7 +2387,9 @@ def create_inputs(option_dict):
 def input_generator(option_dict):
     """Generates input data for neural net.
 
+    E = number of examples
     K = number of classes
+    L = number of lead times
 
     :param option_dict: Dictionary with the following keys.
     option_dict['example_dir_name']: Name of directory with example files.
@@ -2323,7 +2466,11 @@ def input_generator(option_dict):
         omitted from the list.  For example, if scalar satellite predictors are
         undesired, the list will contain only
         [brightness_temperature_matrix, ships_predictor_matrix].
-    :return: target_array: See output doc for `_read_one_example_file`.
+
+    :return: target_array: If prediction task is TD-to-TS, this is an E-by-L
+        numpy array of integers in 0...1.  Else, if task is RI with > 2 classes,
+        this is an E-by-K numpy array of integers in 0...1.  Else, if task is RI
+        with 2 classes, this is a length-E numpy array of integers in 0...1.
     """
 
     option_dict = _check_generator_args(option_dict)
@@ -2457,8 +2604,15 @@ def input_generator(option_dict):
                 m for m in this_data_dict[PREDICTOR_MATRICES_KEY]
                 if m is not None
             ]
-            this_target_array = this_data_dict[TARGET_ARRAY_KEY]
+            this_target_class_matrix = this_data_dict[TARGET_MATRIX_KEY]
             file_index += 1
+
+            if predict_td_to_ts:
+                this_target_array = this_target_class_matrix[..., -1]
+            elif len(class_cutoffs_m_s01) > 1:
+                this_target_array = this_target_class_matrix[:, 0, :]
+            else:
+                this_target_array = this_target_class_matrix[:, 0, -1]
 
             if predictor_matrices is None:
                 predictor_matrices = copy.deepcopy(these_predictor_matrices)
@@ -2474,14 +2628,21 @@ def input_generator(option_dict):
                     (target_array, this_target_array), axis=0
                 )
 
-            if len(target_array.shape) == 1:
-                num_positive_examples_in_memory = numpy.sum(target_array == 1)
-                num_negative_examples_in_memory = numpy.sum(target_array == 0)
-            else:
+            if predict_td_to_ts:
+                num_positive_examples_in_memory = numpy.sum(
+                    numpy.any(target_array == 1, axis=1)
+                )
+                num_negative_examples_in_memory = numpy.sum(
+                    numpy.all(target_array == 0, axis=1)
+                )
+            elif len(class_cutoffs_m_s01) > 1:
                 num_positive_examples_in_memory = numpy.sum(target_array[:, -1])
                 num_negative_examples_in_memory = numpy.sum(
                     target_array[:, :-1]
                 )
+            else:
+                num_positive_examples_in_memory = numpy.sum(target_array == 1)
+                num_negative_examples_in_memory = numpy.sum(target_array == 0)
 
             num_examples_in_memory = (
                 num_positive_examples_in_memory +
@@ -2517,18 +2678,25 @@ def input_generator(option_dict):
         predictor_matrices = [p.astype('float16') for p in predictor_matrices]
         target_array = target_array.astype('float16')
 
-        if len(target_array.shape) == 1:
+        if predict_td_to_ts:
             print((
                 'Yielding {0:d} examples with {1:d} positive examples!'
             ).format(
-                len(target_array), int(numpy.sum(target_array))
+                target_array.shape[0],
+                numpy.sum(numpy.any(target_array == 1, axis=1))
             ))
-        else:
+        elif len(class_cutoffs_m_s01) > 1:
             print((
                 'Yielding {0:d} examples with the following class distribution:'
                 '\n{1:s}'
             ).format(
                 target_array.shape[0], str(numpy.sum(target_array, axis=0))
+            ))
+        else:
+            print((
+                'Yielding {0:d} examples with {1:d} positive examples!'
+            ).format(
+                target_array.shape[0], numpy.sum(target_array == 1)
             ))
 
         yield predictor_matrices, target_array
@@ -2716,26 +2884,29 @@ def read_model(hdf5_file_name):
         real_number=metadata_dict[CENTRAL_LOSS_WEIGHT_KEY]
     )
 
-    custom_object_dict = {
-        'central_output_loss': central_loss_function
-    }
-    loss_dict = {'central_output': central_loss_function}
-    metric_list = []
+    option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
+    predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
 
-    for k in range(len(quantile_levels)):
-        this_loss_function = custom_losses.quantile_loss(
-            quantile_level=quantile_levels[k]
-        )
-        loss_dict['quantile_output{0:03d}'.format(k + 1)] = (
-            this_loss_function
-        )
-        custom_object_dict['quantile_output{0:03d}_loss'.format(k + 1)] = (
-            this_loss_function
-        )
+    if not predict_td_to_ts:
+        custom_object_dict = {
+            'central_output_loss': central_loss_function
+        }
+        loss_dict = {'central_output': central_loss_function}
+        metric_list = []
 
-    custom_object_dict['loss'] = loss_dict
+        for k in range(len(quantile_levels)):
+            this_loss_function = custom_losses.quantile_loss(
+                quantile_level=quantile_levels[k]
+            )
+            loss_dict['quantile_output{0:03d}'.format(k + 1)] = (
+                this_loss_function
+            )
+            custom_object_dict['quantile_output{0:03d}_loss'.format(k + 1)] = (
+                this_loss_function
+            )
 
-    try:
+        custom_object_dict['loss'] = loss_dict
+
         model_object = tf_keras.models.load_model(
             hdf5_file_name, custom_objects=custom_object_dict, compile=False
         )
@@ -2745,11 +2916,8 @@ def read_model(hdf5_file_name):
         )
 
         return model_object
-    except:
-        pass
 
-    num_lead_times = len(metadata_dict[TRAINING_OPTIONS_KEY][LEAD_TIMES_KEY])
-
+    num_lead_times = len(option_dict[LEAD_TIMES_KEY])
     custom_object_dict = {}
     loss_dict = {}
     metric_list = []
@@ -2763,8 +2931,8 @@ def read_model(hdf5_file_name):
         )
 
         for k in range(len(quantile_levels)):
-            this_loss_function = custom_losses.quantile_loss(
-                quantile_level=quantile_levels[k]
+            this_loss_function = custom_losses.quantile_loss_one_variable(
+                quantile_level=quantile_levels[k], variable_index=j
             )
 
             loss_dict[
@@ -2788,9 +2956,10 @@ def read_model(hdf5_file_name):
     return model_object
 
 
-def apply_model(model_object, predictor_matrices, num_examples_per_batch,
-                num_lead_times, use_dropout=False, verbose=False):
-    """Applies trained neural net.
+def apply_model(
+        model_object, model_metadata_dict, predictor_matrices,
+        num_examples_per_batch, use_dropout=False, verbose=False):
+    """Applies trained neural net (inference mode).
 
     E = number of examples
     K = number of classes
@@ -2799,13 +2968,13 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
 
     :param model_object: Trained neural net (instance of `keras.models.Model` or
         `keras.models.Sequential`).
+    :param model_metadata_dict: Dictionary returned by `read_metafile`.
     :param predictor_matrices: See output doc for `input_generator`.
     :param num_examples_per_batch: Batch size.
     :param use_dropout: Boolean flag.  If True, will keep dropout in all layers
         turned on.  Using dropout at inference time is called "Monte Carlo
         dropout".
     :param verbose: Boolean flag.  If True, will print progress messages.
-    :param num_lead_times: Number of lead times.
     :return: forecast_prob_matrix: E-by-K-by-L-by-S numpy array of class
         probabilities.
     """
@@ -2818,9 +2987,6 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
     num_examples = predictor_matrices[0].shape[0]
     num_examples_per_batch = min([num_examples_per_batch, num_examples])
 
-    error_checking.assert_is_integer(num_lead_times)
-    error_checking.assert_is_greater(num_lead_times, 0)
-
     error_checking.assert_is_boolean(use_dropout)
     error_checking.assert_is_boolean(verbose)
 
@@ -2832,83 +2998,27 @@ def apply_model(model_object, predictor_matrices, num_examples_per_batch,
                 ))
                 layer_object.trainable = False
 
-    forecast_prob_matrix = None
+    option_dict = model_metadata_dict[VALIDATION_OPTIONS_KEY]
 
-    for i in range(0, num_examples, num_examples_per_batch):
-        first_index = i
-        last_index = min([
-            i + num_examples_per_batch - 1, num_examples - 1
-        ])
-        these_indices = numpy.linspace(
-            first_index, last_index,
-            num=last_index - first_index + 1, dtype=int
+    if option_dict[PREDICT_TD_TO_TS_KEY]:
+        num_prediction_sets = (
+            1 if model_metadata_dict[QUANTILE_LEVELS_KEY] is None
+            else len(model_metadata_dict[QUANTILE_LEVELS_KEY]) + 1
         )
 
-        if verbose:
-            print('Applying model to examples {0:d}-{1:d} of {2:d}...'.format(
-                first_index + 1, last_index + 1, num_examples
-            ))
-
-        if use_dropout:
-            these_predictions = model_object(
-                [a[these_indices, ...] for a in predictor_matrices],
-                training=True
-            ).numpy()
-        else:
-            these_predictions = model_object.predict_on_batch(
-                [a[these_indices, ...] for a in predictor_matrices]
-            )
-
-        many_output_channels = isinstance(these_predictions, list)
-
-        if many_output_channels:
-            this_prob_matrix = numpy.stack(these_predictions, axis=-1)
-
-            if len(this_prob_matrix.shape) == 2:
-                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
-                this_prob_matrix = numpy.concatenate(
-                    (1. - this_prob_matrix, this_prob_matrix), axis=-2
-                )
-
-            num_output_channels = this_prob_matrix.shape[-1]
-            num_prediction_sets_float = (
-                float(num_output_channels) / num_lead_times
-            )
-            num_prediction_sets = int(numpy.round(
-                num_prediction_sets_float
-            ))
-
-            assert numpy.isclose(
-                num_prediction_sets, num_prediction_sets_float,
-                atol=TOLERANCE
-            )
-
-            dimensions = (
-                this_prob_matrix.shape[:-1], num_lead_times, num_prediction_sets
-            )
-            this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
-        else:
-            this_prob_matrix = these_predictions + 0.
-
-            # Add class axis.
-            if len(this_prob_matrix.shape) == 1:
-                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
-                this_prob_matrix = numpy.concatenate(
-                    (1. - this_prob_matrix, this_prob_matrix), axis=-1
-                )
-
-            # Add lead-time and prediction-set axes.
-            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
-            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
-
-        if forecast_prob_matrix is None:
-            dimensions = (num_examples,) + this_prob_matrix.shape[1:]
-            forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
-
-        forecast_prob_matrix[these_indices, ...] = this_prob_matrix
-
-    if verbose:
-        print('Have applied model to all {0:d} examples!'.format(num_examples))
+        forecast_prob_matrix = _apply_model_td_to_ts(
+            model_object=model_object, predictor_matrices=predictor_matrices,
+            num_examples_per_batch=num_examples_per_batch,
+            use_dropout=use_dropout, verbose=verbose,
+            num_lead_times=len(option_dict[LEAD_TIMES_KEY]),
+            num_prediction_sets=num_prediction_sets
+        )
+    else:
+        forecast_prob_matrix = _apply_model_ri(
+            model_object=model_object, predictor_matrices=predictor_matrices,
+            num_examples_per_batch=num_examples_per_batch,
+            use_dropout=use_dropout, verbose=verbose
+        )
 
     forecast_prob_matrix = numpy.maximum(forecast_prob_matrix, 0.)
     forecast_prob_matrix = numpy.minimum(forecast_prob_matrix, 1.)

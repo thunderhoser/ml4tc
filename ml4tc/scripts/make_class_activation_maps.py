@@ -161,14 +161,13 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         this_data_dict = neural_net.create_inputs(this_option_dict)
         print(SEPARATOR_STRING)
 
+        if this_data_dict[neural_net.INIT_TIMES_KEY].size == 0:
+            continue
+
         these_predictor_matrices = [
             m for m in this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             if m is not None
         ]
-        this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
-
-        if this_target_array.size == 0:
-            continue
 
         this_num_examples = these_predictor_matrices[0].shape[0]
         cyclone_id_strings += [unique_cyclone_id_strings[i]] * this_num_examples

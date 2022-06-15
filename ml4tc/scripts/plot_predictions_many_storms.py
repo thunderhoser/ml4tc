@@ -237,7 +237,7 @@ def _subset_data(
     ]
 
     for this_key in [
-            neural_net.TARGET_ARRAY_KEY, neural_net.INIT_TIMES_KEY,
+            neural_net.TARGET_MATRIX_KEY, neural_net.INIT_TIMES_KEY,
             neural_net.STORM_LATITUDES_KEY, neural_net.STORM_LONGITUDES_KEY,
             neural_net.GRID_LATITUDE_MATRIX_KEY,
             neural_net.GRID_LONGITUDE_MATRIX_KEY
@@ -273,7 +273,7 @@ def _concat_data(data_dicts):
         )
 
     for this_key in [
-            neural_net.TARGET_ARRAY_KEY, neural_net.INIT_TIMES_KEY,
+            neural_net.TARGET_MATRIX_KEY, neural_net.INIT_TIMES_KEY,
             neural_net.STORM_LATITUDES_KEY, neural_net.STORM_LONGITUDES_KEY,
             neural_net.GRID_LATITUDE_MATRIX_KEY,
             neural_net.GRID_LONGITUDE_MATRIX_KEY
@@ -330,7 +330,7 @@ def _match_predictors_to_predictions(data_dict, prediction_file_name):
         good_indices.append(this_index)
 
     idxs = numpy.array(good_indices, dtype=int)
-    data_dict.pop(neural_net.TARGET_ARRAY_KEY)
+    data_dict.pop(neural_net.TARGET_MATRIX_KEY)
 
     data_dict.update({
         PROBABILITY_MATRIX_KEY:
