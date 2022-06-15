@@ -202,13 +202,12 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         this_data_dict = neural_net.create_inputs(this_option_dict)
         print(SEPARATOR_STRING)
 
+        if this_data_dict[neural_net.INIT_TIMES_KEY].size == 0:
+            continue
+
         new_predictor_matrices = (
             this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
         )
-        this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
-
-        if this_target_array.size == 0:
-            continue
 
         this_num_examples = new_predictor_matrices[0].shape[0]
         cyclone_id_strings += [unique_cyclone_id_strings[i]] * this_num_examples
@@ -218,23 +217,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         ))
 
         if use_smoothgrad:
-            new_saliency_matrices = [None] * 3
+            new_saliency_matrices = [None]
 
-            for k in range(num_smoothgrad_samples):
-                these_noise_matrices = [
-                    None if p is None
-                    else numpy.random.normal(
-                        loc=0., scale=smoothgrad_noise_stdev, size=p.shape
-                    )
-                    for p in new_predictor_matrices
-                ]
-
-                these_diffs = numpy.concatenate([numpy.ravel(n) for n in these_noise_matrices if n is not None])
-
-                print(smoothgrad_noise_stdev)
-                print(numpy.mean(numpy.absolute(these_diffs)))
-                print(len(these_diffs))
-
+            for k in num_smoothgrad_samples:
                 these_predictor_matrices = [
                     None if p is None
                     else p + numpy.random.normal(
@@ -242,17 +227,6 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                     )
                     for p in new_predictor_matrices
                 ]
-
-                these_diffs = numpy.concatenate([
-                    numpy.ravel(t - n)
-                    for t, n in
-                    zip(these_predictor_matrices, new_predictor_matrices)
-                    if t is not None
-                ])
-
-                print(smoothgrad_noise_stdev)
-                print(numpy.mean(numpy.absolute(these_diffs)))
-                print('\n')
 
                 these_saliency_matrices = saliency.get_saliency_one_neuron(
                     model_object=model_object,
