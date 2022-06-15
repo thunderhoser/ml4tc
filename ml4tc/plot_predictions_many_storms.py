@@ -267,12 +267,11 @@ def _concat_data(data_dicts):
 
     num_matrices = len(data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY])
     data_dict = {
-        neural_net.PREDICTOR_MATRICES_KEY: []
+        neural_net.PREDICTOR_MATRICES_KEY: [None] * num_matrices
     }
 
     for k in range(num_matrices):
         if data_dicts[0][neural_net.PREDICTOR_MATRICES_KEY][k] is None:
-            data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = None
             continue
 
         data_dict[neural_net.PREDICTOR_MATRICES_KEY][k] = numpy.concatenate(
