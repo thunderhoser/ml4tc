@@ -395,6 +395,9 @@ def _plot_brightness_temp_one_example(
     )
 
     # Plot brightness temperatures.
+    print('SECOND TIME')
+    print(grid_longitude_matrix_deg_e[..., -1][:10])
+
     satellite_plotting.plot_2d_grid(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object,
@@ -742,6 +745,9 @@ def _run(model_metafile_name, norm_example_dir_name, normalization_file_name,
                 None if a is None else a[[j], ...]
                 for a in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
             ]
+
+            print('FIRST TIME')
+            print(data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY][j, ..., -1][:10])
 
             _plot_brightness_temp_one_example(
                 predictor_matrices_one_example=these_predictor_matrices,
