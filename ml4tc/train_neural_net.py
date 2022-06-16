@@ -36,7 +36,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
          use_time_diffs_gridded_sat, data_aug_num_translations,
          data_aug_max_translation_px, data_aug_num_rotations,
          data_aug_max_rotation_deg, data_aug_num_noisings, data_aug_noise_stdev,
-         num_epochs, num_training_batches_per_epoch,
+         west_pacific_weight, num_epochs, num_training_batches_per_epoch,
          num_validation_batches_per_epoch, plateau_lr_multiplier):
     """Trains neural net.
 
@@ -76,6 +76,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param data_aug_max_rotation_deg: Same.
     :param data_aug_num_noisings: Same.
     :param data_aug_noise_stdev: Same.
+    :param west_pacific_weight: Same.
     :param num_epochs: Same.
     :param num_training_batches_per_epoch: Same.
     :param num_validation_batches_per_epoch: Same.
@@ -86,6 +87,8 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         num_grid_rows = None
     if num_grid_columns <= 0:
         num_grid_columns = None
+    if west_pacific_weight <= 0:
+        west_pacific_weight = None
 
     if (
             len(satellite_lag_times_minutes) == 1
@@ -149,7 +152,8 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         neural_net.DATA_AUG_NUM_ROTATIONS_KEY: data_aug_num_rotations,
         neural_net.DATA_AUG_MAX_ROTATION_KEY: data_aug_max_rotation_deg,
         neural_net.DATA_AUG_NUM_NOISINGS_KEY: data_aug_num_noisings,
-        neural_net.DATA_AUG_NOISE_STDEV_KEY: data_aug_noise_stdev
+        neural_net.DATA_AUG_NOISE_STDEV_KEY: data_aug_noise_stdev,
+        neural_net.WEST_PACIFIC_WEIGHT_KEY: west_pacific_weight
     }
 
     validation_option_dict = {
@@ -305,6 +309,9 @@ if __name__ == '__main__':
         ),
         data_aug_noise_stdev=getattr(
             INPUT_ARG_OBJECT, training_args.DATA_AUG_NOISE_STDEV_ARG_NAME
+        ),
+        west_pacific_weight=getattr(
+            INPUT_ARG_OBJECT, training_args.WEST_PACIFIC_WEIGHT_ARG_NAME
         ),
         num_epochs=getattr(INPUT_ARG_OBJECT, training_args.NUM_EPOCHS_ARG_NAME),
         num_training_batches_per_epoch=getattr(

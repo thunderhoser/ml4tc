@@ -164,7 +164,7 @@ def _get_intensities(example_table_xarray, init_times_unix_sec,
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     lead_time_sec = (
-        HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIME_KEY]
+        HOURS_TO_SECONDS * validation_option_dict[neural_net.LEAD_TIMES_KEY][0]
     )
     good_indices_2d_list = [
         numpy.where(these_times_unix_sec == t)[0]
@@ -224,11 +224,11 @@ def get_predictions_and_targets(prediction_file_name, cyclone_id_string,
 
     good_indices = good_indices[good_subindices]
     target_classes = (
-        prediction_dict[prediction_io.TARGET_CLASSES_KEY][good_indices]
+        prediction_dict[prediction_io.TARGET_MATRIX_KEY][good_indices, -1]
     )
     forecast_probabilities = prediction_io.get_mean_predictions(
         prediction_dict
-    )[good_indices]
+    )[good_indices, -1]
 
     return forecast_probabilities, target_classes
 

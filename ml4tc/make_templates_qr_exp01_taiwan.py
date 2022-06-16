@@ -127,13 +127,14 @@ def _run():
                 )[1]
             )
 
-            model_object = cnn_architecture.create_quantile_regression_model(
+            model_object = cnn_architecture.create_qr_model_td_to_ts(
                 option_dict_gridded_sat=BASE_OPTION_DICT_GRIDDED_SAT,
                 option_dict_ungridded_sat=None,
                 option_dict_ships=option_dict_ships,
                 option_dict_dense=option_dict_dense,
                 central_loss_function=CENTRAL_LOSS_FUNCTIONS[i],
-                quantile_levels=QUANTILE_LEVEL_SETS[j]
+                quantile_levels=QUANTILE_LEVEL_SETS[j],
+                num_lead_times=1
             )
 
             model_file_name = (
@@ -158,7 +159,12 @@ def _run():
                 model_file_name=model_file_name,
                 raise_error_if_missing=False
             )
+
             dummy_option_dict = neural_net.DEFAULT_GENERATOR_OPTION_DICT
+            dummy_option_dict[neural_net.PREDICT_TD_TO_TS_KEY] = True
+            dummy_option_dict[neural_net.LEAD_TIMES_KEY] = numpy.array(
+                [60000], dtype=int
+            )
             dummy_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY] = None
 
             print('Writing metadata to: "{0:s}"...'.format(
