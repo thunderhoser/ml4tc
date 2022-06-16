@@ -33,7 +33,7 @@ def quantile_loss(quantile_level):
         return K.mean(
             K.maximum(
                 quantile_level * (target_tensor - prediction_tensor),
-                (1 - quantile_level) * (target_tensor - prediction_tensor)
+                (quantile_level - 1) * (target_tensor - prediction_tensor)
             )
         )
 
@@ -67,7 +67,7 @@ def quantile_loss_one_variable(quantile_level, variable_index):
         return K.mean(
             K.maximum(
                 quantile_level * (this_target_tensor - this_prediction_tensor),
-                (1 - quantile_level) *
+                (quantile_level - 1) *
                 (this_target_tensor - this_prediction_tensor)
             )
         )
