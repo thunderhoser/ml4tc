@@ -2742,6 +2742,8 @@ def input_generator(option_dict):
                 target_array.shape[0],
                 numpy.sum(numpy.any(target_array == 1, axis=1))
             ))
+
+            print(target_array.shape)
         elif len(class_cutoffs_m_s01) > 1:
             print((
                 'Yielding {0:d} examples with the following class distribution:'
