@@ -2629,6 +2629,9 @@ def input_generator(option_dict):
                 if m is not None
             ]
             this_target_class_matrix = this_data_dict[TARGET_MATRIX_KEY]
+
+            print('FIRST SHAPE OF this_target_class_matrix')
+            print(this_target_class_matrix.shape)
             file_index += 1
 
             if predict_td_to_ts:
@@ -2637,6 +2640,9 @@ def input_generator(option_dict):
                 this_target_array = this_target_class_matrix[:, 0, :]
             else:
                 this_target_array = this_target_class_matrix[:, 0, -1]
+
+            print('FIRST SHAPE OF this_target_array')
+            print(this_target_array.shape)
 
             if predictor_matrices is None:
                 predictor_matrices = copy.deepcopy(these_predictor_matrices)
