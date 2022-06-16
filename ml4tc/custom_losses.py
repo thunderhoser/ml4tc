@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tensorflow
 from tensorflow.keras import backend as K
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -61,7 +62,7 @@ def quantile_loss_one_variable(quantile_level, variable_index):
         :return: loss: Quantile loss.
         """
 
-        this_target_tensor = target_tensor[:, variable_index]
+        this_target_tensor = tensorflow.squeeze(target_tensor)
         this_prediction_tensor = prediction_tensor[:, variable_index]
 
         return K.mean(
