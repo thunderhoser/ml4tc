@@ -45,6 +45,7 @@ DATA_AUG_NUM_ROTATIONS_ARG_NAME = 'data_aug_num_rotations'
 DATA_AUG_MAX_ROTATION_ARG_NAME = 'data_aug_max_rotation_deg'
 DATA_AUG_NUM_NOISINGS_ARG_NAME = 'data_aug_num_noisings'
 DATA_AUG_NOISE_STDEV_ARG_NAME = 'data_aug_noise_stdev'
+WEST_PACIFIC_WEIGHT_ARG_NAME = 'west_pacific_weight'
 
 NUM_EPOCHS_ARG_NAME = 'num_epochs'
 NUM_TRAINING_BATCHES_ARG_NAME = 'num_training_batches_per_epoch'
@@ -174,6 +175,11 @@ DATA_AUG_NUM_NOISINGS_HELP_STRING = (
 )
 DATA_AUG_NOISE_STDEV_HELP_STRING = (
     'Standard deviation of Gaussian noise for data augmentation.'
+)
+WEST_PACIFIC_WEIGHT_HELP_STRING = (
+    'Loss-function weight for cyclones in the western Pacific.  All other '
+    'cyclones will receive a weight of 1.0.  If you do not want different '
+    'weights, leave this alone.'
 )
 NUM_EPOCHS_HELP_STRING = 'Number of epochs.'
 NUM_TRAINING_BATCHES_HELP_STRING = 'Number of training batches per epoch.'
@@ -317,6 +323,10 @@ def add_input_args(parser_object):
     parser_object.add_argument(
         '--' + DATA_AUG_NOISE_STDEV_ARG_NAME, type=float, required=False,
         default=-1, help=DATA_AUG_NOISE_STDEV_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + WEST_PACIFIC_WEIGHT_ARG_NAME, type=float, required=False,
+        default=-1, help=WEST_PACIFIC_WEIGHT_HELP_STRING
     )
     parser_object.add_argument(
         '--' + CLASS_CUTOFFS_ARG_NAME, type=float, nargs='+', required=False,

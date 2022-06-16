@@ -116,6 +116,7 @@ DATA_AUG_NUM_ROTATIONS_KEY = 'data_aug_num_rotations'
 DATA_AUG_MAX_ROTATION_KEY = 'data_aug_max_rotation_deg'
 DATA_AUG_NUM_NOISINGS_KEY = 'data_aug_num_noisings'
 DATA_AUG_NOISE_STDEV_KEY = 'data_aug_noise_stdev'
+WEST_PACIFIC_WEIGHT_KEY = 'west_pacific_weight'
 
 ALL_SATELLITE_PREDICTOR_NAMES = (
     set(satellite_utils.FIELD_NAMES) -
@@ -176,7 +177,8 @@ DEFAULT_GENERATOR_OPTION_DICT = {
     DATA_AUG_NUM_ROTATIONS_KEY: 0,
     DATA_AUG_MAX_ROTATION_KEY: None,
     DATA_AUG_NUM_NOISINGS_KEY: 0,
-    DATA_AUG_NOISE_STDEV_KEY: None
+    DATA_AUG_NOISE_STDEV_KEY: None,
+    WEST_PACIFIC_WEIGHT_KEY: None
 }
 
 NUM_EPOCHS_KEY = 'num_epochs'
@@ -1530,6 +1532,11 @@ def _check_generator_args(option_dict):
         option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
         option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
 
+    if option_dict[WEST_PACIFIC_WEIGHT_KEY] is not None:
+        error_checking.assert_is_greater(
+            option_dict[WEST_PACIFIC_WEIGHT_KEY], 1.
+        )
+
     return option_dict
 
 
@@ -2067,6 +2074,10 @@ def read_metafile(pickle_file_name):
         validation_option_dict[DATA_AUG_NUM_NOISINGS_KEY] = 0
         validation_option_dict[DATA_AUG_NOISE_STDEV_KEY] = None
 
+    if WEST_PACIFIC_WEIGHT_KEY not in training_option_dict:
+        training_option_dict[WEST_PACIFIC_WEIGHT_KEY] = None
+        validation_option_dict[WEST_PACIFIC_WEIGHT_KEY] = None
+
     if NUM_GRID_ROWS_KEY not in training_option_dict:
         training_option_dict[NUM_GRID_ROWS_KEY] = None
         training_option_dict[NUM_GRID_COLUMNS_KEY] = None
@@ -2506,6 +2517,7 @@ def input_generator(option_dict):
     data_aug_max_rotation_deg = option_dict[DATA_AUG_MAX_ROTATION_KEY]
     data_aug_num_noisings = option_dict[DATA_AUG_NUM_NOISINGS_KEY]
     data_aug_noise_stdev = option_dict[DATA_AUG_NOISE_STDEV_KEY]
+    west_pacific_weight = option_dict[WEST_PACIFIC_WEIGHT_KEY]
 
     use_data_augmentation = (
         data_aug_num_translations + data_aug_num_rotations +
@@ -2548,6 +2560,7 @@ def input_generator(option_dict):
     while True:
         predictor_matrices = None
         target_array = None
+        sample_weights = None
         num_examples_in_memory = 0
         num_positive_examples_in_memory = 0
         num_negative_examples_in_memory = 0
@@ -2594,6 +2607,10 @@ def input_generator(option_dict):
                 class_cutoffs_m_s01=class_cutoffs_m_s01,
                 num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
+            )
+
+            this_cyclone_id_string = example_io.file_name_to_cyclone_id(
+                example_file_names[file_index]
             )
 
             init_times_by_file_unix_sec[file_index] = (
@@ -2649,7 +2666,28 @@ def input_generator(option_dict):
                 num_negative_examples_in_memory
             )
 
+            if west_pacific_weight is None:
+                continue
+
+            this_flag = (
+                satellite_utils.parse_cyclone_id(this_cyclone_id_string)[1] ==
+                satellite_utils.NORTHWEST_PACIFIC_ID_STRING
+            )
+            these_sample_weights = numpy.full(
+                this_target_array.shape[0],
+                west_pacific_weight if this_flag else 1.
+            )
+
+            if sample_weights is None:
+                sample_weights = these_sample_weights + 0.
+            else:
+                sample_weights = numpy.concatenate(
+                    (sample_weights, these_sample_weights), axis=0
+                )
+
         if use_data_augmentation:
+            num_examples_before_da = target_array.shape[0]
+
             predictor_matrices, target_array = _augment_data(
                 predictor_matrices=predictor_matrices,
                 target_array=target_array,
@@ -2660,6 +2698,12 @@ def input_generator(option_dict):
                 num_noisings=data_aug_num_noisings,
                 noise_stdev=data_aug_noise_stdev
             )
+
+            if west_pacific_weight is not None:
+                num_repeats = int(numpy.round(
+                    float(target_array.shape[0]) / num_examples_before_da
+                ))
+                sample_weights = numpy.tile(sample_weights, reps=num_repeats)
 
         if (
                 use_time_diffs_gridded_sat and
@@ -2699,7 +2743,10 @@ def input_generator(option_dict):
                 target_array.shape[0], numpy.sum(target_array == 1)
             ))
 
-        yield predictor_matrices, target_array
+        if west_pacific_weight is None:
+            yield predictor_matrices, target_array
+
+        yield predictor_matrices, target_array, sample_weights
 
 
 def train_model(
