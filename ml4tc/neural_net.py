@@ -2620,21 +2620,22 @@ def input_generator(option_dict):
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
             )
 
-            this_cyclone_id_string = example_io.file_name_to_cyclone_id(
-                example_file_names[file_index]
-            )
-
             init_times_by_file_unix_sec[file_index] = (
                 this_data_dict[INIT_TIMES_KEY]
             )
+            file_index += 1
 
+            this_target_class_matrix = this_data_dict[TARGET_MATRIX_KEY]
+            if this_target_class_matrix is None:
+                continue
+
+            this_cyclone_id_string = example_io.file_name_to_cyclone_id(
+                example_file_names[file_index]
+            )
             these_predictor_matrices = [
                 m for m in this_data_dict[PREDICTOR_MATRICES_KEY]
                 if m is not None
             ]
-            this_target_class_matrix = this_data_dict[TARGET_MATRIX_KEY]
-
-            file_index += 1
 
             if predict_td_to_ts:
                 this_target_array = this_target_class_matrix[..., -1]
