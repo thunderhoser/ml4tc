@@ -44,7 +44,7 @@ python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
 --output_model_dir_name="${output_dir_name}" \
 --training_example_dir_name="${TRAINING_DIR_NAME}" \
 --validation_example_dir_name="${VALIDATION_DIR_NAME}" \
---lead_time_hours=60000 \
+--lead_times_hours 336 \
 --satellite_lag_times_minutes 0 1440 \
 --satellite_predictor_names "satellite_brightness_temp_kelvins" \
 --ships_lag_times_hours 0 6 12 18 24 \
