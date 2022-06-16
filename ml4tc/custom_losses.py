@@ -62,8 +62,8 @@ def quantile_loss_one_variable(quantile_level, variable_index):
         :return: loss: Quantile loss.
         """
 
-        this_target_tensor = tensorflow.squeeze(target_tensor)
-        this_prediction_tensor = prediction_tensor[:, variable_index]
+        this_target_tensor = target_tensor[:, variable_index]
+        this_prediction_tensor = tensorflow.squeeze(prediction_tensor)
 
         return K.mean(
             K.maximum(
