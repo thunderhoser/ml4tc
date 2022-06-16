@@ -776,6 +776,10 @@ def _read_non_predictors_one_file(
 
             num_negative_examples_found += 1
 
+        this_target_class_matrix = numpy.expand_dims(
+            this_target_class_matrix, axis=0
+        )
+
         if target_class_matrix is None:
             target_class_matrix = this_target_class_matrix + 0
         else:
