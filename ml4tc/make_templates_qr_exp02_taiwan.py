@@ -128,8 +128,12 @@ def _run():
             )[1]
 
             neuron_counts = numpy.linspace(
-                1, exp_neuron_counts[0], num=5, dtype=int
+                1, exp_neuron_counts[1], num=4, dtype=int
             )[::-1]
+
+            neuron_counts = numpy.concatenate((
+                exp_neuron_counts[[0]], neuron_counts
+            ), axis=0)
 
             option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = neuron_counts
 
