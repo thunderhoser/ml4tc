@@ -10,7 +10,7 @@
 #SBATCH --ntasks-per-node=8  # 8 GPUs per node
 #SBATCH --exclusive
 #SBATCH --time=30:00:00
-#SBATCH --array=1-90%50
+#SBATCH --array=1-10
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
@@ -29,14 +29,11 @@ set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models
 set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/td_to_ts"
 set VALIDATION_DIR_NAME="${TRAINING_DIR_NAME}"
 
-set CENTRAL_LOSS_WEIGHTS=("01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0")
-set QUANTILE_LEVEL_COUNTS=("101" "101" "101" "101" "101" "101" "101" "101" "101" "101" "053" "053" "053" "053" "053" "053" "053" "053" "053" "053" "038" "038" "038" "038" "038" "038" "038" "038" "038" "038" "030" "030" "030" "030" "030" "030" "030" "030" "030" "030" "026" "026" "026" "026" "026" "026" "026" "026" "026" "026" "022" "022" "022" "022" "022" "022" "022" "022" "022" "022" "019" "019" "019" "019" "019" "019" "019" "019" "019" "019" "018" "018" "018" "018" "018" "018" "018" "018" "018" "018" "017" "017" "017" "017" "017" "017" "017" "017" "017" "017")
-
+set CENTRAL_LOSS_WEIGHTS=("01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0")
 set central_loss_weight=${CENTRAL_LOSS_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
-set num_quantile_levels=${QUANTILE_LEVEL_COUNTS[$SLURM_ARRAY_TASK_ID]}
 
-set template_file_name="${TOP_TEMPLATE_DIR_NAME}/central-loss-weight=${central_loss_weight}_num-quantile-levels=${num_quantile_levels}/model.h5"
-set output_dir_name="${TOP_OUTPUT_DIR_NAME}/central-loss-weight=${central_loss_weight}_num-quantile-levels=${num_quantile_levels}"
+set template_file_name="${TOP_TEMPLATE_DIR_NAME}/central-loss-weight=${central_loss_weight}/model.h5"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/central-loss-weight=${central_loss_weight}"
 echo $output_dir_name
 
 python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
