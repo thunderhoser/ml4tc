@@ -1913,8 +1913,8 @@ def _apply_model_td_to_ts(
         )
 
         # Reshape to E x K x L x S.
-        dimensions = (
-            this_prob_matrix.shape[:-1], num_lead_times, num_prediction_sets
+        dimensions = this_prob_matrix.shape[:-1] + (
+            num_lead_times, num_prediction_sets
         )
         this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
 
