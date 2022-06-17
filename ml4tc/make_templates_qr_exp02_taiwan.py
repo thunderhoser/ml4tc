@@ -135,7 +135,10 @@ def _run():
                 exp_neuron_counts[[0]], neuron_counts
             ), axis=0)
 
-            option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = neuron_counts
+            # option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = neuron_counts
+            option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = (
+                exp_neuron_counts
+            )
 
             model_object = cnn_architecture.create_qr_model_td_to_ts(
                 option_dict_gridded_sat=BASE_OPTION_DICT_GRIDDED_SAT,
