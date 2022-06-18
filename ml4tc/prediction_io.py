@@ -513,7 +513,7 @@ def subset_by_lead_time(prediction_dict, lead_times_hours):
     """
 
     error_checking.assert_is_numpy_array(lead_times_hours, num_dimensions=1)
-    error_checking.assert_is_integer(lead_times_hours)
+    error_checking.assert_is_integer_numpy_array(lead_times_hours)
     error_checking.assert_is_greater_numpy_array(lead_times_hours, 0)
     lead_times_hours = numpy.unique(lead_times_hours)
 
