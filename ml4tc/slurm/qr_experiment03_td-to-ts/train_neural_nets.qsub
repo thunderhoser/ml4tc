@@ -1,0 +1,75 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="train_neural_nets"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --nodes=1
+#SBATCH --ntasks=8           # 8 tasks per node
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks-per-node=8  # 8 GPUs per node
+#SBATCH --exclusive
+#SBATCH --time=30:00:00
+#SBATCH --array=1-90
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=train_neural_nets_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_TEMPLATE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/qr_experiment02_td-to-ts/templates"
+set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/qr_experiment03_td-to-ts"
+
+set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/td_to_ts"
+set VALIDATION_DIR_NAME="${TRAINING_DIR_NAME}"
+
+set CENTRAL_LOSS_WEIGHTS=("01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0")
+set WESTERN_PACIFIC_WEIGHTS=("02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0")
+
+set central_loss_weight=${CENTRAL_LOSS_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
+set western_pacific_weight=${WESTERN_PACIFIC_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
+
+set template_file_name="${TOP_TEMPLATE_DIR_NAME}/central-loss-weight=${central_loss_weight}/model.h5"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/central-loss-weight=${central_loss_weight}_western-pacific-weight=${western_pacific_weight}"
+echo $output_dir_name
+
+python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
+--input_template_file_name="${template_file_name}" \
+--output_model_dir_name="${output_dir_name}" \
+--training_example_dir_name="${TRAINING_DIR_NAME}" \
+--validation_example_dir_name="${VALIDATION_DIR_NAME}" \
+--west_pacific_weight=${western_pacific_weight} \
+--lead_times_hours 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96 102 108 114 120 126 132 138 144 150 156 162 168 \
+--satellite_lag_times_minutes 0 1440 \
+--satellite_predictor_names "satellite_brightness_temp_kelvins" \
+--ships_lag_times_hours 0 6 12 18 24 \
+--ships_predictor_names_lagged "ships_goes_ch4_fraction_temp_below_m10c_50to200km" "ships_goes_ch4_fraction_temp_below_m20c_50to200km" "ships_goes_ch4_fraction_temp_below_m30c_50to200km" "ships_goes_ch4_fraction_temp_below_m40c_50to200km" "ships_goes_ch4_fraction_temp_below_m50c_50to200km" "ships_goes_ch4_fraction_temp_below_m60c_50to200km" "ships_goes_ch4_temp_0to200km_kelvins" "ships_goes_ch4_temp_stdev_0to200km_kelvins" "ships_goes_ch4_temp_100to300km_kelvins" "ships_goes_ch4_temp_stdev_100to300km_kelvins" "ships_goes_ch4_max_temp_0to30km_kelvins" "ships_goes_ch4_mean_temp_0to30km_kelvins" "ships_goes_ch4_max_temp_radius_metres" "ships_goes_ch4_min_temp_20to120km_kelvins" "ships_goes_ch4_mean_temp_20to120km_kelvins" "ships_goes_ch4_min_temp_radius_metres" \
+--ships_builtin_lag_times_hours nan \
+--ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "merged_sea_surface_temp_kelvins" "merged_ocean_heat_content_j_m02" "ships_forecast_latitude_deg_n" "ships_max_pttl_intensity_m_s01" \
+--ships_max_forecast_hour=120 \
+--satellite_time_tolerance_training_sec=43200 \
+--satellite_max_missing_times_training=0 \
+--ships_time_tolerance_training_sec=0 \
+--ships_max_missing_times_training=1 \
+--satellite_time_tolerance_validation_sec=43200 \
+--ships_time_tolerance_validation_sec=21610 \
+--num_positive_examples_per_batch=8 \
+--num_negative_examples_per_batch=8 \
+--max_examples_per_cyclone_in_batch=3 \
+--predict_td_to_ts=1 \
+--num_epochs=1000 \
+--num_training_batches_per_epoch=32 \
+--num_validation_batches_per_epoch=16 \
+--data_aug_num_translations=2 \
+--data_aug_max_translation_px=6 \
+--data_aug_num_rotations=2 \
+--data_aug_max_rotation_deg=50 \
+--data_aug_num_noisings=3 \
+--data_aug_noise_stdev=0.5 \
+--plateau_lr_multiplier=0.6
