@@ -144,8 +144,6 @@ def _apply_nn_one_example_file(
             use_dropout=False, verbose=True
         )
 
-        print(forecast_prob_matrix.shape)
-
         if quantile_levels is not None and not use_quantiles:
             prediction_dict = {
                 prediction_io.PROBABILITY_MATRIX_KEY: forecast_prob_matrix,
