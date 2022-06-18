@@ -226,6 +226,7 @@ def write_file(
         target_class_matrix, num_classes
     )
 
+    expected_dim = numpy.array([num_examples], dtype=int)
     error_checking.assert_is_numpy_array(
         numpy.array(cyclone_id_strings), exact_dimensions=expected_dim
     )
