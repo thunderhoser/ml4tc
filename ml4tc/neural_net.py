@@ -1905,8 +1905,8 @@ def _apply_model_td_to_ts(
 
         # Current shape is E x LS.
         this_prob_matrix = numpy.stack(output_list, axis=-1)
-        print('SHAAAAPE')
-        print(this_prob_matrix.shape)
+        if this_prob_matrix.shape[1] == 1:
+            this_prob_matrix = this_prob_matrix[:, 0, ...]
 
         # Add class axis to get shape E x K x LS.
         this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
