@@ -4,7 +4,6 @@ import os
 import sys
 import copy
 import numpy
-import keras
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -68,10 +67,6 @@ BASE_OPTION_DICT_DENSE = {
 }
 
 CENTRAL_LOSS_WEIGHTS = numpy.linspace(1, 10, num=10, dtype=float)
-CENTRAL_LOSS_FUNCTIONS = [
-    neural_net._multiply_a_function(keras.losses.binary_crossentropy, w)
-    for w in CENTRAL_LOSS_WEIGHTS
-]
 
 QUANTILE_LEVELS = numpy.array([
     0.005, 0.995, 0.025, 0.975, 0.05, 0.95, 0.1, 0.9, 0.25, 0.5, 0.75,
@@ -124,6 +119,7 @@ def _run():
             option_dict_ships=option_dict_ships,
             option_dict_dense=option_dict_dense,
             quantile_levels=QUANTILE_LEVELS,
+            central_loss_weight=CENTRAL_LOSS_WEIGHTS[i],
             num_lead_times=len(LEAD_TIMES_HOURS)
         )
 

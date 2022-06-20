@@ -156,7 +156,7 @@ def cross_entropy_3d_output():
     return loss
 
 
-def quantile_loss_plus_xentropy_3d_output(quantile_levels):
+def quantile_loss_plus_xentropy_3d_output(quantile_levels, central_loss_weight):
     """Computes total loss with 3-D output.
 
     "3-D output" means that the prediction tensor has three axes: examples, then
@@ -164,12 +164,14 @@ def quantile_loss_plus_xentropy_3d_output(quantile_levels):
     Q = number of quantile levels.
 
     :param quantile_levels: length-Q numpy array of quantile levels.
+    :param central_loss_weight: Weight for loss on central prediction.
     :return: loss: Loss function (defined below).
     """
 
     error_checking.assert_is_numpy_array(quantile_levels, num_dimensions=1)
     error_checking.assert_is_greater_numpy_array(quantile_levels, 0.)
     error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
+    error_checking.assert_is_greater(central_loss_weight, 0.)
 
     quantile_levels = numpy.expand_dims(quantile_levels, axis=0)
     quantile_levels = numpy.expand_dims(quantile_levels, axis=0)
@@ -185,12 +187,23 @@ def quantile_loss_plus_xentropy_3d_output(quantile_levels):
         this_target_tensor = K.expand_dims(target_tensor, axis=-1)
         this_prediction_tensor = prediction_tensor[..., 1:]
 
-        return K.mean(
+        quantile_losses = K.mean(
             K.maximum(
                 quantile_levels * (this_target_tensor - this_prediction_tensor),
                 (quantile_levels - 1) *
                 (this_target_tensor - this_prediction_tensor)
-            )
+            ),
+            axis=(0, 1)
         )
+
+        this_prediction_tensor = prediction_tensor[..., 0]
+
+        xentropy_tensor = (
+            target_tensor * _log2(this_prediction_tensor) +
+            (1. - target_tensor) * _log2(1. - this_prediction_tensor)
+        )
+        xentropy_loss = -central_loss_weight * K.mean(xentropy_tensor)
+
+        return K.sum(quantile_losses) + xentropy_loss
 
     return loss

@@ -946,7 +946,8 @@ def create_qr_model_td_to_ts(
 
 def create_qr_model_td_to_ts_new(
         option_dict_gridded_sat, option_dict_ungridded_sat, option_dict_ships,
-        option_dict_dense, quantile_levels, num_lead_times):
+        option_dict_dense, quantile_levels, central_loss_weight,
+        num_lead_times):
     """Creates quantile-regression CNN for TD-to-TS prediction.
 
     :param option_dict_gridded_sat: See doc for `create_model`.
@@ -955,6 +956,7 @@ def create_qr_model_td_to_ts_new(
     :param option_dict_dense: Same.
     :param quantile_levels: 1-D numpy array of quantile levels, ranging from
         (0, 1).
+    :param central_loss_weight: Weight for loss on central prediction.
     :param num_lead_times: Number of lead times.
     :return: model_object: Untrained CNN (instance of `keras.models.Model`).
     """
@@ -964,6 +966,7 @@ def create_qr_model_td_to_ts_new(
     error_checking.assert_is_less_than_numpy_array(quantile_levels, 1.)
     quantile_levels = numpy.sort(quantile_levels)
 
+    error_checking.assert_is_greater(central_loss_weight, 0.)
     error_checking.assert_is_integer(num_lead_times)
     error_checking.assert_is_greater(num_lead_times, 0)
 
@@ -1160,10 +1163,11 @@ def create_qr_model_td_to_ts_new(
     model_object = keras.models.Model(
         inputs=input_layer_objects, outputs=output_layer_object
     )
+    loss_function = custom_losses.quantile_loss_plus_xentropy_3d_output(
+        quantile_levels=quantile_levels, central_loss_weight=central_loss_weight
+    )
     model_object.compile(
-        loss=
-        custom_losses.quantile_loss_plus_xentropy_3d_output(quantile_levels),
-        optimizer=keras.optimizers.Adam()
+        loss=loss_function, optimizer=keras.optimizers.Adam()
     )
     model_object.summary()
 
