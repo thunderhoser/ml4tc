@@ -113,21 +113,16 @@ def _run():
         )[1]
 
         neuron_counts = numpy.linspace(
-            1, exp_neuron_counts[1], num=4, dtype=int
+            1, exp_neuron_counts[0], num=5, dtype=int
         )[::-1]
-
-        neuron_counts = numpy.concatenate((
-            exp_neuron_counts[[0]], neuron_counts
-        ), axis=0)
 
         option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = neuron_counts
 
-        model_object = cnn_architecture.create_qr_model_td_to_ts(
+        model_object = cnn_architecture.create_qr_model_td_to_ts_new(
             option_dict_gridded_sat=BASE_OPTION_DICT_GRIDDED_SAT,
             option_dict_ungridded_sat=None,
             option_dict_ships=option_dict_ships,
             option_dict_dense=option_dict_dense,
-            central_loss_function=CENTRAL_LOSS_FUNCTIONS[i],
             quantile_levels=QUANTILE_LEVELS,
             num_lead_times=len(LEAD_TIMES_HOURS)
         )
