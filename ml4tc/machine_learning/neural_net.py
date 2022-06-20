@@ -2934,69 +2934,47 @@ def read_model(hdf5_file_name):
             hdf5_file_name, custom_objects=METRIC_DICT
         )
 
-    central_loss_function = _multiply_a_function(
-        orig_function_handle=keras.losses.binary_crossentropy,
-        real_number=metadata_dict[CENTRAL_LOSS_WEIGHT_KEY]
-    )
-
     option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
 
-    if not predict_td_to_ts:
-        custom_object_dict = {
-            'central_output_loss': central_loss_function
-        }
-        loss_dict = {'central_output': central_loss_function}
-        metric_list = []
-
-        for k in range(len(quantile_levels)):
-            this_loss_function = custom_losses.quantile_loss(
-                quantile_level=quantile_levels[k]
-            )
-            loss_dict['quantile_output{0:03d}'.format(k + 1)] = (
-                this_loss_function
-            )
-            custom_object_dict['quantile_output{0:03d}_loss'.format(k + 1)] = (
-                this_loss_function
-            )
-
-        custom_object_dict['loss'] = loss_dict
+    if predict_td_to_ts:
+        loss_function = custom_losses.quantile_loss_plus_xentropy_3d_output(
+            quantile_levels=quantile_levels,
+            central_loss_weight=metadata_dict[CENTRAL_LOSS_WEIGHT_KEY]
+        )
+        custom_object_dict = {'loss': loss_function}
 
         model_object = tf_keras.models.load_model(
             hdf5_file_name, custom_objects=custom_object_dict, compile=False
         )
         model_object.compile(
             loss=custom_object_dict['loss'], optimizer=keras.optimizers.Adam(),
-            metrics=metric_list
+            metrics=[]
         )
 
         return model_object
 
-    num_lead_times = len(option_dict[LEAD_TIMES_KEY])
-    custom_object_dict = {}
-    loss_dict = {}
+    central_loss_function = _multiply_a_function(
+        orig_function_handle=keras.losses.binary_crossentropy,
+        real_number=metadata_dict[CENTRAL_LOSS_WEIGHT_KEY]
+    )
+
+    custom_object_dict = {
+        'central_output_loss': central_loss_function
+    }
+    loss_dict = {'central_output': central_loss_function}
     metric_list = []
 
-    for j in range(num_lead_times):
-        loss_dict['central_output_lead{0:03d}'.format(j + 1)] = (
-            central_loss_function
+    for k in range(len(quantile_levels)):
+        this_loss_function = custom_losses.quantile_loss(
+            quantile_level=quantile_levels[k]
         )
-        custom_object_dict['central_output_lead{0:03d}_loss'.format(j + 1)] = (
-            central_loss_function
+        loss_dict['quantile_output{0:03d}'.format(k + 1)] = (
+            this_loss_function
         )
-
-        for k in range(len(quantile_levels)):
-            this_loss_function = custom_losses.quantile_loss_one_variable(
-                quantile_level=quantile_levels[k], variable_index=j
-            )
-
-            loss_dict[
-                'quantile_output{0:03d}_lead{1:03d}'.format(k + 1, j + 1)
-            ] = this_loss_function
-
-            custom_object_dict[
-                'quantile_output{0:03d}_lead{1:03d}_loss'.format(k + 1, j + 1)
-            ] = this_loss_function
+        custom_object_dict['quantile_output{0:03d}_loss'.format(k + 1)] = (
+            this_loss_function
+        )
 
     custom_object_dict['loss'] = loss_dict
 
