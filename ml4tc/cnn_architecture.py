@@ -1108,11 +1108,15 @@ def create_qr_model_td_to_ts_new(
     )(current_layer_object)
 
     diff_by_quantile_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times, num_quantile_levels - 1)
+        target_shape=(num_lead_times, num_quantile_levels - 1, 1)
     )(diff_by_quantile_layer_object)
 
     diff_by_quantile_layer_object = keras.layers.ZeroPadding2D(
         padding=((0, 0), (2, 0))
+    )(diff_by_quantile_layer_object)
+
+    diff_by_quantile_layer_object = keras.layers.Reshape(
+        target_shape=(num_lead_times, num_quantile_levels - 1)
     )(diff_by_quantile_layer_object)
 
     diff_by_quantile_layer_object = architecture_utils.get_activation_layer(
@@ -1126,11 +1130,15 @@ def create_qr_model_td_to_ts_new(
     )(current_layer_object)
 
     diff_by_lead_time_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times - 1, num_quantile_levels + 1)
+        target_shape=(num_lead_times - 1, num_quantile_levels + 1, 1)
     )(diff_by_lead_time_layer_object)
 
     diff_by_lead_time_layer_object = keras.layers.ZeroPadding2D(
         padding=((1, 0), (0, 0))
+    )(diff_by_lead_time_layer_object)
+
+    diff_by_lead_time_layer_object = keras.layers.Reshape(
+        target_shape=(num_lead_times - 1, num_quantile_levels + 1)
     )(diff_by_lead_time_layer_object)
 
     diff_by_lead_time_layer_object = architecture_utils.get_activation_layer(
