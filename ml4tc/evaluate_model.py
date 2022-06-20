@@ -106,7 +106,7 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
             prediction_dict=prediction_dict, lead_times_hours=lead_times_hours
         )
 
-    num_lead_times = prediction_dict[prediction_io.LEAD_TIMES_KEY]
+    num_lead_times = len(prediction_dict[prediction_io.LEAD_TIMES_KEY])
     cyclone_id_strings = prediction_dict[prediction_io.CYCLONE_IDS_KEY]
     init_times_unix_sec = prediction_dict[prediction_io.INIT_TIMES_KEY]
 
