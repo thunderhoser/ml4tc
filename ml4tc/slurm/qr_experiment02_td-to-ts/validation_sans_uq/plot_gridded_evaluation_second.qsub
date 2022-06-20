@@ -30,7 +30,6 @@ set central_loss_weight=${CENTRAL_LOSS_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
 set lead_time_hours=${LEAD_TIMES_HOURS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/central-loss-weight=${central_loss_weight}"
-set full_evaluation_file_name="${model_dir_name}/validation_sans_uq/evaluation.nc"
 set input_dir_name="${model_dir_name}/validation_sans_uq/lead_time_hours=${lead_time_hours}"
 set grid_metafile_name="${model_dir_name}/validation_sans_uq/grid_metadata.nc"
 set output_dir_name="${input_dir_name}/gridded_evaluation"
@@ -38,5 +37,5 @@ set output_dir_name="${input_dir_name}/gridded_evaluation"
 python3 -u "${CODE_DIR_NAME}/plot_gridded_evaluation.py" \
 --input_evaluation_dir_name="${input_dir_name}" \
 --input_grid_metafile_name="${grid_metafile_name}" \
---input_total_validn_eval_file_name="${full_evaluation_file_name}" \
+--input_total_validn_eval_file_name="${input_dir_name}/evaluation.nc" \
 --output_dir_name="${output_dir_name}"
