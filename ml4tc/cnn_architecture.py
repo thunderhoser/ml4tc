@@ -5,6 +5,7 @@ import sys
 import copy
 import numpy
 import keras
+from tensorflow.keras import backend as K
 from keras.layers import Add, Maximum
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -74,6 +75,32 @@ DEFAULT_OPTION_DICT_DENSE = {
     INNER_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
     USE_BATCH_NORM_KEY: True
 }
+
+
+def _cumulative_sum_function(over_lead_times):
+    """Returns function that takes cumulative sum over lead times or quantiles.
+
+    :param over_lead_times: Boolean flag.  If True (False), will take cumulative
+        sum over lead times (quantile levels).
+    :return: cumsum_function: Function handle (see below).
+    """
+
+    def cumsum_function(input_tensor_3d):
+        """Takes cumulative sum over lead times or quantile levels.
+
+        :param input_tensor_3d: Input tensor with 3 dimensions.
+        :return: output_tensor_3d: Same but after applying cumulative sum.
+        """
+
+        if over_lead_times:
+            return K.cumsum(input_tensor_3d, axis=-2)
+
+        return K.concatenate((
+            input_tensor_3d[..., :1],
+            K.cumsum(input_tensor_3d[..., 1:], axis=-1)
+        ), axis=-1)
+
+    return cumsum_function
 
 
 def _create_layers_gridded_sat(option_dict):
@@ -1096,63 +1123,24 @@ def create_qr_model_td_to_ts_new(
         l2_weight=option_dict_dense[L2_WEIGHT_KEY]
     )
 
-    free_layer_object = architecture_utils.get_dense_layer(
+    output_layer_object = architecture_utils.get_dense_layer(
         num_output_units=num_lead_times * (num_quantile_levels + 1),
         weight_regularizer=regularization_func
     )(current_layer_object)
 
-    free_layer_object = keras.layers.Reshape(
+    output_layer_object = keras.layers.Reshape(
         target_shape=(num_lead_times, num_quantile_levels + 1)
-    )(free_layer_object)
+    )(output_layer_object)
 
-    diff_by_quantile_layer_object = architecture_utils.get_dense_layer(
-        num_output_units=num_lead_times * (num_quantile_levels - 1),
-        weight_regularizer=regularization_func
-    )(current_layer_object)
+    this_function = _cumulative_sum_function(over_lead_times=True)
+    output_layer_object = keras.layers.Lambda(
+        this_function, name='sum_over_lead_times'
+    )(output_layer_object)
 
-    diff_by_quantile_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times, num_quantile_levels - 1, 1)
-    )(diff_by_quantile_layer_object)
-
-    diff_by_quantile_layer_object = keras.layers.ZeroPadding2D(
-        padding=((0, 0), (2, 0))
-    )(diff_by_quantile_layer_object)
-
-    diff_by_quantile_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times, num_quantile_levels + 1)
-    )(diff_by_quantile_layer_object)
-
-    diff_by_quantile_layer_object = architecture_utils.get_activation_layer(
-        activation_function_string=architecture_utils.RELU_FUNCTION_STRING,
-        alpha_for_relu=0., alpha_for_elu=0.
-    )(diff_by_quantile_layer_object)
-
-    diff_by_lead_time_layer_object = architecture_utils.get_dense_layer(
-        num_output_units=(num_lead_times - 1) * (num_quantile_levels + 1),
-        weight_regularizer=regularization_func
-    )(current_layer_object)
-
-    diff_by_lead_time_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times - 1, num_quantile_levels + 1, 1)
-    )(diff_by_lead_time_layer_object)
-
-    diff_by_lead_time_layer_object = keras.layers.ZeroPadding2D(
-        padding=((1, 0), (0, 0))
-    )(diff_by_lead_time_layer_object)
-
-    diff_by_lead_time_layer_object = keras.layers.Reshape(
-        target_shape=(num_lead_times, num_quantile_levels + 1)
-    )(diff_by_lead_time_layer_object)
-
-    diff_by_lead_time_layer_object = architecture_utils.get_activation_layer(
-        activation_function_string=architecture_utils.RELU_FUNCTION_STRING,
-        alpha_for_relu=0., alpha_for_elu=0.
-    )(diff_by_lead_time_layer_object)
-
-    output_layer_object = Add()([
-        free_layer_object, diff_by_quantile_layer_object,
-        diff_by_lead_time_layer_object
-    ])
+    this_function = _cumulative_sum_function(over_lead_times=False)
+    output_layer_object = keras.layers.Lambda(
+        this_function, name='sum_over_quantile_levels'
+    )(output_layer_object)
 
     output_layer_object = architecture_utils.get_activation_layer(
         activation_function_string=output_activ_function_name,
