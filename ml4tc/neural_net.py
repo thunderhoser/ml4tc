@@ -2951,6 +2951,23 @@ def read_model(hdf5_file_name):
     option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
 
+    if predict_td_to_ts:
+        metric_list = []
+        custom_object_dict = {}
+        custom_object_dict['loss'] = (
+            custom_losses.quantile_loss_plus_xentropy_3d_output(quantile_levels)
+        )
+
+        model_object = tf_keras.models.load_model(
+            hdf5_file_name, custom_objects=custom_object_dict, compile=False
+        )
+        model_object.compile(
+            loss=custom_object_dict['loss'], optimizer=keras.optimizers.Adam(),
+            metrics=metric_list
+        )
+
+        return model_object
+
     if not predict_td_to_ts:
         custom_object_dict = {
             'central_output_loss': central_loss_function
