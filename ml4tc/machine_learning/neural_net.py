@@ -1898,6 +1898,8 @@ def _apply_model_td_to_ts(
 
         # Current shape is E x LS.
         this_prob_matrix = numpy.stack(output_list, axis=-1)
+        if this_prob_matrix.shape[1] == 1:
+            this_prob_matrix = this_prob_matrix[:, 0, ...]
 
         # Add class axis to get shape E x K x LS.
         this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
@@ -1906,8 +1908,8 @@ def _apply_model_td_to_ts(
         )
 
         # Reshape to E x K x L x S.
-        dimensions = (
-            this_prob_matrix.shape[:-1], num_lead_times, num_prediction_sets
+        dimensions = this_prob_matrix.shape[:-1] + (
+            num_lead_times, num_prediction_sets
         )
         this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
 

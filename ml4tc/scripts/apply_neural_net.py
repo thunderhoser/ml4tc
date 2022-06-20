@@ -83,8 +83,8 @@ def _apply_nn_one_example_file(
     :param example_file_name: Path to example file.
     :param num_dropout_iterations: See documentation at top of this script.
     :param use_quantiles: Same.
-    :return: forecast_prob_matrix: numpy array of forecast probabilities.
-    :return: target_class_matrix: numpy array of true classes (integers).
+    :return: forecast_prob_matrix: See input doc for `prediction_io.write_file`.
+    :return: target_class_matrix: Same.
     :return: data_dict: Dictionary returned by `neural_net.create_inputs`.
     """
 
@@ -93,23 +93,15 @@ def _apply_nn_one_example_file(
     option_dict = copy.deepcopy(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    lead_times_hours = option_dict[neural_net.LEAD_TIMES_KEY]
     option_dict[neural_net.EXAMPLE_FILE_KEY] = example_file_name
     data_dict = neural_net.create_inputs(option_dict)
 
-    if data_dict[neural_net.TARGET_ARRAY_KEY].size == 0:
+    if data_dict[neural_net.TARGET_MATRIX_KEY] is None:
         return None, None, None
 
-    class_cutoffs_m_s01 = option_dict[neural_net.CLASS_CUTOFFS_KEY]
-    if class_cutoffs_m_s01 is not None and len(class_cutoffs_m_s01) > 1:
-        target_class_matrix = numpy.argmax(
-            data_dict[neural_net.TARGET_ARRAY_KEY], axis=1
-        )
-    else:
-        target_class_matrix = data_dict[neural_net.TARGET_ARRAY_KEY] + 0
-
-    if len(target_class_matrix.shape) == 1:
-        target_class_matrix = numpy.expand_dims(target_class_matrix, axis=-1)
+    target_class_matrix = numpy.argmax(
+        data_dict[neural_net.TARGET_MATRIX_KEY], axis=-1
+    )
 
     predictor_matrices = [
         m for m in data_dict[neural_net.PREDICTOR_MATRICES_KEY]
@@ -122,9 +114,9 @@ def _apply_nn_one_example_file(
         for k in range(num_dropout_iterations):
             new_prob_matrix = neural_net.apply_model(
                 model_object=model_object,
+                model_metadata_dict=model_metadata_dict,
                 predictor_matrices=predictor_matrices,
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-                num_lead_times=len(lead_times_hours),
                 use_dropout=True, verbose=True
             )
 
@@ -134,13 +126,13 @@ def _apply_nn_one_example_file(
                     numpy.nan
                 )
 
-            forecast_prob_matrix[..., k] = new_prob_matrix
+            forecast_prob_matrix[..., k] = new_prob_matrix[..., 0]
     else:
         forecast_prob_matrix = neural_net.apply_model(
             model_object=model_object,
+            model_metadata_dict=model_metadata_dict,
             predictor_matrices=predictor_matrices,
             num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-            num_lead_times=len(lead_times_hours),
             use_dropout=False, verbose=True
         )
 
@@ -158,6 +150,10 @@ def _apply_nn_one_example_file(
             )
             forecast_prob_matrix = numpy.concatenate(
                 (1. - forecast_prob_matrix, forecast_prob_matrix), axis=-2
+            )
+
+            forecast_prob_matrix = numpy.expand_dims(
+                forecast_prob_matrix, axis=-1
             )
 
     return forecast_prob_matrix, target_class_matrix, data_dict

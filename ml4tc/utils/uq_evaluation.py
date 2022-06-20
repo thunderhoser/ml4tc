@@ -528,13 +528,14 @@ def get_spread_vs_skill(
             predictive_stdev_matrix < bin_edge_prediction_stdevs[k + 1]
         ))
 
+        # TODO(thunderhoser): Should I compute variance first, then take the mean, then square root?  Probably.
         mean_prediction_stdevs[k] = numpy.mean(
             predictive_stdev_matrix[these_indices]
         )
         rmse_values[k] = numpy.sqrt(numpy.mean(
             squared_error_matrix[these_indices]
         ))
-        example_counts[k] = len(these_indices)
+        example_counts[k] = len(these_indices[0])
         mean_central_predictions[k] = numpy.mean(
             central_prediction_matrix[these_indices]
         )

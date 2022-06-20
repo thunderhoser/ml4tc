@@ -1,5 +1,6 @@
 """Custom loss functions for Keras models."""
 
+import tensorflow
 from tensorflow.keras import backend as K
 from gewittergefahr.gg_utils import error_checking
 
@@ -54,7 +55,7 @@ def quantile_loss_one_variable(quantile_level, variable_index):
         """
 
         this_target_tensor = target_tensor[:, variable_index]
-        this_prediction_tensor = prediction_tensor[:, variable_index]
+        this_prediction_tensor = tensorflow.squeeze(prediction_tensor)
 
         return K.mean(
             K.maximum(
