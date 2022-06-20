@@ -1,0 +1,65 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="evaluate_by_basin"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=01:00:00
+#SBATCH --array=1-90
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=evaluate_by_basin_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/qr_experiment03_td-to-ts"
+
+# set CENTRAL_LOSS_WEIGHTS=("01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0" "01.0" "02.0" "03.0" "04.0" "05.0" "06.0" "07.0" "08.0" "09.0" "10.0")
+# set WESTERN_PACIFIC_WEIGHTS=("02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "02.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "03.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "04.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "05.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "07.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "08.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0" "10.0")
+
+set central_loss_weight=${CENTRAL_LOSS_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
+set western_pacific_weight=${WESTERN_PACIFIC_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/central-loss-weight=${central_loss_weight}_western-pacific-weight=${western_pacific_weight}"
+set prediction_dir_name="${model_dir_name}/validation_sans_uq"
+
+set BASIN_ID_STRINGS=("AL" "SL" "EP" "CP" "WP" "IO" "SH")
+set i=1
+
+set LEAD_TIMES_HOURS=("-1" "006" "012" "018" "024" "030" "036" "042" "048" "054" "060" "066" "072" "078" "084" "090" "096" "102" "108" "114" "120" "126" "132" "138" "144" "150" "156" "162" "168")
+set LEAD_TIME_STRINGS=("all_lead_times" "lead_time_hours=006" "lead_time_hours=012" "lead_time_hours=018" "lead_time_hours=024" "lead_time_hours=030" "lead_time_hours=036" "lead_time_hours=042" "lead_time_hours=048" "lead_time_hours=054" "lead_time_hours=060" "lead_time_hours=066" "lead_time_hours=072" "lead_time_hours=078" "lead_time_hours=084" "lead_time_hours=090" "lead_time_hours=096" "lead_time_hours=102" "lead_time_hours=108" "lead_time_hours=114" "lead_time_hours=120" "lead_time_hours=126" "lead_time_hours=132" "lead_time_hours=138" "lead_time_hours=144" "lead_time_hours=150" "lead_time_hours=156" "lead_time_hours=162" "lead_time_hours=168")
+set CLIMO_EVENT_FREQUENCIES=("0.50886938" "0.15196328" "0.27001530" "0.35135135" "0.40566038" "0.43982662" "0.46736359" "0.48878123" "0.50458950" "0.51835798" "0.52830189" "0.53646099" "0.54258032" "0.54793473" "0.55277919" "0.55609383" "0.55864355" "0.56093830" "0.56348802" "0.56527282" "0.56731260" "0.56884243" "0.57011729" "0.57113717" "0.57190209" "0.57215706" "0.57215706" "0.57215706" "0.57215706")
+
+while ($i <= ${#BASIN_ID_STRINGS})
+    set this_input_file_name="${prediction_dir_name}/predictions_basin-id-string=${BASIN_ID_STRINGS[$i]}.nc"
+    
+    if (-e "$this_input_file_name") then
+        set j=1
+    
+        while ($j <= ${#LEAD_TIMES_HOURS})
+            set this_output_file_name="${model_dir_name}/validation_sans_uq/${LEAD_TIME_STRINGS[$j]}/evaluation_basin-id-string=${BASIN_ID_STRINGS[$i]}.nc"
+            
+            python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+            --input_prediction_file_name="${this_input_file_name}" \
+            --lead_times_hours ${LEAD_TIMES_HOURS[$j]} \
+            --event_freq_in_training=${CLIMO_EVENT_FREQUENCIES[$j]} \
+            --num_prob_thresholds=1001 \
+            --num_reliability_bins=20 \
+            --num_bootstrap_reps=1 \
+            --output_eval_file_name="${this_output_file_name}"
+            
+            @ j = $j + 1
+        end
+    endif
+    
+    @ i = $i + 1
+end
