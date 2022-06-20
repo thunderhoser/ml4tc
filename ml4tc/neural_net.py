@@ -1894,31 +1894,19 @@ def _apply_model_td_to_ts(
             ))
 
         if use_dropout:
-            output_list = model_object(
+            this_prob_matrix = model_object(
                 [a[these_indices, ...] for a in predictor_matrices],
                 training=True
             ).numpy()
         else:
-            output_list = model_object.predict_on_batch(
+            this_prob_matrix = model_object.predict_on_batch(
                 [a[these_indices, ...] for a in predictor_matrices]
             )
 
-        # Current shape is E x LS.
-        this_prob_matrix = numpy.stack(output_list, axis=-1)
-        if this_prob_matrix.shape[1] == 1:
-            this_prob_matrix = this_prob_matrix[:, 0, ...]
-
-        # Add class axis to get shape E x K x LS.
-        this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
+        this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-3)
         this_prob_matrix = numpy.concatenate(
-            (1. - this_prob_matrix, this_prob_matrix), axis=-2
+            (1. - this_prob_matrix, this_prob_matrix), axis=-3
         )
-
-        # Reshape to E x K x L x S.
-        dimensions = this_prob_matrix.shape[:-1] + (
-            num_lead_times, num_prediction_sets
-        )
-        this_prob_matrix = numpy.reshape(this_prob_matrix, dimensions)
 
         if forecast_prob_matrix is None:
             dimensions = (num_examples,) + this_prob_matrix.shape[1:]
