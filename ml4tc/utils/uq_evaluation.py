@@ -278,7 +278,7 @@ def get_stdev_uncertainty_function(use_fancy_quantile_method):
         :param prediction_dict: Dictionary in format returned by
             `prediction_io.read_file`.
         :return: prob_stdevs: length-E numpy array with standard deviations of
-        forecast probabilities.
+            forecast probabilities.
         """
 
         return prediction_io.get_predictive_stdevs(
@@ -528,10 +528,9 @@ def get_spread_vs_skill(
             predictive_stdev_matrix < bin_edge_prediction_stdevs[k + 1]
         ))
 
-        # TODO(thunderhoser): Should I compute variance first, then take the mean, then square root?  Probably.
-        mean_prediction_stdevs[k] = numpy.mean(
-            predictive_stdev_matrix[these_indices]
-        )
+        mean_prediction_stdevs[k] = numpy.sqrt(numpy.mean(
+            predictive_stdev_matrix[these_indices] ** 2
+        ))
         rmse_values[k] = numpy.sqrt(numpy.mean(
             squared_error_matrix[these_indices]
         ))

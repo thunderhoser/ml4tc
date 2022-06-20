@@ -98,6 +98,19 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
             prediction_dict=prediction_dict, lead_times_hours=lead_times_hours
         )
 
+    num_lead_times = len(prediction_dict[prediction_io.LEAD_TIMES_KEY])
+    cyclone_id_strings = prediction_dict[prediction_io.CYCLONE_IDS_KEY]
+    init_times_unix_sec = prediction_dict[prediction_io.INIT_TIMES_KEY]
+
+    if num_lead_times > 1:
+        cyclone_id_strings = numpy.tile(
+            numpy.array(cyclone_id_strings), reps=num_lead_times
+        )
+        cyclone_id_strings = cyclone_id_strings.tolist()
+        init_times_unix_sec = numpy.tile(
+            init_times_unix_sec, reps=num_lead_times
+        )
+
     forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)
     forecast_probabilities = numpy.ravel(forecast_prob_matrix)
     target_classes = numpy.ravel(
@@ -110,8 +123,8 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
         forecast_probabilities=forecast_probabilities,
         target_classes=target_classes,
         event_freq_in_training=event_freq_in_training,
-        cyclone_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY],
-        init_times_unix_sec=prediction_dict[prediction_io.INIT_TIMES_KEY],
+        cyclone_id_strings=cyclone_id_strings,
+        init_times_unix_sec=init_times_unix_sec,
         model_file_name=prediction_dict[prediction_io.MODEL_FILE_KEY],
         num_prob_thresholds=num_prob_thresholds,
         num_reliability_bins=num_reliability_bins,
