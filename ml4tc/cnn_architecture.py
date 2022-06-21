@@ -91,8 +91,8 @@ def _relu_for_differences_function():
         """
 
         output_tensor_3d = K.concatenate((
-            input_tensor_3d[..., :2][..., [0], :],
-            K.abs(input_tensor_3d[..., 2:][..., [0], :])
+            input_tensor_3d[..., :2][..., :1, :],
+            K.abs(input_tensor_3d[..., 2:][..., :1, :])
         ), axis=-1)
 
         return K.concatenate((
