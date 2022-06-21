@@ -91,8 +91,8 @@ def _relu_for_differences_function():
         """
 
         output_tensor_3d = K.concatenate((
-            input_tensor_3d[..., :2][..., :1, :],
-            K.abs(input_tensor_3d[..., 2:][..., :1, :])
+            input_tensor_3d[..., :1, :2],
+            K.abs(input_tensor_3d[..., :1, 2:])
         ), axis=-1)
 
         return K.concatenate((
@@ -119,10 +119,7 @@ def _cumulative_sum_function(over_lead_times):
         """
 
         if over_lead_times:
-            return K.concatenate((
-                input_tensor_3d[..., :1],
-                K.cumsum(input_tensor_3d[..., 1:], axis=-1)
-            ), axis=-1)
+            return K.cumsum(input_tensor_3d, axis=-2)
 
         return K.concatenate((
             input_tensor_3d[..., :1],
