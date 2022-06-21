@@ -77,6 +77,32 @@ DEFAULT_OPTION_DICT_DENSE = {
 }
 
 
+def _relu_for_differences_function():
+    """Returns function that applies ReLU to differences only.
+
+    :return: relu_for_diffs_function: Function handle (see below).
+    """
+
+    def relu_for_diffs_function(input_tensor_3d):
+        """Applies ReLU to differences only.
+
+        :param input_tensor_3d: Input tensor with 3 dimensions.
+        :return: output_tensor_3d: Same but after applying ReLU to differences.
+        """
+
+        output_tensor_3d = K.concatenate((
+            input_tensor_3d[..., :2][..., [0], :],
+            K.abs(input_tensor_3d[..., 2:][..., [0], :])
+        ), axis=-1)
+
+        return K.concatenate((
+            output_tensor_3d,
+            K.abs(input_tensor_3d[..., 1:, :])
+        ), axis=-2)
+
+    return relu_for_diffs_function
+
+
 def _cumulative_sum_function(over_lead_times):
     """Returns function that takes cumulative sum over lead times or quantiles.
 
@@ -93,7 +119,10 @@ def _cumulative_sum_function(over_lead_times):
         """
 
         if over_lead_times:
-            return K.cumsum(input_tensor_3d, axis=-2)
+            return K.concatenate((
+                input_tensor_3d[..., :1],
+                K.cumsum(input_tensor_3d[..., 1:], axis=-1)
+            ), axis=-1)
 
         return K.concatenate((
             input_tensor_3d[..., :1],
@@ -1130,6 +1159,10 @@ def create_qr_model_td_to_ts_new(
 
     output_layer_object = keras.layers.Reshape(
         target_shape=(num_lead_times, num_quantile_levels + 1)
+    )(output_layer_object)
+
+    output_layer_object = keras.layers.Lambda(
+        _relu_for_differences_function(), name='relu_for_differences'
     )(output_layer_object)
 
     this_function = _cumulative_sum_function(over_lead_times=True)
