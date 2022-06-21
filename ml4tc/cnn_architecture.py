@@ -77,14 +77,14 @@ DEFAULT_OPTION_DICT_DENSE = {
 }
 
 
-def _relu_for_differences_function():
-    """Returns function that applies ReLU to differences only.
+def _abs_value_for_diffs_function():
+    """Returns function that takes absolute value for differences only.
 
-    :return: relu_for_diffs_function: Function handle (see below).
+    :return: abs_value_function: Function handle (see below).
     """
 
-    def relu_for_diffs_function(input_tensor_3d):
-        """Applies ReLU to differences only.
+    def abs_value_function(input_tensor_3d):
+        """Takes absolute value for differences only.
 
         :param input_tensor_3d: Input tensor with 3 dimensions.
         :return: output_tensor_3d: Same but after applying ReLU to differences.
@@ -100,7 +100,33 @@ def _relu_for_differences_function():
             K.abs(input_tensor_3d[..., 1:, :])
         ), axis=-2)
 
-    return relu_for_diffs_function
+    return abs_value_function
+
+
+def _relu_for_diffs_function():
+    """Returns function that takes applies ReLU to differences only.
+
+    :return: relu_function: Function handle (see below).
+    """
+
+    def relu_function(input_tensor_3d):
+        """Applies ReLU to differences only.
+
+        :param input_tensor_3d: Input tensor with 3 dimensions.
+        :return: output_tensor_3d: Same but after applying ReLU to differences.
+        """
+
+        output_tensor_3d = K.concatenate((
+            input_tensor_3d[..., :1, :2],
+            K.relu(input_tensor_3d[..., :1, 2:])
+        ), axis=-1)
+
+        return K.concatenate((
+            output_tensor_3d,
+            K.relu(input_tensor_3d[..., 1:, :])
+        ), axis=-2)
+
+    return relu_function
 
 
 def _cumulative_sum_function(over_lead_times):
@@ -1158,8 +1184,12 @@ def create_qr_model_td_to_ts_new(
         target_shape=(num_lead_times, num_quantile_levels + 1)
     )(output_layer_object)
 
+    # output_layer_object = keras.layers.Lambda(
+    #     _abs_value_for_diffs_function(), name='abs_value_for_differences'
+    # )(output_layer_object)
+
     output_layer_object = keras.layers.Lambda(
-        _relu_for_differences_function(), name='relu_for_differences'
+        _relu_for_diffs_function(), name='actual_relu_for_differences'
     )(output_layer_object)
 
     this_function = _cumulative_sum_function(over_lead_times=True)
