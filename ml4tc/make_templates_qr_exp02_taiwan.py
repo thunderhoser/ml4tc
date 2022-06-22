@@ -113,7 +113,7 @@ def _run():
 
         option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = neuron_counts
 
-        model_object = cnn_architecture.create_qr_model_td_to_ts_new(
+        model_object = cnn_architecture.create_qr_model_td_to_ts(
             option_dict_gridded_sat=BASE_OPTION_DICT_GRIDDED_SAT,
             option_dict_ungridded_sat=None,
             option_dict_ships=option_dict_ships,

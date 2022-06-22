@@ -16,6 +16,8 @@ import architecture_utils
 import neural_net
 import cnn_architecture
 
+LEAD_TIMES_HOURS = numpy.linspace(6, 168, num=28, dtype=int)
+
 BASE_OPTION_DICT_GRIDDED_SAT = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
         numpy.array([380, 540, 2, 1], dtype=int),
@@ -36,8 +38,8 @@ BASE_OPTION_DICT_SHIPS = {
     cnn_architecture.INPUT_DIMENSIONS_KEY:
         numpy.array([5, 289], dtype=int),
     cnn_architecture.NUM_NEURONS_KEY: numpy.array([500, 1000], dtype=int),
-    cnn_architecture.DROPOUT_RATES_KEY: numpy.array([0.5, 0.5]),
-    cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.array([0, 0], dtype=bool),
+    cnn_architecture.DROPOUT_RATES_KEY: numpy.full(2, 0.5),
+    cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.full(2, 0, dtype=bool),
     cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
         architecture_utils.RELU_FUNCTION_STRING,
     cnn_architecture.INNER_ACTIV_FUNCTION_ALPHA_KEY: 0.2,
@@ -54,7 +56,7 @@ BASE_OPTION_DICT_DENSE = {
     # cnn_architecture.DROPOUT_RATES_KEY:
     #     numpy.array([0.5, 0.5, 0.5, 0.5, 0]),
     cnn_architecture.DROPOUT_MC_FLAGS_KEY: numpy.array(
-        [0, 0, 1, 1, 1], dtype=bool
+        [0, 1, 1, 1, 0], dtype=bool
     ),
     cnn_architecture.INNER_ACTIV_FUNCTION_KEY:
         architecture_utils.RELU_FUNCTION_STRING,
@@ -67,9 +69,9 @@ BASE_OPTION_DICT_DENSE = {
     cnn_architecture.LAST_DROPOUT_BEFORE_ACTIV_KEY: True
 }
 
-LAST_LAYER_DROPOUT_RATES = numpy.linspace(0, 0.5, num=5, dtype=float)
 SECOND_LAST_LAYER_DROPOUT_RATES = numpy.linspace(0, 0.5, num=5, dtype=float)
 THIRD_LAST_LAYER_DROPOUT_RATES = numpy.linspace(0, 0.5, num=5, dtype=float)
+FOURTH_LAST_LAYER_DROPOUT_RATES = numpy.linspace(0, 0.5, num=5, dtype=float)
 
 LOSS_FUNCTION = keras.losses.binary_crossentropy
 METRIC_FUNCTION_LIST = [LOSS_FUNCTION] + list(neural_net.METRIC_DICT.values())
@@ -90,50 +92,55 @@ def _run():
         directory_name=OUTPUT_DIR_NAME
     )
 
-    for i in range(len(LAST_LAYER_DROPOUT_RATES)):
-        for j in range(len(SECOND_LAST_LAYER_DROPOUT_RATES)):
-            for k in range(len(THIRD_LAST_LAYER_DROPOUT_RATES)):
+    for i in range(len(SECOND_LAST_LAYER_DROPOUT_RATES)):
+        for j in range(len(THIRD_LAST_LAYER_DROPOUT_RATES)):
+            for k in range(len(FOURTH_LAST_LAYER_DROPOUT_RATES)):
                 option_dict_ships = copy.deepcopy(BASE_OPTION_DICT_SHIPS)
                 option_dict_dense = copy.deepcopy(BASE_OPTION_DICT_DENSE)
 
                 d = BASE_OPTION_DICT_GRIDDED_SAT
-                this_num_neurons = (
+                num_flattened_features = (
                     option_dict_ships[cnn_architecture.NUM_NEURONS_KEY][-1] +
                     40 * d[cnn_architecture.NUM_CHANNELS_KEY][-1]
                 )
-
-                option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = (
+                exp_neuron_counts = (
                     architecture_utils.get_dense_layer_dimensions(
-                        num_input_units=this_num_neurons,
+                        num_input_units=num_flattened_features,
                         num_classes=2, num_dense_layers=5,
                         for_classification=True
                     )[1]
+                )
+                neuron_counts = numpy.linspace(
+                    1, exp_neuron_counts[0], num=5, dtype=int
+                )[::-1]
+
+                option_dict_dense[cnn_architecture.NUM_NEURONS_KEY] = (
+                    neuron_counts
                 )
 
                 option_dict_dense[
                     cnn_architecture.DROPOUT_RATES_KEY
                 ] = numpy.array([
-                    0.5, 0.5, THIRD_LAST_LAYER_DROPOUT_RATES[k],
-                    SECOND_LAST_LAYER_DROPOUT_RATES[j],
-                    LAST_LAYER_DROPOUT_RATES[i]
+                    0.5, FOURTH_LAST_LAYER_DROPOUT_RATES[k],
+                    THIRD_LAST_LAYER_DROPOUT_RATES[j],
+                    SECOND_LAST_LAYER_DROPOUT_RATES[i], 0
                 ])
 
-                model_object = cnn_architecture.create_model(
+                model_object = cnn_architecture.create_basic_model_td_to_ts(
                     option_dict_gridded_sat=BASE_OPTION_DICT_GRIDDED_SAT,
                     option_dict_ungridded_sat=None,
                     option_dict_ships=option_dict_ships,
                     option_dict_dense=option_dict_dense,
-                    loss_function=LOSS_FUNCTION,
-                    metric_functions=METRIC_FUNCTION_LIST
+                    num_lead_times=len(LEAD_TIMES_HOURS)
                 )
 
                 model_file_name = (
                     '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}/model.h5'
                 ).format(
                     OUTPUT_DIR_NAME,
-                    THIRD_LAST_LAYER_DROPOUT_RATES[k],
-                    SECOND_LAST_LAYER_DROPOUT_RATES[j],
-                    LAST_LAYER_DROPOUT_RATES[i]
+                    FOURTH_LAST_LAYER_DROPOUT_RATES[k],
+                    THIRD_LAST_LAYER_DROPOUT_RATES[j],
+                    SECOND_LAST_LAYER_DROPOUT_RATES[i]
                 )
                 
                 file_system_utils.mkdir_recursive_if_necessary(
@@ -150,7 +157,10 @@ def _run():
                     model_file_name=model_file_name,
                     raise_error_if_missing=False
                 )
+
                 dummy_option_dict = neural_net.DEFAULT_GENERATOR_OPTION_DICT
+                dummy_option_dict[neural_net.PREDICT_TD_TO_TS_KEY] = True
+                dummy_option_dict[neural_net.LEAD_TIMES_KEY] = LEAD_TIMES_HOURS
                 dummy_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY] = None
     
                 print('Writing metadata to: "{0:s}"...'.format(
