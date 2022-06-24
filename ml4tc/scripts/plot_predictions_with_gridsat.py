@@ -32,11 +32,11 @@ CYCLONE_IDS_KEY = 'cyclone_id_strings'
 FORECAST_PROBS_KEY = 'forecast_probabilities'
 
 TC_CENTER_MARKER_TYPE = '*'
-TC_CENTER_MARKER_SIZE = 16
+TC_CENTER_MARKER_SIZE = 32
 TC_CENTER_MARKER_COLOUR = numpy.full(3, 1.)
 
 LABEL_COLOUR = numpy.full(3, 0.)
-LABEL_FONT_SIZE = 16
+LABEL_FONT_SIZE = 32
 
 CYCLONE_ID_BOUNDING_BOX_DICT = {
     'alpha': 0.5,
