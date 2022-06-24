@@ -376,7 +376,7 @@ def _plot_predictions_and_targets(
         )
     else:
         legend_handles = [None]
-        legend_strings = 'No TDs at this time'
+        legend_strings = ['No TDs at this time']
         axes_object.legend(
             legend_handles, legend_strings,
             loc='center', bbox_to_anchor=(0.5, 0.5),
