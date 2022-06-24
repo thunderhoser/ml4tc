@@ -318,11 +318,11 @@ def _print_ranking_all_scores(
                 FOURTH_LAST_LAYER_DROPOUT_RATES[i],
                 THIRD_LAST_LAYER_DROPOUT_RATES[j],
                 SECOND_LAST_LAYER_DROPOUT_RATES[k],
-                auc_rank_matrix[i, j, k, m], aupd_rank_matrix[i, j, k, m],
-                bss_rank_matrix[i, j, k, m], csi_rank_matrix[i, j, k, m],
-                bias_rank_matrix[i, j, k, m],
-                ssrel_rank_matrix[i, j, k, m], mf_rank_matrix[i, j, k, m],
-                stdev_rank_matrix[i, j, k, m]
+                auc_rank_matrix[i, j, k], aupd_rank_matrix[i, j, k],
+                bss_rank_matrix[i, j, k], csi_rank_matrix[i, j, k],
+                bias_rank_matrix[i, j, k],
+                ssrel_rank_matrix[i, j, k], mf_rank_matrix[i, j, k],
+                stdev_rank_matrix[i, j, k]
             ))
 
         print('\n')
