@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_gridded_evaluation"
+#SBATCH --job-name="plot_eval_by_month_and_basin"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,7 +14,7 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_gridded_evaluation_%A_%a.out
+#SBATCH --output=plot_eval_by_month_and_basin_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -36,21 +36,20 @@ set third_last_layer_dropout_rate=`printf "%.3f" $third_last_layer_dropout_rate`
 set second_last_layer_dropout_rate=`printf "%.3f" $second_last_layer_dropout_rate`
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
-set grid_metafile_name="${model_dir_name}/validation/grid_metadata.nc"
 
 set LEAD_TIMES_HOURS=("-1" "006" "012" "018" "024" "030" "036" "042" "048" "054" "060" "066" "072" "078" "084" "090" "096" "102" "108" "114" "120" "126" "132" "138" "144" "150" "156" "162" "168")
 set LEAD_TIME_STRINGS=("all_lead_times" "lead_time_hours=006" "lead_time_hours=012" "lead_time_hours=018" "lead_time_hours=024" "lead_time_hours=030" "lead_time_hours=036" "lead_time_hours=042" "lead_time_hours=048" "lead_time_hours=054" "lead_time_hours=060" "lead_time_hours=066" "lead_time_hours=072" "lead_time_hours=078" "lead_time_hours=084" "lead_time_hours=090" "lead_time_hours=096" "lead_time_hours=102" "lead_time_hours=108" "lead_time_hours=114" "lead_time_hours=120" "lead_time_hours=126" "lead_time_hours=132" "lead_time_hours=138" "lead_time_hours=144" "lead_time_hours=150" "lead_time_hours=156" "lead_time_hours=162" "lead_time_hours=168")
 set CLIMO_EVENT_FREQUENCIES=("0.50886938" "0.15196328" "0.27001530" "0.35135135" "0.40566038" "0.43982662" "0.46736359" "0.48878123" "0.50458950" "0.51835798" "0.52830189" "0.53646099" "0.54258032" "0.54793473" "0.55277919" "0.55609383" "0.55864355" "0.56093830" "0.56348802" "0.56527282" "0.56731260" "0.56884243" "0.57011729" "0.57113717" "0.57190209" "0.57215706" "0.57215706" "0.57215706" "0.57215706")
 set i=1
 
-while ($i <= 1)
+while ($i <= ${#LEAD_TIMES_HOURS})
     set input_dir_name="${model_dir_name}/validation_sans_uq/${LEAD_TIME_STRINGS[$i]}"
-    set output_dir_name="${input_dir_name}/gridded_evaluation"
+    set output_dir_name="${input_dir_name}/eval_by_month_and_basin"
     
-    python3 -u "${CODE_DIR_NAME}/plot_gridded_evaluation.py" \
+    python3 -u "${CODE_DIR_NAME}/plot_eval_by_month_and_basin.py" \
     --input_evaluation_dir_name="${input_dir_name}" \
-    --input_grid_metafile_name="${grid_metafile_name}" \
     --input_total_validn_eval_file_name="${input_dir_name}/evaluation.nc" \
+    --confidence_level=0.95 \
     --output_dir_name="${output_dir_name}"
     
     @ i = $i + 1

@@ -43,7 +43,7 @@ set LEAD_TIME_STRINGS=("all_lead_times" "lead_time_hours=006" "lead_time_hours=0
 set CLIMO_EVENT_FREQUENCIES=("0.50886938" "0.15196328" "0.27001530" "0.35135135" "0.40566038" "0.43982662" "0.46736359" "0.48878123" "0.50458950" "0.51835798" "0.52830189" "0.53646099" "0.54258032" "0.54793473" "0.55277919" "0.55609383" "0.55864355" "0.56093830" "0.56348802" "0.56527282" "0.56731260" "0.56884243" "0.57011729" "0.57113717" "0.57190209" "0.57215706" "0.57215706" "0.57215706" "0.57215706")
 set i=1
 
-while ($i <= 1)
+while ($i <= ${#LEAD_TIMES_HOURS})
     set input_dir_name="${model_dir_name}/validation_sans_uq/${LEAD_TIME_STRINGS[$i]}"
     set output_dir_name="${input_dir_name}/gridded_evaluation"
     
