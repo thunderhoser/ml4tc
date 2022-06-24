@@ -1,13 +1,14 @@
 """Plots predictions with GridSat in background, one map per time step."""
 
 import os
-import copy
 import argparse
 import numpy
 import xarray
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
+import matplotlib.colors
+import matplotlib.patches
 from scipy.interpolate import interp1d
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import time_periods
@@ -15,6 +16,7 @@ from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import number_rounding
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
+from gewittergefahr.plotting import imagemagick_utils
 from ml4tc.io import prediction_io
 from ml4tc.io import border_io
 from ml4tc.utils import general_utils
@@ -35,6 +37,17 @@ TC_CENTER_MARKER_TYPE = '*'
 TC_CENTER_MARKER_SIZE = 32
 TC_CENTER_MARKER_COLOUR = numpy.full(3, 1.)
 
+LINE_COLOURS = 30 * [
+    numpy.array([27, 158, 119], dtype=float) / 255,
+    numpy.array([217, 95, 2], dtype=float) / 255,
+    numpy.array([117, 112, 179], dtype=float) / 255
+]
+LINE_WIDTH = 4
+
+POSITIVE_CLASS_MARKER_TYPE = 'D'
+POSITIVE_CLASS_MARKER_SIZE = 32
+POLYGON_OPACITY = 0.5
+
 LABEL_COLOUR = numpy.full(3, 0.)
 LABEL_FONT_SIZE = 32
 
@@ -45,16 +58,10 @@ CYCLONE_ID_BOUNDING_BOX_DICT = {
     'facecolor': numpy.full(3, 1.)
 }
 
-PREDICTION_BOUNDING_BOX_DICT = {
-    'alpha': 0.25,
-    'edgecolor': numpy.full(3, 0.),
-    'linewidth': 1,
-    'facecolor': numpy.full(3, 1.)
-}
-
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
+CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 DEFAULT_FONT_SIZE = 30
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
@@ -252,119 +259,130 @@ def _read_gridsat_file(
     )
 
 
-def _get_prediction_string(prediction_dict, example_index, predict_td_to_ts,
-                           confidence_level):
-    """Returns string with predictions and targets.
+def _plot_predictions_and_targets(
+        prediction_dict, example_indices, confidence_level, output_file_name):
+    """Plots predictions and targets for one forecast-init time.
 
     :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
-    :param example_index: Will create string for the [i]th example, where
-        i = `example_index`.
-    :param predict_td_to_ts: Boolean flag.  If True (False), prediction task is
-        TD-to-TS (rapid intensification).
+    :param example_indices: 1-D numpy array of indices corresponding to the
+        given init time.
     :param confidence_level: See documentation at top of file.
-    :return: prediction_string: String with predictions and targets.
+    :param output_file_name: Path to output file.  Figure will be saved here.
     """
 
-    i = example_index
-    mean_forecast_probs = (
-        prediction_io.get_mean_predictions(prediction_dict)[i, :]
+    target_class_matrix = (
+        prediction_dict[prediction_io.TARGET_MATRIX_KEY][example_indices, :]
     )
-    forecast_prob_matrix = (
-        prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][i, 1, ...]
+    mean_forecast_prob_matrix = (
+        prediction_io.get_mean_predictions(prediction_dict)[example_indices, :]
     )
-    target_classes = (
-        prediction_dict[prediction_io.TARGET_MATRIX_KEY][i, :]
-    )
+    all_forecast_prob_matrix = prediction_dict[
+        prediction_io.PROBABILITY_MATRIX_KEY
+    ][example_indices, 1, ...]
+
     lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
-    label_string = 'Storm {0:s}'.format(
-        prediction_dict[prediction_io.CYCLONE_IDS_KEY][i][-2:]
+    if confidence_level is None:
+        min_forecast_prob_matrix = None
+        max_forecast_prob_matrix = None
+    else:
+        if quantile_levels is None:
+            min_forecast_prob_matrix = numpy.percentile(
+                all_forecast_prob_matrix, 50 * (1. - confidence_level), axis=-1
+            )
+            max_forecast_prob_matrix = numpy.percentile(
+                all_forecast_prob_matrix, 50 * (1. + confidence_level), axis=-1
+            )
+        else:
+            interp_object = interp1d(
+                x=quantile_levels, y=all_forecast_prob_matrix[..., 1:],
+                axis=-1, kind='linear', bounds_error=False, assume_sorted=True,
+                fill_value='extrapolate'
+            )
+
+            min_forecast_prob_matrix = interp_object(
+                0.5 * (1. - confidence_level)
+            )
+            max_forecast_prob_matrix = interp_object(
+                0.5 * (1. + confidence_level)
+            )
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
 
-    for k in range(len(lead_times_hours)):
-        label_string += '\n{0:s} in next {1:d} h? {2:s}; '.format(
-            'TS' if predict_td_to_ts else 'RI',
-            lead_times_hours[k],
-            'Yes' if target_classes[k] else 'No'
+    num_examples = len(example_indices)
+    legend_handles = [None] * (num_examples + 1)
+    legend_strings = [''] * (num_examples + 1)
+
+    for i in range(len(example_indices)):
+        legend_handles[i] = axes_object.plot(
+            lead_times_hours, mean_forecast_prob_matrix[i, :],
+            color=LINE_COLOURS[i], linestyle='solid', linewidth=LINE_WIDTH
+        )[0]
+
+        j = example_indices[i]
+        legend_strings[i] = 'Fcst for storm {0:s}'.format(
+            prediction_dict[prediction_io.CYCLONE_IDS_KEY][j][-2:]
         )
 
-        label_string += r'$p$ = '
-        label_string += '{0:.2f}'.format(mean_forecast_probs[k]).lstrip('0')
+        positive_indices = numpy.where(target_class_matrix[i, :] == 1)[0]
+        this_handle = axes_object.plot(
+            lead_times_hours[positive_indices],
+            mean_forecast_prob_matrix[i, :][positive_indices],
+            linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
+            markersize=POSITIVE_CLASS_MARKER_SIZE, markeredgewidth=0,
+            markerfacecolor=numpy.full(3, 0.),
+            markeredgecolor=numpy.full(3, 0.)
+        )[0]
 
-        if confidence_level is not None:
-            if quantile_levels is None:
-                min_probability = numpy.percentile(
-                    forecast_prob_matrix[k, :], 50 * (1. - confidence_level)
-                )
-                max_probability = numpy.percentile(
-                    forecast_prob_matrix[k, :], 50 * (1. + confidence_level)
-                )
-            else:
-                interp_object = interp1d(
-                    x=quantile_levels, y=forecast_prob_matrix[k, 1:],
-                    kind='linear', bounds_error=False, assume_sorted=True,
-                    fill_value='extrapolate'
-                )
+        if i == len(example_indices) - 1:
+            legend_handles[-1] = this_handle
+            legend_strings[-1] = 'TD-to-TS observed'
 
-                min_probability = interp_object(0.5 * (1. - confidence_level))
-                max_probability = interp_object(0.5 * (1. + confidence_level))
+        x_vertices = numpy.concatenate((
+            lead_times_hours, lead_times_hours[::-1], lead_times_hours[[0]]
+        ))
+        y_vertices = numpy.concatenate((
+            max_forecast_prob_matrix[i, :],
+            min_forecast_prob_matrix[i, :][::-1],
+            max_forecast_prob_matrix[i, :][[0]]
+        ))
+        polygon_coord_matrix = numpy.transpose(numpy.vstack((
+            x_vertices, y_vertices
+        )))
 
-            min_probability = numpy.maximum(min_probability, 0.)
-            min_probability = numpy.minimum(min_probability, 1.)
-            max_probability = numpy.maximum(max_probability, 0.)
-            max_probability = numpy.minimum(max_probability, 1.)
+        polygon_colour = matplotlib.colors.to_rgba(
+            LINE_COLOURS[i], POLYGON_OPACITY
+        )
+        patch_object = matplotlib.patches.Polygon(
+            polygon_coord_matrix, lw=0, ec=polygon_colour, fc=polygon_colour
+        )
+        axes_object.add_patch(patch_object)
 
-            min_prob_string = '{0:.2f}'.format(min_probability).lstrip('0')
-            max_prob_string = '{0:.2f}'.format(max_probability).lstrip('0')
-
-            label_string += (
-                ' ({0:.1f}'.format(100 * confidence_level).rstrip('.0')
-            )
-            label_string += '% CI: {0:s}-{1:s})'.format(
-                min_prob_string, max_prob_string
-            )
-
-    return label_string
-
-
-def _get_swmost_index(prediction_dict):
-    """Returns index of southwesternmost tropical cyclone.
-
-    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
-    :return: swmost_index: Index of southwesternmost tropical cyclone.
-    """
-
-    return numpy.argmin(
-        prediction_dict[prediction_io.STORM_LATITUDES_KEY] +
-        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    axes_object.legend(
+        legend_handles, legend_strings,
+        loc='center right', bbox_to_anchor=(0.95, 0.5),
+        fancybox=True, shadow=True, ncol=1
     )
 
+    y_label_string = 'Forecast probability with {0:.1f}'.format(
+        100 * confidence_level
+    ).rstrip('.0')
 
-def _get_nwmost_index(prediction_dict):
-    """Returns index of northwesternmost tropical cyclone.
+    y_label_string += '% CI'
 
-    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
-    :return: nwmost_index: Index of northwesternmost tropical cyclone.
-    """
+    axes_object.set_ylabel(y_label_string)
+    axes_object.set_xlabel('Lead time (hours)')
+    axes_object.set_xlim(0, numpy.max(lead_times_hours))
 
-    return numpy.argmax(
-        prediction_dict[prediction_io.STORM_LATITUDES_KEY] -
-        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
     )
-
-
-def _get_nemost_index(prediction_dict):
-    """Returns index of northeasternmost tropical cyclone.
-
-    :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
-    :return: nemost_index: Index of northeasternmost tropical cyclone.
-    """
-
-    return numpy.argmax(
-        prediction_dict[prediction_io.STORM_LATITUDES_KEY] +
-        prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
-    )
+    pyplot.close(figure_object)
 
 
 def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
@@ -545,11 +563,6 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             cbar_orientation_string=None
         )
 
-        prediction_dict_this_time = prediction_io.subset_by_index(
-            prediction_dict=copy.deepcopy(prediction_dict),
-            desired_indices=example_indices_this_time
-        )
-
         for i in range(len(example_indices_this_time)):
             j = example_indices_this_time[i]
 
@@ -591,42 +604,17 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 zorder=1e10
             )
 
-            # Print predictions and targets off side of map.
-            label_string = _get_prediction_string(
-                prediction_dict=prediction_dict, example_index=j,
-                predict_td_to_ts=predict_td_to_ts,
-                confidence_level=confidence_level
-            )
-
-            if i == _get_swmost_index(prediction_dict_this_time):
-                x_coord = -0.1
-                y_coord = 0.5
-                horiz_alignment_string = 'right'
-                vertical_alignment_string = 'center'
-            elif i == _get_nwmost_index(prediction_dict_this_time):
-                x_coord = 1.1
-                y_coord = 0.5
-                horiz_alignment_string = 'left'
-                vertical_alignment_string = 'center'
-            elif i == _get_nemost_index(prediction_dict_this_time):
-                x_coord = 0.5
-                y_coord = 1.1
-                horiz_alignment_string = 'center'
-                vertical_alignment_string = 'bottom'
-            else:
-                x_coord = 0.5
-                y_coord = -0.1
-                horiz_alignment_string = 'center'
-                vertical_alignment_string = 'top'
-
-            axes_object.text(
-                x_coord, y_coord, label_string,
-                color=LABEL_COLOUR, fontsize=LABEL_FONT_SIZE,
-                bbox=PREDICTION_BOUNDING_BOX_DICT,
-                horizontalalignment=horiz_alignment_string,
-                verticalalignment=vertical_alignment_string,
-                zorder=1e10, transform=axes_object.transAxes
-            )
+        init_time_string = time_conversion.unix_sec_to_string(
+            this_time_unix_sec, TIME_FORMAT
+        )
+        graph_file_name = '{0:s}/{1:s}_graph.jpg'.format(
+            output_dir_name, init_time_string
+        )
+        _plot_predictions_and_targets(
+            prediction_dict=prediction_dict,
+            example_indices=example_indices_this_time,
+            confidence_level=confidence_level, output_file_name=graph_file_name
+        )
 
         plotting_utils.plot_grid_lines(
             plot_latitudes_deg_n=
@@ -650,24 +638,39 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             orientation_string='vertical', font_size=DEFAULT_FONT_SIZE
         )
 
-        init_time_string = time_conversion.unix_sec_to_string(
-            this_time_unix_sec, TIME_FORMAT
-        )
         title_string = (
             'Forecast probs and labels for {0:s}, init {1:s}'
         ).format(target_variable_string, init_time_string)
 
         axes_object.set_title(title_string)
 
-        output_file_name = '{0:s}/{1:s}.jpg'.format(
+        satellite_file_name = '{0:s}/{1:s}_satellite.jpg'.format(
             output_dir_name, init_time_string
         )
-        print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+        print('Saving figure to file: "{0:s}"...'.format(satellite_file_name))
         figure_object.savefig(
-            output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            satellite_file_name, dpi=FIGURE_RESOLUTION_DPI,
             pad_inches=0, bbox_inches='tight'
         )
         pyplot.close(figure_object)
+
+        concat_file_name = '{0:s}/{1:s}.jpg'.format(
+            output_dir_name, init_time_string
+        )
+
+        print('Concatenating panels to: "{0:s}"...'.format(concat_file_name))
+        imagemagick_utils.concatenate_images(
+            input_file_names=[satellite_file_name, graph_file_name],
+            output_file_name=concat_file_name,
+            num_panel_rows=1, num_panel_columns=2
+        )
+        imagemagick_utils.resize_image(
+            input_file_name=concat_file_name, output_file_name=concat_file_name,
+            output_size_pixels=CONCAT_FIGURE_SIZE_PX
+        )
+
+        os.remove(graph_file_name)
+        os.remove(satellite_file_name)
 
 
 if __name__ == '__main__':
