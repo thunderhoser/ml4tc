@@ -375,12 +375,10 @@ def _plot_predictions_and_targets(
             fancybox=True, shadow=True, ncol=1
         )
     else:
-        legend_handles = [None]
-        legend_strings = ['No TDs at this time']
-        axes_object.legend(
-            legend_handles, legend_strings,
-            loc='center', bbox_to_anchor=(0.5, 0.5),
-            fancybox=True, shadow=True, ncol=1
+        axes_object.text(
+            0.5, 0.5, 'No TDs at this time', color=numpy.full(3, 0.),
+            horizontalalignment='center', verticalalignment='center',
+            transform=axes_object.transAxes
         )
 
     y_label_string = 'Forecast probability with {0:.1f}'.format(
