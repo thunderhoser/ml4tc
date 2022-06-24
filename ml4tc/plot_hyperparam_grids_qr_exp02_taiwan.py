@@ -193,6 +193,8 @@ def _print_ranking_one_score(score_matrix, score_name):
                 CENTRAL_LOSS_WEIGHTS[sort_indices[i]]
             ))
 
+        print('\n')
+
 
 def _print_ranking_all_scores(
         auc_matrix, aupd_matrix, bss_matrix, csi_matrix, frequency_bias_matrix,
@@ -275,6 +277,8 @@ def _print_ranking_all_scores(
                 frequency_bias_ranks[k], ssrel_ranks[k],
                 monotonicity_fraction_ranks[k], mean_predictive_stdev_ranks[k]
             ))
+
+        print('\n')
 
 
 def _run(experiment_dir_name, output_dir_name):
