@@ -187,7 +187,7 @@ def _print_ranking_one_score(score_matrix, score_name):
         scores_1d[numpy.isnan(scores_1d)] = -numpy.inf
         sort_indices_1d = numpy.argsort(-scores_1d)
         i_sort_indices, j_sort_indices, k_sort_indices = numpy.unravel_index(
-            sort_indices_1d, score_matrix.shape
+            sort_indices_1d, score_matrix[..., m].shape
         )
 
         for a in range(len(i_sort_indices)):
