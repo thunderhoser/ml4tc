@@ -52,7 +52,7 @@ LINE_COLOURS = 30 * [
 LINE_WIDTH = 4
 
 POSITIVE_CLASS_MARKER_TYPE = 'D'
-POSITIVE_CLASS_MARKER_SIZE = 32
+POSITIVE_CLASS_MARKER_SIZE = 12
 POLYGON_OPACITY = 0.5
 
 LABEL_COLOUR = numpy.full(3, 0.)
@@ -383,6 +383,7 @@ def _plot_predictions_and_targets(
     axes_object.set_ylabel(y_label_string)
     axes_object.set_xlabel('Lead time (hours)')
     axes_object.set_xlim(0, numpy.max(lead_times_hours))
+    axes_object.set_ylim(0, 1)
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
@@ -646,7 +647,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         )
 
         title_string = (
-            'Forecast probs and labels for {0:s}, init {1:s}'
+            'Forecasts and observations for {0:s}, init {1:s}'
         ).format(target_variable_string, init_time_string)
 
         axes_object.set_title(title_string)
