@@ -368,11 +368,20 @@ def _plot_predictions_and_targets(
         )
         axes_object.add_patch(patch_object)
 
-    axes_object.legend(
-        legend_handles, legend_strings,
-        loc='center right', bbox_to_anchor=(0.95, 0.5),
-        fancybox=True, shadow=True, ncol=1
-    )
+    if len(example_indices) > 0:
+        axes_object.legend(
+            legend_handles, legend_strings,
+            loc='center right', bbox_to_anchor=(0.95, 0.5),
+            fancybox=True, shadow=True, ncol=1
+        )
+    else:
+        legend_handles = [None]
+        legend_strings = 'No TDs at this time'
+        axes_object.legend(
+            legend_handles, legend_strings,
+            loc='center', bbox_to_anchor=(0.5, 0.5),
+            fancybox=True, shadow=True, ncol=1
+        )
 
     y_label_string = 'Forecast probability with {0:.1f}'.format(
         100 * confidence_level
