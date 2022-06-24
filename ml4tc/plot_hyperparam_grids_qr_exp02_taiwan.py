@@ -321,7 +321,7 @@ def _run(experiment_dir_name, output_dir_name):
             ).format(
                 experiment_dir_name, CENTRAL_LOSS_WEIGHTS[i],
                 'all_lead_times' if LEAD_TIMES_HOURS[j] < 0
-                else '{0:03d}'.format(LEAD_TIMES_HOURS[j])
+                else 'lead_time_hours={0:03d}'.format(LEAD_TIMES_HOURS[j])
             )
 
             print('Reading data from: "{0:s}"...'.format(this_score_file_name))
@@ -351,7 +351,7 @@ def _run(experiment_dir_name, output_dir_name):
             ).format(
                 experiment_dir_name, CENTRAL_LOSS_WEIGHTS[i],
                 'all_lead_times' if LEAD_TIMES_HOURS[j] < 0
-                else '{0:03d}'.format(LEAD_TIMES_HOURS[j])
+                else 'lead_time_hours={0:03d}'.format(LEAD_TIMES_HOURS[j])
             )
 
             print('Reading data from: "{0:s}"...'.format(this_score_file_name))
@@ -382,7 +382,7 @@ def _run(experiment_dir_name, output_dir_name):
             ).format(
                 experiment_dir_name, CENTRAL_LOSS_WEIGHTS[i],
                 'all_lead_times' if LEAD_TIMES_HOURS[j] < 0
-                else '{0:03d}'.format(LEAD_TIMES_HOURS[j])
+                else 'lead_time_hours={0:03d}'.format(LEAD_TIMES_HOURS[j])
             )
 
             print('Reading data from: "{0:s}"...'.format(this_score_file_name))
