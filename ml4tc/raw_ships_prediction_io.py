@@ -168,6 +168,14 @@ def _read_td_to_ts_new_file(ascii_file_name):
         forecast_tropical_flags
     ).astype(int)
 
+    if numpy.any(forecast_labels_land == 1):
+        first_positive_index = numpy.where(forecast_labels_land == 1)[0][0]
+        forecast_labels_land[first_positive_index:] = 1
+
+    if numpy.any(forecast_labels_lge == 1):
+        first_positive_index = numpy.where(forecast_labels_lge == 1)[0][0]
+        forecast_labels_lge[first_positive_index:] = 1
+
     return lead_times_hours, forecast_labels_land, forecast_labels_lge
 
 
@@ -308,6 +316,14 @@ def _read_td_to_ts_old_file(ascii_file_name):
         forecast_intensities_lge_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01,
         forecast_tropical_flags
     ).astype(int)
+
+    if numpy.any(forecast_labels_land == 1):
+        first_positive_index = numpy.where(forecast_labels_land == 1)[0][0]
+        forecast_labels_land[first_positive_index:] = 1
+
+    if numpy.any(forecast_labels_lge == 1):
+        first_positive_index = numpy.where(forecast_labels_lge == 1)[0][0]
+        forecast_labels_lge[first_positive_index:] = 1
 
     return lead_times_hours, forecast_labels_land, forecast_labels_lge
 
