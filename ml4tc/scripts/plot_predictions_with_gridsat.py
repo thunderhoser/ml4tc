@@ -45,7 +45,7 @@ LINE_COLOURS = 30 * [
 LINE_WIDTH = 4
 
 POSITIVE_CLASS_MARKER_TYPE = 'D'
-POSITIVE_CLASS_MARKER_SIZE = 32
+POSITIVE_CLASS_MARKER_SIZE = 12
 POLYGON_OPACITY = 0.5
 
 LABEL_COLOUR = numpy.full(3, 0.)
@@ -361,11 +361,18 @@ def _plot_predictions_and_targets(
         )
         axes_object.add_patch(patch_object)
 
-    axes_object.legend(
-        legend_handles, legend_strings,
-        loc='center right', bbox_to_anchor=(0.95, 0.5),
-        fancybox=True, shadow=True, ncol=1
-    )
+    if len(example_indices) > 0:
+        axes_object.legend(
+            legend_handles, legend_strings,
+            loc='center right', bbox_to_anchor=(0.95, 0.5),
+            fancybox=True, shadow=True, ncol=1
+        )
+    else:
+        axes_object.text(
+            0.5, 0.5, 'No TDs at this time', color=numpy.full(3, 0.),
+            horizontalalignment='center', verticalalignment='center',
+            transform=axes_object.transAxes
+        )
 
     y_label_string = 'Forecast probability with {0:.1f}'.format(
         100 * confidence_level
@@ -376,6 +383,7 @@ def _plot_predictions_and_targets(
     axes_object.set_ylabel(y_label_string)
     axes_object.set_xlabel('Lead time (hours)')
     axes_object.set_xlim(0, numpy.max(lead_times_hours))
+    axes_object.set_ylim(0, 1)
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
@@ -639,7 +647,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         )
 
         title_string = (
-            'Forecast probs and labels for {0:s}, init {1:s}'
+            'Forecasts and observations for {0:s}, init {1:s}'
         ).format(target_variable_string, init_time_string)
 
         axes_object.set_title(title_string)
