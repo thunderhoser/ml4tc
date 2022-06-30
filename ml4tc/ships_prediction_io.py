@@ -134,13 +134,13 @@ def write_td_to_ts_file(
     dataset_object.variables[LEAD_TIMES_KEY][:] = lead_times_hours
 
     dataset_object.createVariable(
-        INIT_LATITUDES_KEY, datatype=numpy.int32,
+        INIT_LATITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_LATITUDES_KEY][:] = init_latitudes_deg_n
 
     dataset_object.createVariable(
-        INIT_LONGITUDES_KEY, datatype=numpy.int32,
+        INIT_LONGITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_LONGITUDES_KEY][:] = init_longitudes_deg_e
@@ -300,13 +300,13 @@ def write_ri_file(
     )
 
     dataset_object.createVariable(
-        INIT_LATITUDES_KEY, datatype=numpy.int32,
+        INIT_LATITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_LATITUDES_KEY][:] = init_latitudes_deg_n
 
     dataset_object.createVariable(
-        INIT_LONGITUDES_KEY, datatype=numpy.int32,
+        INIT_LONGITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_LONGITUDES_KEY][:] = init_longitudes_deg_e
