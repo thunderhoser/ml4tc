@@ -2000,6 +2000,8 @@ def _apply_model_ri(
     if verbose:
         print('Have applied model to all {0:d} examples!'.format(num_examples))
 
+    print('SHAPE: {0:s}'.format(str(forecast_prob_matrix.shape)))
+
     return forecast_prob_matrix
 
 
