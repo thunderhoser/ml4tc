@@ -58,6 +58,8 @@ def _run(top_input_dir_name, output_file_name):
 
     forecast_label_matrix_land = numpy.full(dimensions, -1, dtype=int)
     forecast_label_matrix_lge = numpy.full(dimensions, -1, dtype=int)
+    init_latitudes_deg_n = numpy.full(num_examples, numpy.nan)
+    init_longitudes_deg_e = numpy.full(num_examples, numpy.nan)
     cyclone_id_strings = [''] * num_examples
     init_times_unix_sec = numpy.full(num_examples, -1, dtype=int)
 
@@ -87,6 +89,12 @@ def _run(top_input_dir_name, output_file_name):
                 raw_ships_prediction_io.FORECAST_LABELS_LGE_KEY
             ]
         )
+        init_latitudes_deg_n[i] = (
+            this_prediction_dict[raw_ships_prediction_io.INIT_LATITUDE_KEY]
+        )
+        init_longitudes_deg_e[i] = (
+            this_prediction_dict[raw_ships_prediction_io.INIT_LONGITUDE_KEY]
+        )
         cyclone_id_strings[i] = (
             this_prediction_dict[raw_ships_prediction_io.CYCLONE_ID_KEY]
         )
@@ -100,6 +108,8 @@ def _run(top_input_dir_name, output_file_name):
         lead_times_hours=LEAD_TIMES_HOURS,
         forecast_label_matrix_land=forecast_label_matrix_land,
         forecast_label_matrix_lge=forecast_label_matrix_lge,
+        init_latitudes_deg_n=init_latitudes_deg_n,
+        init_longitudes_deg_e=init_longitudes_deg_e,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec
     )

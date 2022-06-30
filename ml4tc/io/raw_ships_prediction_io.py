@@ -3,6 +3,7 @@
 import os.path
 import numpy
 from gewittergefahr.gg_utils import time_conversion
+from gewittergefahr.gg_utils import error_checking
 from ml4tc.utils import satellite_utils
 
 TIME_FORMAT = '%y%m%d%H'
@@ -24,6 +25,10 @@ MAX_ABSOLUTE_TROPICAL_LATITUDE_DEG_N = 35.
 LEAD_TIMES_KEY = 'lead_times_hours'
 FORECAST_LABELS_LAND_KEY = 'forecast_labels_land'
 FORECAST_LABELS_LGE_KEY = 'forecast_labels_lge'
+
+RI_PROBABILITIES_KEY = 'ri_probabilities'
+INIT_LATITUDE_KEY = 'init_latitude_deg_n'
+INIT_LONGITUDE_KEY = 'init_longitude_deg_e'
 CYCLONE_ID_KEY = 'cyclone_id_string'
 INIT_TIME_KEY = 'init_time_unix_sec'
 
@@ -72,7 +77,7 @@ def _read_td_to_ts_new_file(ascii_file_name):
             this_line = this_line.strip().replace('V (KT) LAND', '')
 
             these_intensity_strings = [
-                word.replace('N/A', 'Inf').replace('DIS', 'Inf')
+                word.replace('N/A', 'Inf').replace('DIS', '0')
                 for word in this_line.split()
             ]
 
@@ -102,7 +107,7 @@ def _read_td_to_ts_new_file(ascii_file_name):
                 this_line = this_line.strip().replace(w, '')
 
             these_intensity_strings = [
-                word.replace('N/A', 'Inf').replace('DIS', 'Inf')
+                word.replace('N/A', 'Inf').replace('DIS', '0')
                 for word in this_line.split()
             ]
 
@@ -200,7 +205,7 @@ def _read_td_to_ts_old_file(ascii_file_name):
         if this_line.strip().startswith('V (KT) LAND'):
             this_line = this_line.strip().replace('V (KT) LAND', '')
             these_intensity_strings = [
-                word.replace('DIS', 'Inf') for word in this_line.split()
+                word.replace('DIS', '0') for word in this_line.split()
             ]
 
             forecast_intensities_land_m_s01 = numpy.array(
@@ -225,7 +230,7 @@ def _read_td_to_ts_old_file(ascii_file_name):
         if this_line.strip().startswith('V (KT) LGE mod'):
             this_line = this_line.strip().replace('V (KT) LGE mod', '')
             these_intensity_strings = [
-                word.replace('DIS', 'Inf') for word in this_line.split()
+                word.replace('DIS', '0') for word in this_line.split()
             ]
 
             forecast_intensities_lge_m_s01 = numpy.array(
@@ -409,6 +414,54 @@ def _read_ri_old_file(ascii_file_name):
     return ri_probability
 
 
+def _read_init_latlng_position(ascii_file_name):
+    """Reads initial lat-long position from either file type (old or new).
+
+    :param ascii_file_name: Path to input file.
+    :return: init_latitude_deg_n: Initial latitude (deg north).
+    :return: init_longitude_deg_e: Initial longitude (deg east).
+    """
+
+    file_handle = open(ascii_file_name, 'r')
+
+    init_latitude_deg_n = numpy.nan
+    init_longitude_deg_e = numpy.nan
+
+    for this_line in file_handle.readlines():
+        if not (
+                numpy.isnan(init_latitude_deg_n) or
+                numpy.isnan(init_longitude_deg_e)
+        ):
+            break
+
+        if this_line.strip().startswith('LAT (DEG N)'):
+            this_line = this_line.strip().replace('LAT (DEG N)', '')
+            init_latitude_deg_n = float(
+                this_line.split()[0]
+            )
+
+            error_checking.assert_is_valid_latitude(init_latitude_deg_n)
+            continue
+
+        if this_line.strip().startswith('LONG(DEG W)'):
+            this_line = this_line.strip().replace('LONG(DEG W)', '')
+            init_longitude_deg_e = -1 * float(
+                this_line.split()[0]
+            )
+
+            error_checking.assert_is_valid_longitude(init_longitude_deg_e)
+            continue
+
+    assert not (
+        numpy.isnan(init_latitude_deg_n) or
+        numpy.isnan(init_longitude_deg_e)
+    )
+
+    file_handle.close()
+
+    return init_latitude_deg_n, init_longitude_deg_e
+
+
 def _file_name_to_metadata(ships_prediction_file_name):
     """Parses metadata from file name.
 
@@ -447,11 +500,16 @@ def read_ri_predictions(ascii_file_name):
     """Reads rapid intensification (RI) predictions from file.
 
     :param ascii_file_name: Path to input file.
-    :return: ri_probabilities: length-1 or length-2 numpy array of
+    :return: prediction_dict: Dictionary with the following keys.
+    prediction_dict['ri_probabilities']: length-1 or length-2 numpy array of
         probabilities.  If length-2, the entries are
         [ships_rii_probability, consensus_probability].
-    :return: cyclone_id_string: Cyclone ID.
-    :return: init_time_unix_sec: Forecast-initialization time.
+    prediction_dict['init_latitude_deg_n']: Initial latitude of TC center
+        (deg north).
+    prediction_dict['init_longitude_deg_e']: Initial longitude of TC center
+        (deg east).
+    prediction_dict['cyclone_id_string']: Cyclone ID.
+    prediction_dict['init_time_unix_sec']: Forecast-initialization time.
     """
 
     cyclone_id_string, init_time_unix_sec = _file_name_to_metadata(
@@ -470,17 +528,31 @@ def read_ri_predictions(ascii_file_name):
             _read_ri_old_file(ascii_file_name)
         ])
 
-    return ri_probabilities, cyclone_id_string, init_time_unix_sec
+    init_latitude_deg_n, init_longitude_deg_e = _read_init_latlng_position(
+        ascii_file_name
+    )
+
+    return {
+        RI_PROBABILITIES_KEY: ri_probabilities,
+        INIT_LATITUDE_KEY: init_latitude_deg_n,
+        INIT_LONGITUDE_KEY: init_longitude_deg_e,
+        CYCLONE_ID_KEY: cyclone_id_string,
+        INIT_TIME_KEY: init_time_unix_sec,
+    }
 
 
 def read_td_to_ts_predictions(ascii_file_name):
     """Reads TD-to-TS predictions from file.
+
+    E = number of examples
 
     :param ascii_file_name: Path to input file.
     :return: prediction_dict: Dictionary with the following keys.
     prediction_dict['lead_times_hours']: See doc for `_read_td_to_ts_new_file`.
     prediction_dict['forecast_labels_land']: Same.
     prediction_dict['forecast_labels_lge']: Same.
+    prediction_dict['init_latitude_deg_n']: Same.
+    prediction_dict['init_longitude_deg_e']: Same.
     prediction_dict['cyclone_id_string']: Cyclone ID.
     prediction_dict['init_time_unix_sec']: Forecast-initialization time.
     """
@@ -498,10 +570,16 @@ def read_td_to_ts_predictions(ascii_file_name):
             _read_td_to_ts_old_file(ascii_file_name)
         )
 
+    init_latitude_deg_n, init_longitude_deg_e = _read_init_latlng_position(
+        ascii_file_name
+    )
+
     return {
         LEAD_TIMES_KEY: lead_times_hours,
         FORECAST_LABELS_LAND_KEY: forecast_labels_land,
         FORECAST_LABELS_LGE_KEY: forecast_labels_lge,
+        INIT_LATITUDE_KEY: init_latitude_deg_n,
+        INIT_LONGITUDE_KEY: init_longitude_deg_e,
         CYCLONE_ID_KEY: cyclone_id_string,
         INIT_TIME_KEY: init_time_unix_sec,
     }
