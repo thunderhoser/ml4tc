@@ -200,8 +200,14 @@ def write_file(
     error_checking.assert_is_numpy_array(
         forecast_probability_matrix, num_dimensions=4
     )
-    error_checking.assert_is_geq_numpy_array(forecast_probability_matrix, 0.)
-    error_checking.assert_is_leq_numpy_array(forecast_probability_matrix, 1.)
+
+    # TODO(thunderhoser): Allowing NaN is a hack for SHIPS predictions.
+    error_checking.assert_is_geq_numpy_array(
+        forecast_probability_matrix, 0., allow_nan=True
+    )
+    error_checking.assert_is_leq_numpy_array(
+        forecast_probability_matrix, 1., allow_nan=True
+    )
 
     num_examples = forecast_probability_matrix.shape[0]
     num_classes = forecast_probability_matrix.shape[1]
