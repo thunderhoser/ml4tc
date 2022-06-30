@@ -1983,8 +1983,10 @@ def _apply_model_ri(
             # If necessary, add class axis to get shape E x K.
             if len(this_prob_matrix.shape) == 1:
                 this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
+
+            if this_prob_matrix.shape[1] == 1:
                 this_prob_matrix = numpy.concatenate(
-                    (1. - this_prob_matrix, this_prob_matrix), axis=-1
+                    (1. - this_prob_matrix, this_prob_matrix), axis=1
                 )
 
             # Add lead-time and prediction-set axes to get shape E x K x L x S.
