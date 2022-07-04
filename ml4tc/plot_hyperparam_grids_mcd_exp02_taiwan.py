@@ -596,7 +596,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'AUC for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -636,7 +636,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'AUPD for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -680,7 +680,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'BSS for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -720,7 +720,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'CSI for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -769,7 +769,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'Freq bias for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -809,7 +809,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'SSREL for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -851,7 +851,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'Stdev for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
@@ -893,7 +893,7 @@ def _run(experiment_dir_name, western_pacific_only, top_output_dir_name):
 
                 title_string = (
                     'MF for {0:s}, second-last dropout = {1:.1f}, '
-                    'WPAC weight = {2:D}'
+                    'WPAC weight = {2:d}'
                 ).format(
                     'all leads' if LEAD_TIMES_HOURS[m] < 0
                     else '{0:d}-hour lead'.format(LEAD_TIMES_HOURS[m]),
