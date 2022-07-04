@@ -13,7 +13,8 @@ CNN_FILE_ARG_NAME = 'input_cnn_prediction_file_name'
 SHIPS_FILE_ARG_NAME = 'input_ships_prediction_file_name'
 USE_RI_CONSENSUS_ARG_NAME = 'use_ri_consensus'
 USE_TD_TO_TS_LGE_ARG_NAME = 'use_td_to_ts_lge'
-OUTPUT_FILE_ARG_NAME = 'output_ships_prediction_file_name'
+OUTPUT_CNN_FILE_ARG_NAME = 'output_cnn_prediction_file_name'
+OUTPUT_SHIPS_FILE_ARG_NAME = 'output_ships_prediction_file_name'
 
 CNN_FILE_HELP_STRING = (
     'Path to file with CNN predictions.  Will be read by '
@@ -32,9 +33,13 @@ USE_TD_TO_TS_LGE_HELP_STRING = (
     '[used only if files contain TD-to-TS predictions] Boolean flag.  If 1 (0),'
     ' will use LGE (basic with land included) model from SHIPS files.'
 )
-OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  SHIPS predictions matched with CNN predictions will '
-    'be written here by `prediction_io.write_file`.'
+OUTPUT_CNN_FILE_HELP_STRING = (
+    'Path to first output file.  Matched CNN predictions will be written here '
+    'by `prediction_io.write_file`.'
+)
+OUTPUT_SHIPS_FILE_HELP_STRING = (
+    'Path to second output file.  Matched SHIPS predictions will be written '
+    'here by `prediction_io.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -55,8 +60,12 @@ INPUT_ARG_PARSER.add_argument(
     help=USE_TD_TO_TS_LGE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
-    help=OUTPUT_FILE_HELP_STRING
+    '--' + OUTPUT_CNN_FILE_ARG_NAME, type=str, required=True,
+    help=OUTPUT_CNN_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + OUTPUT_SHIPS_FILE_ARG_NAME, type=str, required=True,
+    help=OUTPUT_SHIPS_FILE_HELP_STRING
 )
 
 
@@ -133,23 +142,27 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
     return cnn_indices, ships_indices
 
 
-def _run(cnn_prediction_file_name, ships_prediction_file_name,
-         use_ri_consensus, use_td_to_ts_lge, output_file_name):
+def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
+         use_ri_consensus, use_td_to_ts_lge, output_cnn_prediction_file_name,
+         output_ships_prediction_file_name):
     """Matches CNN predictions to SHIPS predictions.
 
     This is effectively the main method.
 
-    :param cnn_prediction_file_name: See documentation at top of file.
-    :param ships_prediction_file_name: Same.
+    :param input_cnn_prediction_file_name: See documentation at top of file.
+    :param input_ships_prediction_file_name: Same.
     :param use_ri_consensus: Same.
     :param use_td_to_ts_lge: Same.
-    :param output_file_name: Same.
+    :param output_cnn_prediction_file_name: Same.
+    :param output_ships_prediction_file_name: Same.
     """
 
     print('Reading CNN predictions from: "{0:s}"...'.format(
-        cnn_prediction_file_name
+        input_cnn_prediction_file_name
     ))
-    cnn_prediction_dict = prediction_io.read_file(cnn_prediction_file_name)
+    cnn_prediction_dict = prediction_io.read_file(
+        input_cnn_prediction_file_name
+    )
 
     model_metafile_name = neural_net.find_metafile(
         model_file_name=cnn_prediction_dict[prediction_io.MODEL_FILE_KEY],
@@ -163,16 +176,16 @@ def _run(cnn_prediction_file_name, ships_prediction_file_name,
     ]
 
     print('Reading SHIPS predictions from: "{0:s}"...'.format(
-        ships_prediction_file_name
+        input_ships_prediction_file_name
     ))
 
     if predict_td_to_ts:
         ships_prediction_dict = ships_prediction_io.read_td_to_ts_file(
-            ships_prediction_file_name
+            input_ships_prediction_file_name
         )
     else:
         ships_prediction_dict = ships_prediction_io.read_ri_file(
-            ships_prediction_file_name
+            input_ships_prediction_file_name
         )
 
     cnn_indices, ships_indices = _match_examples(
@@ -224,12 +237,35 @@ def _run(cnn_prediction_file_name, ships_prediction_file_name,
         )
 
         d = cnn_prediction_dict
-        print('Writing matched SHIPS predictions to: "{0:s}"...'.format(
-            output_file_name
+        print('Writing matched CNN predictions to: "{0:s}"...'.format(
+            output_cnn_prediction_file_name
         ))
 
         prediction_io.write_file(
-            netcdf_file_name=output_file_name,
+            netcdf_file_name=output_cnn_prediction_file_name,
+            forecast_probability_matrix=
+            d[prediction_io.PROBABILITY_MATRIX_KEY][cnn_indices, ...],
+            target_class_matrix=
+            d[prediction_io.TARGET_MATRIX_KEY][cnn_indices, ...],
+            cyclone_id_strings=[
+                d[prediction_io.CYCLONE_IDS_KEY][k] for k in cnn_indices
+            ],
+            init_times_unix_sec=d[prediction_io.INIT_TIMES_KEY][cnn_indices],
+            storm_latitudes_deg_n=
+            d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
+            storm_longitudes_deg_e=
+            d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+            model_file_name=d[prediction_io.MODEL_FILE_KEY],
+            lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
+            quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY]
+        )
+
+        print('Writing matched SHIPS predictions to: "{0:s}"...'.format(
+            output_ships_prediction_file_name
+        ))
+
+        prediction_io.write_file(
+            netcdf_file_name=output_ships_prediction_file_name,
             forecast_probability_matrix=ships_prob_matrix_cnn_lead_times,
             target_class_matrix=
             d[prediction_io.TARGET_MATRIX_KEY][cnn_indices, ...],
@@ -265,13 +301,35 @@ def _run(cnn_prediction_file_name, ships_prediction_file_name,
     ships_prob_matrix = numpy.expand_dims(ships_prob_matrix, axis=-1)
 
     d = cnn_prediction_dict
-
-    print('Writing matched SHIPS predictions to: "{0:s}"...'.format(
-        output_file_name
+    print('Writing matched CNN predictions to: "{0:s}"...'.format(
+        output_cnn_prediction_file_name
     ))
 
     prediction_io.write_file(
-        netcdf_file_name=output_file_name,
+        netcdf_file_name=output_cnn_prediction_file_name,
+        forecast_probability_matrix=
+        d[prediction_io.PROBABILITY_MATRIX_KEY][cnn_indices, ...],
+        target_class_matrix=
+        d[prediction_io.TARGET_MATRIX_KEY][cnn_indices, ...],
+        cyclone_id_strings=[
+            d[prediction_io.CYCLONE_IDS_KEY][k] for k in cnn_indices
+        ],
+        init_times_unix_sec=d[prediction_io.INIT_TIMES_KEY][cnn_indices],
+        storm_latitudes_deg_n=
+        d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
+        storm_longitudes_deg_e=
+        d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+        model_file_name=d[prediction_io.MODEL_FILE_KEY],
+        lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
+        quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY]
+    )
+
+    print('Writing matched SHIPS predictions to: "{0:s}"...'.format(
+        output_ships_prediction_file_name
+    ))
+
+    prediction_io.write_file(
+        netcdf_file_name=output_ships_prediction_file_name,
         forecast_probability_matrix=ships_prob_matrix,
         target_class_matrix=
         d[prediction_io.TARGET_MATRIX_KEY][cnn_indices, ...],
@@ -293,8 +351,10 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        cnn_prediction_file_name=getattr(INPUT_ARG_OBJECT, CNN_FILE_ARG_NAME),
-        ships_prediction_file_name=getattr(
+        input_cnn_prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, CNN_FILE_ARG_NAME
+        ),
+        input_ships_prediction_file_name=getattr(
             INPUT_ARG_OBJECT, SHIPS_FILE_ARG_NAME
         ),
         use_ri_consensus=bool(
@@ -303,5 +363,10 @@ if __name__ == '__main__':
         use_td_to_ts_lge=bool(
             getattr(INPUT_ARG_OBJECT, USE_TD_TO_TS_LGE_ARG_NAME)
         ),
-        output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
+        output_cnn_prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, OUTPUT_CNN_FILE_ARG_NAME
+        ),
+        output_ships_prediction_file_name=getattr(
+            INPUT_ARG_OBJECT, OUTPUT_SHIPS_FILE_ARG_NAME
+        )
     )
