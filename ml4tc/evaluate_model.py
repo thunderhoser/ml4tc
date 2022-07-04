@@ -125,14 +125,16 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
         prediction_dict[prediction_io.TARGET_MATRIX_KEY]
     )
 
+    good_indices = numpy.where(numpy.isfinite(forecast_probabilities))[0]
+
     print(SEPARATOR_STRING)
 
     evaluation_table_xarray = evaluation.evaluate_model_binary(
-        forecast_probabilities=forecast_probabilities,
-        target_classes=target_classes,
+        forecast_probabilities=forecast_probabilities[good_indices],
+        target_classes=target_classes[good_indices],
         event_freq_in_training=event_freq_in_training,
-        cyclone_id_strings=cyclone_id_strings,
-        init_times_unix_sec=init_times_unix_sec,
+        cyclone_id_strings=[cyclone_id_strings[k] for k in good_indices],
+        init_times_unix_sec=init_times_unix_sec[good_indices],
         model_file_name=prediction_dict[prediction_io.MODEL_FILE_KEY],
         num_prob_thresholds=num_prob_thresholds,
         num_reliability_bins=num_reliability_bins,
