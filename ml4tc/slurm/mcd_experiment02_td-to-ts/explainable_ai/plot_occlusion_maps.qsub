@@ -1,20 +1,20 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="make_cams_high_res"
+#SBATCH --job-name="plot_occlusion_maps_norm_high_res"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=30:00:00
+#SBATCH --time=12:00:00
 #SBATCH --array=1-50
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=make_cams_high_res_%A_%a.out
+#SBATCH --output=plot_occlusion_maps_norm_high_res_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -22,30 +22,31 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/td_to_ts"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/normalization_params_1993-2004_2015-2019.nc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/mcd_experiment02_td-to-ts"
 
 set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700")
 set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900")
 set SECOND_LAST_LAYER_DROPOUT_RATES=("0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.900" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700" "0.700")
 set WEST_PACIFIC_WEIGHTS=("09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "09.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0" "06.0")
-set LAYER_NAMES=("batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_375" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273" "batch_normalization_273")
 set CYCLONE_ID_STRINGS=("2005AL12" "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24" "2005AL12" "2005WP01" "2005WP02" "2005WP03" "2005WP04" "2005WP05" "2005WP06" "2005WP07" "2005WP08" "2005WP09" "2005WP10" "2005WP11" "2005WP12" "2005WP13" "2005WP14" "2005WP15" "2005WP16" "2005WP17" "2005WP18" "2005WP19" "2005WP20" "2005WP21" "2005WP22" "2005WP23" "2005WP24")
 
 set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set west_pacific_weight=${WEST_PACIFIC_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
-set layer_name=${LAYER_NAMES[$SLURM_ARRAY_TASK_ID]}
 set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_west-pacific-weight=${west_pacific_weight}"
-set model_file_name="${model_dir_name}/model.h5"
-set output_file_name="${model_dir_name}/gradcam/gradcam_${cyclone_id_string}.nc"
+set prediction_file_name="${model_dir_name}/validation/predictions.nc"
+set occlusion_file_name="${model_dir_name}/occlusion_maps/occlusion_maps_${cyclone_id_string}.nc"
+set output_dir_name="${model_dir_name}/occlusion_maps/occlusion_maps_${cyclone_id_string}"
 
-python3 -u "${CODE_DIR_NAME}/make_class_activation_maps.py" \
---input_model_file_name="${model_file_name}" \
+python3 -u "${CODE_DIR_NAME}/plot_occlusion_maps.py" \
+--input_occlusion_file_name="${occlusion_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
---cyclone_id_strings ${cyclone_id_string} \
---target_class=1 \
---target_layer_name="${layer_name}" \
---output_file_name="${output_file_name}"
+--input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--input_prediction_file_name="${prediction_file_name}" \
+--plot_normalized_occlusion=1 \
+--smoothing_radius_px=0 \
+--output_dir_name="${output_dir_name}"
