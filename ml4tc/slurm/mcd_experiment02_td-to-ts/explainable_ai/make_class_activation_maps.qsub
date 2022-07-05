@@ -46,6 +46,7 @@ python3 -u "${CODE_DIR_NAME}/make_class_activation_maps.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings ${cyclone_id_string} \
---target_class=1 \
---target_layer_name="${layer_name}" \
+--spatial_layer_name="${layer_name}" \
+--target_neuron_indices nan nan \
+--negative_class_flag=0 \
 --output_file_name="${output_file_name}"

@@ -26,8 +26,9 @@ MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
 CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
-TARGET_CLASS_ARG_NAME = 'target_class'
-TARGET_LAYER_ARG_NAME = 'target_layer_name'
+SPATIAL_LAYER_ARG_NAME = 'spatial_layer_name'
+NEURON_INDICES_ARG_NAME = 'target_neuron_indices'
+NEGATIVE_CLASS_ARG_NAME = 'negative_class_flag'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 MODEL_FILE_HELP_STRING = (
@@ -45,13 +46,16 @@ CYCLONE_IDS_HELP_STRING = (
     'Will create class-activation maps for these tropical cyclones.  If you '
     'want to use full years instead, leave this argument alone.'
 )
-TARGET_CLASS_HELP_STRING = (
-    'Class-activation maps will be created for this class.  Must be an integer '
-    'in 0...(K - 1), where K = number of classes.'
+SPATIAL_LAYER_HELP_STRING = (
+    'Name of spatial layer.  Class activations will be based on activations in '
+    'this layer, which must have spatial outputs.'
 )
-TARGET_LAYER_HELP_STRING = (
-    'Name of target layer.  Neuron-importance weights will be based on '
-    'activations in this layer.  Layer must have spatial outputs.'
+NEURON_INDICES_HELP_STRING = (
+    'This is a weird one.  See doc for `gradcam.run_gradcam`.'
+)
+NEGATIVE_CLASS_HELP_STRING = (
+    'Boolean flag.  If 1, will create class-activation map for the negative '
+    'class.  This means that the relevant prediction will be multiplied by -1.'
 )
 OUTPUT_FILE_HELP_STRING = (
     'Name of output file.  Results will be saved here by `gradcam.write_file`.'
@@ -75,12 +79,16 @@ INPUT_ARG_PARSER.add_argument(
     default=[''], help=CYCLONE_IDS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + TARGET_CLASS_ARG_NAME, type=int, required=True,
-    help=TARGET_CLASS_HELP_STRING
+    '--' + SPATIAL_LAYER_ARG_NAME, type=str, required=True,
+    help=SPATIAL_LAYER_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + TARGET_LAYER_ARG_NAME, type=str, required=True,
-    help=TARGET_LAYER_HELP_STRING
+    '--' + NEURON_INDICES_ARG_NAME, type=float, nargs='+', required=True,
+    help=NEURON_INDICES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + NEGATIVE_CLASS_ARG_NAME, type=int, required=False, default=0,
+    help=NEGATIVE_CLASS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
@@ -89,7 +97,8 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
-         target_class, target_layer_name, output_file_name):
+         spatial_layer_name, target_neuron_indices, negative_class_flag,
+         output_file_name):
     """Creates class-activation maps (CAM).
 
     This is effectively the main method.
@@ -98,8 +107,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     :param example_dir_name: Same.
     :param years: Same.
     :param unique_cyclone_id_strings: Same.
-    :param target_class: Same.
-    :param target_layer_name: Same.
+    :param spatial_layer_name: Same.
+    :param target_neuron_indices: Same.
+    :param negative_class_flag: Same.
     :param output_file_name: Same.
     """
 
@@ -197,7 +207,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
                 model_object=model_object,
                 predictor_matrices_one_example=
                 [p[[j], ...] for p in these_predictor_matrices],
-                target_class=target_class, target_layer_name=target_layer_name
+                spatial_layer_name=spatial_layer_name,
+                target_neuron_indices=target_neuron_indices,
+                negative_class_flag=negative_class_flag
             )
 
             if class_activation_matrix is None:
@@ -230,7 +242,9 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,
-        target_class=target_class, target_layer_name=target_layer_name
+        spatial_layer_name=spatial_layer_name,
+        target_neuron_indices=target_neuron_indices,
+        negative_class_flag=negative_class_flag
     )
 
 
@@ -244,7 +258,12 @@ if __name__ == '__main__':
         unique_cyclone_id_strings=getattr(
             INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME
         ),
-        target_class=getattr(INPUT_ARG_OBJECT, TARGET_CLASS_ARG_NAME),
-        target_layer_name=getattr(INPUT_ARG_OBJECT, TARGET_LAYER_ARG_NAME),
+        spatial_layer_name=getattr(INPUT_ARG_OBJECT, SPATIAL_LAYER_ARG_NAME),
+        target_neuron_indices=numpy.array(
+            getattr(INPUT_ARG_OBJECT, NEURON_INDICES_ARG_NAME), dtype=float
+        ),
+        negative_class_flag=bool(
+            getattr(INPUT_ARG_OBJECT, NEGATIVE_CLASS_ARG_NAME)
+        ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )
