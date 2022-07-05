@@ -18,8 +18,9 @@ GRID_ROW_DIMENSION_KEY = 'grid_row'
 GRID_COLUMN_DIMENSION_KEY = 'grid_column'
 
 MODEL_FILE_KEY = 'model_file_name'
-TARGET_CLASS_KEY = 'target_class'
-TARGET_LAYER_KEY = 'target_layer_name'
+SPATIAL_LAYER_KEY = 'spatial_layer_name'
+NEURON_INDICES_KEY = 'neuron_indices'
+NEGATIVE_CLASS_KEY = 'negative_class_flag'
 
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
 INIT_TIMES_KEY = 'init_times_unix_sec'
@@ -109,8 +110,9 @@ def _upsample_cam(class_activation_matrix, new_dimensions):
     return interp_object(query_point_matrix)
 
 
-def run_gradcam(model_object, predictor_matrices_one_example, target_class,
-                target_layer_name):
+def run_gradcam(
+        model_object, predictor_matrices_one_example, spatial_layer_name,
+        target_neuron_indices, negative_class_flag):
     """Runs the Grad-CAM algorithm.
 
     T = number of input tensors to model
@@ -122,55 +124,62 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
     :param predictor_matrices_one_example: length-T list of numpy arrays,
         formatted in the same way as the training data.  The first axis (i.e.,
         the example axis) of each numpy array should have length 1.
-    :param target_class: Class-activation maps will be created for this class.
-        Must be an integer in 0...(K - 1), where K = number of classes.
-    :param target_layer_name: Name of target layer.  Neuron-importance weights
-        will be based on activations in this layer.  Layer must have spatial
-        outputs.
+    :param spatial_layer_name: Name of spatial layer.  Class activations will be
+        based on activations in this layer, which must have spatial outputs.
+    :param target_neuron_indices: 1-D numpy array with indices of target neuron.
+        If this array contains NaN, predictions will be averaged over many
+        neurons.  As one example, suppose that the output layer has dimensions
+        None x 28 x 101, while target_neuron_indices = [4, 0].  Then the
+        relevant prediction will be at location [:, 4, 0].  As a second example,
+        suppose that the output layer has dimensions None x 28 x 101, while
+        target_neuron_indices = [4, NaN].  Then the relevant prediction will be
+        the average over locations [:, 4, :].
+    :param negative_class_flag: Boolean flag.  If True, will create class-
+        activation map for the negative class.  This means that the relevant
+        prediction will be multiplied by -1.
     :return: class_activation_matrix: M-by-N numpy array of class activations.
     """
 
-    error_checking.assert_is_integer(target_class)
-    error_checking.assert_is_geq(target_class, 0)
-    error_checking.assert_is_string(target_layer_name)
+    error_checking.assert_is_string(spatial_layer_name)
+    error_checking.assert_is_numpy_array(
+        target_neuron_indices, num_dimensions=1
+    )
+    error_checking.assert_is_geq_numpy_array(
+        target_neuron_indices, 0, allow_nan=True
+    )
+    error_checking.assert_is_boolean(negative_class_flag)
 
     # Set up loss function.
-    output_layer_object = model_object.layers[-1].output
-    num_output_neurons = output_layer_object.get_shape().as_list()[-1]
+    loss_tensor = model_object.layers[-1].input
 
-    if num_output_neurons == 1:
-        error_checking.assert_is_leq(target_class, 1)
-
-        if target_class == 1:
-            # loss_tensor = model_object.layers[-1].output[..., 0]
-            loss_tensor = model_object.layers[-1].input[..., 0]
+    for k in target_neuron_indices[::-1]:
+        if numpy.isnan(k):
+            loss_tensor = K.mean(loss_tensor, axis=-1)
         else:
-            # loss_tensor = -1 * model_object.layers[-1].output[..., 0]
-            loss_tensor = -1 * model_object.layers[-1].input[..., 0]
-    else:
-        error_checking.assert_is_less_than(target_class, num_output_neurons)
-        # loss_tensor = model_object.layers[-1].output[..., target_class]
-        loss_tensor = model_object.layers[-1].input[..., target_class]
+            loss_tensor = loss_tensor[..., int(numpy.round(k))]
+
+    if negative_class_flag:
+        loss_tensor = -1 * loss_tensor
 
     # Set up gradient function.
-    target_layer_activation_tensor = model_object.get_layer(
-        name=target_layer_name
+    spatial_layer_activation_tensor = model_object.get_layer(
+        name=spatial_layer_name
     ).output
 
     gradient_tensor = K.gradients(
-        loss_tensor, [target_layer_activation_tensor]
+        loss_tensor, [spatial_layer_activation_tensor]
     )[0]
     gradient_tensor = _normalize_tensor(gradient_tensor)
     gradient_function = K.function(
         model_object.input,
-        [target_layer_activation_tensor, gradient_tensor]
+        [spatial_layer_activation_tensor, gradient_tensor]
     )
 
     # Evaluate gradient function.
-    target_layer_activation_matrix, gradient_matrix = gradient_function(
+    spatial_layer_activation_matrix, gradient_matrix = gradient_function(
         predictor_matrices_one_example
     )
-    target_layer_activation_matrix = target_layer_activation_matrix[0, ...]
+    spatial_layer_activation_matrix = spatial_layer_activation_matrix[0, ...]
     gradient_matrix = gradient_matrix[0, ...]
 
     # Compute class-activation map.
@@ -185,7 +194,7 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
         for k in range(num_filters):
             class_activation_matrix += (
                 spatial_mean_weight_matrix[k] *
-                target_layer_activation_matrix[..., k]
+                spatial_layer_activation_matrix[..., k]
             )
     else:
         num_lag_times = spatial_mean_weight_matrix.shape[0]
@@ -194,7 +203,7 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
             for k in range(num_filters):
                 class_activation_matrix += (
                     spatial_mean_weight_matrix[j, k] *
-                    target_layer_activation_matrix[j, ..., k]
+                    spatial_layer_activation_matrix[j, ..., k]
                 )
 
     class_activation_matrix = _upsample_cam(
@@ -209,7 +218,8 @@ def run_gradcam(model_object, predictor_matrices_one_example, target_class,
 
 def write_file(
         netcdf_file_name, class_activation_matrix, cyclone_id_strings,
-        init_times_unix_sec, model_file_name, target_class, target_layer_name):
+        init_times_unix_sec, model_file_name, spatial_layer_name,
+        target_neuron_indices, negative_class_flag):
     """Writes class-activation maps to NetCDF file.
 
     E = number of examples
@@ -223,8 +233,9 @@ def write_file(
     :param init_times_unix_sec: length-E numpy array of forecast-init times.
     :param model_file_name: Path to file with neural net used to create
         class-activation maps (readable by `neural_net.read_model`).
-    :param target_class: See doc for `run_gradcam`.
-    :param target_layer_name: Same.
+    :param spatial_layer_name: See doc for `run_gradcam`.
+    :param target_neuron_indices: Same.
+    :param negative_class_flag: Same.
     """
 
     # Check input args.
@@ -247,9 +258,14 @@ def write_file(
     )
 
     error_checking.assert_is_string(model_file_name)
-    error_checking.assert_is_integer(target_class)
-    error_checking.assert_is_geq(target_class, 0)
-    error_checking.assert_is_string(target_layer_name)
+    error_checking.assert_is_string(spatial_layer_name)
+    error_checking.assert_is_numpy_array(
+        target_neuron_indices, num_dimensions=1
+    )
+    error_checking.assert_is_geq_numpy_array(
+        target_neuron_indices, 0, allow_nan=True
+    )
+    error_checking.assert_is_boolean(negative_class_flag)
 
     # Write to NetCDF file.
     file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
@@ -258,8 +274,9 @@ def write_file(
     )
 
     dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
-    dataset_object.setncattr(TARGET_CLASS_KEY, target_class)
-    dataset_object.setncattr(TARGET_LAYER_KEY, target_layer_name)
+    dataset_object.setncattr(SPATIAL_LAYER_KEY, spatial_layer_name)
+    dataset_object.setncattr(NEURON_INDICES_KEY, target_neuron_indices)
+    dataset_object.setncattr(NEGATIVE_CLASS_KEY, int(negative_class_flag))
 
     num_grid_rows = class_activation_matrix.shape[1]
     num_grid_columns = class_activation_matrix.shape[2]
@@ -317,8 +334,9 @@ def read_file(netcdf_file_name):
     gradcam_dict['cyclone_id_strings']: Same.
     gradcam_dict['init_times_unix_sec']: Same.
     gradcam_dict['model_file_name']: Same.
-    gradcam_dict['target_class']: Same.
-    gradcam_dict['target_layer_name']: Same.
+    gradcam_dict['spatial_layer_name']: Same.
+    gradcam_dict['target_neuron_indices']: Same.
+    gradcam_dict['negative_class_flag']: Same.
     """
 
     dataset_object = netCDF4.Dataset(netcdf_file_name)
@@ -331,8 +349,11 @@ def read_file(netcdf_file_name):
         ],
         INIT_TIMES_KEY: dataset_object.variables[INIT_TIMES_KEY][:],
         MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
-        TARGET_CLASS_KEY: int(getattr(dataset_object, TARGET_CLASS_KEY)),
-        TARGET_LAYER_KEY: str(getattr(dataset_object, TARGET_LAYER_KEY))
+        SPATIAL_LAYER_KEY: str(getattr(dataset_object, SPATIAL_LAYER_KEY)),
+        NEURON_INDICES_KEY: numpy.array(
+            getattr(dataset_object, NEURON_INDICES_KEY), dtype=float
+        ),
+        NEGATIVE_CLASS_KEY: int(getattr(dataset_object, NEGATIVE_CLASS_KEY))
     }
 
     dataset_object.close()
