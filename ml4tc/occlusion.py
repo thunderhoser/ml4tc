@@ -50,8 +50,8 @@ THREE_NORM_OCCLUSION_KEY = 'three_norm_occlusion_matrices'
 
 
 def get_occlusion_maps(
-        model_object, predictor_matrices, target_class, half_window_size_px,
-        stride_length_px, fill_value=0.):
+        model_object, model_metadata_dict, predictor_matrices, target_class,
+        half_window_size_px, stride_length_px, fill_value=0.):
     """Computes occlusion map for each example.
 
     E = number of examples
@@ -59,6 +59,8 @@ def get_occlusion_maps(
 
     :param model_object: Trained model (instance of `keras.models.Model` or
         `keras.models.Sequential`).
+    :param model_metadata_dict: Dictionary in format returned by
+        `neural_net.read_metafile`.
     :param predictor_matrices: length-T list of numpy arrays, formatted in the
         same way as the training data.  The first axis (i.e., the example axis)
         of each numpy array should have length E.
@@ -145,35 +147,25 @@ def get_occlusion_maps(
                 else:
                     new_predictor_matrices = [new_brightness_temp_matrix]
 
-                this_prob_array = neural_net.apply_model(
+                this_prob_matrix = neural_net.apply_model(
                     model_object=model_object,
+                    model_metadata_dict=model_metadata_dict,
                     predictor_matrices=
                     [p for p in new_predictor_matrices if p is not None],
                     num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-                    verbose=True
+                    use_dropout=False, verbose=True
                 )
-                this_prob_array = numpy.squeeze(this_prob_array)
 
-                if len(this_prob_array.shape) == 1:
-                    error_checking.assert_is_leq(target_class, 1)
-
-                    if target_class == 1:
-                        occlusion_prob_matrices[0][:, i, j, k, 0] = (
-                            this_prob_array
-                        )
-                    else:
-                        occlusion_prob_matrices[0][:, i, j, k, 0] = (
-                            1. - this_prob_array
-                        )
+                if model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY] is None:
+                    this_prob_array = numpy.mean(
+                        this_prob_matrix[:, target_class, ...], axis=(-2, -1)
+                    )
                 else:
-                    num_classes = this_prob_array.shape[1]
-                    error_checking.assert_is_less_than(
-                        target_class, num_classes
+                    this_prob_array = numpy.mean(
+                        this_prob_matrix[:, target_class, :, 0], axis=-1
                     )
 
-                    occlusion_prob_matrices[0][:, i, j, k, 0] = (
-                        this_prob_array[:, target_class]
-                    )
+                occlusion_prob_matrices[0][:, i, j, k, 0] = this_prob_array
 
     if stride_length_px > 1:
         first_prob_matrix_coarse = occlusion_prob_matrices[0] + 0.
@@ -242,53 +234,45 @@ def get_occlusion_maps(
                 predictor_matrices[(k + 1):]
             )
 
-            this_prob_array = neural_net.apply_model(
+            this_prob_matrix = neural_net.apply_model(
                 model_object=model_object,
+                model_metadata_dict=model_metadata_dict,
                 predictor_matrices=
                 [p for p in new_predictor_matrices if p is not None],
                 num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-                verbose=True
+                use_dropout=False, verbose=True
             )
-            this_prob_array = numpy.squeeze(this_prob_array)
 
-            if len(this_prob_array.shape) == 1:
-                error_checking.assert_is_leq(target_class, 1)
-
-                if target_class == 1:
-                    occlusion_prob_matrices[k][:, j] = this_prob_array
-                else:
-                    occlusion_prob_matrices[k][:, j] = 1. - this_prob_array
-            else:
-                num_classes = this_prob_array.shape[1]
-                error_checking.assert_is_less_than(
-                    target_class, num_classes
+            if model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY] is None:
+                occlusion_prob_matrices[k][:, j] = numpy.mean(
+                    this_prob_matrix[:, target_class, ...], axis=(-2, -1)
                 )
-
-                occlusion_prob_matrices[k][:, j] = (
-                    this_prob_array[:, target_class]
+            else:
+                occlusion_prob_matrices[k][:, j] = numpy.mean(
+                    this_prob_matrix[:, target_class, :, 0], axis=-1
                 )
 
         occlusion_prob_matrices[k] = numpy.reshape(
             occlusion_prob_matrices[k], predictor_matrices[k].shape
         )
 
-    original_prob_array = neural_net.apply_model(
+    original_prob_matrix = neural_net.apply_model(
         model_object=model_object,
+        model_metadata_dict=model_metadata_dict,
         predictor_matrices=
         [p for p in predictor_matrices if p is not None],
         num_examples_per_batch=NUM_EXAMPLES_PER_BATCH,
-        verbose=True
+        use_dropout=False, verbose=True
     )
 
-    if len(original_prob_array.shape) == 1:
-        error_checking.assert_is_leq(target_class, 1)
-
-        if target_class == 1:
-            original_probs = original_prob_array
-        else:
-            original_probs = 1. - original_prob_array
+    if model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY] is None:
+        original_probs = numpy.mean(
+            original_prob_matrix[:, target_class, ...], axis=(-2, -1)
+        )
     else:
-        original_probs = original_prob_array[:, target_class]
+        original_probs = numpy.mean(
+            original_prob_matrix[:, target_class, :, 0], axis=-1
+        )
 
     return occlusion_prob_matrices, original_probs
 
@@ -307,10 +291,6 @@ def normalize_occlusion_maps(occlusion_prob_matrices, original_probs):
 
     error_checking.assert_is_list(occlusion_prob_matrices)
     num_examples = 0
-
-    for this_matrix in occlusion_prob_matrices:
-        if this_matrix is None:
-            continue
 
     for this_matrix in occlusion_prob_matrices:
         if this_matrix is None:

@@ -161,7 +161,7 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     three_predictor_matrices = [None]
-    target_array = None
+    target_class_matrix = None
 
     for i in range(len(example_file_names)):
         this_option_dict = copy.deepcopy(validation_option_dict)
@@ -171,14 +171,17 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
         new_predictor_matrices = (
             this_data_dict[neural_net.PREDICTOR_MATRICES_KEY]
         )
-        this_target_array = this_data_dict[neural_net.TARGET_ARRAY_KEY]
+        this_target_class_matrix = this_data_dict[neural_net.TARGET_MATRIX_KEY]
 
-        if this_target_array.size == 0:
+        if (
+                this_target_class_matrix is None or
+                this_target_class_matrix.size == 0
+        ):
             continue
 
-        if target_array is None:
+        if target_class_matrix is None:
             three_predictor_matrices = copy.deepcopy(new_predictor_matrices)
-            target_array = this_target_array + 0
+            target_class_matrix = this_target_class_matrix + 0
         else:
             for j in range(len(three_predictor_matrices)):
                 if three_predictor_matrices[j] is None:
@@ -188,8 +191,8 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
                     three_predictor_matrices[j], new_predictor_matrices[j]
                 ), axis=0)
 
-            target_array = numpy.concatenate(
-                (target_array, this_target_array), axis=0
+            target_class_matrix = numpy.concatenate(
+                (target_class_matrix, this_target_class_matrix), axis=0
             )
 
     print(SEPARATOR_STRING)
@@ -197,7 +200,7 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
     if do_backwards_test:
         result_dict = permutation.run_backwards_test(
             three_predictor_matrices=three_predictor_matrices,
-            target_array=target_array,
+            target_class_matrix=target_class_matrix,
             model_object=model_object, model_metadata_dict=model_metadata_dict,
             cost_function=permutation.make_auc_cost_function(),
             num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
@@ -205,7 +208,7 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
     else:
         result_dict = permutation.run_forward_test(
             three_predictor_matrices=three_predictor_matrices,
-            target_array=target_array,
+            target_class_matrix=target_class_matrix,
             model_object=model_object, model_metadata_dict=model_metadata_dict,
             cost_function=permutation.make_auc_cost_function(),
             num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
