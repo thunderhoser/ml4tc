@@ -199,7 +199,7 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
             ships_prediction_dict[ships_prediction_io.LEAD_TIMES_KEY]
         )
         lead_time_indices = [
-            -1 if l not in cnn_lead_times_hours else
+            -1 if l not in ships_lead_times_hours else
             numpy.where(ships_lead_times_hours == l)[0][0]
             for l in cnn_lead_times_hours
         ]

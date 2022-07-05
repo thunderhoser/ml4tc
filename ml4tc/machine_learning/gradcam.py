@@ -5,7 +5,7 @@ Grad-CAM = gradient-weighted class-activation maps
 
 import numpy
 import netCDF4
-from keras import backend as K
+from tensorflow.keras import backend as K
 from scipy.interpolate import (
     UnivariateSpline, RectBivariateSpline, RegularGridInterpolator
 )
