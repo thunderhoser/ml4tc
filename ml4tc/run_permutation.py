@@ -179,6 +179,10 @@ def _run(model_file_name, example_dir_name, years, cyclone_id_strings,
         ):
             continue
 
+        this_target_class_matrix = numpy.argmax(
+            this_target_class_matrix, axis=-1
+        )
+
         if target_class_matrix is None:
             three_predictor_matrices = copy.deepcopy(new_predictor_matrices)
             target_class_matrix = this_target_class_matrix + 0

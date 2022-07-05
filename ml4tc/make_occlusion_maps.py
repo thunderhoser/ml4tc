@@ -198,6 +198,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         new_occlusion_prob_matrices, new_original_probs = (
             occlusion.get_occlusion_maps(
                 model_object=model_object,
+                model_metadata_dict=model_metadata_dict,
                 predictor_matrices=these_predictor_matrices,
                 target_class=target_class,
                 half_window_size_px=half_window_size_px,
