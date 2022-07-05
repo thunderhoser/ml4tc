@@ -120,9 +120,10 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
             saliency_dict[saliency.LAYER_NAME_KEY] ==
             new_saliency_dict[saliency.LAYER_NAME_KEY]
         )
-        assert numpy.array_equal(
+        assert numpy.allclose(
             saliency_dict[saliency.NEURON_INDICES_KEY],
-            new_saliency_dict[saliency.NEURON_INDICES_KEY]
+            new_saliency_dict[saliency.NEURON_INDICES_KEY],
+            atol=1e-6, equal_nan=True
         )
         assert numpy.isclose(
             saliency_dict[saliency.IDEAL_ACTIVATION_KEY],
