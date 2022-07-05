@@ -968,7 +968,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
         info_strings = [''] * len(example_indices)
 
         if prediction_file_name is not None:
-            forecast_prob_matrix, target_classes = (
+            forecast_probabilities, target_classes = (
                 plot_predictors.get_predictions_and_targets(
                     prediction_file_name=prediction_file_name,
                     cyclone_id_string=unique_cyclone_id_strings[i],
@@ -982,7 +982,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                 )
                 info_strings[j] += r'$p_{RI}$'
                 info_strings[j] += ' = {0:.2f}'.format(
-                    forecast_prob_matrix[j, 1]
+                    forecast_probabilities[j]
                 )
 
         for j in range(len(example_indices)):
