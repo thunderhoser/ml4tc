@@ -50,9 +50,7 @@ CYCLONE_IDS_HELP_STRING = (
 )
 LAYER_NAME_HELP_STRING = 'Name of layer with relevant neuron.'
 NEURON_INDICES_HELP_STRING = (
-    '1-D numpy array with indices of relevant neuron.  Must have length D - 1, '
-    'where D = number of dimensions in layer output.  The first dimension is '
-    'the batch dimension, which always has length `None` in Keras.'
+    'This is a weird one.  See doc for `saliency.get_saliency_one_neuron`.'
 )
 IDEAL_ACTIVATION_HELP_STRING = (
     'Ideal neuron activation, used to define loss function.  The loss function '
@@ -93,7 +91,7 @@ INPUT_ARG_PARSER.add_argument(
     help=LAYER_NAME_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + NEURON_INDICES_ARG_NAME, type=int, nargs='+', required=True,
+    '--' + NEURON_INDICES_ARG_NAME, type=float, nargs='+', required=True,
     help=NEURON_INDICES_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
@@ -315,7 +313,7 @@ if __name__ == '__main__':
         ),
         layer_name=getattr(INPUT_ARG_OBJECT, LAYER_NAME_ARG_NAME),
         neuron_indices=numpy.array(
-            getattr(INPUT_ARG_OBJECT, NEURON_INDICES_ARG_NAME), dtype=int
+            getattr(INPUT_ARG_OBJECT, NEURON_INDICES_ARG_NAME), dtype=float
         ),
         ideal_activation=getattr(INPUT_ARG_OBJECT, IDEAL_ACTIVATION_ARG_NAME),
         num_smoothgrad_samples=getattr(

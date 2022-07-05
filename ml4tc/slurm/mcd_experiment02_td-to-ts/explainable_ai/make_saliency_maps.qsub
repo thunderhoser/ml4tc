@@ -47,6 +47,6 @@ python3 -u "${CODE_DIR_NAME}/make_saliency_maps.py" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings ${cyclone_id_string} \
 --layer_name="${layer_name}" \
---neuron_indices 0 \
+--neuron_indices nan nan \
 --ideal_activation=1 \
 --output_file_name="${output_file_name}"

@@ -4,6 +4,7 @@ import os
 import sys
 import numpy
 import netCDF4
+from tensorflow.keras import backend as K
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -58,9 +59,8 @@ def check_metadata(layer_name, neuron_indices, ideal_activation):
     """
 
     error_checking.assert_is_string(layer_name)
-    error_checking.assert_is_integer_numpy_array(neuron_indices)
-    error_checking.assert_is_geq_numpy_array(neuron_indices, 0)
     error_checking.assert_is_numpy_array(neuron_indices, num_dimensions=1)
+    error_checking.assert_is_geq_numpy_array(neuron_indices, 0, allow_nan=True)
     error_checking.assert_is_not_nan(ideal_activation)
 
 
@@ -80,10 +80,14 @@ def get_saliency_one_neuron(
         None or a numpy array of predictors.  Predictors must be formatted in
         the same way as for training.
     :param layer_name: Name of layer with relevant neuron.
-    :param neuron_indices: 1-D numpy array with indices of relevant neuron.
-        Must have length D - 1, where D = number of dimensions in layer output.
-        The first dimension is the batch dimension, which always has length
-        `None` in Keras.
+    :param neuron_indices: 1-D numpy array with indices of relevant neuron.  If
+        this array contains NaN, activations will be averaged over many neurons.
+        As one example, suppose that the layer has dimensions None x 28 x 101,
+        while neuron_indices = [4, 0].  Then the relevant activation will be at
+        location [:, 4, 0] in the layer.  As a second example, suppose that the
+        layer has dimensions None x 28 x 101, while neuron_indices = [4, NaN].
+        Then the relevant activation will be the average over locations
+        [:, 4, :] in the layer.
     :param ideal_activation: Ideal neuron activation, used to define loss
         function.  The loss function will be
         (neuron_activation - ideal_activation)**2.
@@ -111,15 +115,17 @@ def get_saliency_one_neuron(
     )
     have_predictors_indices = numpy.where(these_flags)[0]
 
-    activation_tensor = None
+    activation_tensor = model_object.get_layer(name=layer_name).output
+    print('ACTIVATION TENSOR')
+    print(activation_tensor)
 
     for k in neuron_indices[::-1]:
-        if activation_tensor is None:
-            activation_tensor = (
-                model_object.get_layer(name=layer_name).output[..., k]
-            )
+        if numpy.isnan(k):
+            activation_tensor = K.mean(activation_tensor, axis=-1)
         else:
-            activation_tensor = activation_tensor[..., k]
+            activation_tensor = activation_tensor[..., int(numpy.round(k))]
+
+        print(activation_tensor)
 
     loss_tensor = (activation_tensor - ideal_activation) ** 2
 
@@ -718,14 +724,14 @@ def read_file(netcdf_file_name):
         MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
         LAYER_NAME_KEY: str(getattr(dataset_object, LAYER_NAME_KEY)),
         NEURON_INDICES_KEY: numpy.array(
-            getattr(dataset_object, NEURON_INDICES_KEY), dtype=int
+            getattr(dataset_object, NEURON_INDICES_KEY), dtype=float
         ),
         IDEAL_ACTIVATION_KEY: getattr(dataset_object, IDEAL_ACTIVATION_KEY)
     }
 
     if len(saliency_dict[NEURON_INDICES_KEY].shape) == 0:
         saliency_dict[NEURON_INDICES_KEY] = numpy.array(
-            [saliency_dict[NEURON_INDICES_KEY]], dtype=int
+            [saliency_dict[NEURON_INDICES_KEY]], dtype=float
         )
 
     dataset_object.close()
