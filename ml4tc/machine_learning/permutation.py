@@ -35,13 +35,14 @@ BOOTSTRAP_REPLICATE_DIM_KEY = 'bootstrap_replicate'
 PREDICTOR_CHAR_DIM_KEY = 'predictor_name_char'
 
 
-def _check_args(three_predictor_matrices, target_array, num_bootstrap_reps,
-                num_steps):
+def _check_args(
+        three_predictor_matrices, target_class_matrix, num_bootstrap_reps,
+        num_steps):
     """Checks arguments for run_forward_test or run_backwards_test.
 
     :param three_predictor_matrices: See doc for `run_forward_test` or
         `run_backwards_test`.
-    :param target_array: Same.
+    :param target_class_matrix: Same.
     :param num_bootstrap_reps: Same.
     :param num_steps: Same.
     :return: num_bootstrap_reps: Same.
@@ -77,14 +78,13 @@ def _check_args(three_predictor_matrices, target_array, num_bootstrap_reps,
             three_predictor_matrices[i], exact_dimensions=expected_dim
         )
 
-    error_checking.assert_is_integer_numpy_array(target_array)
-    error_checking.assert_is_geq_numpy_array(target_array, 0)
-    error_checking.assert_is_leq_numpy_array(target_array, 1)
+    error_checking.assert_is_integer_numpy_array(target_class_matrix)
+    error_checking.assert_is_geq_numpy_array(target_class_matrix, 0)
     expected_dim = numpy.array(
-        (num_examples,) + target_array.shape[1:], dtype=int
+        (num_examples,) + target_class_matrix.shape[1:], dtype=int
     )
     error_checking.assert_is_numpy_array(
-        target_array, exact_dimensions=expected_dim
+        target_class_matrix, exact_dimensions=expected_dim
     )
 
     error_checking.assert_is_integer(num_bootstrap_reps)
@@ -326,23 +326,21 @@ def _depermute_values(
     return predictor_matrix
 
 
-def _bootstrap_cost(target_array, forecast_prob_array, cost_function,
+def _bootstrap_cost(target_class_matrix, forecast_prob_matrix, cost_function,
                     num_replicates):
     """Uses bootstrapping to estimate cost.
 
     E = number of examples
     K = number of classes
+    L = number of lead times
 
-    :param target_array: If K > 2, this is an E-by-K numpy array of integers
-        (0 or 1), indicating true classes.  If K = 2, this is a length-E numpy
-        array of integers (0 or 1).
-    :param forecast_prob_array: If K > 2, this is an E-by-K numpy array of
-        class probabilities.  If K = 2, this is a length-E numpy array of
-        positive-class probabilities.
+    :param target_class_matrix: E-by-L numpy array of target classes, all
+        integers in range [0, K - 1].
+    :param forecast_prob_matrix: E-by-K-by-L numpy array of class probabilities.
     :param cost_function: Cost function.  Must be negatively oriented (i.e.,
         lower is better), with the following inputs and outputs.
-    Input: target_array: See above.
-    Input: forecast_prob_array: See above.
+    Input: target_class_matrix: See above.
+    Input: forecast_prob_matrix: See above.
     Output: cost: Scalar value.
 
     :param num_replicates: Number of bootstrap replicates (i.e., number of times
@@ -354,9 +352,11 @@ def _bootstrap_cost(target_array, forecast_prob_array, cost_function,
     cost_estimates = numpy.full(num_replicates, numpy.nan)
 
     if num_replicates == 1:
-        cost_estimates[0] = cost_function(target_array, forecast_prob_array)
+        cost_estimates[0] = cost_function(
+            target_class_matrix, forecast_prob_matrix
+        )
     else:
-        num_examples = target_array.shape[0]
+        num_examples = target_class_matrix.shape[0]
         example_indices = numpy.linspace(
             0, num_examples - 1, num=num_examples, dtype=int
         )
@@ -366,8 +366,8 @@ def _bootstrap_cost(target_array, forecast_prob_array, cost_function,
                 example_indices, size=num_examples, replace=True
             )
             cost_estimates[k] = cost_function(
-                target_array[these_indices, ...],
-                forecast_prob_array[these_indices, ...]
+                target_class_matrix[these_indices, ...],
+                forecast_prob_matrix[these_indices, ...]
             )
 
     print('Average cost estimate over {0:d} replicates = {1:f}'.format(
@@ -446,11 +446,13 @@ def _predictor_indices_to_metadata(model_metadata_dict, one_step_result_dict):
     return predictor_names
 
 
-def _make_prediction_function(model_object):
+def _make_prediction_function(model_object, model_metadata_dict):
     """Creates prediction function for neural net.
 
     :param model_object: Trained model (instance of `keras.models.Model` or
         `keras.models.Sequential`).
+    :param model_metadata_dict: Dictionary in format returned by
+        `neural_net.read_metafile`.
     :return: prediction_function: Function defined below.
     """
 
@@ -459,30 +461,34 @@ def _make_prediction_function(model_object):
 
         E = number of examples
         K = number of classes
+        L = number of lead times
 
         :param three_predictor_matrices: See doc for `run_forward_test`.
-        :return: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
-            class probabilities.  If K = 2, this is a length-E numpy array of
-            positive-class probabilities.
+        :return: forecast_prob_matrix: E-by-K-by-L numpy array of class
+            probabilities.
         """
 
         print('\n')
-        forecast_prob_array = neural_net.apply_model(
+        forecast_prob_matrix = neural_net.apply_model(
             model_object=model_object,
+            model_metadata_dict=model_metadata_dict,
             predictor_matrices=[
                 m for m in three_predictor_matrices if m is not None
             ],
-            num_examples_per_batch=32, verbose=True
+            num_examples_per_batch=32, use_dropout=False, verbose=True
         )
         print('\n')
 
-        return forecast_prob_array
+        if model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY] is None:
+            return numpy.mean(forecast_prob_matrix, axis=-1)
+
+        return forecast_prob_matrix[..., 0]
 
     return prediction_function
 
 
 def _run_forward_test_one_step(
-        three_predictor_matrices, target_array, model_metadata_dict,
+        three_predictor_matrices, target_class_matrix, model_metadata_dict,
         prediction_function, cost_function, permuted_flag_arrays,
         num_bootstrap_reps):
     """Runs one step of the forward permutation test.
@@ -492,15 +498,15 @@ def _run_forward_test_one_step(
     C = number of channels
     B = number of replicates for bootstrapping
     K = number of classes
+    L = number of lead times
 
     :param three_predictor_matrices: See doc for `run_forward_test`.
-    :param target_array: Same.
+    :param target_class_matrix: Same.
     :param model_metadata_dict: Same.
     :param prediction_function: Function with the following inputs and outputs.
     Input: three_predictor_matrices: See above.
-    Output: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
-        class probabilities.  If K = 2, this is a length-E numpy array of
-        positive-class probabilities.
+    Output: forecast_prob_matrix: E-by-K-by-L numpy array of class
+        probabilities.
 
     :param cost_function: See doc for `run_forward_test`.
     :param permuted_flag_arrays: length-I list of Boolean numpy arrays.  The
@@ -595,12 +601,12 @@ def _run_forward_test_one_step(
                 this_predictor_matrix if k == i else three_predictor_matrices[k]
                 for k in range(num_matrices)
             ]
-            this_forecast_prob_array = prediction_function(
+            this_forecast_prob_matrix = prediction_function(
                 these_predictor_matrices
             )
             this_cost_matrix = _bootstrap_cost(
-                target_array=target_array,
-                forecast_prob_array=this_forecast_prob_array,
+                target_class_matrix=target_class_matrix,
+                forecast_prob_matrix=this_forecast_prob_matrix,
                 cost_function=cost_function, num_replicates=num_bootstrap_reps
             )
 
@@ -654,7 +660,7 @@ def _run_forward_test_one_step(
 
 
 def _run_backwards_test_one_step(
-        three_predictor_matrices, clean_predictor_matrices, target_array,
+        three_predictor_matrices, clean_predictor_matrices, target_class_matrix,
         model_metadata_dict, prediction_function, cost_function,
         permuted_flag_arrays, num_bootstrap_reps):
     """Runs one step of the backwards permutation test.
@@ -662,7 +668,7 @@ def _run_backwards_test_one_step(
     :param three_predictor_matrices: See doc for `_run_forward_test_one_step`.
     :param clean_predictor_matrices: Clean version of
         `three_predictor_matrices`, with no permutation.
-    :param target_array: See doc for `_run_forward_test_one_step`.
+    :param target_class_matrix: See doc for `_run_forward_test_one_step`.
     :param model_metadata_dict: Same.
     :param prediction_function: Same.
     :param cost_function: Same.
@@ -751,12 +757,12 @@ def _run_backwards_test_one_step(
                 this_predictor_matrix if k == i else three_predictor_matrices[k]
                 for k in range(num_matrices)
             ]
-            this_forecast_prob_array = prediction_function(
+            this_forecast_prob_matrix = prediction_function(
                 these_predictor_matrices
             )
             this_cost_matrix = _bootstrap_cost(
-                target_array=target_array,
-                forecast_prob_array=this_forecast_prob_array,
+                target_class_matrix=target_class_matrix,
+                forecast_prob_matrix=this_forecast_prob_matrix,
                 cost_function=cost_function, num_replicates=num_bootstrap_reps
             )
 
@@ -816,42 +822,51 @@ def make_auc_cost_function():
     :return: cost_function: Function (see below).
     """
 
-    def cost_function(target_values, forecast_probs):
+    def cost_function(target_class_matrix, forecast_prob_matrix):
         """Actual cost function.
 
         E = number of examples
+        K = number of classes
+        L = number of lead times
 
-        :param target_values: length-E numpy array of integers (0 or 1).
-        :param forecast_probs: length-E numpy array of positive-class
+        :param target_class_matrix: E-by-L numpy array of target classes, all
+            integers in range [0, K - 1].
+        :param forecast_prob_matrix: E-by-K-by-L numpy array of class
             probabilities.
         :return: cost: Negative AUC.
         """
 
-        error_checking.assert_is_numpy_array(target_values, num_dimensions=1)
-        error_checking.assert_is_numpy_array(forecast_probs, num_dimensions=1)
+        error_checking.assert_is_numpy_array(
+            forecast_prob_matrix, num_dimensions=3
+        )
+        num_classes = forecast_prob_matrix.shape[1]
+        assert num_classes == 2
 
-        return -1 * sklearn_auc(y_true=target_values, y_score=forecast_probs)
+        return -1 * sklearn_auc(
+            y_true=numpy.ravel(target_class_matrix),
+            y_score=numpy.ravel(forecast_prob_matrix[:, 1, :])
+        )
 
     return cost_function
 
 
 def run_forward_test(
-        three_predictor_matrices, target_array, model_object,
+        three_predictor_matrices, target_class_matrix, model_object,
         model_metadata_dict, cost_function,
         num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS, num_steps=None):
     """Runs forward version of permutation test (both single- and multi-pass).
 
     E = number of examples
     K = number of classes
+    L = number of lead times
     B = number of replicates for bootstrapping
     N = number of predictors (either physical variables or
         lag-time/physical-variable pairs) available to permute
 
     :param three_predictor_matrices: See output doc for
         `neural_net.create_inputs`.
-    :param target_array: If K > 2, this is an E-by-K numpy array of integers
-        (0 or 1), indicating true classes.  If K = 2, this is a length-E numpy
-        array of integers (0 or 1).
+    :param target_class_matrix: E-by-L numpy array of target classes, all
+        integers in range [0, K - 1].
     :param model_object: Trained model (instance of `keras.models.Model` or
         `keras.models.Sequential`).
     :param model_metadata_dict: Dictionary returned by
@@ -859,10 +874,8 @@ def run_forward_test(
 
     :param cost_function: Cost function.  Must be negatively oriented (i.e.,
         lower is better), with the following inputs and outputs.
-    Input: target_array: See above.
-    Input: forecast_prob_array: If K > 2, this is an E-by-K numpy array of
-        class probabilities.  If K = 2, this is a length-E numpy array of
-        positive-class probabilities.
+    Input: target_class_matrix: See above.
+    Input: forecast_prob_matrix: E-by-K-by-L numpy array of class probabilities.
     Output: cost: Scalar value.
 
     :param num_bootstrap_reps: Number of replicates for bootstrapping.
@@ -892,18 +905,21 @@ def run_forward_test(
 
     num_bootstrap_reps, num_steps = _check_args(
         three_predictor_matrices=three_predictor_matrices,
-        target_array=target_array,
+        target_class_matrix=target_class_matrix,
         num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
     )
     num_matrices = len(three_predictor_matrices)
-    prediction_function = _make_prediction_function(model_object)
+    prediction_function = _make_prediction_function(
+        model_object=model_object, model_metadata_dict=model_metadata_dict
+    )
 
     # Find original cost (before permutation).
     print('Finding original cost (before permutation)...')
-    forecast_prob_array = prediction_function(three_predictor_matrices)
+    forecast_prob_matrix = prediction_function(three_predictor_matrices)
 
     orig_cost_estimates = _bootstrap_cost(
-        target_array=target_array, forecast_prob_array=forecast_prob_array,
+        target_class_matrix=target_class_matrix,
+        forecast_prob_matrix=forecast_prob_matrix,
         cost_function=cost_function, num_replicates=num_bootstrap_reps
     )
 
@@ -961,7 +977,7 @@ def run_forward_test(
 
         this_result_dict = _run_forward_test_one_step(
             three_predictor_matrices=three_predictor_matrices,
-            target_array=target_array,
+            target_class_matrix=target_class_matrix,
             model_metadata_dict=model_metadata_dict,
             prediction_function=prediction_function,
             cost_function=cost_function,
@@ -1015,7 +1031,7 @@ def run_forward_test(
 
 
 def run_backwards_test(
-        three_predictor_matrices, target_array, model_object,
+        three_predictor_matrices, target_class_matrix, model_object,
         model_metadata_dict, cost_function,
         num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS, num_steps=None):
     """Runs backwards version of permutation test (both single- and multi-pass).
@@ -1025,7 +1041,7 @@ def run_backwards_test(
         lag-time/physical-variable pairs) available to permute
 
     :param three_predictor_matrices: See doc for `run_forward_test`.
-    :param target_array: Same.
+    :param target_class_matrix: Same.
     :param model_object: Same.
     :param model_metadata_dict: Same.
     :param cost_function: Same.
@@ -1056,11 +1072,13 @@ def run_backwards_test(
 
     num_bootstrap_reps, num_steps = _check_args(
         three_predictor_matrices=three_predictor_matrices,
-        target_array=target_array,
+        target_class_matrix=target_class_matrix,
         num_bootstrap_reps=num_bootstrap_reps, num_steps=num_steps
     )
     num_matrices = len(three_predictor_matrices)
-    prediction_function = _make_prediction_function(model_object)
+    prediction_function = _make_prediction_function(
+        model_object=model_object, model_metadata_dict=model_metadata_dict
+    )
 
     # Housekeeping.
     clean_predictor_matrices = copy.deepcopy(three_predictor_matrices)
@@ -1110,10 +1128,11 @@ def run_backwards_test(
 
     # Find original cost (before *de*permutation).
     print('Finding original cost (before *de*permutation)...')
-    forecast_prob_array = prediction_function(three_predictor_matrices)
+    forecast_prob_matrix = prediction_function(three_predictor_matrices)
 
     orig_cost_estimates = _bootstrap_cost(
-        target_array=target_array, forecast_prob_array=forecast_prob_array,
+        target_class_matrix=target_class_matrix,
+        forecast_prob_matrix=forecast_prob_matrix,
         cost_function=cost_function, num_replicates=num_bootstrap_reps
     )
 
@@ -1135,7 +1154,7 @@ def run_backwards_test(
         this_result_dict = _run_backwards_test_one_step(
             three_predictor_matrices=three_predictor_matrices,
             clean_predictor_matrices=clean_predictor_matrices,
-            target_array=target_array,
+            target_class_matrix=target_class_matrix,
             model_metadata_dict=model_metadata_dict,
             prediction_function=prediction_function,
             cost_function=cost_function,
