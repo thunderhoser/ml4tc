@@ -118,16 +118,19 @@ def _relu_for_diffs_function(over_lead_times_only=False):
         :return: output_tensor_3d: Same but after applying ReLU to differences.
         """
 
-        if over_lead_times_only:
-            output_tensor_3d = input_tensor_3d
-        else:
+        if not over_lead_times_only:
             output_tensor_3d = K.concatenate((
                 input_tensor_3d[..., :1, :2],
                 K.relu(input_tensor_3d[..., :1, 2:])
             ), axis=-1)
 
+            return K.concatenate((
+                output_tensor_3d,
+                K.relu(input_tensor_3d[..., 1:, :])
+            ), axis=-2)
+
         return K.concatenate((
-            output_tensor_3d,
+            input_tensor_3d[..., :1, :],
             K.relu(input_tensor_3d[..., 1:, :])
         ), axis=-2)
 
