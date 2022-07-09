@@ -170,6 +170,7 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     neural_net.train_model(
         model_object=model_object, output_dir_name=output_dir_name,
         num_epochs=num_epochs,
+        use_crps_loss=model_metadata_dict[neural_net.USE_CRPS_LOSS_KEY],
         quantile_levels=model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY],
         central_loss_function_weight=
         model_metadata_dict[neural_net.CENTRAL_LOSS_WEIGHT_KEY],

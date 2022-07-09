@@ -182,6 +182,7 @@ DEFAULT_GENERATOR_OPTION_DICT = {
 }
 
 NUM_EPOCHS_KEY = 'num_epochs'
+USE_CRPS_LOSS_KEY = 'use_crps_loss'
 QUANTILE_LEVELS_KEY = 'quantile_levels'
 CENTRAL_LOSS_WEIGHT_KEY = 'central_loss_function_weight'
 NUM_TRAINING_BATCHES_KEY = 'num_training_batches_per_epoch'
@@ -192,8 +193,8 @@ EARLY_STOPPING_KEY = 'do_early_stopping'
 PLATEAU_LR_MUTIPLIER_KEY = 'plateau_lr_multiplier'
 
 METADATA_KEYS = [
-    NUM_EPOCHS_KEY, QUANTILE_LEVELS_KEY, CENTRAL_LOSS_WEIGHT_KEY,
-    NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
+    NUM_EPOCHS_KEY, USE_CRPS_LOSS_KEY, QUANTILE_LEVELS_KEY,
+    CENTRAL_LOSS_WEIGHT_KEY, NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
     NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY,
     EARLY_STOPPING_KEY, PLATEAU_LR_MUTIPLIER_KEY
 ]
@@ -1633,7 +1634,7 @@ def _ships_predictors_xarray_to_keras(
 
 
 def _write_metafile(
-        pickle_file_name, num_epochs, quantile_levels,
+        pickle_file_name, num_epochs, use_crps_loss, quantile_levels,
         central_loss_function_weight, num_training_batches_per_epoch,
         training_option_dict, num_validation_batches_per_epoch,
         validation_option_dict, do_early_stopping, plateau_lr_multiplier):
@@ -1641,6 +1642,7 @@ def _write_metafile(
 
     :param pickle_file_name: Path to output file.
     :param num_epochs: See doc for `train_model`.
+    :param use_crps_loss: Same.
     :param quantile_levels: Same.
     :param central_loss_function_weight: Same.
     :param num_training_batches_per_epoch: Same.
@@ -1653,6 +1655,7 @@ def _write_metafile(
 
     metadata_dict = {
         NUM_EPOCHS_KEY: num_epochs,
+        USE_CRPS_LOSS_KEY: use_crps_loss,
         QUANTILE_LEVELS_KEY: quantile_levels,
         CENTRAL_LOSS_WEIGHT_KEY: central_loss_function_weight,
         NUM_TRAINING_BATCHES_KEY: num_training_batches_per_epoch,
@@ -1855,7 +1858,7 @@ def _augment_data(
 
 def _apply_model_td_to_ts(
         model_object, predictor_matrices, num_examples_per_batch,
-        use_dropout, verbose, num_lead_times, num_prediction_sets):
+        use_dropout, verbose):
     """Applies trained model (inference mode) for TD-to-TS prediction.
 
     :param model_object: See doc for `apply_model`.
@@ -1863,8 +1866,6 @@ def _apply_model_td_to_ts(
     :param num_examples_per_batch: Same.
     :param use_dropout: Same.
     :param verbose: Same.
-    :param num_lead_times: Number of lead times.
-    :param num_prediction_sets: Number of prediction sets.
     :return: forecast_prob_matrix: See doc for `apply_model`.
     """
 
@@ -2005,6 +2006,7 @@ def read_metafile(pickle_file_name):
     :return: metadata_dict: Dictionary with the following keys.
     metadata_dict['num_epochs']: See doc for `train_model`.
     metadata_dict['quantile_levels']: Same.
+    metadata_dict['use_crps_loss']: Same.
     metadata_dict['central_loss_function_weight']: Same.
     metadata_dict['num_training_batches_per_epoch']: Same.
     metadata_dict['training_option_dict']: Same.
@@ -2022,6 +2024,8 @@ def read_metafile(pickle_file_name):
     metadata_dict = pickle.load(pickle_file_handle)
     pickle_file_handle.close()
 
+    if USE_CRPS_LOSS_KEY not in metadata_dict:
+        metadata_dict[USE_CRPS_LOSS_KEY] = False
     if QUANTILE_LEVELS_KEY not in metadata_dict:
         metadata_dict[QUANTILE_LEVELS_KEY] = None
     if CENTRAL_LOSS_WEIGHT_KEY not in metadata_dict:
@@ -2751,7 +2755,7 @@ def train_model(
         model_object, output_dir_name, num_epochs,
         num_training_batches_per_epoch, training_option_dict,
         num_validation_batches_per_epoch, validation_option_dict,
-        do_early_stopping=True, quantile_levels=None,
+        use_crps_loss, do_early_stopping=True, quantile_levels=None,
         central_loss_function_weight=None,
         plateau_lr_multiplier=DEFAULT_LEARNING_RATE_MULTIPLIER):
     """Trains neural net.
@@ -2773,6 +2777,7 @@ def train_model(
     validation_option_dict['example_dir_name']
     validation_option_dict['years']
 
+    :param use_crps_loss: Boolean flag.  If True, using CRPS as a loss function.
     :param do_early_stopping: Boolean flag.  If True, will stop training early
         if validation loss has not improved over last several epochs (see
         constants at top of file for what exactly this means).
@@ -2884,7 +2889,7 @@ def train_model(
 
     _write_metafile(
         pickle_file_name=metafile_name, num_epochs=num_epochs,
-        quantile_levels=quantile_levels,
+        use_crps_loss=use_crps_loss, quantile_levels=quantile_levels,
         central_loss_function_weight=central_loss_function_weight,
         num_training_batches_per_epoch=num_training_batches_per_epoch,
         training_option_dict=training_option_dict,
@@ -2917,12 +2922,28 @@ def read_model(hdf5_file_name):
         model_file_name=hdf5_file_name, raise_error_if_missing=True
     )
     metadata_dict = read_metafile(metafile_name)
-    quantile_levels = metadata_dict[QUANTILE_LEVELS_KEY]
 
-    if quantile_levels is None:
+    quantile_levels = metadata_dict[QUANTILE_LEVELS_KEY]
+    use_crps_loss = metadata_dict[USE_CRPS_LOSS_KEY]
+
+    if quantile_levels is None and not use_crps_loss:
         return tf_keras.models.load_model(
             hdf5_file_name, custom_objects=METRIC_DICT
         )
+
+    if use_crps_loss:
+        custom_object_dict = {
+            'loss': custom_losses.crps_loss()
+        }
+        model_object = tf_keras.models.load_model(
+            hdf5_file_name, custom_objects=custom_object_dict, compile=False
+        )
+        model_object.compile(
+            loss=custom_object_dict['loss'], optimizer=keras.optimizers.Adam(),
+            metrics=[]
+        )
+
+        return model_object
 
     option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     predict_td_to_ts = option_dict[PREDICT_TD_TO_TS_KEY]
@@ -3024,17 +3045,10 @@ def apply_model(
     option_dict = model_metadata_dict[VALIDATION_OPTIONS_KEY]
 
     if option_dict[PREDICT_TD_TO_TS_KEY]:
-        num_prediction_sets = (
-            1 if model_metadata_dict[QUANTILE_LEVELS_KEY] is None
-            else len(model_metadata_dict[QUANTILE_LEVELS_KEY]) + 1
-        )
-
         forecast_prob_matrix = _apply_model_td_to_ts(
             model_object=model_object, predictor_matrices=predictor_matrices,
             num_examples_per_batch=num_examples_per_batch,
-            use_dropout=use_dropout, verbose=verbose,
-            num_lead_times=len(option_dict[LEAD_TIMES_KEY]),
-            num_prediction_sets=num_prediction_sets
+            use_dropout=use_dropout, verbose=verbose
         )
     else:
         forecast_prob_matrix = _apply_model_ri(
