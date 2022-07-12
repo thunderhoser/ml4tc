@@ -291,7 +291,8 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         storm_longitudes_deg_e=storm_longitudes_deg_e,
         model_file_name=model_file_name,
         lead_times_hours=lead_times_hours,
-        quantile_levels=quantile_levels_to_write
+        quantile_levels=quantile_levels_to_write,
+        uncertainty_calib_model_file_name=None
     )
 
 
