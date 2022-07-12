@@ -116,8 +116,13 @@ def _relu_for_diffs_function(over_lead_times_only=False):
                 K.relu(input_tensor_3d[..., :1, 2:])
             ), axis=-1)
 
+            return K.concatenate((
+                output_tensor_3d,
+                K.relu(input_tensor_3d[..., 1:, :])
+            ), axis=-2)
+
         return K.concatenate((
-            output_tensor_3d,
+            input_tensor_3d[..., :1, :],
             K.relu(input_tensor_3d[..., 1:, :])
         ), axis=-2)
 
