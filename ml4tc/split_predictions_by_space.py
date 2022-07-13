@@ -171,7 +171,9 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
                 storm_longitudes_deg_e=d[prediction_io.STORM_LONGITUDES_KEY],
                 model_file_name=d[prediction_io.MODEL_FILE_KEY],
                 lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
-                quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY]
+                quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+                uncertainty_calib_model_file_name=
+                d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
             )
 
     print(SEPARATOR_STRING)
