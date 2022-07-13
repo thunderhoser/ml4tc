@@ -2,6 +2,7 @@
 
 import numpy
 import netCDF4
+from scipy.interpolate import interp1d
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.io import prediction_io
@@ -104,6 +105,30 @@ def train_model(prediction_dict, bin_edge_prediction_stdevs):
     stdev_inflation_factors = (
         spread_skill_result_dict[uq_evaluation.RMSE_VALUES_KEY] /
         spread_skill_result_dict[uq_evaluation.MEAN_PREDICTION_STDEVS_KEY]
+    )
+
+    nan_flags = numpy.isnan(stdev_inflation_factors)
+    if not numpy.any(nan_flags):
+        return bin_edge_prediction_stdevs, stdev_inflation_factors
+
+    nan_indices = numpy.where(nan_flags)[0]
+    real_indices = numpy.where(numpy.invert(nan_flags))[0]
+    bin_center_prediction_stdevs = 0.5 * (
+        bin_edge_prediction_stdevs[:-1] + bin_edge_prediction_stdevs[1:]
+    )
+
+    interp_object = interp1d(
+        x=bin_center_prediction_stdevs[real_indices],
+        y=stdev_inflation_factors[real_indices],
+        kind='linear', bounds_error=False, assume_sorted=True,
+        fill_value=(
+            stdev_inflation_factors[real_indices[0]],
+            stdev_inflation_factors[real_indices[-1]]
+        )
+    )
+
+    stdev_inflation_factors[nan_indices] = interp_object(
+        bin_center_prediction_stdevs[nan_indices]
     )
 
     return bin_edge_prediction_stdevs, stdev_inflation_factors
