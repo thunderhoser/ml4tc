@@ -1741,7 +1741,7 @@ def create_crps_model_ri(
     )(output_layer_object)
 
     output_layer_object = keras.layers.Reshape(
-        target_shape=num_estimates
+        target_shape=(num_estimates,)
     )(output_layer_object)
 
     output_layer_object = architecture_utils.get_activation_layer(
