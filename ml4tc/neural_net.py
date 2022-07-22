@@ -1962,8 +1962,6 @@ def _apply_model_ri(
                 [a[these_indices, ...] for a in predictor_matrices]
             )
 
-        print(these_predictions.shape)
-
         if isinstance(these_predictions, list):
 
             # Current shape is E x S or E x K x S.
@@ -1980,21 +1978,15 @@ def _apply_model_ri(
             this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-2)
         else:
 
-            # Current shape is length-E or E x K.
+            # Current shape is E x L x S or E x K x L x S.
             this_prob_matrix = these_predictions + 0.
 
-            # If necessary, add class axis to get shape E x K.
-            if len(this_prob_matrix.shape) == 1:
-                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
-
-            if this_prob_matrix.shape[1] == 1:
+            # Make sure that shape is E x K x L x S.
+            if len(this_prob_matrix.shape) == 3:
+                this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-3)
                 this_prob_matrix = numpy.concatenate(
-                    (1. - this_prob_matrix, this_prob_matrix), axis=1
+                    (1. - this_prob_matrix, this_prob_matrix), axis=-3
                 )
-
-            # Add lead-time and prediction-set axes to get shape E x K x L x S.
-            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
-            this_prob_matrix = numpy.expand_dims(this_prob_matrix, axis=-1)
 
         if forecast_prob_matrix is None:
             dimensions = (num_examples,) + this_prob_matrix.shape[1:]

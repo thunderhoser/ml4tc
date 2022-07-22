@@ -1726,10 +1726,10 @@ def create_crps_model_ri(
         weight_regularizer=regularization_func
     )(current_layer_object)
 
-    # output_layer_object = keras.layers.Reshape(
-    #     target_shape=(1, num_estimates)
-    # )(output_layer_object)
-    #
+    output_layer_object = keras.layers.Reshape(
+        target_shape=(1, num_estimates)
+    )(output_layer_object)
+
     # output_layer_object = keras.layers.Lambda(
     #     _relu_for_diffs_function(over_lead_times_only=True),
     #     name='actual_relu_for_differences'
