@@ -1962,6 +1962,8 @@ def _apply_model_ri(
                 [a[these_indices, ...] for a in predictor_matrices]
             )
 
+        print(these_predictions.shape)
+
         if isinstance(these_predictions, list):
 
             # Current shape is E x S or E x K x S.
