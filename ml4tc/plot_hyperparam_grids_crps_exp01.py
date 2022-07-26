@@ -18,6 +18,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import evaluation
 import uq_evaluation
 import gg_plotting_utils
+import file_system_utils
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -328,6 +329,10 @@ def _run(experiment_dir_name, output_dir_name):
     :param experiment_dir_name: See documentation at top of file.
     :param output_dir_name: Same.
     """
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=output_dir_name
+    )
 
     num_fourth_last_dropout_rates = len(FOURTH_LAST_LAYER_DROPOUT_RATES)
     num_third_last_dropout_rates = len(THIRD_LAST_LAYER_DROPOUT_RATES)
