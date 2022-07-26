@@ -361,7 +361,7 @@ def _run(experiment_dir_name, output_dir_name):
             for k in range(num_second_last_dropout_rates):
                 this_score_file_name = (
                     '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}/'
-                    'validation_sans_uq/evaluation.nc'
+                    'validation/evaluation.nc'
                 ).format(
                     experiment_dir_name,
                     FOURTH_LAST_LAYER_DROPOUT_RATES[i],
@@ -400,7 +400,7 @@ def _run(experiment_dir_name, output_dir_name):
 
                 this_score_file_name = (
                     '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}/'
-                    'validation_with_uq/spread_vs_skill.nc'
+                    'validation/spread_vs_skill.nc'
                 ).format(
                     experiment_dir_name,
                     FOURTH_LAST_LAYER_DROPOUT_RATES[i],
@@ -433,7 +433,7 @@ def _run(experiment_dir_name, output_dir_name):
 
                 this_score_file_name = (
                     '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}/'
-                    'validation_with_uq/discard_test.nc'
+                    'validation/discard_test.nc'
                 ).format(
                     experiment_dir_name,
                     FOURTH_LAST_LAYER_DROPOUT_RATES[i],
