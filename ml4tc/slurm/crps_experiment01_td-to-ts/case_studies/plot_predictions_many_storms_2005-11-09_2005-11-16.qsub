@@ -23,17 +23,19 @@ conda activate base
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/td_to_ts"
 set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/normalization_params_1993-2004_2015-2019.nc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01_td-to-ts"
 
-set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.900" "0.300" "0.500" "0.300" "0.900" "0.100")
-set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.500" "0.300" "0.500" "0.500" "0.100" "0.500")
-set SECOND_LAST_LAYER_DROPOUT_RATES=("0.500" "0.300" "0.900" "0.100" "0.900" "0.500" "0.300")
+set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.500" "0.500" "0.700" "0.900" "0.900" "0.900" "0.700")
+set THIRD_LAST_LAYER_DROPOUT_RATES=("0.500" "0.900" "0.500" "0.700" "0.700" "0.900" "0.500")
+set SECOND_LAST_LAYER_DROPOUT_RATES=("0.500" "0.500" "0.900" "0.500" "0.700" "0.500" "0.700")
+set WEST_PACIFIC_WEIGHTS=("02.0" "04.0" "08.0" "07.0" "02.0" "06.0" "05.0")
 
 set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set west_pacific_weight=${WEST_PACIFIC_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
 
-set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
+set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_west-pacific-weight=${west_pacific_weight}"
 set model_metafile_name="${model_dir_name}/model_metadata.p"
 set prediction_file_name="${model_dir_name}/validation/predictions.nc"
 set output_dir_name="${model_dir_name}/case_studies_no_gridsat"
