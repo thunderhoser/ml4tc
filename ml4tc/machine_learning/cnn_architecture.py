@@ -1722,19 +1722,19 @@ def create_crps_model_ri(
         target_shape=(1, num_estimates)
     )(output_layer_object)
 
-    output_layer_object = keras.layers.Lambda(
-        _relu_for_diffs_function(over_lead_times_only=True),
-        name='actual_relu_for_differences'
-    )(output_layer_object)
-
-    this_function = _cumulative_sum_function(over_lead_times=True)
-    output_layer_object = keras.layers.Lambda(
-        this_function, name='sum_over_lead_times'
-    )(output_layer_object)
-
-    output_layer_object = keras.layers.Reshape(
-        target_shape=(num_estimates,)
-    )(output_layer_object)
+    # output_layer_object = keras.layers.Lambda(
+    #     _relu_for_diffs_function(over_lead_times_only=True),
+    #     name='actual_relu_for_differences'
+    # )(output_layer_object)
+    #
+    # this_function = _cumulative_sum_function(over_lead_times=True)
+    # output_layer_object = keras.layers.Lambda(
+    #     this_function, name='sum_over_lead_times'
+    # )(output_layer_object)
+    #
+    # output_layer_object = keras.layers.Reshape(
+    #     target_shape=(num_estimates,)
+    # )(output_layer_object)
 
     output_layer_object = architecture_utils.get_activation_layer(
         activation_function_string=output_activ_function_name,
