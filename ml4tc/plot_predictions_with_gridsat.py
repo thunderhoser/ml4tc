@@ -287,10 +287,7 @@ def _plot_predictions_and_targets(
         prediction_io.PROBABILITY_MATRIX_KEY
     ][example_indices, 1, ...]
 
-    print(prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][example_indices, 1, 0, ...])
-    print('\n')
-    print(prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][example_indices, 1, -1, ...])
-    print('\n\n\n')
+    print(numpy.std(all_forecast_prob_matrix, ddof=1, axis=-1))
 
     lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
