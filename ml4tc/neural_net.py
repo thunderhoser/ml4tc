@@ -2799,6 +2799,7 @@ def train_model(
 
     error_checking.assert_is_integer(num_epochs)
     error_checking.assert_is_geq(num_epochs, 2)
+    error_checking.assert_is_boolean(use_crps_loss)
     error_checking.assert_is_integer(num_training_batches_per_epoch)
     error_checking.assert_is_geq(num_training_batches_per_epoch, 2)
     error_checking.assert_is_integer(num_validation_batches_per_epoch)

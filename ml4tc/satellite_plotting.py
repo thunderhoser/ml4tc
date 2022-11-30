@@ -185,7 +185,8 @@ def add_colour_bar(
 def plot_2d_grid(
         brightness_temp_matrix_kelvins, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, cbar_orientation_string='vertical',
-        font_size=30., plotting_diffs=False):
+        font_size=30., plotting_diffs=False, colour_map_object=None,
+        colour_norm_object=None):
     """Plots brightness temperature on 2-D grid.
 
     M = number of rows in grid
@@ -283,10 +284,11 @@ def plot_2d_grid(
         numpy.isnan(temp_matrix_to_plot_kelvins), temp_matrix_to_plot_kelvins
     )
 
-    if plotting_diffs:
-        colour_map_object, colour_norm_object = get_diff_colour_scheme()
-    else:
-        colour_map_object, colour_norm_object = get_colour_scheme()
+    if colour_map_object is None or colour_norm_object is None:
+        if plotting_diffs:
+            colour_map_object, colour_norm_object = get_diff_colour_scheme()
+        else:
+            colour_map_object, colour_norm_object = get_colour_scheme()
 
     if hasattr(colour_norm_object, 'boundaries'):
         min_colour_value = colour_norm_object.boundaries[0]
