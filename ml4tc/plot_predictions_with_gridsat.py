@@ -287,6 +287,8 @@ def _plot_predictions_and_targets(
         prediction_io.PROBABILITY_MATRIX_KEY
     ][example_indices, 1, ...]
 
+    print(prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY][example_indices, 1, ...])
+
     lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
