@@ -103,7 +103,18 @@ More details on the input arguments are provided below.
  - `ships_time_tolerance_training_sec`: Same as `satellite_time_tolerance_training_sec` but for SHIPS data.
  - `ships_max_missing_times_training`: Same as `satellite_max_missing_times_training` but for SHIPS data.
  - `satellite_time_tolerance_validation_sec`: Same as `satellite_time_tolerance_training_sec` but for validation data.  NOTE: This option is not available for post-training evaluation on testing data, which are meant to simulate model deployment in the real world.  In the real world, missing data happen and you cannot simply refuse to make predictions when there is missing data.
- - `ships_time_tolerance_training_sec`: Same as `satellite_time_tolerance_training_sec` but for validation data.
+ - `ships_time_tolerance_validation_sec`: Same as `ships_time_tolerance_training_sec` but for validation data.
+ - `num_positive_examples_per_batch`: Number of positive examples (with correct answer = yes = 1) per batch of data samples.
+ - `num_negative_examples_per_batch`: Number of negative examples (with correct answer = yes = 0) per batch of data samples.
+ - `max_examples_per_cyclone_in_batch`: Max number of data samples for one TC in the same batch.  In other words, max number of time steps (snapshots) for one TC in the same batch.  Keeping this value lower than `num_positive_examples_per_batch` and `num_negative_examples_per_batch` ensures that each batch will contain a diversity of data samples, coming from many different TCs, thus avoiding a large amount of temporal autocorrelation.
+ - `predict_td_to_ts`: Boolean flag.  If 1 (0), the CNN will be trained to predict TD-to-TS (RI).
+ - `num_epochs`: Number of training epochs.  If the number of epochs is extremely high (*e.g.*, 1000), early stopping will almost definitely stop training long before 1000 epochs.
+ - `num_training_batches_per_epoch`: Number of training batches in each epoch.
+ - `num_validation_batches_per_epoch`: Number of validation batches in each epoch.
+ - `data_aug_num_translations`: This and the next 5 arguments all pertain to data augmentation.  Data augmentation is the practice of randomly perturbing the predictor data while assuming that the correct answer remains the same.  This increases the size of the dataset and often improves model performance -- even on validation data, which are not perturbed.  Data augmentation affects only the training data.  `data_aug_num_translations` is the number of horizontal translations to apply to each data sample.
+ - `data_aug_max_translation_px`: Maximum translation (number of pixels) for satellite images.  Note that grid spacing is 4 km, *i.e.*, each pixel is 4 $\times$ 4 km.  The actual translation distance will be sampled from a uniform distribution over $\left[ 1, data_aug_max_translation_px \right] $for each data sample.
+ - `data_aug_num_rotations`: Number of random rotations to apply to each data sample.
+ - 
 
 
   
