@@ -26,3 +26,53 @@ Before training a CNN (or any model in Keras), you must set up the model.  "Sett
 `model_object.save(filepath=output_path, overwrite=True, include_optimizer=True)`
 
 The resulting CNN predicts TD-to-TS probability for each data sample (*i.e.*, each TD at each time step) at 28 different lead times (6, 12, $\ldots$, 168 hours).  For uncertainty quantification (UQ), this CNN produces 100 different answers for each lead time -- *i.e.*, an ensemble of 100 different TD-to-TS probabilities.  To ensure that this ensemble adequately captures the uncertainty in the TD-to-TS intensification process -- *e.g.*, that the model is not extremely underdispersive or overdispersive -- this CNN is trained with the continuous ranked probability score (CRPS) as its loss function.
+
+# Training the CNN
+
+Once you have set up a CNN, you can train the CNN, using the script `train_neural_net.py` in the directory `ml4tc/scripts`.  Below is an example of how you would call `train_neural_net.py` from a Unix terminal.  For some input arguments I have suggested a default (where I include an actual value), and for some I have not.  In this case, the lead times are $\lbrace 6, 12, \ldots, 168 \rbrace$ hours; the lag times for satellite data (both imagery and summary statistics from the CIRA IR dataset) are $\lbrace 0, 24 \rbrace$ hours; and the lag times for SHIPS data are $\lbrace 0, 6, 12, 18, 24 \rbrace$ hours.  Thus, if the forecast issue time is 1200 UTC 2 Jan, the satellite-based predictors will come from 1200 UTC 1 Jan and 1200 UTC 2 Jan; while the SHIPS predictors will come from 1200 UTC 1 Jan, 1800 UTC 1 Jan, 0000 UTC 2 Jan, 0600 UTC 2 Jan, and 1200 UTC 2 Jan.
+
+```
+python train_neural_net.py \
+    --input_template_file_name="your file name here" \
+    --output_model_dir_name="your directory name here" \
+    --training_example_dir_name="your directory name here" \
+    --validation_example_dir_name="your directory name here" \
+    --west_pacific_weight="your weight here" \
+    --lead_times_hours 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96 102 108 114 120 126 132 138 144 150 156 162 168 \
+    --satellite_lag_times_minutes 0 1440 \
+    --satellite_predictor_names "satellite_brightness_temp_kelvins" \
+    --ships_lag_times_hours 0 6 12 18 24 \
+    --ships_predictor_names_lagged "ships_goes_ch4_fraction_temp_below_m10c_50to200km" "ships_goes_ch4_fraction_temp_below_m20c_50to200km" "ships_goes_ch4_fraction_temp_below_m30c_50to200km" "ships_goes_ch4_
+fraction_temp_below_m40c_50to200km" "ships_goes_ch4_fraction_temp_below_m50c_50to200km" "ships_goes_ch4_fraction_temp_below_m60c_50to200km" "ships_goes_ch4_temp_0to200km_kelvins" "ships_goes_ch4_temp_std
+ev_0to200km_kelvins" "ships_goes_ch4_temp_100to300km_kelvins" "ships_goes_ch4_temp_stdev_100to300km_kelvins" "ships_goes_ch4_max_temp_0to30km_kelvins" "ships_goes_ch4_mean_temp_0to30km_kelvins" "ships_go
+es_ch4_max_temp_radius_metres" "ships_goes_ch4_min_temp_20to120km_kelvins" "ships_goes_ch4_mean_temp_20to120km_kelvins" "ships_goes_ch4_min_temp_radius_metres" \
+    --ships_builtin_lag_times_hours nan \
+    --ships_predictor_names_forecast "ships_intensity_change_6hours_m_s01" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_
+kelvins" "ships_shear_850to500mb_eastward_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_ocean_age_seconds" "ships_max_tangential_wind_850mb_m_s01" "ships_intensity_m_s01" "merged_sea_
+surface_temp_kelvins" "merged_ocean_heat_content_j_m02" "ships_forecast_latitude_deg_n" "ships_max_pttl_intensity_m_s01" \
+    --ships_max_forecast_hour=120 \
+    --satellite_time_tolerance_training_sec=43200 \
+    --satellite_max_missing_times_training=0 \
+    --ships_time_tolerance_training_sec=0 \
+    --ships_max_missing_times_training=1 \
+    --satellite_time_tolerance_validation_sec=43200 \
+    --ships_time_tolerance_validation_sec=21610 \
+    --num_positive_examples_per_batch=8 \
+    --num_negative_examples_per_batch=8 \
+    --max_examples_per_cyclone_in_batch=3 \
+    --predict_td_to_ts=1 \
+    --num_epochs=1000 \
+    --num_training_batches_per_epoch=32 \
+    --num_validation_batches_per_epoch=16 \
+    --data_aug_num_translations=2 \
+    --data_aug_max_translation_px=6 \
+    --data_aug_num_rotations=2 \
+    --data_aug_max_rotation_deg=50 \
+    --data_aug_num_noisings=3 \
+    --data_aug_noise_stdev=0.5 \
+    --plateau_lr_multiplier=0.6
+```
+
+More details on the input arguments are provided below.
+
+ - `training_predictor_dir_name` is a string, naming the directory with predictor files (containing brightness-temperature maps).  Files therein will be found by `example_io.find_predictor_file` and read by `example_io.read_predictor_file`, where `example_io.py` is in the directory `ml4convection/io`.  `example_io.find_predictor_file` will only look for files named like `[training_predictor_dir_name]/[yyyy]/predictors_[yyyymmdd]_radar[k].nc` and `[training_predictor_dir_name]/[yyyy]/predictors_[yyyymmdd]_radar[k].nc.gz`, where `[yyyy]` is the 4-digit year; `[yyyymmdd]` is the date; and `[k]` is the radar number, ranging from 1-3.  An example of a good file name, assuming the top-level directory is `foo`, is `foo/2016/predictors_20160101_radar1.nc`.
