@@ -118,3 +118,82 @@ More details on the input arguments are provided below.
  - `data_aug_num_noisings`: Number of times to add Gaussian noise to each data sample (applies to all predictors, not just satellite images).
  - `data_aug_noise_stdev`: Standard deviation of Gaussian noise, in normalized units.  Note that all predictors are transformed to $z$-scores (number of standard deviations away from the mean) before training the CNN, so every predictor has the same (non-physical) scale, ranging from about $\left[ -3, 3 \right]$.
  - `plateau_lr_multiplier`: Multiplier used to reduce learning rate if validation loss has not improved over 10 epochs.
+
+# Inference mode: Applying a trained CNN
+
+Once you have trained a CNN, you can use it to make predictions on new data.  This is called the "inference phase," as opposed to the "training phase".  You can do this with the script `apply_neural_net.py` in the directory `ml4tc/scripts`.  Below is an example of how you would call `apply_neural_net.py` from a Unix terminal.
+
+```
+python apply_neural_net.py \
+    --input_model_file_name="file with trained model" \
+    --input_example_dir_name="your directory name here" \
+    --years 2010 2011 2012 2013 2014 \  # This is just an example, not a suggested default.
+    --num_dropout_iterations=100 \  # This is just an example, not a suggested default.
+    --use_quantiles=[0 or 1] \
+    --output_dir_name="your directory name here" \
+```
+
+More details on the input arguments are provided below.
+
+ - `input_model_file_name` is a string, containing the full path to the trained model.  This file will be read by `neural_net.read_model`.
+ - `input_example_dir_name` is a string, naming the directory with input data.  For more details, see documentation for the inputs `training_example_dir_name` and `validation_example_dir_name` to `train_neural_net.py`.
+ - `years` is a list of years.  `apply_neural_net.py` will make predictions only for data samples in these years.
+ - `num_dropout_iterations`: This argument is used only for CNNs trained with Monte Carlo dropout.  In this case, it specifies how many times to run the CNN for each data sample.  If `num_dropout_iterations` is $D$, then `apply_neural_net.py` will create an ensemble of $D$ predictions ($D$ probabilities) for each data sample.  The full ensemble will be written to the output file.
+ - `use_quantiles`: This argument is used only for CNNs trained with quantile regression.  It is a Boolean flag.  If the flag is 0 (`False`), `apply_neural_net.py` will create only one deterministic prediction for each data sample.  If the flag is 1 (`True`), `apply_neural_net.py` will create $Q$ quantile-based estimates for each data sample -- where $Q$ is the number of quantile levels -- as well as a deterministic mean prediction.  All these predictions (mean and quantiles) will be written to the output file.
+ - `output_dir_name` is a string, naming the output directory.  CNN predictions (along with corresponding targets [correct answers]) will be written here in NetCDF format.
+
+# Plotting predictions and inputs (TD-to-TS only)
+
+Once you have run `apply_neural_net.py` to make predictions, you can plot the predictions with the script `plot_predictions_with_gridsat.py` in the directory `ml4tc/scripts`.  Below is an example of how you would call `plot_predictions_with_gridsat.py` from a Unix terminal.  This will plot figures like the one shown below, containing GridSat data in the background.  You can download GridSat data easily from here: (https://www.ncei.noaa.gov/data/geostationary-ir-channel-brightness-temperature-gridsat-b1/access/)[https://www.ncei.noaa.gov/data/geostationary-ir-channel-brightness-temperature-gridsat-b1/access/].
+
+```
+python plot_predictions_with_gridsat.py \
+    --input_model_metafile_name="file with metadata for trained model" \
+    --input_prediction_file_name="file with predictions from trained model, created by `apply_neural_net.py`" \
+    --input_gridsat_dir_name="directory with GridSat data" \
+    --confidence_level=0.95 \  # This default will produce 95% confidence intervals.
+    --min_latitude_deg_n=0 \
+    --max_latitude_deg_n=60 \
+    --min_longitude_deg_e=105 \
+    --max_longitude_deg_e=179.999999 \
+    --first_init_time_string="2005-11-09-00" \  # This is just an example, not a suggested default.
+    --last_init_time_string="2005-11-16-18" \  # This is just an example, not a suggested default.
+    --output_dir_name="your directory name here" \
+```
+
+ - `input_model_metafile_name` is a string, containing the full path to the metadata file for the trained model.  This file will be read by `neural_net.read_metafile`.
+ - `input_prediction_file_name` is a string, containing the full path to a prediction file for the same model, created by `apply_neural_net.py`.
+ - `input_gridsat_dir_name` is a string, naming the directory with GridSat data.  When you download GridSat data from the above website, put the files in this directory (no subdirectories) and do not rename the files.  As long as you do this, `plot_predictions_with_gridsat.py` will find the GridSat files.
+ - `confidence_level`: For models with uncertainty quantification (via, *e.g.*, Monte Carlo dropout or quantile regression), this number tells `plot_predictions_with_gridsat.py` the width of the confidence interval to plot for the forecast TD-to-TS probabilities.  In the above example, the confidence level is 0.95 or 95%.
+ - `min_latitude_deg_n`: Minimum latitude in left panel, in degrees north.
+ - `max_latitude_deg_n`: Max latitude in left panel, in degrees north.
+ - `min_longitude_deg_e`: Minimum longitude in left panel, in degrees east.
+ - `max_longitude_deg_e`: Max longitude in left panel, in degrees east.
+ - `first_init_time_string`: First time to plot.  `plot_predictions_with_gridsat.py` will create a figure for every 6-hour time step between `first_init_time_string` and `last_init_time_string`.
+ - `last_init_time_string`: See documentation above for `first_init_time_string`.
+ - `output_dir_name` is a string, naming the output directory.  Figures will be saved here in JPEG format.
+
+# Evaluating a trained CNN: mean predictions only (not uncertainty estimates)
+
+Below is an example of how you would call `evaluate_model.py` from a Unix terminal.
+
+```
+python evaluate_model.py \
+    --input_prediction_file_name="your file name here" \
+    --lead_times_hours 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96 102 108 114 120 126 132 138 144 150 156 162 168 \
+    --event_freq_in_training=0.50886938 \
+    --num_prob_thresholds=1001 \
+    --num_reliability_bins=20 \
+    --num_bootstrap_reps=1000 \
+    --output_eval_file_name="your file name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_prediction_file_name` is a string, containing the full path to a prediction file created by `apply_neural_net.py`.
+ - `lead_times_hours` is the set of lead times at which to evaluate the model.  In the example above, `evaluate_model.py` is told to evaluate the model at all lead times (6, 12, ..., 128 hours).  However, if you'd like you can evaluate at just one lead times -- or just a few lead times.
+ - `event_freq_in_training`: Event frequency in training data.  This is used to create the "climatological model," which is used to compute Brier skill score.  In the example above, the event frequency is 0.50886938 or 50.886 938%, which means that TD-to-TS occurs for 50.886 938% of data samples (where one data sample is one tropical depression at one time), averaged over all lead times.  For the 28 lead times in the above list, the training event frequencies are: 0.15196328, 0.27001530, 0.35135135, 0.40566038, 0.43982662, 0.46736359, 0.48878123, 0.50458950, 0.51835798, 0.52830189, 0.53646099, 0.54258032, 0.54793473, 0.55277919, 0.55609383, 0.55864355, 0.56093830, 0.56348802, 0.56527282, 0.56731260, 0.56884243, 0.57011729, 0.57113717, 0.57190209, 0.57215706, 0.57215706, 0.57215706, 0.57215706.  In other words, 57.215 706% of TD samples intensify to TS strength within the next 168 hours.
+ - `num_prob_thresholds`: Number of probability thresholds, used to create receiver operating characteristic (ROC) curve and performance diagram.  I suggest leaving this at 1001.
+ - `num_reliability_bins`: Number of bins for attributes diagram, which is a fancy reliability curve.  I suggest leaving this at 10.
+ - `num_bootstrap_reps`: Number of replicates for bootstrapping, used to create confidence intervals in the ROC curve and performance diagram and attributes diagram.  If you do not want confidence intervals, make this 1.
+ - `output_eval_file_name` is a string, containing the full path to the output file.  Model-evaluation results will be written here in NetCDF format.
