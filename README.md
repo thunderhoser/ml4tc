@@ -255,7 +255,7 @@ More details on the input arguments are provided below.
 
 Shown below are examples of the graphics plotted by `plot_evaluation.py` -- the ROC curve, performance diagram, and attributes diagram -- with no confidence intervals.
 
-![ROC curve created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/roc_curve.jpg) ![Performance diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/performance_diagram.jpg) ![Attributes diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/attributes_diagram.jpg)
+![ROC curve created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/roc_curve.jpg | width=400) ![Performance diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/performance_diagram.jpg | width=400) ![Attributes diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/attributes_diagram.jpg | width=400)
 
 # Plotting evaluation results: uncertainty estimates only (not mean predictions)
 
