@@ -272,7 +272,9 @@ More details on the input arguments are provided below.
  - `input_file_name` is a string, containing the full path to a result file created by `compute_spread_vs_skill.py`.
  - `output_file_name` is a string, containing the full path to the output file.  The spread-skill plot will be written here as a JPEG image.
 
-And is an example of how you would call `plot_discard_test.py` from a Unix terminal.
+<img src="https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/spread_vs_skill.jpg" width="400">
+
+And below is an example of how you would call `plot_discard_test.py` from a Unix terminal.
 
 ```
 python plot_discard_test.py \
@@ -284,3 +286,5 @@ More details on the input arguments are provided below.
 
  - `input_file_name` is a string, containing the full path to a result file created by `run_discard_test.py`.
  - `output_file_name` is a string, containing the full path to the output file.  The spread-skill plot will be written here as a JPEG image.
+
+<img src="https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/discard_test.jpg" width="400">
