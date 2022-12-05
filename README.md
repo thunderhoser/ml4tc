@@ -173,6 +173,8 @@ python plot_predictions_with_gridsat.py \
  - `last_init_time_string`: See documentation above for `first_init_time_string`.
  - `output_dir_name` is a string, naming the output directory.  Figures will be saved here in JPEG format.
 
+![GIF: Time series of prediction images created by plot_predictions_with_gridsat.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/nov2005_predictions.gif)
+
 # Evaluating a trained CNN: mean predictions only (not uncertainty estimates)
 
 Below is an example of how you would call `evaluate_model.py` from a Unix terminal.
