@@ -144,7 +144,7 @@ More details on the input arguments are provided below.
 
 # Plotting predictions and inputs (TD-to-TS only)
 
-Once you have run `apply_neural_net.py` to make predictions, you can plot the predictions with the script `plot_predictions_with_gridsat.py` in the directory `ml4tc/scripts`.  Below is an example of how you would call `plot_predictions_with_gridsat.py` from a Unix terminal.  This will plot figures like the one shown below, containing GridSat data in the background.  You can download GridSat data easily from here: (https://www.ncei.noaa.gov/data/geostationary-ir-channel-brightness-temperature-gridsat-b1/access/)[https://www.ncei.noaa.gov/data/geostationary-ir-channel-brightness-temperature-gridsat-b1/access/].
+Once you have run `apply_neural_net.py` to make predictions, you can plot the predictions with the script `plot_predictions_with_gridsat.py` in the directory `ml4tc/scripts`.  Below is an example of how you would call `plot_predictions_with_gridsat.py` from a Unix terminal.  This will plot figures like the one shown below, containing GridSat data in the background.  You can download GridSat data easily from here: https://www.ncei.noaa.gov/data/geostationary-ir-channel-brightness-temperature-gridsat-b1/access/
 
 ```
 python plot_predictions_with_gridsat.py \
@@ -197,3 +197,84 @@ More details on the input arguments are provided below.
  - `num_reliability_bins`: Number of bins for attributes diagram, which is a fancy reliability curve.  I suggest leaving this at 10.
  - `num_bootstrap_reps`: Number of replicates for bootstrapping, used to create confidence intervals in the ROC curve and performance diagram and attributes diagram.  If you do not want confidence intervals, make this 1.
  - `output_eval_file_name` is a string, containing the full path to the output file.  Model-evaluation results will be written here in NetCDF format.
+
+# Evaluating a trained CNN: uncertainty estimates only (not mean predictions)
+
+Below is an example of how you would call `compute_spread_vs_skill.py` from a Unix terminal, to compute the spread-skill plot.
+
+```
+python compute_spread_vs_skill.py \
+    --input_prediction_file_name="your file name here" \
+    --bin_edge_prediction_stdevs 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.30 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.40 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.60 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.70 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.80 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.90 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 \
+    --lead_times_hours 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96 102 108 114 120 126 132 138 144 150 156 162 168 \
+    --output_file_name="your file name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_prediction_file_name` is a string, containing the full path to a prediction file created by `apply_neural_net.py`.
+ - `bin_edge_prediction_stdevs` is the set of standard deviations to use as bin edges for the spread-skill plot.  These are the standard deviations of the CNN's predicted distribution, *i.e.*, of the CNN's predicted TD-to-TS probabilities.  I suggest using the default shown above.
+ - `lead_times_hours` is the set of lead times at which to evaluate the model.  For more details, see the above documentation for `evaluate_model.py`.
+ - `output_file_name` is a string, containing the full path to the output file.  Results will be written here in NetCDF format.
+
+And below is an example of how you would call `run_discard_test.py` from a Unix terminal.
+
+```
+python run_discard_test.py \
+    --input_prediction_file_name="your file name here" \
+    --discard_fractions 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 \
+    --lead_times_hours 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96 102 108 114 120 126 132 138 144 150 156 162 168 \
+    --output_file_name="your file name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_prediction_file_name` is a string, containing the full path to a prediction file created by `apply_neural_net.py`.
+ - `discard_fractions` is the set of discard fractions to use in the discard test.
+ - `lead_times_hours` is the set of lead times at which to evaluate the model.  For more details, see the above documentation for `evaluate_model.py`.
+ - `output_file_name` is a string, containing the full path to the output file.  Results will be written here in NetCDF format.
+
+# Plotting evaluation results: mean predictions only (not uncertainty estimates)
+
+Below is an example of how you would call `plot_evaluation.py` from a Unix terminal.
+
+```
+python plot_evaluation.py \
+    --input_evaluation_file_name="your file name here" \
+    --confidence_level=0.95 \
+    --output_dir_name="your directory name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_evaluation_file_name` is a string, containing the full path to an evaluation file created by `evaluate_model.py`.
+ - `confidence_level`: If the input file contains bootstrap-resampled evaluation results -- *i.e.*, if you called `evaluate_model.py` with `num_bootstrap_reps > 1` -- then you can plot confidence intervals in the evaluation graphics (ROC curve, performance diagram, and attributes diagram).  This argument indicates the confidence level, ranging from $\left[ 0, 1 \right]$.  Thus, 0.95 corresponds to the 95% confidence level.
+ - `output_dir_name` is a string, naming the output directory.  Evaluation graphics will be saved here.
+
+# Plotting evaluation results: uncertainty estimates only (not mean predictions)
+
+Below is an example of how you would call `plot_spread_vs_skill.py` from a Unix terminal.
+
+```
+python plot_spread_vs_skill.py \
+    --input_file_name="your file name here" \
+    --output_file_name="your file name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_file_name` is a string, containing the full path to a result file created by `compute_spread_vs_skill.py`.
+ - `output_file_name` is a string, containing the full path to the output file.  The spread-skill plot will be written here as a JPEG image.
+
+And is an example of how you would call `plot_discard_test.py` from a Unix terminal.
+
+```
+python plot_discard_test.py \
+    --input_file_name="your file name here" \
+    --output_file_name="your file name here"
+```
+
+More details on the input arguments are provided below.
+
+ - `input_file_name` is a string, containing the full path to a result file created by `run_discard_test.py`.
+ - `output_file_name` is a string, containing the full path to the output file.  The spread-skill plot will be written here as a JPEG image.
