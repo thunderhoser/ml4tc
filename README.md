@@ -253,6 +253,10 @@ More details on the input arguments are provided below.
  - `confidence_level`: If the input file contains bootstrap-resampled evaluation results -- *i.e.*, if you called `evaluate_model.py` with `num_bootstrap_reps > 1` -- then you can plot confidence intervals in the evaluation graphics (ROC curve, performance diagram, and attributes diagram).  This argument indicates the confidence level, ranging from $\left[ 0, 1 \right]$.  Thus, 0.95 corresponds to the 95% confidence level.
  - `output_dir_name` is a string, naming the output directory.  Evaluation graphics will be saved here.
 
+Shown below are examples of the graphics plotted by `plot_evaluation.py` -- the ROC curve, performance diagram, and attributes diagram -- with no confidence intervals.
+
+![ROC curve created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/roc_curve.jpg) ![Performance diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/performance_diagram.jpg) ![Attributes diagram created by plot_evaluation.py](https://raw.githubusercontent.com/thunderhoser/ml4tc/main/ml4tc/attributes_diagram.jpg)
+
 # Plotting evaluation results: uncertainty estimates only (not mean predictions)
 
 Below is an example of how you would call `plot_spread_vs_skill.py` from a Unix terminal.
