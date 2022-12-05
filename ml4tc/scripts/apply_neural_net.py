@@ -19,6 +19,7 @@ EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 YEARS_ARG_NAME = 'years'
 NUM_DROPOUT_ITERS_ARG_NAME = 'num_dropout_iterations'
 USE_QUANTILES_ARG_NAME = 'use_quantiles'
+MAX_ENSEMBLE_SIZE_ARG_NAME = 'max_ensemble_size'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 MODEL_FILE_HELP_STRING = (
@@ -37,6 +38,10 @@ NUM_DROPOUT_ITERS_HELP_STRING = (
 USE_QUANTILES_HELP_STRING = (
     '[used only if NN does quantile regression] Boolean flag.  If 1, will save '
     'predictions for every quantile.  If 0, will save only mean predictions.'
+)
+MAX_ENSEMBLE_SIZE_HELP_STRING = (
+    '[used only if NN does uncertainty quantification with something other '
+    'than quantile regression] Max ensemble size.'
 )
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Predictions and targets will be written here by'
@@ -64,6 +69,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + USE_QUANTILES_ARG_NAME, type=int, required=False, default=0,
     help=USE_QUANTILES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MAX_ENSEMBLE_SIZE_ARG_NAME, type=int, required=False, default=1e10,
+    help=MAX_ENSEMBLE_SIZE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -110,6 +119,7 @@ def _apply_nn_one_example_file(
 
     if num_dropout_iterations > 1:
         forecast_prob_matrix = None
+        ensemble_size = -1
 
         for k in range(num_dropout_iterations):
             new_prob_matrix = neural_net.apply_model(
@@ -121,12 +131,19 @@ def _apply_nn_one_example_file(
             )
 
             if k == 0:
+                ensemble_size = new_prob_matrix.shape[-1]
+
                 forecast_prob_matrix = numpy.full(
-                    new_prob_matrix.shape[:-1] + (num_dropout_iterations,),
+                    new_prob_matrix.shape[:-1] +
+                    (ensemble_size * num_dropout_iterations,),
                     numpy.nan
                 )
 
-            forecast_prob_matrix[..., k] = new_prob_matrix[..., 0]
+            first_index = k * ensemble_size
+            last_index = first_index + ensemble_size
+            forecast_prob_matrix[..., first_index:last_index] = (
+                new_prob_matrix + 0.
+            )
     else:
         forecast_prob_matrix = neural_net.apply_model(
             model_object=model_object,
@@ -160,7 +177,7 @@ def _apply_nn_one_example_file(
 
 
 def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
-         use_quantiles, output_dir_name):
+         use_quantiles, max_ensemble_size, output_dir_name):
     """Applies trained neural net in inference mode.
 
     This is effectively the main method.
@@ -170,8 +187,11 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
     :param years: Same.
     :param num_dropout_iterations: Same.
     :param use_quantiles: Same.
+    :param max_ensemble_size: Same.
     :param output_dir_name: Same.
     """
+
+    max_ensemble_size = max([max_ensemble_size, 1])
 
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
@@ -221,7 +241,10 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
     storm_longitudes_deg_e = numpy.array([], dtype=float)
 
     quantile_levels = model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY]
-    if quantile_levels is not None:
+
+    if quantile_levels is None:
+        use_quantiles = False
+    else:
         num_dropout_iterations = 0
 
     for i in range(len(example_file_names)):
@@ -252,6 +275,16 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
             storm_longitudes_deg_e,
             this_data_dict[neural_net.STORM_LONGITUDES_KEY]
         ), axis=0)
+
+        ensemble_size = this_prob_matrix.shape[-1]
+        if not use_quantiles and max_ensemble_size < ensemble_size:
+            ensemble_indices = numpy.linspace(
+                0, ensemble_size - 1, num=ensemble_size, dtype=int
+            )
+            ensemble_indices = numpy.random.choice(
+                ensemble_indices, size=max_ensemble_size, replace=False
+            )
+            this_prob_matrix = this_prob_matrix[..., ensemble_indices]
 
         if forecast_prob_matrix is None:
             target_class_matrix = this_target_matrix + 0
@@ -307,5 +340,6 @@ if __name__ == '__main__':
             INPUT_ARG_OBJECT, NUM_DROPOUT_ITERS_ARG_NAME
         ),
         use_quantiles=bool(getattr(INPUT_ARG_OBJECT, USE_QUANTILES_ARG_NAME)),
+        max_ensemble_size=getattr(INPUT_ARG_OBJECT, MAX_ENSEMBLE_SIZE_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
