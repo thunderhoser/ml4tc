@@ -319,8 +319,12 @@ def _plot_predictions_with_violin(
             showextrema=True
         )
 
-        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans']:
-            this_handle = violin_handles[part_name]
+        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
+            try:
+                this_handle = violin_handles[part_name]
+            except:
+                continue
+
             this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
             this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
 
