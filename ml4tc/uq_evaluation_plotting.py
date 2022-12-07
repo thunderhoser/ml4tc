@@ -46,7 +46,7 @@ pyplot.rc('figure', titlesize=FONT_SIZE)
 
 def _plot_means_as_inset(
         figure_object, bin_centers, bin_mean_predictions,
-        bin_mean_target_values, for_spread_skill_plot):
+        bin_mean_target_values, plotting_corner_string):
     """Plots means (mean prediction and target by bin) as inset in another fig.
 
     B = number of bins
@@ -60,15 +60,20 @@ def _plot_means_as_inset(
     :param bin_mean_target_values: length-B numpy array with mean target value
         (event frequency) in each bin.  These values will be plotted on the
         y-axis.
-    :param for_spread_skill_plot: Boolean flag.
+    :param plotting_corner_string: String in
+        ['top_right', 'top_left', 'bottom_right', 'bottom_left'].
     :return: inset_axes_object: Axes handle for histogram (instance of
         `matplotlib.axes._subplots.AxesSubplot`).
     """
 
-    if for_spread_skill_plot:
-        inset_axes_object = figure_object.add_axes([0.625, 0.3, 0.25, 0.25])
-    else:
+    if plotting_corner_string == 'top_right':
         inset_axes_object = figure_object.add_axes([0.625, 0.55, 0.25, 0.25])
+    elif plotting_corner_string == 'bottom_right':
+        inset_axes_object = figure_object.add_axes([0.625, 0.3, 0.25, 0.25])
+    elif plotting_corner_string == 'bottom_left':
+        inset_axes_object = figure_object.add_axes([0.2, 0.3, 0.25, 0.25])
+    elif plotting_corner_string == 'top_left':
+        inset_axes_object = figure_object.add_axes([0.2, 0.55, 0.25, 0.25])
 
     target_handle = inset_axes_object.plot(
         bin_centers, bin_mean_target_values, color=MEAN_TARGET_LINE_COLOUR,
@@ -219,13 +224,20 @@ def plot_spread_vs_skill(
     )
     histogram_axes_object.set_ylabel('% examples in each bin')
 
+    overspread_flags = (
+        mean_prediction_stdevs[real_indices] > rmse_values[real_indices]
+    )
+    plotting_corner_string = (
+        'top_left' if numpy.mean(overspread_flags) > 0.5 else 'bottom_right'
+    )
+
     inset_axes_object = _plot_means_as_inset(
         figure_object=figure_object, bin_centers=mean_prediction_stdevs,
         bin_mean_predictions=
         result_dict[uq_evaluation.MEAN_CENTRAL_PREDICTIONS_KEY],
         bin_mean_target_values=
         result_dict[uq_evaluation.MEAN_TARGET_VALUES_KEY],
-        for_spread_skill_plot=True
+        plotting_corner_string=plotting_corner_string
     )
 
     inset_axes_object.set_xticks(axes_object.get_xticks())
@@ -280,7 +292,7 @@ def plot_discard_test(
         result_dict[uq_evaluation.MEAN_CENTRAL_PREDICTIONS_KEY],
         bin_mean_target_values=
         result_dict[uq_evaluation.MEAN_TARGET_VALUES_KEY],
-        for_spread_skill_plot=False
+        plotting_corner_string='bottom_left'
     )
 
     inset_axes_object.set_xticks(axes_object.get_xticks())
