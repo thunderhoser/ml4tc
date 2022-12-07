@@ -44,11 +44,12 @@ LINE_COLOURS = 30 * [
 ]
 LINE_WIDTH = 4
 
+MEAN_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
 VIOLIN_LINE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
 VIOLIN_LINE_WIDTH = 2.
-VIOLIN_FACE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.5)
-VIOLIN_EDGE_COLOUR = numpy.full(3, 0.)
-VIOLIN_EDGE_WIDTH = 1.
+VIOLIN_FACE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.4)
+VIOLIN_EDGE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.4)
+VIOLIN_EDGE_WIDTH = 0.
 
 POSITIVE_CLASS_MARKER_TYPE = 'D'
 POSITIVE_CLASS_MARKER_SIZE = 12
@@ -297,22 +298,44 @@ def _plot_predictions_with_violin(
     lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
-    # TODO(thunderhoser): Make this work for quantile regression.
-    assert quantile_levels is None
+    if quantile_levels is not None:
+        new_quantile_levels = numpy.linspace(0, 1, num=1001, dtype=float)
+        # dimensions = (
+        #     len(lead_times_hours), len(new_quantile_levels)
+        # )
+        # new_forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
+
+        interp_object = interp1d(
+            x=quantile_levels, y=all_forecast_prob_matrix[..., 1:],
+            axis=-1, kind='linear', bounds_error=False, assume_sorted=True,
+            fill_value='extrapolate'
+        )
+
+        all_forecast_prob_matrix = interp_object(new_quantile_levels)
+        all_forecast_prob_matrix = numpy.maximum(all_forecast_prob_matrix, 0.)
+        all_forecast_prob_matrix = numpy.minimum(all_forecast_prob_matrix, 1.)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
 
+    legend_handles = []
+    legend_strings = []
+
     if example_index > -1:
         violin_handles = axes_object.violinplot(
-            numpy.transpose(all_forecast_prob_matrix), positions=lead_times_hours,
-            vert=True, widths=0.8, showmeans=True, showmedians=False,
+            numpy.transpose(all_forecast_prob_matrix),
+            positions=lead_times_hours,
+            vert=True, widths=4.8, showmeans=False, showmedians=False,
             showextrema=True
         )
 
-        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans']:
-            this_handle = violin_handles[part_name]
+        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
+            try:
+                this_handle = violin_handles[part_name]
+            except:
+                continue
+
             this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
             this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
 
@@ -321,6 +344,17 @@ def _plot_predictions_with_violin(
             this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
             this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
             this_handle.set_alpha(1.)
+
+        legend_handles.append(violin_handles['bodies'][0])
+        legend_strings.append('Forecast distribution')
+
+        this_handle = axes_object.plot(
+            lead_times_hours, mean_forecast_probs,
+            color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
+        )[0]
+
+        legend_handles.append(this_handle)
+        legend_strings.append('Mean forecast')
 
         title_string = 'Forecast for storm {0:s}'.format(
             prediction_dict[prediction_io.CYCLONE_IDS_KEY][example_index][-2:]
@@ -332,13 +366,13 @@ def _plot_predictions_with_violin(
             lead_times_hours[positive_indices],
             mean_forecast_probs[positive_indices],
             linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
-            markersize=POSITIVE_CLASS_MARKER_SIZE * 1.5, markeredgewidth=0,
+            markersize=POSITIVE_CLASS_MARKER_SIZE, markeredgewidth=0,
             markerfacecolor=numpy.full(3, 0.),
             markeredgecolor=numpy.full(3, 0.)
         )[0]
 
-        legend_handles = [this_handle]
-        legend_strings = ['TD-to-TS observed']
+        legend_handles.append(this_handle)
+        legend_strings.append('TD-to-TS observed')
 
         axes_object.legend(
             legend_handles, legend_strings,
@@ -352,7 +386,7 @@ def _plot_predictions_with_violin(
             transform=axes_object.transAxes
         )
 
-    axes_object.set_ylabel('Forecast TD-to-TS probability')
+    axes_object.set_ylabel('TD-to-TS probability')
     axes_object.set_xlabel('Lead time (hours)')
     axes_object.set_xlim(0, numpy.max(lead_times_hours))
     axes_object.set_ylim(0, 1)
