@@ -23,7 +23,7 @@ import longitude_conversion as lng_conversion
 import number_rounding
 import file_system_utils
 import error_checking
-from gewittergefahr.plotting import imagemagick_utils
+import imagemagick_utils
 import prediction_io
 import border_io
 import general_utils
