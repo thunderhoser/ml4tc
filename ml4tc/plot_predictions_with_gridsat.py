@@ -313,8 +313,9 @@ def _plot_predictions_with_violin(
 
     if example_index > -1:
         violin_handles = axes_object.violinplot(
-            numpy.transpose(all_forecast_prob_matrix), positions=lead_times_hours,
-            vert=True, widths=0.8, showmeans=True, showmedians=False,
+            numpy.transpose(all_forecast_prob_matrix),
+            positions=lead_times_hours,
+            vert=True, widths=4.8, showmeans=False, showmedians=False,
             showextrema=True
         )
 
@@ -339,7 +340,7 @@ def _plot_predictions_with_violin(
             lead_times_hours[positive_indices],
             mean_forecast_probs[positive_indices],
             linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
-            markersize=POSITIVE_CLASS_MARKER_SIZE * 1.5, markeredgewidth=0,
+            markersize=POSITIVE_CLASS_MARKER_SIZE, markeredgewidth=0,
             markerfacecolor=numpy.full(3, 0.),
             markeredgecolor=numpy.full(3, 0.)
         )[0]
