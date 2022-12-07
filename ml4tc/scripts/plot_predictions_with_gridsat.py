@@ -288,9 +288,6 @@ def _plot_predictions_with_violin(
     target_classes = (
         prediction_dict[prediction_io.TARGET_MATRIX_KEY][example_index, :]
     )
-    mean_forecast_probs = (
-        prediction_io.get_mean_predictions(prediction_dict)[example_index, :]
-    )
     all_forecast_prob_matrix = prediction_dict[
         prediction_io.PROBABILITY_MATRIX_KEY
     ][example_index, 1, ...]
@@ -298,12 +295,12 @@ def _plot_predictions_with_violin(
     lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
-    if quantile_levels is not None:
+    if quantile_levels is None:
+        mean_forecast_probs = prediction_io.get_mean_predictions(
+            prediction_dict
+        )[example_index, :]
+    else:
         new_quantile_levels = numpy.linspace(0, 1, num=1001, dtype=float)
-        # dimensions = (
-        #     len(lead_times_hours), len(new_quantile_levels)
-        # )
-        # new_forecast_prob_matrix = numpy.full(dimensions, numpy.nan)
 
         interp_object = interp1d(
             x=quantile_levels, y=all_forecast_prob_matrix[..., 1:],
@@ -311,9 +308,24 @@ def _plot_predictions_with_violin(
             fill_value='extrapolate'
         )
 
-        all_forecast_prob_matrix = interp_object(new_quantile_levels)
-        all_forecast_prob_matrix = numpy.maximum(all_forecast_prob_matrix, 0.)
-        all_forecast_prob_matrix = numpy.minimum(all_forecast_prob_matrix, 1.)
+        new_forecast_prob_matrix = interp_object(new_quantile_levels)
+
+        for j in range(len(lead_times_hours)):
+            new_forecast_prob_matrix[j, :] = numpy.maximum(
+                new_forecast_prob_matrix[j, :],
+                numpy.min(all_forecast_prob_matrix[j, 1:])
+            )
+            new_forecast_prob_matrix[j, :] = numpy.minimum(
+                new_forecast_prob_matrix[j, :],
+                numpy.max(all_forecast_prob_matrix[j, 1:])
+            )
+
+        new_forecast_prob_matrix = numpy.maximum(new_forecast_prob_matrix, 0.)
+        new_forecast_prob_matrix = numpy.minimum(new_forecast_prob_matrix, 1.)
+        all_forecast_prob_matrix = new_forecast_prob_matrix + 0.
+
+        # TODO(thunderhoser): This is actually the median.
+        mean_forecast_probs = interp_object(0.5)
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
