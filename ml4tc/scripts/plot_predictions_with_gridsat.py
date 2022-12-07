@@ -44,6 +44,12 @@ LINE_COLOURS = 30 * [
 ]
 LINE_WIDTH = 4
 
+VIOLIN_LINE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
+VIOLIN_LINE_WIDTH = 2.
+VIOLIN_FACE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.5)
+VIOLIN_EDGE_COLOUR = numpy.full(3, 0.)
+VIOLIN_EDGE_WIDTH = 1.
+
 POSITIVE_CLASS_MARKER_TYPE = 'D'
 POSITIVE_CLASS_MARKER_SIZE = 12
 POLYGON_OPACITY = 0.5
@@ -75,6 +81,7 @@ pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 GRIDSAT_DIR_ARG_NAME = 'input_gridsat_dir_name'
+SHOW_VIOLIN_PLOTS_ARG_NAME = 'show_violin_plots'
 CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 MIN_LATITUDE_ARG_NAME = 'min_latitude_deg_n'
 MAX_LATITUDE_ARG_NAME = 'max_latitude_deg_n'
@@ -95,12 +102,17 @@ GRIDSAT_DIR_HELP_STRING = (
     'Name of directory with GridSat data.  Files therein will be found '
     '`_find_gridsat_file` and read by `_read_gridsat_file`.'
 )
-CONFIDENCE_LEVEL_HELP_STRING = (
-    'Confidence level to plot.  For example, if this is 0.95, will plot 95% '
-    'confidence interval of probabilities for each cyclone.  If you want to '
-    'plot only the mean and not a confidence interval, leave this argument '
-    'alone.'
+SHOW_VIOLIN_PLOTS_HELP_STRING = (
+    'Boolean flag.  If 1 (0), will show violin plots (confidence intervals) to '
+    'represent uncertainty.'
 )
+CONFIDENCE_LEVEL_HELP_STRING = (
+    '[used only if {0:s} == 0] Confidence level to plot.  For example, if this '
+    'is 0.95, will plot 95% confidence interval of probabilities for each '
+    'cyclone.  If you want to plot only the mean and not a confidence interval, '
+    'leave this argument alone.'
+).format(SHOW_VIOLIN_PLOTS_ARG_NAME)
+
 MIN_LATITUDE_HELP_STRING = 'Minimum latitude (deg north) in map.'
 MAX_LATITUDE_HELP_STRING = 'Max latitude (deg north) in map.'
 MIN_LONGITUDE_HELP_STRING = 'Minimum longitude (deg east) in map.'
@@ -121,12 +133,16 @@ INPUT_ARG_PARSER.add_argument(
     help=MODEL_METAFILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + GRIDSAT_DIR_ARG_NAME, type=str, required=True,
+    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=True,
+    help=PREDICTION_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + GRIDSAT_DIR_ARG_NAME, type=str, required=False, default='',
     help=GRIDSAT_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + PREDICTION_FILE_ARG_NAME, type=str, required=False, default='',
-    help=PREDICTION_FILE_HELP_STRING
+    '--' + SHOW_VIOLIN_PLOTS_ARG_NAME, type=int, required=False, default=0,
+    help=SHOW_VIOLIN_PLOTS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=-1,
@@ -259,9 +275,99 @@ def _read_gridsat_file(
     )
 
 
-def _plot_predictions_and_targets(
+def _plot_predictions_with_violin(
+        prediction_dict, example_index, output_file_name):
+    """Plots predictions and targets for one init time, with violin plot.
+
+    :param prediction_dict: See doc for `_plot_predictions_no_violin`.
+    :param example_index: Index corresponding to the given init time.
+    :param output_file_name: See doc for `_plot_predictions_no_violin`.
+    """
+
+    target_classes = (
+        prediction_dict[prediction_io.TARGET_MATRIX_KEY][example_index, :]
+    )
+    mean_forecast_probs = (
+        prediction_io.get_mean_predictions(prediction_dict)[example_index, :]
+    )
+    all_forecast_prob_matrix = prediction_dict[
+        prediction_io.PROBABILITY_MATRIX_KEY
+    ][example_index, 1, ...]
+
+    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
+    quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
+
+    # TODO(thunderhoser): Make this work for quantile regression.
+    assert quantile_levels is None
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+    )
+
+    if example_index > -1:
+        violin_handles = axes_object.violinplot(
+            numpy.transpose(all_forecast_prob_matrix), positions=lead_times_hours,
+            vert=True, widths=0.8, showmeans=True, showmedians=False,
+            showextrema=True
+        )
+
+        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans']:
+            this_handle = violin_handles[part_name]
+            this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
+            this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
+
+        for this_handle in violin_handles['bodies']:
+            this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
+            this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
+            this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
+            this_handle.set_alpha(1.)
+
+        title_string = 'Forecast for storm {0:s}'.format(
+            prediction_dict[prediction_io.CYCLONE_IDS_KEY][example_index][-2:]
+        )
+        axes_object.set_title(title_string)
+
+        positive_indices = numpy.where(target_classes == 1)[0]
+        this_handle = axes_object.plot(
+            lead_times_hours[positive_indices],
+            mean_forecast_probs[positive_indices],
+            linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
+            markersize=POSITIVE_CLASS_MARKER_SIZE * 1.5, markeredgewidth=0,
+            markerfacecolor=numpy.full(3, 0.),
+            markeredgecolor=numpy.full(3, 0.)
+        )[0]
+
+        legend_handles = [this_handle]
+        legend_strings = ['TD-to-TS observed']
+
+        axes_object.legend(
+            legend_handles, legend_strings,
+            loc='center right', bbox_to_anchor=(0.95, 0.5),
+            fancybox=True, shadow=True, ncol=1
+        )
+    else:
+        axes_object.text(
+            0.5, 0.5, 'No TDs at this time', color=numpy.full(3, 0.),
+            horizontalalignment='center', verticalalignment='center',
+            transform=axes_object.transAxes
+        )
+
+    axes_object.set_ylabel('Forecast TD-to-TS probability')
+    axes_object.set_xlabel('Lead time (hours)')
+    axes_object.set_xlim(0, numpy.max(lead_times_hours))
+    axes_object.set_ylim(0, 1)
+
+    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
+
+
+def _plot_predictions_no_violin(
         prediction_dict, example_indices, confidence_level, output_file_name):
-    """Plots predictions and targets for one forecast-init time.
+    """Plots predictions and targets for one init time, with no violin plot.
 
     :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
     :param example_indices: 1-D numpy array of indices corresponding to the
@@ -394,8 +500,8 @@ def _plot_predictions_and_targets(
 
 
 def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
-         confidence_level, min_latitude_deg_n, max_latitude_deg_n,
-         min_longitude_deg_e, max_longitude_deg_e,
+         show_violin_plots, confidence_level, min_latitude_deg_n,
+         max_latitude_deg_n, min_longitude_deg_e, max_longitude_deg_e,
          first_init_time_string, last_init_time_string, output_dir_name):
     """Plots predictions for many storms, one map per time step.
 
@@ -404,6 +510,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
     :param model_metafile_name: See documentation at top of file.
     :param gridsat_dir_name: Same.
     :param prediction_file_name: Same.
+    :param show_violin_plots: Same.
     :param confidence_level: Same.
     :param min_latitude_deg_n: Same.
     :param max_latitude_deg_n: Same.
@@ -415,7 +522,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
     """
 
     # Check input args.
-    if confidence_level <= 0:
+    if confidence_level <= 0 or show_violin_plots:
         confidence_level = None
 
     if confidence_level is not None:
@@ -615,14 +722,42 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         init_time_string = time_conversion.unix_sec_to_string(
             this_time_unix_sec, TIME_FORMAT
         )
-        graph_file_name = '{0:s}/{1:s}_graph.jpg'.format(
-            output_dir_name, init_time_string
-        )
-        _plot_predictions_and_targets(
-            prediction_dict=prediction_dict,
-            example_indices=example_indices_this_time,
-            confidence_level=confidence_level, output_file_name=graph_file_name
-        )
+
+        if show_violin_plots:
+            if len(example_indices_this_time) == 0:
+                graph_file_name = '{0:s}/{1:s}_graph0.jpg'.format(
+                    output_dir_name, init_time_string
+                )
+                _plot_predictions_with_violin(
+                    prediction_dict=prediction_dict, example_index=-1,
+                    output_file_name=graph_file_name
+                )
+
+                graph_file_names = [graph_file_name]
+            else:
+                graph_file_names = [None] * len(example_indices_this_time)
+
+                for j in range(len(example_indices_this_time)):
+                    graph_file_names[j] = '{0:s}/{1:s}_graph{2:d}.jpg'.format(
+                        output_dir_name, init_time_string, j
+                    )
+                    _plot_predictions_with_violin(
+                        prediction_dict=prediction_dict,
+                        example_index=example_indices_this_time[j],
+                        output_file_name=graph_file_names[j]
+                    )
+        else:
+            graph_file_name = '{0:s}/{1:s}_graph.jpg'.format(
+                output_dir_name, init_time_string
+            )
+            _plot_predictions_no_violin(
+                prediction_dict=prediction_dict,
+                example_indices=example_indices_this_time,
+                confidence_level=confidence_level,
+                output_file_name=graph_file_name
+            )
+
+            graph_file_names = [graph_file_name]
 
         plotting_utils.plot_grid_lines(
             plot_latitudes_deg_n=
@@ -668,17 +803,18 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
 
         print('Concatenating panels to: "{0:s}"...'.format(concat_file_name))
         imagemagick_utils.concatenate_images(
-            input_file_names=[satellite_file_name, graph_file_name],
+            input_file_names=[satellite_file_name] + graph_file_names,
             output_file_name=concat_file_name,
-            num_panel_rows=1, num_panel_columns=2
+            num_panel_rows=1, num_panel_columns=len(graph_file_names) + 1
         )
         imagemagick_utils.resize_image(
             input_file_name=concat_file_name, output_file_name=concat_file_name,
             output_size_pixels=CONCAT_FIGURE_SIZE_PX
         )
 
-        os.remove(graph_file_name)
         os.remove(satellite_file_name)
+        for this_file_name in graph_file_names:
+            os.remove(this_file_name)
 
 
 if __name__ == '__main__':
@@ -690,6 +826,7 @@ if __name__ == '__main__':
         prediction_file_name=getattr(
             INPUT_ARG_OBJECT, PREDICTION_FILE_ARG_NAME
         ),
+        show_violin_plots=getattr(INPUT_ARG_OBJECT, SHOW_VIOLIN_PLOTS_ARG_NAME),
         confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         min_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MIN_LATITUDE_ARG_NAME),
         max_latitude_deg_n=getattr(INPUT_ARG_OBJECT, MAX_LATITUDE_ARG_NAME),
