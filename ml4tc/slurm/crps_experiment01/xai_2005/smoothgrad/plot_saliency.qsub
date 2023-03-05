@@ -48,7 +48,7 @@ while ($i <= ${#FOURTH_LAST_LAYER_DROPOUT_RATES})
     set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$i]}
 
     set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
-    set prediction_file_name="${model_dir_name}/validation_2005-2009/predictions.nc"
+    set prediction_file_name="${model_dir_name}/validation/predictions.nc"
     set saliency_file_name="${model_dir_name}/smoothgrad_experiment/sample-size=${sample_size}_noise-stdev=${noise_stdev}/saliency_maps_${cyclone_id_string}.nc"
     set output_dir_name="${model_dir_name}/smoothgrad_experiment/sample-size=${sample_size}_noise-stdev=${noise_stdev}/saliency_maps_${cyclone_id_string}"
 
