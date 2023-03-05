@@ -189,8 +189,8 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
     validation_option_dict = (
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
-    three_saliency_matrices = [None]
-    three_input_grad_matrices = [None]
+    three_saliency_matrices = [None] * 3
+    three_input_grad_matrices = [None] * 3
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
@@ -215,7 +215,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         ))
 
         if use_smoothgrad:
-            new_saliency_matrices = [None]
+            new_saliency_matrices = [None] * 3
 
             for k in range(num_smoothgrad_samples):
                 these_predictor_matrices = [
