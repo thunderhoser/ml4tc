@@ -217,7 +217,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
         if use_smoothgrad:
             new_saliency_matrices = [None]
 
-            for k in num_smoothgrad_samples:
+            for k in range(num_smoothgrad_samples):
                 these_predictor_matrices = [
                     None if p is None
                     else p + numpy.random.normal(
