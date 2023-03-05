@@ -28,7 +28,7 @@ INPUT_PATTERN_HELP_STRING = (
 NUM_SAMPLES_HELP_STRING = (
     'Number of SmoothGrad samples expected.  This script will raise an error '
     'if the number of files found (i.e., matching the glob pattern) is '
-    'different.'
+    'smaller.'
 )
 OUTPUT_FILE_HELP_STRING = (
     'Path to output file.  The average saliency map will be written here by '
@@ -58,7 +58,7 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
     :param input_file_pattern: See documentation at top of file.
     :param num_smoothgrad_samples: Same.
     :param output_file_name: Same.
-    :raises: ValueError: if number of files found != number of expected
+    :raises: ValueError: if number of files found < number of expected
         SmoothGrad samples.
     """
 
@@ -67,15 +67,24 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
     input_file_names = glob.glob(input_file_pattern)
     input_file_names.sort()
 
-    if len(input_file_names) != num_smoothgrad_samples:
+    if len(input_file_names) < num_smoothgrad_samples:
         error_string = (
-            'Expected {0:d} SmoothGrad samples.  Instead, found {1:d} files '
-            'with pattern: "{2:s}"'
+            'Expected at least {0:d} SmoothGrad samples.  Instead, found {1:d} '
+            'files with pattern: "{2:s}"'
         ).format(
             num_smoothgrad_samples, len(input_file_names), input_file_pattern
         )
 
         raise ValueError(error_string)
+
+    if num_smoothgrad_samples > len(input_file_names):
+        file_indices = numpy.linspace(
+            0, len(input_file_names) - 1, num=len(input_file_names), dtype=int
+        )
+        file_indices = numpy.random.choice(
+            file_indices, size=num_smoothgrad_samples, replace=False
+        )
+        input_file_names = [input_file_names[k] for k in file_indices]
 
     three_saliency_matrices = [None] * 3
     three_input_grad_matrices = [None] * 3

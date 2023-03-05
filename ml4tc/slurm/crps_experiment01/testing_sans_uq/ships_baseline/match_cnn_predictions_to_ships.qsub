@@ -22,7 +22,7 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01"
-set INPUT_SHIPS_PREDICTION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/oper_stext/ships_td_to_ts_predictions_2010-2014_2020-2021.nc"
+set INPUT_SHIPS_PREDICTION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/oper_stext/ships_ri_predictions_2010-2014_2020-2021.nc"
 
 set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.900" "0.300" "0.500" "0.300" "0.900" "0.100")
 set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.500" "0.300" "0.500" "0.500" "0.100" "0.500")
