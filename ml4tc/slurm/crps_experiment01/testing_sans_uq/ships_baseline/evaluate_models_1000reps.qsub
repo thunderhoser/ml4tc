@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_evaluation"
+#SBATCH --job-name="evaluate_models_1000reps"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,7 +14,7 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_evaluation_%A_%a.out
+#SBATCH --output=evaluate_models_1000reps_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -33,17 +33,26 @@ set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRA
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
 
-python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_evaluation_file_name="${model_dir_name}/testing_matched_with_ships/cnn_evaluation.nc" \
---confidence_level=0.95 \
---output_dir_name="${model_dir_name}/testing_matched_with_ships/cnn_evaluation"
+python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+--input_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions.nc" \
+--event_freq_in_training=0.07267640234 \
+--num_prob_thresholds=1001 \
+--num_reliability_bins=20 \
+--num_bootstrap_reps=1000 \
+--output_eval_file_name="${model_dir_name}/testing_matched_with_ships/cnn_evaluation_1000reps.nc"
 
-python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_evaluation_file_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_lge.nc" \
---confidence_level=0.95 \
---output_dir_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_lge"
+python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+--input_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_lge.nc" \
+--event_freq_in_training=0.07267640234 \
+--num_prob_thresholds=1001 \
+--num_reliability_bins=20 \
+--num_bootstrap_reps=1000 \
+--output_eval_file_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_1000reps_lge.nc"
 
-python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_evaluation_file_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_no_lge.nc" \
---confidence_level=0.95 \
---output_dir_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_no_lge"
+python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+--input_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_no_lge.nc" \
+--event_freq_in_training=0.07267640234 \
+--num_prob_thresholds=1001 \
+--num_reliability_bins=20 \
+--num_bootstrap_reps=1000 \
+--output_eval_file_name="${model_dir_name}/testing_matched_with_ships/ships_evaluation_1000reps_no_lge.nc"
