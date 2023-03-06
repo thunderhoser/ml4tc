@@ -84,6 +84,7 @@ TARGET_MATRIX_KEY = 'target_class_matrix'
 INIT_TIMES_KEY = 'init_times_unix_sec'
 STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
+STORM_INTENSITY_CHANGES_KEY = 'storm_intensity_changes_m_s01'
 GRID_LATITUDE_MATRIX_KEY = 'grid_latitude_matrix_deg_n'
 GRID_LONGITUDE_MATRIX_KEY = 'grid_longitude_matrix_deg_e'
 
@@ -486,12 +487,13 @@ def _find_all_desired_times(
     :param lead_times_sec: See doc for `_read_one_example_file`.
     :param satellite_lag_times_sec: Same.
     :param ships_lag_times_sec: Same.
-    :param class_cutoffs_m_s01: Same.
+    :param predict_td_to_ts: Same.
     :param satellite_time_tolerance_sec: Same.
     :param satellite_max_missing_times: Same.
     :param ships_time_tolerance_sec: Same.
     :param ships_max_missing_times: Same.
     :param use_climo_as_backup: Same.
+    :param class_cutoffs_m_s01: Same.
     :return: satellite_indices: length-T numpy array of indices for satellite-
         based predictors.  These are indices into the satellite times in
         `example_table_xarray`.
@@ -499,6 +501,8 @@ def _find_all_desired_times(
         predictors.  These are indices into the SHIPS times in
         `example_table_xarray`.
     :return: target_class_matrix: L-by-K numpy array of integers in 0...1.
+    :return: intensity_change_m_s01: Actual intensity change corresponding to
+        target class.  If `predict_td_to_ts == True`, this is None.
     """
 
     xt = example_table_xarray
@@ -532,7 +536,7 @@ def _find_all_desired_times(
         ).format(satellite_time_tolerance_sec, str(desired_time_strings))
 
         warnings.warn(warning_string)
-        return None, None, None
+        return None, None, None, None
 
     if ships_lag_times_sec is None:
         ships_indices = None
@@ -564,7 +568,7 @@ def _find_all_desired_times(
 
         warnings.warn(warning_string)
 
-        return None, None, None
+        return None, None, None, None
 
     if example_utils.SHIPS_METADATA_TIME_DIM in xt.coords:
         all_metadata_times_unix_sec = (
@@ -584,7 +588,7 @@ def _find_all_desired_times(
             xt[example_utils.STORM_INTENSITY_KEY].values[init_time_index]
         )
         if init_intensity_m_s01 >= MIN_TROP_STORM_INTENSITY_M_S01:
-            return None, None, None
+            return None, None, None, None
 
         zero_hour_index = numpy.where(
             xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values == 0
@@ -593,7 +597,7 @@ def _find_all_desired_times(
             xt[ships_io.STORM_TYPE_KEY].values[init_time_index, zero_hour_index]
         )
         if init_storm_type_enum != 1:
-            return None, None, None
+            return None, None, None, None
 
         num_lead_times = len(lead_times_sec)
         target_class_matrix = numpy.full((num_lead_times, 2), 0, dtype=bool)
@@ -627,7 +631,10 @@ def _find_all_desired_times(
             ))
             target_class_matrix[k, 0] = numpy.invert(target_class_matrix[k, 1])
 
-        return satellite_indices, ships_indices, target_class_matrix.astype(int)
+        return (
+            satellite_indices, ships_indices,
+            target_class_matrix.astype(int), None
+        )
 
     lead_time_sec = lead_times_sec[0]
 
@@ -659,7 +666,7 @@ def _find_all_desired_times(
         ).format(str(valid_time_strings))
 
         warnings.warn(warning_string)
-        return None, None, None
+        return None, None, None, None
 
     target_indices = target_indices[target_indices != MISSING_INDEX]
     intensities_m_s01 = (
@@ -674,7 +681,10 @@ def _find_all_desired_times(
     )
     target_class_matrix = numpy.expand_dims(target_flags, axis=0)
 
-    return satellite_indices, ships_indices, target_class_matrix
+    return (
+        satellite_indices, ships_indices,
+        target_class_matrix, intensity_change_m_s01
+    )
 
 
 def _read_non_predictors_one_file(
@@ -716,6 +726,9 @@ def _read_non_predictors_one_file(
     data_dict['init_times_unix_sec']: Same.
     data_dict['storm_latitudes_deg_n']: Same.
     data_dict['storm_longitudes_deg_e']: Same.
+    data_dict['storm_intensity_changes_m_s01']: length-E numpy array of
+        intensity changes corresponding to target classes.  If
+        `predict_td_to_ts == True`, this is None.
     """
 
     xt = example_table_xarray
@@ -734,13 +747,15 @@ def _read_non_predictors_one_file(
     init_times_unix_sec = []
     storm_latitudes_deg_n = []
     storm_longitudes_deg_e = []
+    storm_intensity_changes_m_s01 = []
     target_class_matrix = None
 
     for t in all_init_times_unix_sec:
         (
             these_satellite_indices,
             these_ships_indices,
-            this_target_class_matrix
+            this_target_class_matrix,
+            this_intensity_change_m_s01
         ) = _find_all_desired_times(
             example_table_xarray=xt, init_time_unix_sec=t,
             lead_times_sec=lead_times_sec,
@@ -807,6 +822,7 @@ def _read_non_predictors_one_file(
         storm_longitudes_deg_e.append(
             xt[ships_io.STORM_LONGITUDE_KEY].values[this_index]
         )
+        storm_intensity_changes_m_s01.append(this_intensity_change_m_s01)
 
         if (
                 num_positive_examples_found >= num_positive_examples_desired and
@@ -824,13 +840,21 @@ def _read_non_predictors_one_file(
     storm_latitudes_deg_n = numpy.array(storm_latitudes_deg_n)
     storm_longitudes_deg_e = numpy.array(storm_longitudes_deg_e)
 
+    if predict_td_to_ts:
+        storm_intensity_changes_m_s01 = None
+    else:
+        storm_intensity_changes_m_s01 = numpy.array(
+            storm_intensity_changes_m_s01
+        )
+
     return {
         SATELLITE_ROWS_KEY: satellite_rows_by_example,
         SHIPS_ROWS_KEY: ships_rows_by_example,
         TARGET_MATRIX_KEY: target_class_matrix,
         INIT_TIMES_KEY: init_times_unix_sec,
         STORM_LATITUDES_KEY: storm_latitudes_deg_n,
-        STORM_LONGITUDES_KEY: storm_longitudes_deg_e
+        STORM_LONGITUDES_KEY: storm_longitudes_deg_e,
+        STORM_INTENSITY_CHANGES_KEY: storm_intensity_changes_m_s01
     }
 
 
@@ -1254,6 +1278,9 @@ def _read_one_example_file(
         (deg N).
     data_dict['storm_longitudes_deg_e']: length-E numpy array of storm
         longitudes (deg E).
+    data_dict['storm_intensity_changes_m_s01']: length-E numpy array of
+        intensity changes corresponding to targets.  If
+        `predict_td_to_ts == True`, this is None.
     data_dict['grid_latitude_matrix_deg_n']: numpy array of grid latitudes (deg
         north).  If regular grids, this array will have dimensions
         E x M x T_sat; if irregular, will have dimensions E x M x N x T_sat.

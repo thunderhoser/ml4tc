@@ -21,6 +21,9 @@ EVENT_FREQ_ARG_NAME = 'event_freq_in_training'
 NUM_PROB_THRESHOLDS_ARG_NAME = 'num_prob_thresholds'
 NUM_RELIABILITY_BINS_ARG_NAME = 'num_reliability_bins'
 NUM_BOOTSTRAP_REPS_ARG_NAME = 'num_bootstrap_reps'
+IGNORE_FALSE_ALARMS_THRESHOLD_ARG_NAME = (
+    'ignore_fa_intensity_change_thres_m_s01'
+)
 OUTPUT_FILE_ARG_NAME = 'output_eval_file_name'
 
 INPUT_FILE_HELP_STRING = (
@@ -40,6 +43,14 @@ NUM_PROB_THRESHOLDS_HELP_STRING = (
 )
 NUM_RELIABILITY_BINS_HELP_STRING = 'Number of bins for reliability curves.'
 NUM_BOOTSTRAP_REPS_HELP_STRING = 'Number of replicates for bootstrapping.'
+IGNORE_FALSE_ALARMS_THRESHOLD_HELP_STRING = (
+    '[used only if the prediction task is RI, not TD-to-TS] '
+    'Threshold at which to ignore false alarms.  For example, if the true RI '
+    'threshold is 30 kt (15.43 m/s) and this threshold is 25 kt (12.86 m/s), '
+    'examples with forecast RI = yes and intensity change in [25, 30) kt will '
+    '*not* be considered false alarms, even though they would be with strict '
+    'evaluation.  If you want strict evaluation, leave this argument alone.'
+)
 OUTPUT_FILE_HELP_STRING = (
     'Path to output file.  Evaluation results will be written here by '
     '`evaluation.write_file`.'
@@ -74,6 +85,10 @@ INPUT_ARG_PARSER.add_argument(
     help=NUM_BOOTSTRAP_REPS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + IGNORE_FALSE_ALARMS_THRESHOLD_ARG_NAME, type=float, required=False,
+    default=-1, help=IGNORE_FALSE_ALARMS_THRESHOLD_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
     help=OUTPUT_FILE_HELP_STRING
 )
@@ -81,7 +96,7 @@ INPUT_ARG_PARSER.add_argument(
 
 def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
          num_prob_thresholds, num_reliability_bins, num_bootstrap_reps,
-         output_file_name):
+         ignore_fa_intensity_change_thres_m_s01, output_file_name):
     """Evaluates model predictions.
 
     This is effectively the main method.
@@ -92,11 +107,14 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
     :param num_prob_thresholds: Same.
     :param num_reliability_bins: Same.
     :param num_bootstrap_reps: Same.
+    :param ignore_fa_intensity_change_thres_m_s01: Same.
     :param output_file_name: Same.
     """
 
     if len(lead_times_hours) == 1 and lead_times_hours[0] <= 0:
         lead_times_hours = None
+    if ignore_fa_intensity_change_thres_m_s01 <= 0:
+        ignore_fa_intensity_change_thres_m_s01 = None
 
     print('Reading data from: "{0:s}"...'.format(prediction_file_name))
     prediction_dict = prediction_io.read_file(prediction_file_name)
@@ -119,6 +137,15 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
             init_times_unix_sec, reps=num_lead_times
         )
 
+        ignore_fa_intensity_change_thres_m_s01 = None
+
+    if ignore_fa_intensity_change_thres_m_s01 is None:
+        storm_intensity_changes_m_s01 = None
+    else:
+        storm_intensity_changes_m_s01 = prediction_dict[
+            prediction_io.STORM_INTENSITY_CHANGES_KEY
+        ]
+
     forecast_prob_matrix = prediction_io.get_mean_predictions(prediction_dict)
     forecast_probabilities = numpy.ravel(forecast_prob_matrix)
     target_classes = numpy.ravel(
@@ -138,7 +165,11 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
         model_file_name=prediction_dict[prediction_io.MODEL_FILE_KEY],
         num_prob_thresholds=num_prob_thresholds,
         num_reliability_bins=num_reliability_bins,
-        num_bootstrap_reps=num_bootstrap_reps
+        num_bootstrap_reps=num_bootstrap_reps,
+        ignore_fa_intensity_change_thres_m_s01=
+        ignore_fa_intensity_change_thres_m_s01,
+        storm_intensity_changes_m_s01=
+        storm_intensity_changes_m_s01[good_indices]
     )
 
     print(SEPARATOR_STRING)
@@ -167,6 +198,9 @@ if __name__ == '__main__':
         ),
         num_bootstrap_reps=getattr(
             INPUT_ARG_OBJECT, NUM_BOOTSTRAP_REPS_ARG_NAME
+        ),
+        ignore_fa_intensity_change_thres_m_s01=getattr(
+            INPUT_ARG_OBJECT, IGNORE_FALSE_ALARMS_THRESHOLD_ARG_NAME
         ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )

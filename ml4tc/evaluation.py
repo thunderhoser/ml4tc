@@ -58,9 +58,50 @@ RELIABILITY_KEY = 'reliability'
 RESOLUTION_KEY = 'resolution'
 
 
+def _remove_minor_false_alarms(
+        forecast_classes, target_classes,
+        ignore_fa_intensity_change_thres_m_s01, storm_intensity_changes_m_s01):
+    """Removes 'minor false alarms' from dataset.
+
+    E = original number of examples
+    e = number of examples after removing minor false alarms
+
+    NOTE: This works only for binary classification!
+
+    :param forecast_classes: length-E numpy array of class labels (integers in
+        0...1).
+    :param target_classes: length-E numpy array of class labels (integers in
+        0...1).
+    :param ignore_fa_intensity_change_thres_m_s01:
+        Threshold at which to ignore false alarms.  For example, if the true RI
+        threshold is 30 kt (15.43 m/s) and this threshold is 25 kt (12.86 m/s),
+        examples with forecast RI = yes and intensity change in [25, 30) kt will
+        *not* be considered false alarms, even though they would be with strict
+        evaluation.
+    :param storm_intensity_changes_m_s01: length-E numpy array of intensity
+        changes corresponding to target_classes.
+    :return: forecast_classes: length-e numpy array of class labels (integers in
+        0...1).
+    :return: target_classes: length-e numpy array of class labels (integers in
+        0...1).
+    """
+
+    false_alarm_flags = numpy.logical_and(
+        forecast_classes == 1, target_classes == 0
+    )
+    minor_false_alarm_flags = numpy.logical_and(
+        false_alarm_flags,
+        storm_intensity_changes_m_s01 >= ignore_fa_intensity_change_thres_m_s01
+    )
+    good_indices = numpy.where(numpy.invert(minor_false_alarm_flags))[0]
+
+    return forecast_classes[good_indices], target_classes[good_indices]
+
+
 def _get_binary_scores_one_replicate(
         evaluation_table_xarray, forecast_probabilities, target_classes,
-        event_freq_in_training, num_bootstrap_reps, bootstrap_rep_index):
+        event_freq_in_training, num_bootstrap_reps, bootstrap_rep_index,
+        ignore_fa_intensity_change_thres_m_s01, storm_intensity_changes_m_s01):
     """Evaluates binary-classification model for one bootstrap replicate.
 
     :param evaluation_table_xarray: xarray table in format returned by
@@ -71,6 +112,9 @@ def _get_binary_scores_one_replicate(
     :param num_bootstrap_reps: Total number of bootstrap replicates.
     :param bootstrap_rep_index: Current index.  Will compute scores for [k]th
         bootstrap replicate, where k = `bootstrap_rep_index`.
+    :param ignore_fa_intensity_change_thres_m_s01: See doc for
+        `evaluate_model_binary`.
+    :param storm_intensity_changes_m_s01: Same.
     :return: evaluation_table_xarray: Same as input but with scores for [k]th
         bootstrap replicate filled.
     """
@@ -92,13 +136,25 @@ def _get_binary_scores_one_replicate(
     num_prob_thresholds = len(probability_thresholds)
 
     for j in range(num_prob_thresholds):
-        these_labels = (
+        these_target_classes = target_classes[example_indices]
+        these_forecast_classes = (
             forecast_probabilities[example_indices] >= probability_thresholds[j]
         ).astype(int)
 
+        if ignore_fa_intensity_change_thres_m_s01 is not None:
+            these_forecast_classes, these_target_classes = (
+                _remove_minor_false_alarms(
+                    forecast_classes=these_forecast_classes,
+                    target_classes=these_target_classes,
+                    ignore_fa_intensity_change_thres_m_s01=
+                    ignore_fa_intensity_change_thres_m_s01,
+                    storm_intensity_changes_m_s01=storm_intensity_changes_m_s01
+                )
+            )
+
         this_contingency_dict = gg_model_eval.get_contingency_table(
-            forecast_labels=these_labels,
-            observed_labels=target_classes[example_indices]
+            forecast_labels=these_forecast_classes,
+            observed_labels=these_target_classes
         )
 
         evaluation_table_xarray[NUM_TRUE_POSITIVES_KEY].values[j, k] = (
@@ -194,7 +250,9 @@ def evaluate_model_binary(
         cyclone_id_strings, init_times_unix_sec, model_file_name,
         num_prob_thresholds=DEFAULT_NUM_PROB_THRESHOLDS,
         num_reliability_bins=DEFAULT_NUM_RELIABILITY_BINS,
-        num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS):
+        num_bootstrap_reps=DEFAULT_NUM_BOOTSTRAP_REPS,
+        ignore_fa_intensity_change_thres_m_s01=None,
+        storm_intensity_changes_m_s01=None):
     """Evaluates model for binary classification.
 
     E = number of examples
@@ -212,10 +270,23 @@ def evaluate_model_binary(
         deterministic predictions.
     :param num_reliability_bins: Number of bins for reliability curves.
     :param num_bootstrap_reps: Number of replicates for bootstrapping.
+    :param ignore_fa_intensity_change_thres_m_s01:
+        [used only if the prediction task is RI, not TD-to-TS]
+        Threshold at which to ignore false alarms.  For example, if the true RI
+        threshold is 30 kt (15.43 m/s) and this threshold is 25 kt (12.86 m/s),
+        examples with forecast RI = yes and intensity change in [25, 30) kt will
+        *not* be considered false alarms, even though they would be with strict
+        evaluation.  If you want strict evaluation, leave this argument alone.
+
+    :param storm_intensity_changes_m_s01:
+        [used only if `ignore_fa_intensity_change_thres_m_s01 is not None`]
+        length-E numpy array of intensity changes corresponding to targets.
+
     :return: evaluation_table_xarray: xarray table with results.  Variable names
         and dimensions should make this table self-explanatory.
     """
 
+    # Check input args.
     error_checking.assert_is_geq_numpy_array(forecast_probabilities, 0.)
     error_checking.assert_is_leq_numpy_array(forecast_probabilities, 1.)
     error_checking.assert_is_numpy_array(
@@ -253,6 +324,19 @@ def evaluate_model_binary(
     )
     error_checking.assert_is_string(model_file_name)
 
+    if ignore_fa_intensity_change_thres_m_s01 is not None:
+        error_checking.assert_is_greater(
+            ignore_fa_intensity_change_thres_m_s01, 0.
+        )
+
+        error_checking.assert_is_numpy_array_without_nan(
+            storm_intensity_changes_m_s01
+        )
+        error_checking.assert_is_numpy_array(
+            storm_intensity_changes_m_s01, exact_dimensions=expected_dim
+        )
+
+    # Do actual stuff.
     example_indices = numpy.linspace(
         0, num_examples - 1, num=num_examples, dtype=int
     )
@@ -358,7 +442,10 @@ def evaluate_model_binary(
             forecast_probabilities=forecast_probabilities,
             target_classes=target_classes,
             event_freq_in_training=event_freq_in_training,
-            num_bootstrap_reps=num_bootstrap_reps, bootstrap_rep_index=k
+            num_bootstrap_reps=num_bootstrap_reps, bootstrap_rep_index=k,
+            ignore_fa_intensity_change_thres_m_s01=
+            ignore_fa_intensity_change_thres_m_s01,
+            storm_intensity_changes_m_s01=storm_intensity_changes_m_s01
         )
 
     return evaluation_table_xarray

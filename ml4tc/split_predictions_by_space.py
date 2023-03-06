@@ -169,6 +169,8 @@ def _run(input_file_name, latitude_spacing_deg, longitude_spacing_deg,
                 init_times_unix_sec=d[prediction_io.INIT_TIMES_KEY],
                 storm_latitudes_deg_n=d[prediction_io.STORM_LATITUDES_KEY],
                 storm_longitudes_deg_e=d[prediction_io.STORM_LONGITUDES_KEY],
+                storm_intensity_changes_m_s01=
+                d[prediction_io.STORM_INTENSITY_CHANGES_KEY],
                 model_file_name=d[prediction_io.MODEL_FILE_KEY],
                 lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
                 quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
