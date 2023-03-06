@@ -326,6 +326,7 @@ def plot_brightness_temp_one_example(
                 border_latitudes_deg_n=border_latitudes_deg_n,
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 cbar_orientation_string=None, output_dir_name=None,
+                plot_motion_arrow=plot_motion_arrow,
                 plotting_diffs=plot_time_diffs_here
             )
         )
