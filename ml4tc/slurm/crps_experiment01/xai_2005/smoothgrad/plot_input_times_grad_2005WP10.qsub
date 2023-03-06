@@ -56,7 +56,7 @@ while ($i <= ${#FOURTH_LAST_LAYER_DROPOUT_RATES})
     --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
     --input_prediction_file_name="${prediction_file_name}" \
     --plot_input_times_grad=1 \
-    --smoothing_radius_px=-1 \
+    --smoothing_radius_px=2 \
     --output_dir_name="${output_dir_name}"
     
     @ i = $i + 1
