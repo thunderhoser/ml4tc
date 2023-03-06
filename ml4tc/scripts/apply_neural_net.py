@@ -241,11 +241,18 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
     storm_longitudes_deg_e = numpy.array([], dtype=float)
 
     quantile_levels = model_metadata_dict[neural_net.QUANTILE_LEVELS_KEY]
+    training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
+    predict_td_to_ts = training_option_dict[neural_net.PREDICT_TD_TO_TS_KEY]
 
     if quantile_levels is None:
         use_quantiles = False
     else:
         num_dropout_iterations = 0
+
+    if predict_td_to_ts:
+        storm_intensity_changes_m_s01 = None
+    else:
+        storm_intensity_changes_m_s01 = numpy.array([], dtype=float)
 
     for i in range(len(example_file_names)):
         this_prob_matrix, this_target_matrix, this_data_dict = (
@@ -275,6 +282,12 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
             storm_longitudes_deg_e,
             this_data_dict[neural_net.STORM_LONGITUDES_KEY]
         ), axis=0)
+
+        if predict_td_to_ts:
+            storm_intensity_changes_m_s01 = numpy.concatenate((
+                storm_intensity_changes_m_s01,
+                this_data_dict[neural_net.STORM_INTENSITY_CHANGES_KEY]
+            ), axis=0)
 
         ensemble_size = this_prob_matrix.shape[-1]
         if not use_quantiles and max_ensemble_size < ensemble_size:
@@ -322,6 +335,7 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         init_times_unix_sec=init_times_unix_sec,
         storm_latitudes_deg_n=storm_latitudes_deg_n,
         storm_longitudes_deg_e=storm_longitudes_deg_e,
+        storm_intensity_changes_m_s01=storm_intensity_changes_m_s01,
         model_file_name=model_file_name,
         lead_times_hours=lead_times_hours,
         quantile_levels=quantile_levels_to_write,

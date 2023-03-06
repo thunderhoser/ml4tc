@@ -255,6 +255,8 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
             d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
             storm_longitudes_deg_e=
             d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+            storm_intensity_changes_m_s01=
+            d[prediction_io.STORM_INTENSITY_CHANGES_KEY][cnn_indices],
             model_file_name=d[prediction_io.MODEL_FILE_KEY],
             lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
             quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
@@ -279,6 +281,8 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
             d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
             storm_longitudes_deg_e=
             d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+            storm_intensity_changes_m_s01=
+            d[prediction_io.STORM_INTENSITY_CHANGES_KEY][cnn_indices],
             model_file_name=d[prediction_io.MODEL_FILE_KEY],
             lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
             quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
@@ -323,6 +327,8 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
         storm_longitudes_deg_e=
         d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+        storm_intensity_changes_m_s01=
+        d[prediction_io.STORM_INTENSITY_CHANGES_KEY][cnn_indices],
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
@@ -347,6 +353,8 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         d[prediction_io.STORM_LATITUDES_KEY][cnn_indices],
         storm_longitudes_deg_e=
         d[prediction_io.STORM_LONGITUDES_KEY][cnn_indices],
+        storm_intensity_changes_m_s01=
+        d[prediction_io.STORM_INTENSITY_CHANGES_KEY][cnn_indices],
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
