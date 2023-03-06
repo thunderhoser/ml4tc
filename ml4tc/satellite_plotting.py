@@ -185,8 +185,8 @@ def add_colour_bar(
 def plot_2d_grid(
         brightness_temp_matrix_kelvins, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, cbar_orientation_string='vertical',
-        font_size=30., plotting_diffs=False, colour_map_object=None,
-        colour_norm_object=None):
+        font_size=30., plot_motion_arrow=False, plotting_diffs=False,
+        colour_map_object=None, colour_norm_object=None):
     """Plots brightness temperature on 2-D grid.
 
     M = number of rows in grid
@@ -205,12 +205,15 @@ def plot_2d_grid(
     :param cbar_orientation_string: Colour-bar orientation.  May be
         "horizontal", "vertical", or None.
     :param font_size: Font size.
+    :param plot_motion_arrow: Boolean flag.  If True, will plot arrow to
+        indicate direction of storm motion.
     :param plotting_diffs: Boolean flag.  If True (False), plotting differences
         (raw values).
     :return: colour_bar_object: Colour-bar handle (instance of
         `matplotlib.pyplot.colorbar`).
     """
 
+    error_checking.assert_is_boolean(plot_motion_arrow)
     error_checking.assert_is_boolean(plotting_diffs)
     error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
     longitude_array_deg_e = lng_conversion.convert_lng_negative_in_west(
@@ -312,6 +315,54 @@ def plot_2d_grid(
             cmap=colour_map_object, norm=colour_norm_object,
             vmin=min_colour_value, vmax=max_colour_value,
             edgecolors='None', zorder=-1e11
+        )
+
+    if plot_motion_arrow:
+        if regular_grid:
+            half_num_rows = int(numpy.round(
+                0.5 * (latitudes_to_plot_deg_n.shape[0] - 1)
+            ))
+            half_num_columns = int(numpy.round(
+                0.5 * (latitudes_to_plot_deg_n.shape[1] - 1)
+            ))
+            arrow_length_rows = int(numpy.round(half_num_rows * 0.15))
+
+            start_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows, half_num_columns
+            ]
+            start_longitude_deg_e = longitudes_to_plot_deg_e[
+                half_num_rows, half_num_columns
+            ]
+            end_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows + arrow_length_rows, half_num_columns
+            ]
+            end_longitude_deg_e = longitudes_to_plot_deg_e[
+                half_num_rows + arrow_length_rows, half_num_columns
+            ]
+        else:
+            half_num_rows = int(numpy.round(
+                0.5 * (len(latitudes_to_plot_deg_n) - 1)
+            ))
+            half_num_columns = int(numpy.round(
+                0.5 * (len(longitudes_to_plot_deg_e) - 1)
+            ))
+            arrow_length_rows = int(numpy.round(half_num_rows * 0.15))
+
+            start_latitude_deg_n = latitudes_to_plot_deg_n[half_num_rows]
+            start_longitude_deg_e = longitudes_to_plot_deg_e[half_num_columns]
+            end_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows + arrow_length_rows
+            ]
+            end_longitude_deg_e = longitudes_to_plot_deg_e[half_num_columns]
+
+        axes_object.arrow(
+            x=start_longitude_deg_e, y=start_latitude_deg_n,
+            dx=end_longitude_deg_e - start_longitude_deg_e,
+            dy=end_latitude_deg_n - start_latitude_deg_n,
+            width=0.15, length_includes_head=False,
+            head_width=0.75, head_length=0.75, shape='full', overhang=0.,
+            color=numpy.full(3, 0.), edgecolor=numpy.full(3, 0.),
+            facecolor=numpy.full(3, 0.)
         )
 
     if cbar_orientation_string is None:
