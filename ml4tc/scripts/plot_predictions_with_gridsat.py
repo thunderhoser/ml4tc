@@ -277,11 +277,13 @@ def _read_gridsat_file(
 
 
 def _plot_predictions_with_violin(
-        prediction_dict, example_index, output_file_name):
+        prediction_dict, example_index, predict_td_to_ts, output_file_name):
     """Plots predictions and targets for one init time, with violin plot.
 
     :param prediction_dict: See doc for `_plot_predictions_no_violin`.
     :param example_index: Index corresponding to the given init time.
+    :param predict_td_to_ts: Boolean flag.  Should be True (False) if the
+        prediction task is TD-to-TS (rapid intensification).
     :param output_file_name: See doc for `_plot_predictions_no_violin`.
     """
 
@@ -384,7 +386,9 @@ def _plot_predictions_with_violin(
         )[0]
 
         legend_handles.append(this_handle)
-        legend_strings.append('TD-to-TS observed')
+        legend_strings.append(
+            'TD-to-TS observed' if predict_td_to_ts else 'RI observed'
+        )
 
         axes_object.legend(
             legend_handles, legend_strings,
@@ -393,15 +397,23 @@ def _plot_predictions_with_violin(
         )
     else:
         axes_object.text(
-            0.5, 0.5, 'No TDs at this time', color=numpy.full(3, 0.),
+            0.5, 0.5,
+            'No {0:s}s at this time'.format('TD' if predict_td_to_ts else 'TC'),
+            color=numpy.full(3, 0.),
             horizontalalignment='center', verticalalignment='center',
             transform=axes_object.transAxes
         )
 
-    axes_object.set_ylabel('TD-to-TS probability')
+    axes_object.set_ylabel(
+        'TD-to-TS probability' if predict_td_to_ts else 'RI probability'
+    )
     axes_object.set_xlabel('Lead time (hours)')
-    axes_object.set_xlim(0, numpy.max(lead_times_hours))
     axes_object.set_ylim(0, 1)
+
+    if predict_td_to_ts:
+        axes_object.set_xlim(0, numpy.max(lead_times_hours))
+    else:
+        axes_object.set_xlim(lead_times_hours[0] - 3, lead_times_hours[0] + 3)
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
@@ -412,27 +424,43 @@ def _plot_predictions_with_violin(
 
 
 def _plot_predictions_no_violin(
-        prediction_dict, example_indices, confidence_level, output_file_name):
+        prediction_dict, example_indices, predict_td_to_ts, confidence_level,
+        output_file_name):
     """Plots predictions and targets for one init time, with no violin plot.
 
     :param prediction_dict: Dictionary returned by `prediction_io.read_file`.
     :param example_indices: 1-D numpy array of indices corresponding to the
         given init time.
+    :param predict_td_to_ts: Boolean flag.  Should be True (False) if the
+        prediction task is TD-to-TS (rapid intensification).
     :param confidence_level: See documentation at top of file.
     :param output_file_name: Path to output file.  Figure will be saved here.
     """
 
+    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     target_class_matrix = (
         prediction_dict[prediction_io.TARGET_MATRIX_KEY][example_indices, :]
-    )
-    mean_forecast_prob_matrix = (
-        prediction_io.get_mean_predictions(prediction_dict)[example_indices, :]
     )
     all_forecast_prob_matrix = prediction_dict[
         prediction_io.PROBABILITY_MATRIX_KEY
     ][example_indices, 1, ...]
 
-    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
+    mean_forecast_prob_matrix = (
+        prediction_io.get_mean_predictions(prediction_dict)[example_indices, :]
+    )
+
+    if predict_td_to_ts:
+        lead_times_hours = lead_times_hours[0] + numpy.array([-2.5, 2.5])
+        target_class_matrix = numpy.repeat(
+            target_class_matrix, axis=2, repeats=2
+        )
+        all_forecast_prob_matrix = numpy.repeat(
+            all_forecast_prob_matrix, axis=2, repeats=2
+        )
+        mean_forecast_prob_matrix = numpy.repeat(
+            mean_forecast_prob_matrix, axis=2, repeats=2
+        )
+
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
     if confidence_level is None:
@@ -491,7 +519,9 @@ def _plot_predictions_no_violin(
 
         if i == len(example_indices) - 1:
             legend_handles[-1] = this_handle
-            legend_strings[-1] = 'TD-to-TS observed'
+            legend_strings[-1] = (
+                'TD-to-TS observed' if predict_td_to_ts else 'RI observed'
+            )
 
         x_vertices = numpy.concatenate((
             lead_times_hours, lead_times_hours[::-1], lead_times_hours[[0]]
@@ -521,21 +551,28 @@ def _plot_predictions_no_violin(
         )
     else:
         axes_object.text(
-            0.5, 0.5, 'No TDs at this time', color=numpy.full(3, 0.),
+            0.5, 0.5,
+            'No {0:s}s at this time'.format('TD' if predict_td_to_ts else 'TC'),
+            color=numpy.full(3, 0.),
             horizontalalignment='center', verticalalignment='center',
             transform=axes_object.transAxes
         )
 
-    y_label_string = 'Forecast probability with {0:.1f}'.format(
+    y_label_string = 'Forecast probability with {0:.0f}% CI'.format(
         100 * confidence_level
-    ).rstrip('.0')
-
-    y_label_string += '% CI'
+    )
 
     axes_object.set_ylabel(y_label_string)
     axes_object.set_xlabel('Lead time (hours)')
-    axes_object.set_xlim(0, numpy.max(lead_times_hours))
     axes_object.set_ylim(0, 1)
+
+    if predict_td_to_ts:
+        axes_object.set_xlim(0, numpy.max(lead_times_hours))
+    else:
+        axes_object.set_xlim(
+            lead_times_hours[0] - 0.5,
+            lead_times_hours[-1] + 0.5
+        )
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
@@ -776,6 +813,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                 )
                 _plot_predictions_with_violin(
                     prediction_dict=prediction_dict, example_index=-1,
+                    predict_td_to_ts=predict_td_to_ts,
                     output_file_name=graph_file_name
                 )
 
@@ -790,6 +828,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
                     _plot_predictions_with_violin(
                         prediction_dict=prediction_dict,
                         example_index=example_indices_this_time[j],
+                        predict_td_to_ts=predict_td_to_ts,
                         output_file_name=graph_file_names[j]
                     )
         else:
@@ -799,6 +838,7 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             _plot_predictions_no_violin(
                 prediction_dict=prediction_dict,
                 example_indices=example_indices_this_time,
+                predict_td_to_ts=predict_td_to_ts,
                 confidence_level=confidence_level,
                 output_file_name=graph_file_name
             )
