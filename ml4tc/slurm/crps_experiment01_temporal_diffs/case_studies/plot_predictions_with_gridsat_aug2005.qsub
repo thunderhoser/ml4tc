@@ -24,9 +24,9 @@ set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/m
 set GRIDSAT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/gridsat"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01_temporal_diffs"
 
-set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.500" "0.500" "0.700" "0.900" "0.900" "0.900" "0.700")
-set THIRD_LAST_LAYER_DROPOUT_RATES=("0.500" "0.900" "0.500" "0.700" "0.700" "0.900" "0.500")
-set SECOND_LAST_LAYER_DROPOUT_RATES=("0.500" "0.500" "0.900" "0.500" "0.700" "0.500" "0.700")
+set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.900" "0.300" "0.500" "0.300" "0.900" "0.100")
+set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.500" "0.300" "0.500" "0.500" "0.100" "0.500")
+set SECOND_LAST_LAYER_DROPOUT_RATES=("0.500" "0.300" "0.900" "0.100" "0.900" "0.500" "0.300")
 
 set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
