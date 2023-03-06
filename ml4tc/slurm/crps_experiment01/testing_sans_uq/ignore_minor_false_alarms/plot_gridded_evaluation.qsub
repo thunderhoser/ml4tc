@@ -37,6 +37,6 @@ set output_dir_name="${evaluation_dir_name}/gridded_evaluation_ignore-minor-fals
 
 python3 -u "${CODE_DIR_NAME}/plot_gridded_evaluation.py" \
 --input_evaluation_dir_name="${evaluation_dir_name}" \
---input_grid_metafile_name="${evaluation_dir_name}/grid_metadata.nc" \
+--input_grid_metafile_name="${model_dir_name}/testing/grid_metadata.nc" \
 --input_total_validn_eval_file_name="${model_dir_name}/testing/evaluation_ignore-minor-false-alarms.nc" \
 --output_dir_name="${output_dir_name}"
