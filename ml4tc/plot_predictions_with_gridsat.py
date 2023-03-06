@@ -643,6 +643,9 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
         )
         longitude_positive_in_west = False
 
+    print(min_longitude_deg_e)
+    print(max_longitude_deg_e)
+
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
