@@ -752,6 +752,8 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             longitude_positive_in_west=longitude_positive_in_west
         )
 
+        print(brightness_temp_matrix_kelvins.shape)
+
         figure_object, axes_object = pyplot.subplots(
             1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
         )
