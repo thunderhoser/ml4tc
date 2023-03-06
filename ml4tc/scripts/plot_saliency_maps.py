@@ -396,6 +396,7 @@ def _plot_brightness_temp_saliency(
             normalization_table_xarray=normalization_table_xarray,
             border_latitudes_deg_n=border_latitudes_deg_n,
             border_longitudes_deg_e=border_longitudes_deg_e,
+            plot_motion_arrow=True,
             plot_time_diffs_at_lags=plot_time_diffs_at_lags
         )
     )

@@ -115,7 +115,7 @@ def plot_brightness_temp_one_example(
         predictor_matrices_one_example, model_metadata_dict,
         cyclone_id_string, init_time_unix_sec, normalization_table_xarray,
         grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e,
-        border_latitudes_deg_n, border_longitudes_deg_e,
+        border_latitudes_deg_n, border_longitudes_deg_e, plot_motion_arrow=True,
         plot_time_diffs_at_lags=False):
     """Plots brightness-temperature maps for one example.
 
@@ -145,6 +145,8 @@ def plot_brightness_temp_one_example(
         (deg north).
     :param border_longitudes_deg_e: length-P numpy array of longitudes
         (deg east).
+    :param plot_motion_arrow: Boolean flag.  If True, will plot arrow to
+        indicate direction of storm motion.
     :param plot_time_diffs_at_lags: Boolean flag.  If True, at each lag time t
         before the most recent one, will plot temporal difference:
         (brightness temp at most recent lag time) - (brightness temp at t).
@@ -167,6 +169,7 @@ def plot_brightness_temp_one_example(
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_integer(init_time_unix_sec)
+    error_checking.assert_is_boolean(plot_motion_arrow)
     error_checking.assert_is_boolean(plot_time_diffs_at_lags)
 
     error_checking.assert_is_numpy_array(grid_latitude_matrix_deg_n)
