@@ -221,6 +221,7 @@ def plot_2d_grid(
     )
 
     regular_grid = len(latitude_array_deg_n.shape) == 1
+    plot_motion_arrow = plot_motion_arrow and not regular_grid
 
     if regular_grid:
         this_flag, latitudes_to_plot_deg_n, longitudes_to_plot_deg_e = (
@@ -318,42 +319,26 @@ def plot_2d_grid(
         )
 
     if plot_motion_arrow:
-        if regular_grid:
-            half_num_rows = int(numpy.round(
-                0.5 * (len(latitudes_to_plot_deg_n) - 1)
-            ))
-            half_num_columns = int(numpy.round(
-                0.5 * (len(longitudes_to_plot_deg_e) - 1)
-            ))
-            arrow_length_rows = int(numpy.round(half_num_rows * 0.15))
+        half_num_rows = int(numpy.round(
+            0.5 * (latitudes_to_plot_deg_n.shape[0] - 1)
+        ))
+        half_num_columns = int(numpy.round(
+            0.5 * (latitudes_to_plot_deg_n.shape[1] - 1)
+        ))
+        arrow_length_columns = int(numpy.round(half_num_columns * 0.15))
 
-            start_latitude_deg_n = latitudes_to_plot_deg_n[half_num_rows]
-            start_longitude_deg_e = longitudes_to_plot_deg_e[half_num_columns]
-            end_latitude_deg_n = latitudes_to_plot_deg_n[
-                half_num_rows + arrow_length_rows
-                ]
-            end_longitude_deg_e = longitudes_to_plot_deg_e[half_num_columns]
-        else:
-            half_num_rows = int(numpy.round(
-                0.5 * (latitudes_to_plot_deg_n.shape[0] - 1)
-            ))
-            half_num_columns = int(numpy.round(
-                0.5 * (latitudes_to_plot_deg_n.shape[1] - 1)
-            ))
-            arrow_length_rows = int(numpy.round(half_num_rows * 0.15))
-
-            start_latitude_deg_n = latitudes_to_plot_deg_n[
-                half_num_rows, half_num_columns
-            ]
-            start_longitude_deg_e = longitudes_to_plot_deg_e[
-                half_num_rows, half_num_columns
-            ]
-            end_latitude_deg_n = latitudes_to_plot_deg_n[
-                half_num_rows + arrow_length_rows, half_num_columns
-            ]
-            end_longitude_deg_e = longitudes_to_plot_deg_e[
-                half_num_rows + arrow_length_rows, half_num_columns
-            ]
+        start_latitude_deg_n = latitudes_to_plot_deg_n[
+            half_num_rows, half_num_columns
+        ]
+        start_longitude_deg_e = longitudes_to_plot_deg_e[
+            half_num_rows, half_num_columns
+        ]
+        end_latitude_deg_n = latitudes_to_plot_deg_n[
+            half_num_rows, half_num_columns + arrow_length_columns
+        ]
+        end_longitude_deg_e = longitudes_to_plot_deg_e[
+            half_num_rows, half_num_columns + arrow_length_columns
+        ]
 
         axes_object.arrow(
             x=start_longitude_deg_e, y=start_latitude_deg_n,
