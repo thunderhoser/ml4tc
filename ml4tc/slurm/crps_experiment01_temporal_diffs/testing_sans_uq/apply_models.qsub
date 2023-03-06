@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_evaluation"
+#SBATCH --job-name="apply_models"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,14 +14,15 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_evaluation_%A_%a.out
+#SBATCH --output=apply_models_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01"
+set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01_temporal_diffs"
 
 set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.900" "0.300" "0.500" "0.300" "0.900" "0.100")
 set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.500" "0.300" "0.500" "0.500" "0.100" "0.500")
@@ -32,10 +33,11 @@ set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_
 set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
-set input_file_name="${model_dir_name}/testing/evaluation.nc"
-set output_dir_name="${model_dir_name}/testing/evaluation"
+set model_file_name="${model_dir_name}/model.h5"
+set output_dir_name="${model_dir_name}/testing"
 
-python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_evaluation_file_name="${input_file_name}" \
---confidence_level=0.95 \
+python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
+--input_model_file_name="${model_file_name}" \
+--input_example_dir_name="${EXAMPLE_DIR_NAME}" \
+--years 2010 2011 2012 2013 2014 \
 --output_dir_name="${output_dir_name}"

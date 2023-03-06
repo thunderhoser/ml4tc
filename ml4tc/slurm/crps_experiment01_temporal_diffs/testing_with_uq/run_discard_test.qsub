@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_evaluation"
+#SBATCH --job-name="run_discard_test"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,14 +14,14 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_evaluation_%A_%a.out
+#SBATCH --output=run_discard_test_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment01_temporal_diffs"
 
 set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.900" "0.300" "0.500" "0.300" "0.900" "0.100")
 set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.500" "0.300" "0.500" "0.500" "0.100" "0.500")
@@ -32,10 +32,11 @@ set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_
 set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}"
-set input_file_name="${model_dir_name}/testing/evaluation.nc"
-set output_dir_name="${model_dir_name}/testing/evaluation"
+set input_file_name="${model_dir_name}/testing/predictions.nc"
+set output_file_name="${model_dir_name}/testing/discard_test.nc"
 
-python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
---input_evaluation_file_name="${input_file_name}" \
---confidence_level=0.95 \
---output_dir_name="${output_dir_name}"
+python3 -u "${CODE_DIR_NAME}/run_discard_test.py" \
+--input_prediction_file_name="${input_file_name}" \
+--discard_fractions 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 \
+--use_fancy_quantile_method_for_stdev=1 \
+--output_file_name="${output_file_name}"
