@@ -241,6 +241,8 @@ def _read_gridsat_file(
         brightness_temp_matrix_kelvins
     )
 
+    print(grid_longitudes_deg_e)
+
     if longitude_positive_in_west:
         lng_conversion.convert_lng_positive_in_west(
             grid_longitudes_deg_e, allow_nan=False
