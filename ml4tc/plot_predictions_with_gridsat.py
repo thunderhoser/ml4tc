@@ -242,11 +242,11 @@ def _read_gridsat_file(
     )
 
     if longitude_positive_in_west:
-        lng_conversion.convert_lng_positive_in_west(
+        grid_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
             grid_longitudes_deg_e, allow_nan=False
         )
     else:
-        lng_conversion.convert_lng_negative_in_west(
+        grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
             grid_longitudes_deg_e, allow_nan=False
         )
 
