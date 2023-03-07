@@ -266,13 +266,6 @@ def _read_gridsat_file(
     longitude_spacing_deg = numpy.absolute(
         numpy.diff(grid_longitudes_deg_e[10:12])
     )[0]
-
-    print(grid_longitudes_deg_e)
-    print(min_longitude_deg_e)
-    print(min_longitude_deg_e - longitude_spacing_deg)
-    print(max_longitude_deg_e)
-    print(max_longitude_deg_e + longitude_spacing_deg)
-
     good_indices = numpy.where(numpy.logical_and(
         grid_longitudes_deg_e >= min_longitude_deg_e - longitude_spacing_deg,
         grid_longitudes_deg_e <= max_longitude_deg_e + longitude_spacing_deg
@@ -377,7 +370,8 @@ def _plot_predictions_with_violin(
         legend_strings.append('Forecast distribution')
 
         this_handle = axes_object.plot(
-            lead_times_hours, mean_forecast_probs,
+            lead_times_hours + numpy.array([-0.5, 0.5]),
+            mean_forecast_probs + numpy.array([0, 0]),
             color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
         )[0]
 
@@ -406,8 +400,8 @@ def _plot_predictions_with_violin(
 
         axes_object.legend(
             legend_handles, legend_strings,
-            loc='center right', bbox_to_anchor=(0.95, 0.5),
-            fancybox=True, shadow=True, ncol=1
+            loc='top right', bbox_to_anchor=(0.95, 0.95),
+            fancybox=True, shadow=True, ncol=1, framealpha=0.5
         )
     else:
         axes_object.text(
@@ -463,7 +457,7 @@ def _plot_predictions_no_violin(
         prediction_io.get_mean_predictions(prediction_dict)[example_indices, :]
     )
 
-    if predict_td_to_ts:
+    if not predict_td_to_ts:
         lead_times_hours = lead_times_hours[0] + numpy.array([-2.5, 2.5])
         target_class_matrix = numpy.repeat(
             target_class_matrix, axis=2, repeats=2
@@ -560,8 +554,8 @@ def _plot_predictions_no_violin(
     if len(example_indices) > 0:
         axes_object.legend(
             legend_handles, legend_strings,
-            loc='center right', bbox_to_anchor=(0.95, 0.5),
-            fancybox=True, shadow=True, ncol=1
+            loc='top right', bbox_to_anchor=(0.95, 0.95),
+            fancybox=True, shadow=True, ncol=1, framealpha=0.5
         )
     else:
         axes_object.text(
@@ -649,9 +643,6 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             max_longitude_deg_e, min_longitude_deg_e
         )
         longitude_positive_in_west = False
-
-    print(min_longitude_deg_e)
-    print(max_longitude_deg_e)
 
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
@@ -761,8 +752,6 @@ def _run(model_metafile_name, gridsat_dir_name, prediction_file_name,
             max_longitude_deg_e=max_longitude_deg_e,
             longitude_positive_in_west=longitude_positive_in_west
         )
-
-        print(brightness_temp_matrix_kelvins.shape)
 
         figure_object, axes_object = pyplot.subplots(
             1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
