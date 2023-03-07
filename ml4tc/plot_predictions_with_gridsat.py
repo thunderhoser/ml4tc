@@ -241,8 +241,6 @@ def _read_gridsat_file(
         brightness_temp_matrix_kelvins
     )
 
-    print(grid_longitudes_deg_e)
-
     if longitude_positive_in_west:
         lng_conversion.convert_lng_positive_in_west(
             grid_longitudes_deg_e, allow_nan=False
@@ -268,6 +266,13 @@ def _read_gridsat_file(
     longitude_spacing_deg = numpy.absolute(
         numpy.diff(grid_longitudes_deg_e[10:12])
     )[0]
+
+    print(grid_longitudes_deg_e)
+    print(min_longitude_deg_e)
+    print(min_longitude_deg_e - longitude_spacing_deg)
+    print(max_longitude_deg_e)
+    print(max_longitude_deg_e + longitude_spacing_deg)
+
     good_indices = numpy.where(numpy.logical_and(
         grid_longitudes_deg_e >= min_longitude_deg_e - longitude_spacing_deg,
         grid_longitudes_deg_e <= max_longitude_deg_e + longitude_spacing_deg
