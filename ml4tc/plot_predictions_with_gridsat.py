@@ -401,7 +401,8 @@ def _plot_predictions_with_violin(
         axes_object.legend(
             legend_handles, legend_strings,
             loc='top right', bbox_to_anchor=(0.95, 0.95),
-            fancybox=True, shadow=True, ncol=1, framealpha=0.5
+            fancybox=True, shadow=False,
+            facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
         )
     else:
         axes_object.text(
@@ -460,7 +461,7 @@ def _plot_predictions_no_violin(
     if not predict_td_to_ts:
         lead_times_hours = lead_times_hours[0] + numpy.array([-2.5, 2.5])
         target_class_matrix = numpy.repeat(
-            target_class_matrix, axis=2, repeats=2
+            target_class_matrix, axis=1, repeats=2
         )
         all_forecast_prob_matrix = numpy.repeat(
             all_forecast_prob_matrix, axis=2, repeats=2
@@ -555,7 +556,8 @@ def _plot_predictions_no_violin(
         axes_object.legend(
             legend_handles, legend_strings,
             loc='top right', bbox_to_anchor=(0.95, 0.95),
-            fancybox=True, shadow=True, ncol=1, framealpha=0.5
+            fancybox=True, shadow=False,
+            facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
         )
     else:
         axes_object.text(
