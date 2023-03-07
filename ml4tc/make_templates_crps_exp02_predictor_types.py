@@ -160,7 +160,7 @@ def _run():
                 model_file_name = (
                     '{0:s}/dropout-rates={1:.3f}-{2:.3f}-{3:.3f}_'
                     'num-satellite-lag-times={4:d}_'
-                    'num-ships-forecast-predictors={5:d}/model.h5'
+                    'num-ships-forecast-predictors={5:02d}/model.h5'
                 ).format(
                     OUTPUT_DIR_NAME,
                     FOURTH_LAST_LAYER_DROPOUT_RATES[i],
