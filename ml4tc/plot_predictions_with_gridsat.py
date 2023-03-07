@@ -464,10 +464,10 @@ def _plot_predictions_no_violin(
             target_class_matrix, axis=1, repeats=2
         )
         all_forecast_prob_matrix = numpy.repeat(
-            all_forecast_prob_matrix, axis=2, repeats=2
+            all_forecast_prob_matrix, axis=1, repeats=2
         )
         mean_forecast_prob_matrix = numpy.repeat(
-            mean_forecast_prob_matrix, axis=2, repeats=2
+            mean_forecast_prob_matrix, axis=1, repeats=2
         )
 
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
