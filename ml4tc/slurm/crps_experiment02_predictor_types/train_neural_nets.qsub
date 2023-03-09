@@ -55,7 +55,7 @@ set satellite_lag_time_string_minutes="$satellite_lag_time_string_minutes:gas/-/
 set ships_forecast_predictor_string="$ships_forecast_predictor_string:gas/-/ /"
 
 set template_file_name="${TEMPLATE_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}/model.h5"
-set output_dir_name="${TOP_OUTPUT_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
 echo $output_dir_name
 
 if ($ships_forecast_predictor_count == "00") then
