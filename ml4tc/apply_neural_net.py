@@ -297,8 +297,6 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
                 this_data_dict[neural_net.STORM_INTENSITY_CHANGES_KEY]
             ), axis=0)
 
-            print(this_data_dict[neural_net.STORM_INTENSITY_CHANGES_KEY])
-
         ensemble_size = this_prob_matrix.shape[-1]
         if not use_quantiles and max_ensemble_size < ensemble_size:
             ensemble_indices = numpy.linspace(
