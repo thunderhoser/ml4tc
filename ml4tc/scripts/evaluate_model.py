@@ -160,8 +160,10 @@ def _run(prediction_file_name, lead_times_hours, event_freq_in_training,
         num_bootstrap_reps=num_bootstrap_reps,
         ignore_fa_intensity_change_thres_m_s01=
         ignore_fa_intensity_change_thres_m_s01,
-        storm_intensity_changes_m_s01=
-        storm_intensity_changes_m_s01[good_indices]
+        storm_intensity_changes_m_s01=(
+            None if storm_intensity_changes_m_s01 is None
+            else storm_intensity_changes_m_s01[good_indices]
+        )
     )
 
     print(SEPARATOR_STRING)

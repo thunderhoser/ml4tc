@@ -235,11 +235,11 @@ def _read_gridsat_file(
     )
 
     if longitude_positive_in_west:
-        lng_conversion.convert_lng_positive_in_west(
+        grid_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
             grid_longitudes_deg_e, allow_nan=False
         )
     else:
-        lng_conversion.convert_lng_negative_in_west(
+        grid_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
             grid_longitudes_deg_e, allow_nan=False
         )
 
@@ -363,7 +363,8 @@ def _plot_predictions_with_violin(
         legend_strings.append('Forecast distribution')
 
         this_handle = axes_object.plot(
-            lead_times_hours, mean_forecast_probs,
+            lead_times_hours + numpy.array([-0.5, 0.5]),
+            mean_forecast_probs + numpy.array([0, 0]),
             color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
         )[0]
 
@@ -392,8 +393,9 @@ def _plot_predictions_with_violin(
 
         axes_object.legend(
             legend_handles, legend_strings,
-            loc='center right', bbox_to_anchor=(0.95, 0.5),
-            fancybox=True, shadow=True, ncol=1
+            loc='top right', bbox_to_anchor=(0.95, 0.95),
+            fancybox=True, shadow=False,
+            facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
         )
     else:
         axes_object.text(
@@ -449,16 +451,16 @@ def _plot_predictions_no_violin(
         prediction_io.get_mean_predictions(prediction_dict)[example_indices, :]
     )
 
-    if predict_td_to_ts:
+    if not predict_td_to_ts:
         lead_times_hours = lead_times_hours[0] + numpy.array([-2.5, 2.5])
         target_class_matrix = numpy.repeat(
-            target_class_matrix, axis=2, repeats=2
+            target_class_matrix, axis=1, repeats=2
         )
         all_forecast_prob_matrix = numpy.repeat(
-            all_forecast_prob_matrix, axis=2, repeats=2
+            all_forecast_prob_matrix, axis=1, repeats=2
         )
         mean_forecast_prob_matrix = numpy.repeat(
-            mean_forecast_prob_matrix, axis=2, repeats=2
+            mean_forecast_prob_matrix, axis=1, repeats=2
         )
 
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
@@ -546,8 +548,9 @@ def _plot_predictions_no_violin(
     if len(example_indices) > 0:
         axes_object.legend(
             legend_handles, legend_strings,
-            loc='center right', bbox_to_anchor=(0.95, 0.5),
-            fancybox=True, shadow=True, ncol=1
+            loc='top right', bbox_to_anchor=(0.95, 0.95),
+            fancybox=True, shadow=False,
+            facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
         )
     else:
         axes_object.text(
