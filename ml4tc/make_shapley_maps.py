@@ -2,7 +2,6 @@
 
 import os
 import sys
-import copy
 import argparse
 import numpy
 import tensorflow
@@ -39,7 +38,7 @@ MAX_BASELINE_EXAMPLES_ARG_NAME = 'max_num_baseline_examples'
 NEW_CYCLONE_IDS_ARG_NAME = 'new_cyclone_id_strings'
 NUM_SMOOTHGRAD_SAMPLES_ARG_NAME = 'num_smoothgrad_samples'
 SMOOTHGRAD_STDEV_ARG_NAME = 'smoothgrad_noise_stdev'
-OUTPUT_FILE_ARG_NAME = 'output_file_name'
+OUTPUT_FILE_ARG_NAME = 'output_file_name_sans_sample_num'
 
 MODEL_FILE_HELP_STRING = (
     'Path to trained model.  Will be read by `neural_net.read_model`.'
@@ -70,8 +69,16 @@ SMOOTHGRAD_STDEV_HELP_STRING = (
     'to use SmoothGrad, leave this as the default.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Results will be saved here by '
-    '`saliency.write_file`.'
+    'Path to output file, not including sample number.  If {0:s} <= 1, this '
+    'should the actual file path.  However, if {0:s} > 1, this should be just '
+    'the beginning of the file path.  For example, suppose that {1:s} is '
+    '"foo/shapley_maps" and {0:s} = 5.  Then the output files will be '
+    '"foo/shapley_maps_sample000001.nc", "foo/shapley_maps_sample000002.nc", '
+    '"foo/shapley_maps_sample000003.nc", "foo/shapley_maps_sample000004.nc", '
+    'and "foo/shapley_maps_sample000005.nc".  Either way, the output file(s) '
+    'will be written by `saliency.write_file`.'
+).format(
+    NUM_SMOOTHGRAD_SAMPLES_ARG_NAME, OUTPUT_FILE_ARG_NAME
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -129,7 +136,7 @@ def _predictor_matrices_to_num_examples(predictor_matrices):
 def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
          max_num_baseline_examples, new_cyclone_id_strings,
          num_smoothgrad_samples, smoothgrad_noise_stdev,
-         output_file_name):
+         output_file_name_sans_sample_num):
     """Creates maps of Shapley values.
 
     This is effectively the main method.
@@ -141,13 +148,18 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
     :param new_cyclone_id_strings: Same.
     :param num_smoothgrad_samples: Same.
     :param smoothgrad_noise_stdev: Same.
-    :param output_file_name: Same.
+    :param output_file_name_sans_sample_num: Same.
     """
 
     # Check input args.
     use_smoothgrad = num_smoothgrad_samples > 0
     if use_smoothgrad:
         error_checking.assert_is_greater(smoothgrad_noise_stdev, 0.)
+
+    if use_smoothgrad and output_file_name_sans_sample_num.endswith('.nc'):
+        output_file_name_sans_sample_num = (
+            output_file_name_sans_sample_num[:-3]
+        )
 
     error_checking.assert_is_geq(max_num_baseline_examples, 20)
     error_checking.assert_is_leq(max_num_baseline_examples, 200)
@@ -258,35 +270,29 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
             for p in three_baseline_predictor_matrices
         ]
 
-    num_baseline_examples = _predictor_matrices_to_num_examples(
-        three_baseline_predictor_matrices
-    )
-    print('NUMBER OF BASELINE EXAMPLES = {0:d}'.format(num_baseline_examples))
-
     # Do actual stuff.
     explainer_object = shap.DeepExplainer(
         model=model_object,
         data=[p for p in three_baseline_predictor_matrices if p is not None]
     )
+    del three_baseline_predictor_matrices
 
-    three_shapley_value_matrices = [None] * 3
+    three_predictor_matrices = [None] * 3
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
 
+    # TODO(thunderhoser): Reading in all the new data at once, before running
+    # SHAP, might cause memory issues if there is more than one new cyclone.
     for i in range(len(new_example_file_names)):
         validation_option_dict[neural_net.EXAMPLE_FILE_KEY] = (
             new_example_file_names[i]
         )
         data_dict = neural_net.create_inputs(validation_option_dict)
+        print(SEPARATOR_STRING)
 
-        if data_dict[neural_net.INIT_TIMES_KEY].size == 0:
-            print(SEPARATOR_STRING)
+        num_examples_new = len(data_dict[neural_net.INIT_TIMES_KEY])
+        if num_examples_new == 0:
             continue
-
-        new_predictor_matrices = (
-            data_dict[neural_net.PREDICTOR_MATRICES_KEY]
-        )
-        num_examples_new = new_predictor_matrices[0].shape[0]
 
         cyclone_id_strings += [new_cyclone_id_strings[i]] * num_examples_new
         init_times_unix_sec = numpy.concatenate((
@@ -294,98 +300,72 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
             data_dict[neural_net.INIT_TIMES_KEY]
         ))
 
-        if use_smoothgrad:
-            new_shapley_matrices = [None] * 3
+        new_predictor_matrices = data_dict[neural_net.PREDICTOR_MATRICES_KEY]
 
-            for k in range(num_smoothgrad_samples):
-                these_predictor_matrices = [
-                    None if p is None
-                    else p + numpy.random.normal(
-                        loc=0., scale=smoothgrad_noise_stdev, size=p.shape
-                    )
-                    for p in new_predictor_matrices
-                ]
+        for j in range(len(new_predictor_matrices)):
+            if new_predictor_matrices[j] is None:
+                continue
 
-                these_shapley_matrices = explainer_object.shap_values(
-                    X=[p for p in these_predictor_matrices if p is not None],
-                    check_additivity=False
+            if three_predictor_matrices[j] is None:
+                three_predictor_matrices[j] = new_predictor_matrices[j] + 0.
+            else:
+                three_predictor_matrices[j] = numpy.concatenate(
+                    (three_predictor_matrices[j], new_predictor_matrices[j]),
+                    axis=0
                 )
-                if isinstance(these_shapley_matrices[0], list):
-                    these_shapley_matrices = these_shapley_matrices[0]
 
-                if all([s is None for s in new_shapley_matrices]):
-                    j_minor = -1
+    if use_smoothgrad:
+        loop_max = num_smoothgrad_samples + 0
+    else:
+        loop_max = 1
 
-                    for j in range(len(new_shapley_matrices)):
-                        if these_predictor_matrices[j] is None:
-                            continue
-
-                        j_minor += 1
-
-                        new_shapley_matrices[j] = numpy.full(
-                            these_shapley_matrices[j_minor].shape +
-                            (num_smoothgrad_samples,),
-                            numpy.nan
-                        )
-
-                j_minor = -1
-
-                for j in range(len(new_shapley_matrices)):
-                    if these_predictor_matrices[j] is None:
-                        continue
-
-                    j_minor += 1
-
-                    new_shapley_matrices[j][..., k] = (
-                        these_shapley_matrices[j_minor]
-                    )
-
-            new_shapley_matrices = [
-                None if s is None else numpy.mean(s, axis=-1)
-                for s in new_shapley_matrices
+    for k in range(loop_max):
+        if use_smoothgrad:
+            predictor_matrices_k = [
+                None if p is None
+                else p + numpy.random.normal(
+                    loc=0., scale=smoothgrad_noise_stdev, size=p.shape
+                )
+                for p in three_predictor_matrices
             ]
         else:
-            these_shapley_matrices = explainer_object.shap_values(
-                X=[p for p in new_predictor_matrices if p is not None],
-                check_additivity=False
+            predictor_matrices_k = three_predictor_matrices
+
+        shapley_matrices_k = explainer_object.shap_values(
+            X=[p for p in predictor_matrices_k if p is not None],
+            check_additivity=False
+        )
+        if isinstance(shapley_matrices_k[0], list):
+            shapley_matrices_k = shapley_matrices_k[0]
+
+        three_shapley_matrices = [None] * 3
+        j_minor = -1
+
+        for j in range(len(three_shapley_matrices)):
+            if three_predictor_matrices[j] is None:
+                continue
+
+            j_minor += 1
+            three_shapley_matrices[j] = shapley_matrices_k[j_minor]
+
+        if use_smoothgrad:
+            output_file_name = '{0:s}_sample{1:06d}.nc'.format(
+                output_file_name_sans_sample_num, k
             )
-            if isinstance(these_shapley_matrices[0], list):
-                these_shapley_matrices = these_shapley_matrices[0]
-
-            new_shapley_matrices = [None] * 3
-            j_minor = -1
-
-            for j in range(len(new_shapley_matrices)):
-                if new_predictor_matrices[j] is None:
-                    continue
-
-                j_minor += 1
-                new_shapley_matrices[j] = these_shapley_matrices[j_minor] + 0.
-
-        print(SEPARATOR_STRING)
-
-        if all([m is None for m in three_shapley_value_matrices]):
-            three_shapley_value_matrices = copy.deepcopy(new_shapley_matrices)
         else:
-            for j in range(len(three_shapley_value_matrices)):
-                if three_shapley_value_matrices[j] is None:
-                    continue
+            output_file_name = output_file_name_sans_sample_num
 
-                three_shapley_value_matrices[j] = numpy.concatenate((
-                    three_shapley_value_matrices[j], new_shapley_matrices[j]
-                ), axis=0)
-
-    print('Writing results to: "{0:s}"...'.format(output_file_name))
-    saliency.write_file(
-        netcdf_file_name=output_file_name,
-        three_saliency_matrices=three_shapley_value_matrices,
-        three_input_grad_matrices=three_shapley_value_matrices,
-        cyclone_id_strings=cyclone_id_strings,
-        init_times_unix_sec=init_times_unix_sec,
-        model_file_name=model_file_name,
-        layer_name='mean_output', neuron_indices=numpy.array([0, numpy.nan]),
-        ideal_activation=1.
-    )
+        print('Writing results to: "{0:s}"...'.format(output_file_name))
+        saliency.write_file(
+            netcdf_file_name=output_file_name,
+            three_saliency_matrices=three_shapley_matrices,
+            three_input_grad_matrices=three_shapley_matrices,
+            cyclone_id_strings=cyclone_id_strings,
+            init_times_unix_sec=init_times_unix_sec,
+            model_file_name=model_file_name,
+            layer_name='mean_output', neuron_indices=numpy.array([0, numpy.nan]),
+            ideal_activation=1.
+        )
 
 
 if __name__ == '__main__':
@@ -409,5 +389,7 @@ if __name__ == '__main__':
         smoothgrad_noise_stdev=getattr(
             INPUT_ARG_OBJECT, SMOOTHGRAD_STDEV_ARG_NAME
         ),
-        output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
+        output_file_name_sans_sample_num=getattr(
+            INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME
+        )
     )
