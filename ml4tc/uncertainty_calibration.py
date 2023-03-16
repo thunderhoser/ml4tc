@@ -191,7 +191,8 @@ def apply_model(prediction_dict, bin_edge_prediction_stdevs,
 
         fpmo = full_probability_matrix
         full_probability_matrix_new[these_indices] = (
-            fpmo[these_indices] + stdev_inflation_factors[k] *
+            mean_probability_matrix[these_indices] +
+            stdev_inflation_factors[k] *
             (fpmo[these_indices] - mean_probability_matrix[these_indices])
         )
 
