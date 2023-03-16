@@ -258,7 +258,7 @@ def _plot_scalar_satellite_saliency(
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
         data_matrix=saliency_matrix,
         axes_object=axes_object,
-        font_size=25, colour_map_object=colour_map_object,
+        font_size=17.5, colour_map_object=colour_map_object,
         min_colour_value=min_colour_value,
         max_colour_value=max_colour_value,
         number_format_string='.1e',
@@ -608,7 +608,7 @@ def _plot_lagged_ships_saliency(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
-            font_size=25, colour_map_object=colour_map_object,
+            font_size=17.5, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
             number_format_string='.1e',
@@ -771,7 +771,7 @@ def _plot_forecast_ships_saliency(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
-            font_size=25, colour_map_object=colour_map_object,
+            font_size=17.5, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
             number_format_string='.1e',
@@ -972,29 +972,65 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
             else:
                 this_key = saliency.THREE_SALIENCY_KEY
 
-            saliency_matrices_example_j = [
-                None if s is None else s[k, ...]
-                for s in saliency_dict[this_key]
+            tensor_saliency_matrices_example_j = [
+                s[k, ...] for s in saliency_dict[this_key]
+                if s is not None and len(s.shape) > 3
             ]
-            saliency_values_example_j = numpy.concatenate([
-                numpy.ravel(s) for s in saliency_matrices_example_j
-                if s is not None
-            ])
 
-            if plot_in_log_space:
-                saliency_values_example_j = numpy.log10(
-                    1 + numpy.absolute(saliency_values_example_j)
+            if len(tensor_saliency_matrices_example_j) > 0:
+                tensor_saliency_values_example_j = numpy.concatenate([
+                    numpy.ravel(t) for t in tensor_saliency_matrices_example_j
+                ])
+                if plot_in_log_space:
+                    tensor_saliency_values_example_j = numpy.log10(
+                        1 + numpy.absolute(tensor_saliency_values_example_j)
+                    )
+
+                min_colour_value_for_tensors = numpy.percentile(
+                    numpy.absolute(tensor_saliency_values_example_j),
+                    min_colour_percentile
                 )
+                max_colour_value_for_tensors = numpy.percentile(
+                    numpy.absolute(tensor_saliency_values_example_j),
+                    max_colour_percentile
+                )
+                max_colour_value_for_tensors = max([
+                    max_colour_value_for_tensors,
+                    min_colour_value_for_tensors + TOLERANCE
+                ])
+            else:
+                min_colour_value_for_tensors = 0.
+                max_colour_value_for_tensors = 1.
 
-            min_colour_value = numpy.percentile(
-                numpy.absolute(saliency_values_example_j), min_colour_percentile
-            )
-            max_colour_value = numpy.percentile(
-                numpy.absolute(saliency_values_example_j), max_colour_percentile
-            )
-            max_colour_value = max([
-                max_colour_value, min_colour_value + TOLERANCE
-            ])
+            scalar_saliency_matrices_example_j = [
+                s[k, ...] for s in saliency_dict[this_key]
+                if s is not None and len(s.shape) <= 3
+            ]
+
+            if len(scalar_saliency_matrices_example_j) > 0:
+                scalar_saliency_values_example_j = numpy.concatenate([
+                    numpy.ravel(s) for s in scalar_saliency_matrices_example_j
+                ])
+                if plot_in_log_space:
+                    scalar_saliency_values_example_j = numpy.log10(
+                        1 + numpy.absolute(scalar_saliency_values_example_j)
+                    )
+
+                min_colour_value_for_scalars = numpy.percentile(
+                    numpy.absolute(scalar_saliency_values_example_j),
+                    min_colour_percentile
+                )
+                max_colour_value_for_scalars = numpy.percentile(
+                    numpy.absolute(scalar_saliency_values_example_j),
+                    max_colour_percentile
+                )
+                max_colour_value_for_scalars = max([
+                    max_colour_value_for_scalars,
+                    min_colour_value_for_scalars + TOLERANCE
+                ])
+            else:
+                min_colour_value_for_scalars = 0.
+                max_colour_value_for_scalars = 1.
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
                 _plot_brightness_temp_saliency(
@@ -1007,8 +1043,8 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     border_latitudes_deg_n=border_latitudes_deg_n,
                     border_longitudes_deg_e=border_longitudes_deg_e,
                     colour_map_object=spatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_tensors,
+                    max_colour_value=max_colour_value_for_tensors,
                     plot_in_log_space=plot_in_log_space,
                     plot_time_diffs_at_lags=plot_time_diffs,
                     plot_input_times_grad=plot_input_times_grad,
@@ -1024,8 +1060,8 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     info_string=info_strings[j],
@@ -1040,8 +1076,8 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     info_string=info_strings[j],
@@ -1059,8 +1095,8 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     saliency_dict[saliency.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     plot_in_log_space=plot_in_log_space,
                     plot_input_times_grad=plot_input_times_grad,
                     info_string=info_strings[j],
