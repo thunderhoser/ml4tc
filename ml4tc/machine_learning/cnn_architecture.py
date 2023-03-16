@@ -1421,8 +1421,6 @@ def create_crps_model_td_to_ts(
         option_dict_gridded_sat = DEFAULT_OPTION_DICT_GRIDDED_SAT.copy()
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
-        option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
-
         this_input_layer_object, this_flattening_layer_object = (
             _create_layers_gridded_sat(option_dict_gridded_sat)
         )
@@ -1434,8 +1432,6 @@ def create_crps_model_td_to_ts(
         option_dict_ungridded_sat_orig = option_dict_ungridded_sat.copy()
         option_dict_ungridded_sat = DEFAULT_OPTION_DICT_UNGRIDDED_SAT.copy()
         option_dict_ungridded_sat.update(option_dict_ungridded_sat_orig)
-
-        option_dict_ungridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
 
         input_dimensions = option_dict_ungridded_sat[INPUT_DIMENSIONS_KEY]
         this_input_layer_object = keras.layers.Input(
@@ -1465,8 +1461,6 @@ def create_crps_model_td_to_ts(
         option_dict_ships_orig = option_dict_ships.copy()
         option_dict_ships = DEFAULT_OPTION_DICT_SHIPS.copy()
         option_dict_ships.update(option_dict_ships_orig)
-
-        option_dict_ships[DROPOUT_MC_FLAGS_KEY][:] = False
 
         input_dimensions = option_dict_ships[INPUT_DIMENSIONS_KEY]
         this_input_layer_object = keras.layers.Input(
@@ -1519,8 +1513,6 @@ def create_crps_model_td_to_ts(
     option_dict_dense[OUTPUT_ACTIV_FUNCTION_ALPHA_KEY] = (
         option_dict_dense[INNER_ACTIV_FUNCTION_ALPHA_KEY]
     )
-
-    option_dict_dense[DROPOUT_MC_FLAGS_KEY][:] = False
 
     if len(flattening_layer_objects) > 1:
         current_layer_object = keras.layers.concatenate(
@@ -1597,8 +1589,6 @@ def create_crps_model_ri(
         option_dict_gridded_sat = DEFAULT_OPTION_DICT_GRIDDED_SAT.copy()
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
-        option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
-
         this_input_layer_object, this_flattening_layer_object = (
             _create_layers_gridded_sat(option_dict_gridded_sat)
         )
@@ -1610,8 +1600,6 @@ def create_crps_model_ri(
         option_dict_ungridded_sat_orig = option_dict_ungridded_sat.copy()
         option_dict_ungridded_sat = DEFAULT_OPTION_DICT_UNGRIDDED_SAT.copy()
         option_dict_ungridded_sat.update(option_dict_ungridded_sat_orig)
-
-        option_dict_ungridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
 
         input_dimensions = option_dict_ungridded_sat[INPUT_DIMENSIONS_KEY]
         this_input_layer_object = keras.layers.Input(
@@ -1641,8 +1629,6 @@ def create_crps_model_ri(
         option_dict_ships_orig = option_dict_ships.copy()
         option_dict_ships = DEFAULT_OPTION_DICT_SHIPS.copy()
         option_dict_ships.update(option_dict_ships_orig)
-
-        option_dict_ships[DROPOUT_MC_FLAGS_KEY][:] = False
 
         input_dimensions = option_dict_ships[INPUT_DIMENSIONS_KEY]
         this_input_layer_object = keras.layers.Input(
@@ -1695,8 +1681,6 @@ def create_crps_model_ri(
     option_dict_dense[OUTPUT_ACTIV_FUNCTION_ALPHA_KEY] = (
         option_dict_dense[INNER_ACTIV_FUNCTION_ALPHA_KEY]
     )
-
-    option_dict_dense[DROPOUT_MC_FLAGS_KEY][:] = False
 
     if len(flattening_layer_objects) > 1:
         current_layer_object = keras.layers.concatenate(

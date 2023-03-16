@@ -13,10 +13,9 @@ from ml4tc.io import example_io
 from ml4tc.machine_learning import neural_net
 from ml4tc.machine_learning import saliency
 
-# TODO(thunderhoser): This script was meant to run only on my local machine.
-# It assumes that the model outputs an ensemble (e.g., CRPS-constrained) of
-# predictions, and it adds a global-average-pooling layer to the end of the
-# model.
+# TODO(thunderhoser): This script assumes that the model outputs an ensemble
+# (e.g., CRPS-constrained) of predictions, and it adds a global-average-pooling
+# layer to the end of the model.
 
 tensorflow.compat.v1.disable_v2_behavior()
 # tensorflow.compat.v1.disable_eager_execution()
@@ -24,11 +23,11 @@ tensorflow.compat.v1.disable_v2_behavior()
 # tensorflow.config.threading.set_intra_op_parallelism_threads(1)
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
-MAX_NUM_BASELINE_EXAMPLES = 50
 
 MODEL_FILE_ARG_NAME = 'input_model_file_name'
 EXAMPLE_DIR_ARG_NAME = 'input_example_dir_name'
 BASELINE_CYCLONE_IDS_ARG_NAME = 'baseline_cyclone_id_strings'
+MAX_BASELINE_EXAMPLES_ARG_NAME = 'max_num_baseline_examples'
 NEW_CYCLONE_IDS_ARG_NAME = 'new_cyclone_id_strings'
 NUM_SMOOTHGRAD_SAMPLES_ARG_NAME = 'num_smoothgrad_samples'
 SMOOTHGRAD_STDEV_ARG_NAME = 'smoothgrad_noise_stdev'
@@ -44,6 +43,11 @@ EXAMPLE_DIR_HELP_STRING = (
 BASELINE_CYCLONE_IDS_HELP_STRING = (
     'List of IDs in format "yyyyBBNN".  Will use these cyclones to create the '
     'baseline.'
+)
+MAX_BASELINE_EXAMPLES_HELP_STRING = (
+    'Max number of baseline examples.  If this script finds more baseline '
+    'examples, it will randomly subset.  Running SHAP with too many baseline '
+    'examples is very computationally expensive.'
 )
 NEW_CYCLONE_IDS_HELP_STRING = (
     'List of IDs in format "yyyyBBNN".  Will compute Shapley values for these '
@@ -76,6 +80,10 @@ INPUT_ARG_PARSER.add_argument(
     help=BASELINE_CYCLONE_IDS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + MAX_BASELINE_EXAMPLES_ARG_NAME, type=int, required=True,
+    help=MAX_BASELINE_EXAMPLES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + NEW_CYCLONE_IDS_ARG_NAME, type=str, nargs='+', required=True,
     help=NEW_CYCLONE_IDS_HELP_STRING
 )
@@ -93,8 +101,25 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(model_file_name, example_dir_name,
-         baseline_cyclone_id_strings, new_cyclone_id_strings,
+def _predictor_matrices_to_num_examples(predictor_matrices):
+    """Determines number of examples from list of predictor matrices.
+
+    :param predictor_matrices: 1-D list of numpy arrays.  The first axis of
+        each numpy array is the example axis.
+    :return: num_examples: Integer.
+    """
+
+    for this_matrix in predictor_matrices:
+        if this_matrix is None:
+            continue
+
+        return this_matrix.shape[0]
+
+    return None
+
+
+def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
+         max_num_baseline_examples, new_cyclone_id_strings,
          num_smoothgrad_samples, smoothgrad_noise_stdev,
          output_file_name):
     """Creates maps of Shapley values.
@@ -104,6 +129,7 @@ def _run(model_file_name, example_dir_name,
     :param model_file_name: See documentation at top of file.
     :param example_dir_name: Same.
     :param baseline_cyclone_id_strings: Same.
+    :param max_num_baseline_examples: Same.
     :param new_cyclone_id_strings: Same.
     :param num_smoothgrad_samples: Same.
     :param smoothgrad_noise_stdev: Same.
@@ -115,16 +141,23 @@ def _run(model_file_name, example_dir_name,
     if use_smoothgrad:
         error_checking.assert_is_greater(smoothgrad_noise_stdev, 0.)
 
-    # Housekeeping.
+    error_checking.assert_is_geq(max_num_baseline_examples, 20)
+    error_checking.assert_is_leq(max_num_baseline_examples, 200)
+
+    # Append global-average-pooling layer to model.
     print('Reading model from: "{0:s}"...'.format(model_file_name))
     orig_model_object = neural_net.read_model(model_file_name)
 
-    model_object = keras.models.Sequential()
-    model_object.add(orig_model_object)
-    model_object.add(
-        keras.layers.GlobalAveragePooling1D(data_format='channels_first')
+    output_layer_object = orig_model_object.output
+    output_layer_object = keras.layers.GlobalAveragePooling1D(
+        data_format='channels_first'
+    )(output_layer_object)
+
+    model_object = keras.models.Model(
+        inputs=orig_model_object.input, outputs=output_layer_object
     )
 
+    # Find satellite data for baseline and new cyclones.
     baseline_cyclone_id_strings = list(set(baseline_cyclone_id_strings))
     baseline_example_file_names = [
         example_io.find_file(
@@ -134,6 +167,10 @@ def _run(model_file_name, example_dir_name,
         )
         for c in baseline_cyclone_id_strings
     ]
+
+    max_num_baseline_examples_per_file = int(numpy.ceil(
+        float(max_num_baseline_examples) / len(baseline_example_file_names)
+    ))
 
     new_cyclone_id_strings = list(set(new_cyclone_id_strings))
     new_example_file_names = [
@@ -145,6 +182,7 @@ def _run(model_file_name, example_dir_name,
         for c in new_cyclone_id_strings
     ]
 
+    # Read satellite data for baseline.
     model_metafile_name = neural_net.find_metafile(
         model_file_name=model_file_name, raise_error_if_missing=True
     )
@@ -162,48 +200,61 @@ def _run(model_file_name, example_dir_name,
         validation_option_dict[neural_net.EXAMPLE_FILE_KEY] = this_file_name
         data_dict = neural_net.create_inputs(validation_option_dict)
 
+        this_num_examples = _predictor_matrices_to_num_examples(
+            data_dict[neural_net.PREDICTOR_MATRICES_KEY]
+        )
+        if this_num_examples == 0:
+            continue
+
+        good_indices = numpy.linspace(
+            0, this_num_examples - 1, num=this_num_examples, dtype=int
+        )
+        if this_num_examples > max_num_baseline_examples_per_file:
+            good_indices = numpy.random.choice(
+                good_indices, size=max_num_baseline_examples_per_file,
+                replace=True
+            )
+
         for j in range(len(three_baseline_predictor_matrices)):
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][j] is None:
                 continue
 
             if three_baseline_predictor_matrices[j] is None:
-                three_baseline_predictor_matrices[j] = (
-                    data_dict[neural_net.PREDICTOR_MATRICES_KEY][j] + 0.
-                )
+                three_baseline_predictor_matrices[j] = data_dict[
+                    neural_net.PREDICTOR_MATRICES_KEY
+                ][j][good_indices, ...]
             else:
                 three_baseline_predictor_matrices[j] = numpy.concatenate((
                     three_baseline_predictor_matrices[j],
-                    data_dict[neural_net.PREDICTOR_MATRICES_KEY][j]
+                    data_dict[neural_net.PREDICTOR_MATRICES_KEY][j][
+                        good_indices, ...
+                    ]
                 ), axis=0)
 
     print(SEPARATOR_STRING)
 
-    num_baseline_examples = -1
-    for j in range(len(three_baseline_predictor_matrices)):
-        if three_baseline_predictor_matrices[j] is None:
-            continue
+    num_baseline_examples = _predictor_matrices_to_num_examples(
+        three_baseline_predictor_matrices
+    )
 
-        num_baseline_examples = three_baseline_predictor_matrices[j].shape[0]
-        break
-
-    if num_baseline_examples > MAX_NUM_BASELINE_EXAMPLES:
+    if num_baseline_examples > max_num_baseline_examples:
         example_indices = numpy.linspace(
             0, num_baseline_examples - 1, num=num_baseline_examples, dtype=int
         )
         example_indices = numpy.random.choice(
-            example_indices, size=MAX_NUM_BASELINE_EXAMPLES, replace=False
+            example_indices, size=max_num_baseline_examples, replace=False
         )
         three_baseline_predictor_matrices = [
             None if p is None else p[example_indices, ...]
             for p in three_baseline_predictor_matrices
         ]
 
+    # Do actual stuff.
     explainer_object = shap.DeepExplainer(
         model=model_object,
         data=[p for p in three_baseline_predictor_matrices if p is not None]
     )
 
-    # Do actual stuff.
     three_shapley_value_matrices = [None] * 3
     cyclone_id_strings = []
     init_times_unix_sec = numpy.array([], dtype=int)
@@ -245,6 +296,8 @@ def _run(model_file_name, example_dir_name,
                     X=[p for p in these_predictor_matrices if p is not None],
                     check_additivity=False
                 )
+                if isinstance(these_shapley_matrices[0], list):
+                    these_shapley_matrices = these_shapley_matrices[0]
 
                 if all([s is None for s in new_shapley_matrices]):
                     j_minor = -1
@@ -282,6 +335,8 @@ def _run(model_file_name, example_dir_name,
                 X=[p for p in new_predictor_matrices if p is not None],
                 check_additivity=False
             )
+            if isinstance(these_shapley_matrices[0], list):
+                these_shapley_matrices = these_shapley_matrices[0]
 
             new_shapley_matrices = [None] * 3
             j_minor = -1
@@ -328,6 +383,9 @@ if __name__ == '__main__':
         baseline_cyclone_id_strings=getattr(
             INPUT_ARG_OBJECT, BASELINE_CYCLONE_IDS_ARG_NAME
         ),
+        max_num_baseline_examples=getattr(
+            INPUT_ARG_OBJECT, MAX_BASELINE_EXAMPLES_ARG_NAME
+        ),
         new_cyclone_id_strings=getattr(
             INPUT_ARG_OBJECT, NEW_CYCLONE_IDS_ARG_NAME
         ),
@@ -339,29 +397,3 @@ if __name__ == '__main__':
         ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )
-
-    # _run(
-    #     model_file_name=(
-    #         '/home/ralager/condo/swatwork/ralager/scratch1/RDARCH/rda-ghpcs/'
-    #         'Ryan.Lagerquist/ml4tc_models/crps_experiment02_predictor_types/'
-    #         'dropout-rates=0.100-0.500-0.300_num-satellite-lag-times=1_'
-    #         'num-ships-forecast-predictors=00_satellite-use-temporal_diffs=0/'
-    #         'model.h5'
-    #     ),
-    #     example_dir_name=(
-    #         '/home/ralager/condo/swatwork/ralager/scratch1/RDARCH/rda-ghpcs/'
-    #         'Ryan.Lagerquist/ml4tc_project/learning_examples/'
-    #         'rotated_with_storm_motion/imputed/normalized'
-    #     ),
-    #     baseline_cyclone_id_strings=['2015AL09'],
-    #     new_cyclone_id_strings=['2015EP16'],
-    #     num_smoothgrad_samples=-1,
-    #     smoothgrad_noise_stdev=0.1,
-    #     output_file_name=(
-    #         '/home/ralager/condo/swatwork/ralager/scratch1/RDARCH/rda-ghpcs/'
-    #         'Ryan.Lagerquist/ml4tc_models/crps_experiment02_predictor_types/'
-    #         'dropout-rates=0.100-0.500-0.300_num-satellite-lag-times=1_'
-    #         'num-ships-forecast-predictors=00_satellite-use-temporal_diffs=0/'
-    #         'shapley_test.nc'
-    #     )
-    # )

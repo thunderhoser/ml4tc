@@ -1750,6 +1750,11 @@ def find_metafile(model_file_name, raise_error_if_missing=True):
     )
 
     if raise_error_if_missing and not os.path.isfile(metafile_name):
+        metafile_name = metafile_name.replace(
+            '/home/ralager/condo/swatwork/ralager', ''
+        )
+
+    if raise_error_if_missing and not os.path.isfile(metafile_name):
         error_string = 'Cannot find file.  Expected at: "{0:s}"'.format(
             metafile_name
         )
