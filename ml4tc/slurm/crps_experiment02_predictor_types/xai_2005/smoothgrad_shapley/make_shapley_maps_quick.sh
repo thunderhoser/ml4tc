@@ -14,7 +14,7 @@ python3 -u "${CODE_DIR_NAME}/make_shapley_maps.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
 --baseline_cyclone_id_strings 2018WP26 1999AL14 2002WP10 2016EP18 2015EP21 2004AL11 2003AL06 2017WP03 2019WP24 2002WP04 \
---max_num_baseline_examples=75 \
+--max_num_baseline_examples=50 \
 --new_cyclone_id_strings ${cyclone_id_string} \
 --num_smoothgrad_samples=100 \
 --smoothgrad_noise_stdev=${noise_stdev} \
