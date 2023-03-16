@@ -239,6 +239,7 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
                     ]
                 ), axis=0)
 
+    del data_dict
     print(SEPARATOR_STRING)
 
     num_baseline_examples = _predictor_matrices_to_num_examples(
@@ -256,6 +257,11 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
             None if p is None else p[example_indices, ...]
             for p in three_baseline_predictor_matrices
         ]
+
+    num_baseline_examples = _predictor_matrices_to_num_examples(
+        three_baseline_predictor_matrices
+    )
+    print('NUMBER OF BASELINE EXAMPLES = {0:d}'.format(num_baseline_examples))
 
     # Do actual stuff.
     explainer_object = shap.DeepExplainer(
