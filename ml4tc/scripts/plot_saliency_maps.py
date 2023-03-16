@@ -23,6 +23,7 @@ from ml4tc.plotting import scalar_satellite_plotting
 from ml4tc.plotting import predictor_plotting
 from ml4tc.scripts import plot_predictors
 
+TOLERANCE = 1e-10
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
@@ -246,16 +247,13 @@ def _plot_scalar_satellite_saliency(
         )[:2]
     )
 
-    this_order = numpy.floor(numpy.log10(max_colour_value))
-    this_multiplier = 10 ** -this_order
-
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
-        data_matrix=saliency_matrix * this_multiplier,
-        axes_object=axes_object, font_size=25,
-        colour_map_object=colour_map_object,
-        min_colour_value=min_colour_value * this_multiplier,
-        max_colour_value=max_colour_value * this_multiplier,
-        number_format_string='.1f',
+        data_matrix=saliency_matrix,
+        axes_object=axes_object,
+        font_size=25, colour_map_object=colour_map_object,
+        min_colour_value=min_colour_value,
+        max_colour_value=max_colour_value,
+        number_format_string='.1e',
         plot_in_log_space=plot_in_log_space
     )
 
@@ -291,14 +289,11 @@ def _plot_scalar_satellite_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value * this_multiplier,
-        vmax=max_colour_value * this_multiplier
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
@@ -342,10 +337,6 @@ def _plot_brightness_temp_saliency(
     :param plot_input_times_grad: See doc for `_plot_scalar_satellite_saliency`.
     :param info_string: Same.
     :param output_dir_name: Same.
-    :return: min_colour_value: Same meaning as input variable, except that value
-        might have been changed.
-    :return: max_colour_value: Same meaning as input variable, except that value
-        might have been changed.
     """
 
     predictor_example_index = numpy.where(
@@ -404,7 +395,7 @@ def _plot_brightness_temp_saliency(
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        min_colour_value, max_colour_value = satellite_plotting.plot_saliency(
+        satellite_plotting.plot_saliency(
             saliency_matrix=saliency_matrix[..., k],
             axes_object=axes_objects[k],
             latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
@@ -490,8 +481,6 @@ def _plot_brightness_temp_saliency(
         cbar_label_string=label_string, tick_label_format_string='{0:.2g}',
         log_space=plot_in_log_space
     )
-
-    return min_colour_value, max_colour_value
 
 
 def _plot_lagged_ships_saliency(
@@ -605,19 +594,16 @@ def _plot_lagged_ships_saliency(
             num_forecast_hours=len(forecast_hours)
         )[0][0, ...]
 
-    this_order = numpy.floor(numpy.log10(max_colour_value))
-    this_multiplier = 10 ** -this_order
-
     panel_file_names = [''] * len(axes_objects)
 
     for k in range(len(axes_objects)):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=saliency_matrix[k, ...] * this_multiplier,
-            axes_object=axes_objects[k], font_size=25,
-            colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value * this_multiplier,
-            max_colour_value=max_colour_value * this_multiplier,
-            number_format_string='.1f',
+            data_matrix=saliency_matrix[k, ...],
+            axes_object=axes_objects[k],
+            font_size=25, colour_map_object=colour_map_object,
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.1e',
             plot_in_log_space=plot_in_log_space
         )
 
@@ -668,14 +654,11 @@ def _plot_lagged_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value * this_multiplier,
-        vmax=max_colour_value * this_multiplier
+        vmin=min_colour_value, vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
@@ -774,19 +757,16 @@ def _plot_forecast_ships_saliency(
         num_forecast_hours=len(forecast_hours)
     )[1][0, ...]
 
-    this_order = numpy.floor(numpy.log10(max_colour_value))
-    this_multiplier = 10 ** -this_order
-
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
-            data_matrix=saliency_matrix[k, ...] * this_multiplier,
-            axes_object=axes_objects[k], font_size=25,
-            colour_map_object=colour_map_object,
-            min_colour_value=min_colour_value * this_multiplier,
-            max_colour_value=max_colour_value * this_multiplier,
-            number_format_string='.1f',
+            data_matrix=saliency_matrix[k, ...],
+            axes_object=axes_objects[k],
+            font_size=25, colour_map_object=colour_map_object,
+            min_colour_value=min_colour_value,
+            max_colour_value=max_colour_value,
+            number_format_string='.1e',
             plot_in_log_space=plot_in_log_space
         )
 
@@ -837,14 +817,12 @@ def _plot_forecast_ships_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_colour_value * this_multiplier,
-        vmax=max_colour_value * this_multiplier
+        vmin=min_colour_value,
+        vmax=max_colour_value
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
@@ -1006,27 +984,28 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
             max_colour_value = numpy.percentile(
                 numpy.absolute(saliency_values_example_j), max_colour_percentile
             )
+            max_colour_value = max([
+                max_colour_value, min_colour_value + TOLERANCE
+            ])
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
-                min_colour_value, max_colour_value = (
-                    _plot_brightness_temp_saliency(
-                        data_dict=data_dict, saliency_dict=saliency_dict,
-                        model_metadata_dict=model_metadata_dict,
-                        cyclone_id_string=unique_cyclone_id_strings[i],
-                        init_time_unix_sec=
-                        saliency_dict[saliency.INIT_TIMES_KEY][k],
-                        normalization_table_xarray=normalization_table_xarray,
-                        border_latitudes_deg_n=border_latitudes_deg_n,
-                        border_longitudes_deg_e=border_longitudes_deg_e,
-                        colour_map_object=spatial_colour_map_object,
-                        min_colour_value=min_colour_value,
-                        max_colour_value=max_colour_value,
-                        plot_in_log_space=plot_in_log_space,
-                        plot_time_diffs_at_lags=plot_time_diffs,
-                        plot_input_times_grad=plot_input_times_grad,
-                        info_string=info_strings[j],
-                        output_dir_name=output_dir_name
-                    )
+                _plot_brightness_temp_saliency(
+                    data_dict=data_dict, saliency_dict=saliency_dict,
+                    model_metadata_dict=model_metadata_dict,
+                    cyclone_id_string=unique_cyclone_id_strings[i],
+                    init_time_unix_sec=
+                    saliency_dict[saliency.INIT_TIMES_KEY][k],
+                    normalization_table_xarray=normalization_table_xarray,
+                    border_latitudes_deg_n=border_latitudes_deg_n,
+                    border_longitudes_deg_e=border_longitudes_deg_e,
+                    colour_map_object=spatial_colour_map_object,
+                    min_colour_value=min_colour_value,
+                    max_colour_value=max_colour_value,
+                    plot_in_log_space=plot_in_log_space,
+                    plot_time_diffs_at_lags=plot_time_diffs,
+                    plot_input_times_grad=plot_input_times_grad,
+                    info_string=info_strings[j],
+                    output_dir_name=output_dir_name
                 )
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][1] is not None:

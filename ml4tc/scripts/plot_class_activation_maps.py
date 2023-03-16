@@ -21,12 +21,11 @@ from ml4tc.plotting import satellite_plotting
 from ml4tc.plotting import predictor_plotting
 from ml4tc.scripts import plot_predictors
 
+TOLERANCE = 1e-10
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
-MAX_COLOUR_PERCENTILE = 99.
 COLOUR_BAR_FONT_SIZE = 12
-
 FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(2.5e6)
 
@@ -267,20 +266,22 @@ def _plot_cam_one_example(
             class_activation_matrix, min_colour_percentile
         )
 
+    max_colour_value = max([
+        max_colour_value, min_colour_value + TOLERANCE
+    ])
+
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        min_colour_value, max_colour_value = (
-            satellite_plotting.plot_class_activation(
-                class_activation_matrix=class_activation_matrix,
-                axes_object=axes_objects[k],
-                latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
-                longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                colour_map_object=colour_map_object,
-                min_contour_value=min_colour_value,
-                max_contour_value=max_colour_value,
-                num_contours=15, plot_in_log_space=plot_in_log_space
-            )
+        satellite_plotting.plot_class_activation(
+            class_activation_matrix=class_activation_matrix,
+            axes_object=axes_objects[k],
+            latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+            longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
+            colour_map_object=colour_map_object,
+            min_contour_value=min_colour_value,
+            max_contour_value=max_colour_value,
+            num_contours=15, plot_in_log_space=plot_in_log_space
         )
 
         if info_string != '':

@@ -1,6 +1,5 @@
 """Average saliency maps created with SmoothGrad."""
 
-import os
 import copy
 import glob
 import argparse
@@ -191,10 +190,6 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
         neuron_indices=saliency_dict[saliency.NEURON_INDICES_KEY],
         ideal_activation=saliency_dict[saliency.IDEAL_ACTIVATION_KEY]
     )
-
-    for this_file_name in input_file_names:
-        print('Deleting file: "{0:s}"...'.format(this_file_name))
-        # os.remove(this_file_name)
 
 
 if __name__ == '__main__':

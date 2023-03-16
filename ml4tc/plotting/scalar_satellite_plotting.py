@@ -7,6 +7,7 @@ from matplotlib import pyplot
 from gewittergefahr.gg_utils import grids
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import error_checking
+from ml4tc.utils import general_utils
 from ml4tc.utils import example_utils
 from ml4tc.utils import satellite_utils
 
@@ -351,9 +352,12 @@ def plot_raw_numbers_multi_times(
 
     for i in range(num_grid_rows):
         for j in range(num_grid_columns):
+            this_string = general_utils.simplify_scientific_notation(
+                number_format_string.format(data_matrix[i, j])
+            )
+
             axes_object.text(
-                x_coords[j], y_coords[i],
-                number_format_string.format(data_matrix[i, j]),
+                x_coords[j], y_coords[i], this_string,
                 fontsize=font_size,
                 fontstyle='italic' if data_matrix[i, j] < 0 else 'normal',
                 fontweight='bold',

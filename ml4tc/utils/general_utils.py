@@ -220,3 +220,18 @@ def create_latlng_grid(
         lng_spacing_deg=longitude_spacing_deg,
         num_rows=num_grid_rows, num_columns=num_grid_columns
     )
+
+
+def simplify_scientific_notation(number_string):
+    """Simplifies scientific notation in number string.
+
+    :param number_string: Number represented as string.  This could be something
+        like "9.6e-04", "9.6e+00", or "9.6e+04".
+    :return: simplified_number_string: Simplified version.  This could be
+        something like "9.6e-4", "9.6", or "9.6e4".
+    """
+
+    error_checking.assert_is_string(number_string)
+    return number_string.replace('e+00', '').replace('e+0', 'e').replace(
+        'e-0', 'e-'
+    )
