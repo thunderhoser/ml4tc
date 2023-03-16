@@ -443,7 +443,7 @@ def _plot_scalar_satellite_map(
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
         data_matrix=occlusion_matrix * this_multiplier,
         axes_object=axes_object,
-        font_size=25, colour_map_object=colour_map_object,
+        font_size=17.5, colour_map_object=colour_map_object,
         min_colour_value=min_colour_value * this_multiplier,
         max_colour_value=max_colour_value * this_multiplier,
         number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
@@ -622,7 +622,7 @@ def _plot_lagged_ships_map(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k],
-            font_size=25, colour_map_object=colour_map_object,
+            font_size=17.5, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
@@ -790,7 +790,7 @@ def _plot_forecast_ships_map(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k],
-            font_size=25, colour_map_object=colour_map_object,
+            font_size=17.5, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
@@ -988,36 +988,65 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
             else:
                 this_key = occlusion.THREE_OCCLUSION_PROB_KEY
 
-            occlusion_matrices_example_j = [
-                None if s is None else s[[k], ...]
-                for s in occlusion_dict[this_key]
+            tensor_occlusion_matrices_example_j = [
+                t[k, ...] for t in occlusion_dict[this_key]
+                if t is not None and len(t.shape) > 3
             ]
-            occlusion_values_example_j = numpy.concatenate([
-                numpy.ravel(m) for m in occlusion_matrices_example_j
-                if m is not None
-            ])
 
-            if plot_normalized_occlusion:
-                finite_values = occlusion_values_example_j[
-                    numpy.isfinite(occlusion_values_example_j)
-                ]
-                max_colour_value = numpy.percentile(
-                    numpy.absolute(finite_values), max_colour_percentile
+            if len(tensor_occlusion_matrices_example_j) > 0:
+                tensor_occlusion_values_example_j = numpy.concatenate([
+                    numpy.ravel(t) for t in tensor_occlusion_matrices_example_j
+                ])
+                if plot_normalized_occlusion:
+                    tensor_occlusion_values_example_j = numpy.absolute(
+                        tensor_occlusion_values_example_j[
+                            numpy.isfinite(tensor_occlusion_values_example_j)
+                        ]
+                    )
+
+                min_colour_value_for_tensors = numpy.percentile(
+                    tensor_occlusion_values_example_j, min_colour_percentile
                 )
-                min_colour_value = numpy.percentile(
-                    numpy.absolute(finite_values), min_colour_percentile
+                max_colour_value_for_tensors = numpy.percentile(
+                    tensor_occlusion_values_example_j, max_colour_percentile
                 )
+                max_colour_value_for_tensors = max([
+                    max_colour_value_for_tensors,
+                    min_colour_value_for_tensors + TOLERANCE
+                ])
             else:
-                max_colour_value = numpy.percentile(
-                    occlusion_values_example_j, max_colour_percentile
-                )
-                min_colour_value = numpy.percentile(
-                    occlusion_values_example_j, min_colour_percentile
-                )
+                min_colour_value_for_tensors = 0.
+                max_colour_value_for_tensors = 1.
 
-            max_colour_value = max([
-                max_colour_value, min_colour_value + TOLERANCE
-            ])
+            scalar_occlusion_matrices_example_j = [
+                s[k, ...] for s in occlusion_dict[this_key]
+                if s is not None and len(s.shape) <= 3
+            ]
+
+            if len(scalar_occlusion_matrices_example_j) > 0:
+                scalar_occlusion_values_example_j = numpy.concatenate([
+                    numpy.ravel(s) for s in scalar_occlusion_matrices_example_j
+                ])
+                if plot_normalized_occlusion:
+                    scalar_occlusion_values_example_j = numpy.absolute(
+                        scalar_occlusion_values_example_j[
+                            numpy.isfinite(scalar_occlusion_values_example_j)
+                        ]
+                    )
+
+                min_colour_value_for_scalars = numpy.percentile(
+                    scalar_occlusion_values_example_j, min_colour_percentile
+                )
+                max_colour_value_for_scalars = numpy.percentile(
+                    scalar_occlusion_values_example_j, max_colour_percentile
+                )
+                max_colour_value_for_scalars = max([
+                    max_colour_value_for_scalars,
+                    min_colour_value_for_scalars + TOLERANCE
+                ])
+            else:
+                min_colour_value_for_scalars = 0.
+                max_colour_value_for_scalars = 1.
 
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
                 _plot_brightness_temp_map(
@@ -1031,8 +1060,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     border_latitudes_deg_n=border_latitudes_deg_n,
                     border_longitudes_deg_e=border_longitudes_deg_e,
                     colour_map_object=spatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_tensors,
+                    max_colour_value=max_colour_value_for_tensors,
                     plot_time_diffs_at_lags=plot_time_diffs,
                     info_string=info_strings[j], output_dir_name=output_dir_name
                 )
@@ -1046,8 +1075,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
@@ -1060,8 +1089,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
@@ -1077,8 +1106,8 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     init_time_unix_sec=
                     occlusion_dict[occlusion.INIT_TIMES_KEY][k],
                     colour_map_object=nonspatial_colour_map_object,
-                    min_colour_value=min_colour_value,
-                    max_colour_value=max_colour_value,
+                    min_colour_value=min_colour_value_for_scalars,
+                    max_colour_value=max_colour_value_for_scalars,
                     info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
