@@ -1,20 +1,20 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="plot_input_times_grad_simplest_model"
+#SBATCH --job-name="average_shapley_maps"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=12:00:00
+#SBATCH --time=30:00:00
 #SBATCH --array=1-50
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=plot_input_times_grad_simplest_model_%A_%a.out
+#SBATCH --output=average_shapley_maps_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -22,7 +22,6 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
-set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/normalization_params_1993-2004_2015-2019.nc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment02_predictor_types"
 
 set NOISE_STDEVS=("0.2" "0.2" "0.2" "0.2" "0.2" "0.4" "0.4" "0.4" "0.4" "0.4" "0.6" "0.6" "0.6" "0.6" "0.6" "0.8" "0.8" "0.8" "0.8" "0.8" "1.0" "1.0" "1.0" "1.0" "1.0" "1.2" "1.2" "1.2" "1.2" "1.2" "1.4" "1.4" "1.4" "1.4" "1.4" "1.6" "1.6" "1.6" "1.6" "1.6" "1.8" "1.8" "1.8" "1.8" "1.8" "2.0" "2.0" "2.0" "2.0" "2.0")
@@ -38,7 +37,7 @@ set SATELLITE_LAG_TIME_COUNTS=("3" "1" "3" "3" "1")
 set SHIPS_FORECAST_PREDICTOR_COUNTS=("65" "65" "65" "00" "00")
 set SATELLITE_USE_TEMPORAL_DIFF_FLAGS=("0" "0" "1" "1" "0")
 
-set i=5
+set i=1
 
 while ($i <= ${#FOURTH_LAST_LAYER_DROPOUT_RATES})
     set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$i]}
@@ -49,19 +48,12 @@ while ($i <= ${#FOURTH_LAST_LAYER_DROPOUT_RATES})
     set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$i]}
     
     set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
-    set prediction_file_name="${model_dir_name}/validation/predictions.nc"
-    set saliency_file_name="${model_dir_name}/smoothgrad_experiment/noise-stdev=${noise_stdev}/saliency_maps_${cyclone_id_string}.nc"
-    set output_dir_name="${model_dir_name}/smoothgrad_experiment/noise-stdev=${noise_stdev}/input_times_grad_maps_${cyclone_id_string}"
-
-    python3 -u "${CODE_DIR_NAME}/plot_saliency_maps.py" \
-    --input_saliency_file_name="${saliency_file_name}" \
-    --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
-    --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
-    --input_prediction_file_name="${prediction_file_name}" \
-    --plot_input_times_grad=1 \
-    --smoothing_radius_px=2 \
-    --plot_time_diffs_if_used=1 \
-    --output_dir_name="${output_dir_name}"
+    set model_file_name="${model_dir_name}/model.h5"
+    
+    python3 -u "${CODE_DIR_NAME}/average_smoothgrad_saliency_maps.py" \
+    --input_saliency_file_pattern="${model_dir_name}/smoothgrad_shapley_experiment/noise-stdev=${noise_stdev}/shapley_maps_${cyclone_id_string}_sample*.nc" \
+    --num_smoothgrad_samples=100 \
+    --output_saliency_file_name="${model_dir_name}/smoothgrad_shapley_experiment/noise-stdev=${noise_stdev}/shapley_maps_${cyclone_id_string}.nc"
     
     @ i = $i + 1
 end

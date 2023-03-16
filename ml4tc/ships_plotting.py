@@ -16,6 +16,7 @@ import grids
 import time_conversion
 import error_checking
 import ships_io
+import general_utils
 import example_utils
 
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
@@ -412,9 +413,12 @@ def plot_raw_numbers_one_init_time(
 
     for i in range(num_grid_rows):
         for j in range(num_grid_columns):
+            this_string = general_utils.simplify_scientific_notation(
+                number_format_string.format(data_matrix[i, j])
+            )
+
             axes_object.text(
-                x_coords[j], y_coords[i],
-                number_format_string.format(data_matrix[i, j]),
+                x_coords[j], y_coords[i], this_string,
                 fontsize=font_size,
                 fontstyle='italic' if data_matrix[i, j] < 0 else 'normal',
                 fontweight='bold',

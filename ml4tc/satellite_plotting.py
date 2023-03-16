@@ -19,8 +19,6 @@ import error_checking
 import gg_plotting_utils
 import satellite_utils
 
-TOLERANCE = 1e-6
-
 DEFAULT_MIN_TEMP_KELVINS = 190.
 DEFAULT_MAX_TEMP_KELVINS = 310.
 DEFAULT_CUTOFF_TEMP_KELVINS = 240.
@@ -389,8 +387,6 @@ def plot_saliency(
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
-    :return: min_abs_contour_value: Same as input but maybe changed.
-    :return: max_abs_contour_value: Same as input but maybe changed.
     """
 
     # Check input args.
@@ -445,12 +441,11 @@ def plot_saliency(
 
     error_checking.assert_is_integer(half_num_contours)
     error_checking.assert_is_geq(half_num_contours, 5)
+    error_checking.assert_is_greater(
+        max_abs_contour_value, min_abs_contour_value
+    )
 
     # Plot positive values.
-    min_abs_contour_value = max([min_abs_contour_value, TOLERANCE])
-    max_abs_contour_value = max([
-        max_abs_contour_value, min_abs_contour_value + TOLERANCE
-    ])
     contour_levels = numpy.linspace(
         min_abs_contour_value, max_abs_contour_value, num=half_num_contours
     )
@@ -484,8 +479,6 @@ def plot_saliency(
         linewidths=line_width, linestyles='dotted', zorder=1e6
     )
 
-    return min_abs_contour_value, max_abs_contour_value
-
 
 def plot_class_activation(
         class_activation_matrix, axes_object, latitude_array_deg_n,
@@ -510,10 +503,9 @@ def plot_class_activation(
     :param colour_map_object: Colour scheme (instance of
         `matplotlib.pyplot.cm`).
     :param line_width: Width of contour lines.
-    :return: min_contour_value: Same as input but maybe changed.
-    :return: max_contour_value: Same as input but maybe changed.
     """
 
+    # Check input args.
     error_checking.assert_is_boolean(plot_in_log_space)
     error_checking.assert_is_valid_lat_numpy_array(latitude_array_deg_n)
     regular_grid = len(latitude_array_deg_n.shape) == 1
@@ -563,12 +555,11 @@ def plot_class_activation(
         class_activation_matrix, exact_dimensions=expected_dim
     )
 
-    min_contour_value = max([min_contour_value, TOLERANCE])
-    max_contour_value = max([max_contour_value, min_contour_value + TOLERANCE])
-
+    error_checking.assert_is_greater(max_contour_value, min_contour_value)
     error_checking.assert_is_integer(num_contours)
     error_checking.assert_is_geq(num_contours, 5)
 
+    # Do actual stuff.
     contour_levels = numpy.linspace(
         min_contour_value, max_contour_value, num=num_contours
     )
@@ -583,5 +574,3 @@ def plot_class_activation(
         vmin=numpy.min(contour_levels), vmax=numpy.max(contour_levels),
         linewidths=line_width, linestyles='solid', zorder=1e6
     )
-
-    return min_contour_value, max_contour_value

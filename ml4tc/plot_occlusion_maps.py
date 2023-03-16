@@ -31,6 +31,7 @@ import scalar_satellite_plotting
 import ships_plotting
 import plot_predictors
 
+TOLERANCE = 1e-10
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
@@ -235,10 +236,6 @@ def _plot_brightness_temp_map(
     :param info_string: Info string (will be appended to title).
     :param output_dir_name: Name of output directory.  Figure will be saved
         here.
-    :return: min_colour_value: Same meaning as input variable, except that value
-        might have been changed.
-    :return: max_colour_value: Same meaning as input variable, except that value
-        might have been changed.
     """
 
     predictor_example_index = numpy.where(
@@ -299,30 +296,26 @@ def _plot_brightness_temp_map(
 
     for k in range(num_model_lag_times):
         if plot_normalized_occlusion:
-            min_colour_value, max_colour_value = (
-                satellite_plotting.plot_saliency(
-                    saliency_matrix=occlusion_matrix[..., k],
-                    axes_object=axes_objects[k],
-                    latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
-                    longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                    colour_map_object=colour_map_object,
-                    min_abs_contour_value=min_colour_value,
-                    max_abs_contour_value=max_colour_value,
-                    half_num_contours=10, plot_in_log_space=False
-                )
+            satellite_plotting.plot_saliency(
+                saliency_matrix=occlusion_matrix[..., k],
+                axes_object=axes_objects[k],
+                latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+                longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
+                colour_map_object=colour_map_object,
+                min_abs_contour_value=min_colour_value,
+                max_abs_contour_value=max_colour_value,
+                half_num_contours=10, plot_in_log_space=False
             )
         else:
-            min_colour_value, max_colour_value = (
-                satellite_plotting.plot_class_activation(
-                    class_activation_matrix=occlusion_matrix[..., k],
-                    axes_object=axes_objects[k],
-                    latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
-                    longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
-                    colour_map_object=colour_map_object,
-                    min_contour_value=min_colour_value,
-                    max_contour_value=max_colour_value,
-                    num_contours=15, plot_in_log_space=False
-                )
+            satellite_plotting.plot_class_activation(
+                class_activation_matrix=occlusion_matrix[..., k],
+                axes_object=axes_objects[k],
+                latitude_array_deg_n=grid_latitude_matrix_deg_n[..., k],
+                longitude_array_deg_e=grid_longitude_matrix_deg_e[..., k],
+                colour_map_object=colour_map_object,
+                min_contour_value=min_colour_value,
+                max_contour_value=max_colour_value,
+                num_contours=15, plot_in_log_space=False
             )
 
         if info_string != '':
@@ -401,8 +394,6 @@ def _plot_brightness_temp_map(
         cbar_label_string=label_string, tick_label_format_string='{0:.2g}'
     )
 
-    return min_colour_value, max_colour_value
-
 
 def _plot_scalar_satellite_map(
         data_dict, occlusion_dict, plot_normalized_occlusion,
@@ -453,8 +444,7 @@ def _plot_scalar_satellite_map(
     )
 
     if plot_normalized_occlusion:
-        this_order = numpy.floor(numpy.log10(max_colour_value))
-        this_multiplier = 10 ** -this_order
+        this_multiplier = 1.
     else:
         this_multiplier = 100.
 
@@ -464,7 +454,7 @@ def _plot_scalar_satellite_map(
         font_size=25, colour_map_object=colour_map_object,
         min_colour_value=min_colour_value * this_multiplier,
         max_colour_value=max_colour_value * this_multiplier,
-        number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+        number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
         plot_in_log_space=False
     )
 
@@ -505,10 +495,8 @@ def _plot_scalar_satellite_map(
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
-        else 'Post-occlusion probability'
+        else 'Post-occlusion probability (%)'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=output_file_name,
@@ -632,8 +620,7 @@ def _plot_lagged_ships_map(
         )[0][0, ...]
 
     if plot_normalized_occlusion:
-        this_order = numpy.floor(numpy.log10(max_colour_value))
-        this_multiplier = 10 ** -this_order
+        this_multiplier = 1.
     else:
         this_multiplier = 100.
 
@@ -642,11 +629,11 @@ def _plot_lagged_ships_map(
     for k in range(len(axes_objects)):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
-            axes_object=axes_objects[k], font_size=25,
-            colour_map_object=colour_map_object,
+            axes_object=axes_objects[k],
+            font_size=25, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
-            number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+            number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
             plot_in_log_space=False
         )
 
@@ -702,10 +689,8 @@ def _plot_lagged_ships_map(
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
-        else 'Post-occlusion probability'
+        else 'Post-occlusion probability (%)'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
@@ -803,8 +788,7 @@ def _plot_forecast_ships_map(
     )[1][0, ...]
 
     if plot_normalized_occlusion:
-        this_order = numpy.floor(numpy.log10(max_colour_value))
-        this_multiplier = 10 ** -this_order
+        this_multiplier = 1.
     else:
         this_multiplier = 100.
 
@@ -813,11 +797,11 @@ def _plot_forecast_ships_map(
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
-            axes_object=axes_objects[k], font_size=25,
-            colour_map_object=colour_map_object,
+            axes_object=axes_objects[k],
+            font_size=25, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
-            number_format_string='.1f' if plot_normalized_occlusion else '2.0f',
+            number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
             plot_in_log_space=False
         )
 
@@ -873,10 +857,8 @@ def _plot_forecast_ships_map(
     )
     label_string = (
         'Absolute normalized probability decrease' if plot_normalized_occlusion
-        else 'Post-occlusion probability'
+        else 'Post-occlusion probability (%)'
     )
-    label_string += r' $\times$'
-    label_string += '{0:.1g}'.format(this_multiplier)
 
     plotting_utils.add_colour_bar(
         figure_file_name=concat_figure_file_name,
@@ -1041,8 +1023,12 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     occlusion_values_example_j, min_colour_percentile
                 )
 
+            max_colour_value = max([
+                max_colour_value, min_colour_value + TOLERANCE
+            ])
+
             if data_dict[neural_net.PREDICTOR_MATRICES_KEY][0] is not None:
-                min_colour_value, max_colour_value = _plot_brightness_temp_map(
+                _plot_brightness_temp_map(
                     data_dict=data_dict, occlusion_dict=occlusion_dict,
                     plot_normalized_occlusion=plot_normalized_occlusion,
                     model_metadata_dict=model_metadata_dict,
