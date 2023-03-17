@@ -52,7 +52,8 @@ def _run(input_file_name, seven_day, output_dir_name):
 
     print('Reading data from: "{0:s}"...'.format(input_file_name))
     ships_table_xarray = raw_ships_io.read_file(
-        ascii_file_name=input_file_name, seven_day=seven_day
+        ascii_file_name=input_file_name, real_time_flag=False,
+        seven_day_flag=seven_day
     )
     print(SEPARATOR_STRING)
 

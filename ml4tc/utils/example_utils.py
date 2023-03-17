@@ -227,8 +227,8 @@ def _create_merged_sst_variable(example_table_xarray):
     original_var_names = [
         ships_io.NCODA_SST_KEY,
         ships_io.REYNOLDS_SST_DAILY_KEY,
-        ships_io.REYNOLDS_SST_KEY,
-        ships_io.CLIMO_SST_KEY
+        ships_io.REYNOLDS_SST_KEY,  # Real-time SHIPS has this.
+        ships_io.CLIMO_SST_KEY  # Real-time SHIPS has this.
     ]
     original_var_indices = numpy.array([
         all_predictor_names.index(n) for n in original_var_names
@@ -302,8 +302,8 @@ def _create_merged_ohc_variable(example_table_xarray):
 
     original_var_names = [
         ships_io.NCODA_OHC_26C_KEY,
-        ships_io.SATELLITE_OHC_KEY,
-        ships_io.OHC_FROM_SST_AND_CLIMO_KEY,
+        ships_io.SATELLITE_OHC_KEY,  # Real-time SHIPS has this.
+        ships_io.OHC_FROM_SST_AND_CLIMO_KEY,  # Real-time SHIPS has this.
         ships_io.NCODA_OHC_26C_CLIMO_KEY,
         ships_io.CLIMO_OHC_KEY
     ]
