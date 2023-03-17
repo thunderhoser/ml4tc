@@ -85,14 +85,22 @@ def _run(input_dir_name, year):
                 ships_io.read_file(this_file_name)
             )
 
-    ships_table_nh_xarray = xarray.concat(
-        objs=ships_tables_nh_xarray, dim=ships_io.STORM_OBJECT_DIM
-    )
+    if len(ships_tables_nh_xarray) > 0:
+        ships_table_nh_xarray = xarray.concat(
+            objs=ships_tables_nh_xarray, dim=ships_io.STORM_OBJECT_DIM
+        )
+    else:
+        ships_table_nh_xarray = xarray.Dataset()
+
     del ships_tables_nh_xarray
 
-    ships_table_sh_xarray = xarray.concat(
-        objs=ships_tables_sh_xarray, dim=ships_io.STORM_OBJECT_DIM
-    )
+    if len(ships_tables_sh_xarray) > 0:
+        ships_table_sh_xarray = xarray.concat(
+            objs=ships_tables_sh_xarray, dim=ships_io.STORM_OBJECT_DIM
+        )
+    else:
+        ships_table_sh_xarray = xarray.Dataset()
+
     del ships_tables_sh_xarray
     print('\n')
 
