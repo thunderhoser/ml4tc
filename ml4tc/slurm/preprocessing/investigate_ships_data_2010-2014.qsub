@@ -1,0 +1,34 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="investigate_ships_data_2010-2014"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=30:00:00
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=investigate_ships_data_2010-2014_%A.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed/5day"
+
+set YEARS=("2010" "2011" "2012" "2013" "2014")
+set i=1
+
+while ($i <= ${#LEAD_TIMES_HOURS})
+    python3 -u "${CODE_DIR_NAME}/investigate_ships_vars.py" \
+    --input_ships_dir_name="${INPUT_DIR_NAME}" \
+    --year=${YEARS[$i]}
+    
+    @ i = $i + 1
+end
