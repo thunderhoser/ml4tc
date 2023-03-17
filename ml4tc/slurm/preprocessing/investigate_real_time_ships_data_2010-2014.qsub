@@ -20,12 +20,12 @@ source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/real_time/processed/5day"
+set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/real_time/processed"
 
 set YEARS=("2010" "2011" "2012" "2013" "2014")
 set i=1
 
-while ($i <= ${#LEAD_TIMES_HOURS})
+while ($i <= ${#YEARS})
     python3 -u "${CODE_DIR_NAME}/investigate_ships_vars.py" \
     --input_ships_dir_name="${INPUT_DIR_NAME}" \
     --year=${YEARS[$i]}
