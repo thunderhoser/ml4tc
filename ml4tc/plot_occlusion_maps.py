@@ -451,7 +451,7 @@ def _plot_scalar_satellite_map(
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
         data_matrix=occlusion_matrix * this_multiplier,
         axes_object=axes_object,
-        font_size=17.5, colour_map_object=colour_map_object,
+        font_size=15, colour_map_object=colour_map_object,
         min_colour_value=min_colour_value * this_multiplier,
         max_colour_value=max_colour_value * this_multiplier,
         number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
@@ -630,7 +630,7 @@ def _plot_lagged_ships_map(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k],
-            font_size=17.5, colour_map_object=colour_map_object,
+            font_size=15, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1e' if plot_normalized_occlusion else '2.0f',
@@ -798,7 +798,7 @@ def _plot_forecast_ships_map(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=occlusion_matrix[k, ...] * this_multiplier,
             axes_object=axes_objects[k],
-            font_size=17.5, colour_map_object=colour_map_object,
+            font_size=15, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value * this_multiplier,
             max_colour_value=max_colour_value * this_multiplier,
             number_format_string='.1e' if plot_normalized_occlusion else '2.0f',

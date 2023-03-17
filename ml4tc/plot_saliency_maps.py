@@ -258,7 +258,7 @@ def _plot_scalar_satellite_saliency(
     scalar_satellite_plotting.plot_raw_numbers_multi_times(
         data_matrix=saliency_matrix,
         axes_object=axes_object,
-        font_size=17.5, colour_map_object=colour_map_object,
+        font_size=15, colour_map_object=colour_map_object,
         min_colour_value=min_colour_value,
         max_colour_value=max_colour_value,
         number_format_string='.1e',
@@ -608,7 +608,7 @@ def _plot_lagged_ships_saliency(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
-            font_size=17.5, colour_map_object=colour_map_object,
+            font_size=15, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
             number_format_string='.1e',
@@ -771,7 +771,7 @@ def _plot_forecast_ships_saliency(
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
-            font_size=17.5, colour_map_object=colour_map_object,
+            font_size=15, colour_map_object=colour_map_object,
             min_colour_value=min_colour_value,
             max_colour_value=max_colour_value,
             number_format_string='.1e',

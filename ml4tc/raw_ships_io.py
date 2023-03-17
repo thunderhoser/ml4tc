@@ -5,6 +5,7 @@ SHIPS = Statistical Hurricane-intensity-prediction Scheme
 
 import os
 import sys
+import glob
 import numpy
 import xarray
 
@@ -20,8 +21,15 @@ import ships_io
 import general_utils
 import satellite_utils
 
-SENTINEL_STRING = '9999'
+SENTINEL_STRINGS = ['9999', '****']
 TIME_FORMAT_IN_FILES = '%Y%m%d%H'
+TIME_FORMAT_IN_FILE_NAMES = '%y%m%d%H'
+
+MONTH_REGEX = '[0-1][0-9]'
+DATE_REGEX = '[0-3][0-9]'
+HOUR_REGEX = '[0-2][0-9]'
+BASIN_REGEX = '[A-Z][A-Z]'
+CYCLONE_NUM_REGEX = '[0-9][0-9]'
 
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 MB_TO_PASCALS = 100.
@@ -440,12 +448,12 @@ MOTION_FIELD_CONV_FUNCTIONS = [
 ]
 
 
-def _forecast_hour_to_chars(forecast_hour_line, seven_day):
+def _forecast_hour_to_chars(forecast_hour_line, seven_day_flag):
     """Determines correspondence of forecast hour to character indices.
 
     :param forecast_hour_line: Line from SHIPS file with forecast hours.  This
         line should end with "TIME".
-    :param seven_day: Boolean flag.  If True (False), line comes from 7-day
+    :param seven_day_flag: Boolean flag.  If True (False), line comes from 7-day
         (5-day) file.
     :return: hour_index_to_char_indices: Dictionary, where each key is the index
         of a forecast hour.  The corresponding value is a length-2 numpy array,
@@ -454,10 +462,10 @@ def _forecast_hour_to_chars(forecast_hour_line, seven_day):
         for the forecast hour.
     """
 
-    error_checking.assert_is_boolean(seven_day)
+    error_checking.assert_is_boolean(seven_day_flag)
     assert forecast_hour_line.endswith('TIME')
 
-    if seven_day:
+    if seven_day_flag:
         expected_forecast_hours = numpy.linspace(-12, 168, num=31, dtype=int)
     else:
         expected_forecast_hours = numpy.linspace(-12, 120, num=23, dtype=int)
@@ -505,19 +513,194 @@ def _reformat_cyclone_id(orig_cyclone_id_string):
     )
 
 
-def read_file(ascii_file_name, seven_day):
+def _real_time_file_name_to_cyclone_id(rt_ships_file_name):
+    """Parses cyclone ID from name of real-time SHIPS file.
+
+    :param rt_ships_file_name: Path to file with real-time SHIPS data.
+    :return: cyclone_id_string: Cyclone ID.
+    """
+
+    year = int(rt_ships_file_name.split('/')[-2])
+
+    pathless_file_name = os.path.split(rt_ships_file_name)[1]
+    weird_cyclone_id_string = pathless_file_name.split('_')[0][-6:]
+    cyclone_id_string = '{0:04d}{1:s}'.format(year, weird_cyclone_id_string[:4])
+
+    _ = satellite_utils.parse_cyclone_id(cyclone_id_string)
+    return cyclone_id_string
+
+
+def find_real_time_file(
+        top_directory_name, cyclone_id_string, valid_time_unix_sec,
+        raise_error_if_missing=True):
+    """Finds text file with real-time SHIPS data.
+
+    :param top_directory_name: Name of top-level directory with real-time SHIPS
+        data.
+    :param cyclone_id_string: Cyclone ID (must be accepted by
+        `satellite_utils.parse_cyclone_id`).
+    :param valid_time_unix_sec: Valid time.
+    :param raise_error_if_missing: Boolean flag.  If file is missing and
+        `raise_error_if_missing == True`, will throw error.  If file is missing
+        and `raise_error_if_missing == False`, will return *expected* file path.
+    :return: rt_ships_file_name: File path.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(top_directory_name)
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_boolean(raise_error_if_missing)
+
+    year_string = time_conversion.unix_sec_to_string(valid_time_unix_sec, '%Y')
+    year_string_sans_century = time_conversion.unix_sec_to_string(
+        valid_time_unix_sec, '%y'
+    )
+
+    rt_ships_file_name = '{0:s}/{1:s}/{2:s}{3:s}{4:s}_lsdiag.dat'.format(
+        top_directory_name,
+        year_string,
+        time_conversion.unix_sec_to_string(
+            valid_time_unix_sec, TIME_FORMAT_IN_FILE_NAMES
+        ),
+        cyclone_id_string[4:],
+        year_string_sans_century
+    )
+
+    if os.path.isfile(rt_ships_file_name) or not raise_error_if_missing:
+        return rt_ships_file_name
+
+    error_string = 'Cannot find file.  Expected at: "{0:s}"'.format(
+        rt_ships_file_name
+    )
+    raise ValueError(error_string)
+
+
+def find_real_time_files_1cyclone(top_directory_name, cyclone_id_string,
+                                  raise_error_if_all_missing=True):
+    """Finds all text files with real-time SHIPS data for one cyclone.
+
+    :param top_directory_name: Name of top-level directory with real-time SHIPS
+        data.
+    :param cyclone_id_string: Cyclone ID (must be accepted by
+        `satellite_utils.parse_cyclone_id`).
+    :param raise_error_if_all_missing: Boolean flag.  If no files are found and
+        `raise_error_if_all_missing == True`, will throw error.  If no files are
+        found and `raise_error_if_all_missing == False`, will return empty list.
+    :return: rt_ships_file_names: List of file paths.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(top_directory_name)
+    satellite_utils.parse_cyclone_id(cyclone_id_string)
+    error_checking.assert_is_boolean(raise_error_if_all_missing)
+
+    year = satellite_utils.parse_cyclone_id(cyclone_id_string)[0]
+    year_string = '{0:04d}'.format(year)
+    year_string_sans_century = year_string[2:]
+
+    file_pattern = (
+        '{0:s}/{1:s}/{2:s}{3:s}{4:s}{5:s}{6:s}{2:s}_lsdiag.dat'
+    ).format(
+        top_directory_name,
+        year_string,
+        year_string_sans_century,
+        MONTH_REGEX,
+        DATE_REGEX,
+        HOUR_REGEX,
+        cyclone_id_string[4:]
+    )
+
+    rt_ships_file_names = glob.glob(file_pattern)
+    rt_ships_file_names.sort()
+
+    if raise_error_if_all_missing and len(rt_ships_file_names) == 0:
+        error_string = 'Could not find any files with pattern: "{0:s}"'.format(
+            file_pattern
+        )
+        raise ValueError(error_string)
+
+    return rt_ships_file_names
+
+
+def find_real_time_cyclones_1year(top_directory_name, year,
+                                  raise_error_if_all_missing=True):
+    """Finds all cyclones in one year with real-time SHIPS data.
+
+    :param top_directory_name: Name of top-level directory with real-time SHIPS
+        data.
+    :param year: Year (integer).
+    :param raise_error_if_all_missing: Boolean flag.  If no cyclones are found
+        and `raise_error_if_all_missing == True`, will throw error.  If no
+        cyclones are found and `raise_error_if_all_missing == False`, will
+        return empty list.
+    :return: cyclone_id_strings: List of cyclone IDs.
+    :raises: ValueError: if file is missing
+        and `raise_error_if_missing == True`.
+    """
+
+    error_checking.assert_is_string(top_directory_name)
+    error_checking.assert_is_integer(year)
+    error_checking.assert_is_boolean(raise_error_if_all_missing)
+
+    year_string = '{0:04d}'.format(year)
+    year_string_sans_century = year_string[2:]
+
+    file_pattern = (
+        '{0:s}/{1:s}/{2:s}{3:s}{4:s}{5:s}{6:s}{7:s}{2:s}_lsdiag.dat'
+    ).format(
+        top_directory_name,
+        year_string,
+        year_string_sans_century,
+        MONTH_REGEX,
+        DATE_REGEX,
+        HOUR_REGEX,
+        BASIN_REGEX,
+        CYCLONE_NUM_REGEX
+    )
+
+    rt_ships_file_names = glob.glob(file_pattern)
+    cyclone_id_strings = []
+
+    for this_file_name in rt_ships_file_names:
+        cyclone_id_strings.append(
+            _real_time_file_name_to_cyclone_id(this_file_name)
+        )
+
+    cyclone_id_strings = list(set(cyclone_id_strings))
+    cyclone_id_strings.sort()
+
+    if raise_error_if_all_missing and len(cyclone_id_strings) == 0:
+        error_string = (
+            'Could not find any cyclone IDs from files with pattern: '
+            '"{0:s}"'
+        ).format(file_pattern)
+
+        raise ValueError(error_string)
+
+    return cyclone_id_strings
+
+
+def read_file(ascii_file_name, real_time_flag, seven_day_flag):
     """Reads SHIPS data from ASCII file.
 
     :param ascii_file_name: Path to input file.
-    :param seven_day: Boolean flag.  If True (False), expecting 7-day (5-day)
-        file.
+    :param real_time_flag: Boolean flag.  If True, expecting real-time data with
+        actual GFS forecasts.  If False, expecting archived data with GFS
+        analyses ("perfect prog").
+    :param seven_day_flag: Boolean flag.  If True (False), expecting GFS
+        forecasts up to a lead time of 7 (5) days.
     :return: ships_table_xarray: xarray table.  Documentation in the xarray
         table should make values self-explanatory.
     """
 
     # TODO(thunderhoser): Make sure all fields are found.
 
-    if seven_day:
+    error_checking.assert_is_boolean(real_time_flag)
+    error_checking.assert_is_boolean(seven_day_flag)
+
+    if seven_day_flag:
         forecast_hours = numpy.linspace(-12, 168, num=31, dtype=int)
     else:
         forecast_hours = numpy.linspace(-12, 120, num=23, dtype=int)
@@ -557,36 +740,55 @@ def read_file(ascii_file_name, seven_day):
 
     for current_line in ascii_file_handle.readlines():
         current_line = current_line.rstrip()
+        words = current_line.split()
 
         try:
-            words = current_line.split()
             _ = int(words[-1])
-
             current_line = current_line[:-4].rstrip()
         except:
-            pass
+            if words[-1].strip() == 'W':
+                current_line = current_line[:-4].rstrip()
 
         if current_line.endswith('HEAD'):
             print(current_line)
 
             words = current_line.split()
+            is_header_line_short = len(words) < 8
 
-            cyclone_id_strings.append(
-                _reformat_cyclone_id(words[-2])
-            )
-            storm_intensities_m_s01.append(float(words[-6]))
-            storm_longitudes_deg_e.append(float(words[-4]))
-            storm_latitudes_deg_n.append(float(words[-5]))
+            if real_time_flag and is_header_line_short:
+                storm_intensities_m_s01.append(float(words[-2]))
+                storm_longitudes_deg_e.append(numpy.nan)
+                storm_latitudes_deg_n.append(numpy.nan)
 
-            time_string = words[-8]
-            year = int(time_string[:2])
+                time_string = words[1]
+                year = int(time_string[:2])
+                if year > 80:
+                    time_string = '19{0:s}'.format(time_string)
+                else:
+                    time_string = '20{0:s}'.format(time_string)
 
-            if year > 30:
-                time_string = '19{0:s}'.format(time_string)
+                time_string += words[2]
+
+                this_cyclone_id_string = _reformat_cyclone_id(
+                    '{0:s}{1:s}'.format(words[0], time_string[:4])
+                )
+                cyclone_id_strings.append(this_cyclone_id_string)
             else:
-                time_string = '20{0:s}'.format(time_string)
+                cyclone_id_strings.append(
+                    _reformat_cyclone_id(words[-2])
+                )
+                storm_intensities_m_s01.append(float(words[-6]))
+                storm_longitudes_deg_e.append(float(words[-4]))
+                storm_latitudes_deg_n.append(float(words[-5]))
 
-            time_string += words[-7]
+                time_string = words[-8]
+                year = int(time_string[:2])
+                if year > 80:
+                    time_string = '19{0:s}'.format(time_string)
+                else:
+                    time_string = '20{0:s}'.format(time_string)
+
+                time_string += words[-7]
 
             storm_times_unix_sec.append(
                 time_conversion.string_to_unix_sec(
@@ -618,7 +820,7 @@ def read_file(ascii_file_name, seven_day):
 
         if current_line.endswith('TIME'):
             hour_index_to_char_indices = _forecast_hour_to_chars(
-                forecast_hour_line=current_line, seven_day=seven_day
+                forecast_hour_line=current_line, seven_day_flag=seven_day_flag
             )
             continue
 
@@ -635,7 +837,7 @@ def read_file(ascii_file_name, seven_day):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -660,7 +862,7 @@ def read_file(ascii_file_name, seven_day):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -683,7 +885,7 @@ def read_file(ascii_file_name, seven_day):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -704,7 +906,7 @@ def read_file(ascii_file_name, seven_day):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -864,8 +1066,11 @@ def read_file(ascii_file_name, seven_day):
     ])
 
     storm_longitudes_deg_e = (
-        multipliers * ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
+        ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
     )
+    if not real_time_flag:
+        storm_longitudes_deg_e = multipliers * storm_longitudes_deg_e
+
     storm_longitudes_deg_e[storm_longitudes_deg_e < -180.] += 360.
     storm_longitudes_deg_e[storm_longitudes_deg_e > 360.] -= 360.
     ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values = (
@@ -901,6 +1106,16 @@ def read_file(ascii_file_name, seven_day):
         lng_conversion.convert_lng_positive_in_west(
             vortex_lng_matrix_deg_e, allow_nan=True
         )
+    )
+
+    intensity_index = FORECAST_FIELD_NAMES_RAW.index('VMAX')
+    zero_hour_index = numpy.where(forecast_hours == 0)[0][0]
+    nan_indices = numpy.where(numpy.isnan(
+        forecast_field_matrix[:, zero_hour_index, intensity_index]
+    ))[0]
+
+    forecast_field_matrix[nan_indices, zero_hour_index, intensity_index] = (
+        storm_intensities_m_s01[nan_indices]
     )
 
     return ships_table_xarray
