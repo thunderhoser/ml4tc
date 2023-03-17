@@ -77,6 +77,10 @@ def _process_data_one_cyclone(input_dir_name, cyclone_id_string,
         drop=False
     )
 
+    # TODO(thunderhoser): Note that I compute the intensity change only at
+    # analysis time -- not at forecast times -- because I do not use true
+    # forecast intensity changes (at lead time > 0) in ML anyways!
+
     # Add 6-hour intensity changes to table.
     intensity_changes_m_s01 = numpy.concatenate((
         numpy.array([numpy.nan]),

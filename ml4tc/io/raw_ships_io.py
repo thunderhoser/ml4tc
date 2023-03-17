@@ -14,7 +14,7 @@ from ml4tc.io import ships_io
 from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 
-SENTINEL_STRING = '9999'
+SENTINEL_STRINGS = ['9999', '****']
 TIME_FORMAT_IN_FILES = '%Y%m%d%H'
 TIME_FORMAT_IN_FILE_NAMES = '%y%m%d%H'
 
@@ -830,7 +830,7 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -855,7 +855,7 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -878,7 +878,7 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
@@ -899,7 +899,7 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
                 last_char_index = hour_index_to_char_indices[hour_index][1]
                 this_string = current_line[first_char_index:last_char_index]
 
-                if this_string == SENTINEL_STRING:
+                if this_string in SENTINEL_STRINGS:
                     continue
                 if len(this_string.strip()) == 0:
                     continue
