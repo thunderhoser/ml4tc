@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="impute_examples"
+#SBATCH --job-name="rotate_satellite_images"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,28 +14,23 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=impute_examples_%A_%a.out
+#SBATCH --output=rotate_satellite_images_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set INPUT_EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/with_real_time_ships/rotated_with_storm_motion"
-set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/normalization_params_1993-2004_2015-2019.nc"
-set OUTPUT_EXAMPLE_DIR_NAME="${INPUT_EXAMPLE_DIR_NAME}/imputed"
+set INPUT_EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/with_real_time_ships"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/normalization_params_1993-2004_2015-2019.nc"
+set OUTPUT_EXAMPLE_DIR_NAME="${INPUT_EXAMPLE_DIR_NAME}/rotated_with_storm_motion"
 
 set CYCLONE_ID_STRINGS=("2010AL01" "2010AL02" "2010AL03" "2010AL04" "2010AL05" "2010AL06" "2010AL07" "2010AL08" "2010AL09" "2010AL10" "2010AL11" "2010AL12" "2010AL13" "2010AL14" "2010AL15" "2010AL16" "2010AL17" "2010AL18" "2010AL19" "2010AL20" "2010AL21" "2010EP01" "2010EP02" "2010EP03" "2010EP04" "2010EP05" "2010EP06" "2010EP07" "2010EP08" "2010EP09" "2010EP10" "2010EP11" "2010EP12" "2011AL01" "2011AL02" "2011AL03" "2011AL04" "2011AL05" "2011AL06" "2011AL07" "2011AL08" "2011AL09" "2011AL10" "2011AL11" "2011AL12" "2011AL13" "2011AL14" "2011AL15" "2011AL16" "2011AL17" "2011AL18" "2011AL19" "2011EP01" "2011EP02" "2011EP03" "2011EP04" "2011EP05" "2011EP06" "2011EP07" "2011EP08" "2011EP09" "2011EP10" "2011EP11" "2011EP12" "2011EP13" "2012AL01" "2012AL02" "2012AL03" "2012AL04" "2012AL05" "2012AL06" "2012AL07" "2012AL08" "2012AL09" "2012AL10" "2012AL11" "2012AL12" "2012AL13" "2012AL14" "2012AL15" "2012AL16" "2012AL17" "2012AL18" "2012AL19" "2012EP01" "2012EP02" "2012EP03" "2012EP04" "2012EP05" "2012EP06" "2012EP07" "2012EP08" "2012EP09" "2012EP10" "2012EP11" "2012EP12" "2012EP13" "2012EP14" "2012EP15" "2012EP16" "2012EP17" "2013AL01" "2013AL02" "2013AL03" "2013AL04" "2013AL05" "2013AL06" "2013AL07" "2013AL08" "2013AL09" "2013AL10" "2013AL11" "2013AL12" "2013AL13" "2013AL14" "2013CP01" "2013CP02" "2013CP03" "2013EP01" "2013EP02" "2013EP03" "2013EP04" "2013EP05" "2013EP06" "2013EP07" "2013EP08" "2013EP09" "2013EP10" "2013EP11" "2013EP12" "2013EP13" "2013EP14" "2013EP15" "2013EP16" "2013EP17" "2013EP18" "2014AL01" "2014AL02" "2014AL03" "2014AL04" "2014AL05" "2014AL06" "2014AL07" "2014AL08" "2014AL09" "2014CP01" "2014CP02" "2014EP01" "2014EP02" "2014EP03" "2014EP04" "2014EP05" "2014EP06" "2014EP07" "2014EP08" "2014EP09" "2014EP10" "2014EP11" "2014EP12" "2014EP13" "2014EP14" "2014EP15" "2014EP16" "2014EP17" "2014EP18" "2014EP19" "2014EP20" "2014EP21")
 set cyclone_id_string=${CYCLONE_ID_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
-python3 -u "${CODE_DIR_NAME}/impute_examples.py" \
---input_example_dir_name="${INPUT_EXAMPLE_DIR_NAME}" \
---cyclone_id_strings ${cyclone_id_string} \
+python3 -u "${CODE_DIR_NAME}/rotate_satellite_images.py" \
+--input_unnorm_unimputed_example_dir_name="${INPUT_EXAMPLE_DIR_NAME}" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
---min_temporal_coverage_fraction=0.333333 \
---min_num_times=4 \
---min_spatial_coverage_fraction=0.5 \
---min_num_pixels=10000 \
---fill_value_for_isotherm_stuff=-10000000000 \
---compress_output_files=0 \
+--cyclone_id_string="${cyclone_id_string}" \
+--eastward_shear_variable_name="" \
 --output_example_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}"

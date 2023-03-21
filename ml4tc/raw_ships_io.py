@@ -927,6 +927,45 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
             forecast_field_matrix[..., k]
         )
 
+    storm_latitudes_deg_n = numpy.array(storm_latitudes_deg_n)
+    missing_lat_indices = numpy.where(numpy.isnan(storm_latitudes_deg_n))[0]
+    hour_index = numpy.where(forecast_hours == 0)[0][0]
+
+    if len(missing_lat_indices) > 0:
+        field_index = FORECAST_FIELD_NAMES_RAW.index('LAT')
+        storm_latitudes_deg_n[missing_lat_indices] = forecast_field_matrix[
+            missing_lat_indices, hour_index, field_index
+        ]
+
+    if len(missing_lat_indices) > 0:
+        warning_string = (
+            'POTENTIAL ERROR (but probably just a weird file): Replaced {0:d} '
+            'missing storm latitudes with "LAT" from forecast variables.'
+        ).format(len(missing_lat_indices))
+
+        print(warning_string)
+
+    assert not numpy.any(numpy.isnan(storm_latitudes_deg_n))
+
+    storm_longitudes_deg_e = numpy.array(storm_longitudes_deg_e)
+    missing_lng_indices = numpy.where(numpy.isnan(storm_longitudes_deg_e))[0]
+
+    if len(missing_lng_indices) > 0:
+        field_index = FORECAST_FIELD_NAMES_RAW.index('LON')
+        storm_longitudes_deg_e[missing_lng_indices] = forecast_field_matrix[
+            missing_lng_indices, hour_index, field_index
+        ]
+
+    if len(missing_lng_indices) > 0:
+        warning_string = (
+            'POTENTIAL ERROR (but probably just a weird file): Replaced {0:d} '
+            'missing storm longitudes with "LON" from forecast variables.'
+        ).format(len(missing_lng_indices))
+
+        print(warning_string)
+
+    assert not numpy.any(numpy.isnan(storm_longitudes_deg_e))
+
     for k in range(num_satellite_fields_processed):
         this_function = SATELLITE_FIELD_CONV_FUNCTIONS[k]
         satellite_field_matrix[..., k] = this_function(

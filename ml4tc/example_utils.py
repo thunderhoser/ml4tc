@@ -418,8 +418,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
     satellite_predictor_names_ungridded = []
     satellite_predictor_matrix_ungridded = numpy.array([])
 
-    satellite_northern_hemi_flags = (
-        satellite_table_xarray[satellite_utils.STORM_LATITUDE_KEY].values >= 0
+    satellite_northern_hemi_flags = numpy.invert(
+        satellite_table_xarray[satellite_utils.STORM_LATITUDE_KEY].values < 0
     ).astype(int)
 
     for this_key in satellite_dict:
@@ -509,8 +509,8 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
     ships_predictor_matrix_forecast = numpy.array([])
     ships_predictor_matrix_lagged = numpy.array([])
 
-    ships_northern_hemi_flags = (
-        ships_table_xarray[ships_io.STORM_LATITUDE_KEY].values >= 0
+    ships_northern_hemi_flags = numpy.invert(
+        ships_table_xarray[ships_io.STORM_LATITUDE_KEY].values < 0
     ).astype(int)
 
     ships_northern_hemi_flags[ships_northern_hemi_flags == 0] = -1
@@ -526,10 +526,12 @@ def merge_data(satellite_table_xarray, ships_table_xarray):
                 continue
 
         new_matrix = numpy.expand_dims(ships_dict[this_key]['data'], axis=-1)
-        for i in range(len(ships_northern_hemi_flags)):
-            new_matrix[i, ...] = (
-                new_matrix[i, ...] * ships_northern_hemi_flags[i]
-            )
+
+        if this_key in SHIPS_METADATA_AND_FORECAST_KEYS:
+            for i in range(len(ships_northern_hemi_flags)):
+                new_matrix[i, ...] = (
+                    new_matrix[i, ...] * ships_northern_hemi_flags[i]
+                )
 
         if SHIPS_LAG_TIME_DIM in ships_dict[this_key]['dims']:
             ships_predictor_names_lagged.append(this_key)
