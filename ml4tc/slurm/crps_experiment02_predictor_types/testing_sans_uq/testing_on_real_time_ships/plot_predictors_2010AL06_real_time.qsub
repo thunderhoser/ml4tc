@@ -41,7 +41,6 @@ set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
 set model_metafile_name="${model_dir_name}/model_metadata.p"
-set output_dir_name="${model_dir_name}/predictors_2010AL06_real_time"
 
 python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
 --input_model_metafile_name="${model_metafile_name}" \
