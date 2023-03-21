@@ -47,7 +47,7 @@ python3 -u "${CODE_DIR_NAME}/plot_predictors.py" \
 --input_norm_example_file_name="${EXAMPLE_DIR_NAME}/learning_examples_2014AL08.nc" \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
 --input_prediction_file_name="${model_dir_name}/testing_on_real_time_ships/predictions.nc" \
---first_init_time_string="2010-01-01-000000" \
---last_init_time_string="2014-01-01-000000" \
+--first_init_time_string="2014-01-01-000000" \
+--last_init_time_string="2015-01-01-000000" \
 --plot_time_diffs_if_used=1 \
 --output_dir_name="${model_dir_name}/testing_on_real_time_ships/predictor_plots_2014AL08"
