@@ -12,6 +12,7 @@ from ml4tc.utils import general_utils
 SATELLITE_DIR_ARG_NAME = 'input_satellite_dir_name'
 SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
 YEAR_ARG_NAME = 'year'
+CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
 TIME_INTERVAL_ARG_NAME = 'satellite_time_interval_sec'
 COMPRESS_ARG_NAME = 'compress_output_files'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
@@ -24,7 +25,15 @@ SHIPS_DIR_HELP_STRING = (
     'Name of top-level directory with SHIPS data.  Files therein will be found '
     'by `ships_io.find_file` and read by `ships_io.read_file`.'
 )
-YEAR_HELP_STRING = 'Example files will be created only for this year.'
+YEAR_HELP_STRING = (
+    'Example files will be created only for this year.  If you would rather '
+    'create example files for specific cyclones, leave this argument alone.'
+)
+CYCLONE_IDS_HELP_STRING = (
+    'List of strings.  Example files will be created for these cyclones.  If '
+    'you would rather create example files for all cyclones in a year, leave '
+    'this argument alone.'
+)
 TIME_INTERVAL_HELP_STRING = 'Time interval for satellite data (seconds).'
 COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
 OUTPUT_DIR_HELP_STRING = (
@@ -43,7 +52,12 @@ INPUT_ARG_PARSER.add_argument(
     help=SHIPS_DIR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + YEAR_ARG_NAME, type=int, required=True, help=YEAR_HELP_STRING
+    '--' + YEAR_ARG_NAME, type=int, required=False, default=-1,
+    help=YEAR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + CYCLONE_IDS_ARG_NAME, type=str, nargs='+', required=False,
+    default=[''], help=CYCLONE_IDS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + TIME_INTERVAL_ARG_NAME, type=int, required=True,
@@ -59,7 +73,7 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(top_satellite_dir_name, top_ships_dir_name, year,
+def _run(top_satellite_dir_name, top_ships_dir_name, year, cyclone_id_strings,
          satellite_time_interval_sec, compress_output_files,
          top_output_dir_name):
     """Creates example files by merging satellite and SHIPS files.
@@ -69,30 +83,37 @@ def _run(top_satellite_dir_name, top_ships_dir_name, year,
     :param top_satellite_dir_name: See documentation at top of file.
     :param top_ships_dir_name: Same.
     :param year: Same.
+    :param cyclone_id_strings: Same.
     :param satellite_time_interval_sec: Same.
     :param compress_output_files: Same.
     :param top_output_dir_name: Same.
     """
 
-    satellite_cyclone_id_strings = satellite_io.find_cyclones(
-        directory_name=top_satellite_dir_name, raise_error_if_all_missing=True
-    )
-    satellite_cyclone_id_strings = set([
-        s for s in satellite_cyclone_id_strings
-        if satellite_utils.parse_cyclone_id(s)[0] == year
-    ])
+    if len(cyclone_id_strings) == 1 and cyclone_id_strings[0] == '':
+        cyclone_id_strings = None
 
-    ships_cyclone_id_strings = ships_io.find_cyclones(
-        directory_name=top_ships_dir_name, raise_error_if_all_missing=True
-    )
-    ships_cyclone_id_strings = set([
-        s for s in ships_cyclone_id_strings
-        if satellite_utils.parse_cyclone_id(s)[0] == year
-    ])
+    if cyclone_id_strings is None:
+        satellite_cyclone_id_strings = satellite_io.find_cyclones(
+            directory_name=top_satellite_dir_name,
+            raise_error_if_all_missing=True
+        )
+        satellite_cyclone_id_strings = set([
+            s for s in satellite_cyclone_id_strings
+            if satellite_utils.parse_cyclone_id(s)[0] == year
+        ])
 
-    cyclone_id_strings = list(
-        satellite_cyclone_id_strings.intersection(ships_cyclone_id_strings)
-    )
+        ships_cyclone_id_strings = ships_io.find_cyclones(
+            directory_name=top_ships_dir_name, raise_error_if_all_missing=True
+        )
+        ships_cyclone_id_strings = set([
+            s for s in ships_cyclone_id_strings
+            if satellite_utils.parse_cyclone_id(s)[0] == year
+        ])
+
+        cyclone_id_strings = list(
+            satellite_cyclone_id_strings.intersection(ships_cyclone_id_strings)
+        )
+
     cyclone_id_strings.sort()
 
     for this_cyclone_id_string in cyclone_id_strings:
@@ -152,6 +173,7 @@ if __name__ == '__main__':
         ),
         top_ships_dir_name=getattr(INPUT_ARG_OBJECT, SHIPS_DIR_ARG_NAME),
         year=getattr(INPUT_ARG_OBJECT, YEAR_ARG_NAME),
+        cyclone_id_strings=getattr(INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME),
         satellite_time_interval_sec=getattr(
             INPUT_ARG_OBJECT, TIME_INTERVAL_ARG_NAME
         ),
