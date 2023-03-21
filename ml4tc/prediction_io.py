@@ -253,15 +253,19 @@ def write_file(
         init_times_unix_sec, exact_dimensions=expected_dim
     )
 
+    # TODO(thunderhoser): Allowing NaN is a HACK for real-time SHIPS data,
+    # where I did not properly fill missing coordinates.
     error_checking.assert_is_valid_lat_numpy_array(
-        storm_latitudes_deg_n, allow_nan=False
+        storm_latitudes_deg_n, allow_nan=True
     )
     error_checking.assert_is_numpy_array(
         storm_latitudes_deg_n, exact_dimensions=expected_dim
     )
 
+    # TODO(thunderhoser): Allowing NaN is a HACK for real-time SHIPS data,
+    # where I did not properly fill missing coordinates.
     lng_conversion.convert_lng_positive_in_west(
-        storm_longitudes_deg_e, allow_nan=False
+        storm_longitudes_deg_e, allow_nan=True
     )
     error_checking.assert_is_numpy_array(
         storm_longitudes_deg_e, exact_dimensions=expected_dim
