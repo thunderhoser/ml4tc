@@ -215,13 +215,28 @@ def _apply_shap_sans_smoothgrad(
                     axis=0
                 )
 
+    dummy_input_times_grad_matrices = three_shapley_matrices
+    dummy_saliency_matrices = [
+        None if ig is None else numpy.divide(ig, p)
+        for ig, p in
+        zip(dummy_input_times_grad_matrices, three_predictor_matrices)
+    ]
+
+    for j in range(len(dummy_saliency_matrices)):
+        if dummy_saliency_matrices[j] is None:
+            continue
+
+        dummy_saliency_matrices[j][
+            numpy.isnan(dummy_saliency_matrices[j])
+        ] = numpy.inf
+
     # TODO(thunderhoser): If this method runs into memory issues, I could write
     # one output file per cyclone, instead of one for all cyclones.
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
         netcdf_file_name=output_file_name,
-        three_saliency_matrices=three_shapley_matrices,
-        three_input_grad_matrices=three_shapley_matrices,
+        three_saliency_matrices=dummy_saliency_matrices,
+        three_input_grad_matrices=dummy_input_times_grad_matrices,
         cyclone_id_strings=cyclone_id_strings,
         init_times_unix_sec=init_times_unix_sec,
         model_file_name=model_file_name,
@@ -326,11 +341,30 @@ def _apply_shap_with_smoothgrad(
             output_file_name_sans_sample_num, k
         )
 
+        dummy_input_times_grad_matrices = three_shapley_matrices
+        dummy_saliency_matrices = [
+            None if ig is None else numpy.divide(ig, p)
+            for ig, p in
+            zip(dummy_input_times_grad_matrices, predictor_matrices_k)
+        ]
+
+        for j in range(len(dummy_saliency_matrices)):
+            if dummy_saliency_matrices[j] is None:
+                continue
+
+            # NaN occurs when dividing 0 by 0.  This ensures that, if I try to
+            # reconstruct the predictors from dummy saliency and
+            # input-times-grad values (as predictor = I*G / saliency), the
+            # reconstruct predictor will again be 0.
+            dummy_saliency_matrices[j][
+                numpy.isnan(dummy_saliency_matrices[j])
+            ] = numpy.inf
+
         print('Writing results to: "{0:s}"...'.format(output_file_name))
         saliency.write_file(
             netcdf_file_name=output_file_name,
-            three_saliency_matrices=three_shapley_matrices,
-            three_input_grad_matrices=three_shapley_matrices,
+            three_saliency_matrices=dummy_saliency_matrices,
+            three_input_grad_matrices=dummy_input_times_grad_matrices,
             cyclone_id_strings=cyclone_id_strings,
             init_times_unix_sec=init_times_unix_sec,
             model_file_name=model_file_name,

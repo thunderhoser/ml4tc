@@ -9,13 +9,16 @@ from gewittergefahr.deep_learning import model_activation as gg_model_activation
 from ml4tc.io import ships_io
 from ml4tc.io import prediction_io
 
-TOLERANCE = 1e-6
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
+
+TOLERANCE = 1e-6
+MAX_INTENSITY_CUTOFF_M_S01 = 100.
 
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
 INTENSITY_CUTOFFS_ARG_NAME = 'intensity_cutoffs_m_s01'
 SUBSET_SIZE_ARG_NAME = 'num_examples_per_subset'
+SUBSET_NAMES_ARG_NAME = 'subset_names'
 UNIQUE_CYCLONES_ARG_NAME = 'enforce_unique_cyclones'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
@@ -36,6 +39,11 @@ INTENSITY_CUTOFFS_HELP_STRING = (
 SUBSET_SIZE_HELP_STRING = (
     'Number of examples to keep for each intensity category.'
 )
+SUBSET_NAMES_HELP_STRING = (
+    'Space-separated list of subset names.  There should be N + 1 items in '
+    'this list, where N = length of `{0:s}`.'
+).format(INTENSITY_CUTOFFS_ARG_NAME)
+
 UNIQUE_CYCLONES_HELP_STRING = (
     'Boolean flag.  If 1, will ensure that each subset contains only unique '
     'cyclones.  If 0, will allow non-unique cyclones (i.e., multiple time '
@@ -64,6 +72,10 @@ INPUT_ARG_PARSER.add_argument(
     help=SUBSET_SIZE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + SUBSET_NAMES_ARG_NAME, type=str, nargs='+', required=True,
+    help=SUBSET_NAMES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + UNIQUE_CYCLONES_ARG_NAME, type=int, required=True,
     help=UNIQUE_CYCLONES_HELP_STRING
 )
@@ -74,7 +86,8 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
-         num_examples_per_subset, enforce_unique_cyclones, output_dir_name):
+         num_examples_per_subset, subset_names, enforce_unique_cyclones,
+         output_dir_name):
     """Splits predictions by cyclone intensity (max sustained surface wind).
 
     This is effectively the same method.
@@ -83,19 +96,18 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
     :param ships_dir_name: Same.
     :param intensity_cutoffs_m_s01: Same.
     :param num_examples_per_subset: Same.
+    :param subset_names: Same.
     :param enforce_unique_cyclones: Same.
     :param output_dir_name: Same.
     """
 
     # Check input args.
-    intensity_cutoffs_m_s01 = intensity_cutoffs_m_s01[
-        numpy.isfinite(intensity_cutoffs_m_s01)
-    ]
-    intensity_cutoffs_m_s01 = intensity_cutoffs_m_s01[
-        intensity_cutoffs_m_s01 > 2 * TOLERANCE
-    ]
-
-    intensity_cutoffs_m_s01 = numpy.sort(intensity_cutoffs_m_s01)
+    error_checking.assert_is_less_than_numpy_array(
+        intensity_cutoffs_m_s01, MAX_INTENSITY_CUTOFF_M_S01
+    )
+    error_checking.assert_is_greater_numpy_array(
+        intensity_cutoffs_m_s01, 2 * TOLERANCE
+    )
     intensity_cutoffs_m_s01 = number_rounding.round_to_nearest(
         intensity_cutoffs_m_s01, TOLERANCE
     )
@@ -108,6 +120,12 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
         intensity_cutoffs_m_s01,
         numpy.array([numpy.inf])
     ))
+
+    num_subsets = len(intensity_cutoffs_m_s01) - 1
+    error_checking.assert_is_numpy_array(
+        numpy.array(subset_names),
+        exact_dimensions=numpy.array([num_subsets], dtype=int)
+    )
 
     # Do actual stuff.
     print('Reading data from: "{0:s}"...'.format(input_prediction_file_name))
@@ -155,8 +173,6 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
     assert numpy.all(intensity_by_prediction_m_s01 > 0)
     print(SEPARATOR_STRING)
 
-    num_subsets = len(intensity_cutoffs_m_s01) - 1
-
     for i in range(num_subsets):
         subset_flags = numpy.logical_and(
             intensity_by_prediction_m_s01 >= intensity_cutoffs_m_s01[i],
@@ -175,13 +191,8 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
             prediction_dict=copy.deepcopy(prediction_dict),
             desired_indices=subset_indices
         )
-        subset_file_name = (
-            '{0:s}/predictions_min-intensity-m-s01={1:010.6f}_'
-            'max-intensity-m-s01={2:010.6f}.nc'
-        ).format(
-            output_dir_name,
-            intensity_cutoffs_m_s01[i],
-            intensity_cutoffs_m_s01[i + 1]
+        subset_file_name = '{0:s}/predictions_{1:s}.nc'.format(
+            output_dir_name, subset_names[i].replace('_', '-')
         )
         d = subset_prediction_dict
 
@@ -216,6 +227,7 @@ if __name__ == '__main__':
             getattr(INPUT_ARG_OBJECT, INTENSITY_CUTOFFS_ARG_NAME), dtype=float
         ),
         num_examples_per_subset=getattr(INPUT_ARG_OBJECT, SUBSET_SIZE_ARG_NAME),
+        subset_names=getattr(INPUT_ARG_OBJECT, SUBSET_NAMES_ARG_NAME),
         enforce_unique_cyclones=bool(
             getattr(INPUT_ARG_OBJECT, UNIQUE_CYCLONES_ARG_NAME)
         ),

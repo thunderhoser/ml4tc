@@ -1097,11 +1097,12 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
         BASIN_ID_TO_LNG_MULTIPLIER[b] for b in basin_id_strings
     ])
 
+    # TODO(thunderhoser): I should probably also be doing this with the TLON
+    # variable.  Thankfully, I am not using it as a predictor anywhere.
     storm_longitudes_deg_e = (
         ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
     )
-    if not real_time_flag:
-        storm_longitudes_deg_e = multipliers * storm_longitudes_deg_e
+    storm_longitudes_deg_e = multipliers * storm_longitudes_deg_e
 
     storm_longitudes_deg_e[storm_longitudes_deg_e < -180.] += 360.
     storm_longitudes_deg_e[storm_longitudes_deg_e > 360.] -= 360.
