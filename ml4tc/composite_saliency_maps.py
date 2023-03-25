@@ -111,19 +111,16 @@ def _run(input_file_names, use_pmm, pmm_max_percentile_level, output_file_name):
         if saliency_matrices[j] is None:
             continue
 
+        # TODO(thunderhoser): This HACK deals with Shapley values, where "input
+        # times gradient" contains the Shapley values and "saliency" is just a
+        # dummy variable.
+        saliency_matrices[j][numpy.isinf(saliency_matrices[j])] = 0.
+
         predictor_matrices[j][
             numpy.invert(numpy.isfinite(predictor_matrices[j]))
         ] = 0.
 
         if use_pmm:
-            print(numpy.min(saliency_matrices[j]))
-            print(numpy.max(saliency_matrices[j]))
-            print(numpy.min(input_times_grad_matrices[j]))
-            print(numpy.max(input_times_grad_matrices[j]))
-            print(numpy.min(predictor_matrices[j]))
-            print(numpy.max(predictor_matrices[j]))
-            print('\n\n\n***********************************\n\n\n')
-
             mean_saliency_matrices[j] = pmm.run_pmm_many_variables(
                 input_matrix=saliency_matrices[j],
                 max_percentile_level=pmm_max_percentile_level

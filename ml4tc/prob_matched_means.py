@@ -118,9 +118,6 @@ def run_pmm_many_variables(
         be 32 x 32 x 12 x V.
     """
 
-    print(input_matrix.shape)
-    print(numpy.any(numpy.isnan(input_matrix)))
-
     metadata_dict = check_input_args(
         input_matrix=input_matrix, max_percentile_level=max_percentile_level)
 
