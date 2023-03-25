@@ -174,6 +174,8 @@ def _plot_brightness_temp_saliency(
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
+        print(saliency_matrices[0])
+
         min_abs_contour_value, max_abs_contour_value = (
             satellite_plotting.plot_saliency(
                 saliency_matrix=saliency_matrices[0][0, ..., k, 0],
