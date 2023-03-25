@@ -57,9 +57,6 @@ def _run_pmm_one_variable(
     mean_field_matrix = numpy.mean(input_matrix, axis=0)
     mean_field_flattened = numpy.ravel(mean_field_matrix)
 
-    print(pooled_values[:5])
-    print(pooled_values[-5:])
-
     # At each grid point, replace ensemble mean with the same percentile from
     # pooled array.
     pooled_value_percentiles = numpy.linspace(
