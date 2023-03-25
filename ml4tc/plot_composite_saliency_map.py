@@ -23,6 +23,7 @@ import plotting_utils
 import satellite_plotting
 import predictor_plotting
 
+TOLERANCE = 1e-10
 MAX_COLOUR_PERCENTILE = 99.
 COLOUR_BAR_FONT_SIZE = 12
 
@@ -161,32 +162,76 @@ def _plot_brightness_temp_saliency(
         validation_option_dict[neural_net.SATELLITE_LAG_TIMES_KEY]
     )
 
-    all_saliency_values = numpy.concatenate([
-        numpy.ravel(s) for s in saliency_matrices if s is not None
-    ])
-    min_abs_contour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), 100. - MAX_COLOUR_PERCENTILE
-    )
-    max_abs_contour_value = numpy.percentile(
-        numpy.absolute(all_saliency_values), MAX_COLOUR_PERCENTILE
-    )
+    tensor_saliency_matrices = [
+        sm for sm in saliency_matrices
+        if sm is not None and len(sm.shape) > 3
+    ]
+
+    if len(tensor_saliency_matrices) > 0:
+        tensor_saliency_values = numpy.concatenate([
+            numpy.ravel(t) for t in tensor_saliency_matrices
+        ])
+
+        min_colour_value_for_tensors = numpy.percentile(
+            numpy.absolute(tensor_saliency_values),
+            100. - MAX_COLOUR_PERCENTILE
+        )
+        max_colour_value_for_tensors = numpy.percentile(
+            numpy.absolute(tensor_saliency_values),
+            MAX_COLOUR_PERCENTILE
+        )
+        max_colour_value_for_tensors = max([
+            max_colour_value_for_tensors,
+            min_colour_value_for_tensors + TOLERANCE
+        ])
+    else:
+        min_colour_value_for_tensors = 0.
+        max_colour_value_for_tensors = 1.
+
+    # TODO(thunderhoser): If I ever decide to plot saliency maps for scalars
+    # here, I will need to fix the dimensions in composite_saliency_maps.py.
+    # Currently, channel axes for SHIPS forecast variables (for example)
+    # combines both forecast time and variable, so PMM will not work properly.
+    # Channel axis should correspond only to variables.
+
+    # scalar_saliency_matrices = [
+    #     sm for sm in saliency_matrices
+    #     if sm is not None and len(sm.shape) <= 3
+    # ]
+    #
+    # if len(scalar_saliency_matrices) > 0:
+    #     scalar_saliency_values = numpy.concatenate([
+    #         numpy.ravel(t) for t in scalar_saliency_matrices
+    #     ])
+    #
+    #     min_colour_value_for_scalars = numpy.percentile(
+    #         numpy.absolute(scalar_saliency_values),
+    #         100. - MAX_COLOUR_PERCENTILE
+    #     )
+    #     max_colour_value_for_scalars = numpy.percentile(
+    #         numpy.absolute(scalar_saliency_values),
+    #         MAX_COLOUR_PERCENTILE
+    #     )
+    #     max_colour_value_for_scalars = max([
+    #         max_colour_value_for_scalars,
+    #         min_colour_value_for_scalars + TOLERANCE
+    #     ])
+    # else:
+    #     min_colour_value_for_scalars = 0.
+    #     max_colour_value_for_scalars = 1.
 
     panel_file_names = [''] * num_model_lag_times
 
     for k in range(num_model_lag_times):
-        print(saliency_matrices[0])
-
-        min_abs_contour_value, max_abs_contour_value = (
-            satellite_plotting.plot_saliency(
-                saliency_matrix=saliency_matrices[0][0, ..., k, 0],
-                axes_object=axes_objects[k],
-                latitude_array_deg_n=grid_latitude_matrix_deg_n[:, k],
-                longitude_array_deg_e=grid_longitude_matrix_deg_e[:, k],
-                min_abs_contour_value=min_abs_contour_value,
-                max_abs_contour_value=max_abs_contour_value,
-                half_num_contours=10,
-                colour_map_object=colour_map_object
-            )
+        satellite_plotting.plot_saliency(
+            saliency_matrix=saliency_matrices[0][0, ..., k, 0],
+            axes_object=axes_objects[k],
+            latitude_array_deg_n=grid_latitude_matrix_deg_n[:, k],
+            longitude_array_deg_e=grid_longitude_matrix_deg_e[:, k],
+            min_abs_contour_value=min_colour_value_for_tensors,
+            max_abs_contour_value=max_colour_value_for_tensors,
+            half_num_contours=10,
+            colour_map_object=colour_map_object
         )
 
         panel_file_names[k] = '{0:s}/{1:s}'.format(
@@ -228,7 +273,7 @@ def _plot_brightness_temp_saliency(
     )
 
     colour_norm_object = pyplot.Normalize(
-        vmin=min_abs_contour_value, vmax=max_abs_contour_value
+        vmin=min_colour_value_for_tensors, vmax=max_colour_value_for_tensors
     )
     label_string = 'Absolute {0:s}'.format(
         'input times gradient' if plot_input_times_grad else 'saliency'
