@@ -116,12 +116,12 @@ def _run(input_file_names, use_pmm, pmm_max_percentile_level, output_file_name):
         ] = 0.
 
         if use_pmm:
-            print(numpy.min(mean_saliency_matrices[j]))
-            print(numpy.max(mean_saliency_matrices[j]))
-            print(numpy.min(mean_input_grad_matrices[j]))
-            print(numpy.max(mean_input_grad_matrices[j]))
-            print(numpy.min(mean_predictor_matrices[j]))
-            print(numpy.max(mean_predictor_matrices[j]))
+            print(numpy.min(saliency_matrices[j]))
+            print(numpy.max(saliency_matrices[j]))
+            print(numpy.min(input_times_grad_matrices[j]))
+            print(numpy.max(input_times_grad_matrices[j]))
+            print(numpy.min(predictor_matrices[j]))
+            print(numpy.max(predictor_matrices[j]))
             print('\n\n\n***********************************\n\n\n')
 
             mean_saliency_matrices[j] = pmm.run_pmm_many_variables(
