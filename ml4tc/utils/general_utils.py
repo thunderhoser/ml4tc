@@ -1,7 +1,9 @@
 """General utility methods."""
 
+import os
 import gzip
 import shutil
+import tempfile
 import numpy
 from scipy.ndimage import distance_transform_edt
 from gewittergefahr.gg_utils import grids
@@ -14,6 +16,15 @@ GZIP_FILE_EXTENSION = '.gz'
 TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M%S'
 
 DEGREES_TO_RADIANS = numpy.pi / 180
+
+TIME_FORMAT_FOR_ALTITUDE_ANGLE = '%Y %m %d %H %M %S'
+BATCH_SIZE_FOR_ALTITUDE_ANGLE = 100
+DEFAULT_EXE_NAME_FOR_ALTITUDE_ANGLE = (
+    '/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/solarpos/solarpos'
+)
+ERROR_STRING_FOR_ALTITUDE_ANGLE = (
+    '\nUnix command failed (log messages shown above should explain why).'
+)
 
 
 def compress_file(netcdf_file_name):
@@ -235,3 +246,112 @@ def simplify_scientific_notation(number_string):
     return number_string.replace('e+00', '').replace('e+0', 'e').replace(
         'e-0', 'e-'
     )
+
+
+def get_solar_altitude_angles(
+        valid_times_unix_sec, latitudes_deg_n, longitudes_deg_e,
+        temporary_dir_name,
+        fortran_exe_name=DEFAULT_EXE_NAME_FOR_ALTITUDE_ANGLE):
+    """Computes solar altitude angle at every point on Earth's surface.
+
+    :param valid_times_unix_sec: numpy array of valid times.
+    :param latitudes_deg_n: numpy array of latitudes (deg north), with same
+        shape as `valid_times_unix_sec`.
+    :param longitudes_deg_e: numpy array of longitudes (deg south), with same
+        shape as `valid_times_unix_sec`.
+    :param temporary_dir_name: Name of directory for temporary text file.
+    :param fortran_exe_name: Path to Fortran executable (pathless file name
+        should probably be "solarpos").
+    :return: altitude_angles_deg: length-P numpy array of solar altitude angles.
+    """
+
+    # Check input args.
+    error_checking.assert_is_integer_numpy_array(valid_times_unix_sec)
+    orig_dimensions = numpy.array(valid_times_unix_sec.shape, dtype=int)
+
+    error_checking.assert_is_valid_lat_numpy_array(
+        latitudes_deg_n, allow_nan=False
+    )
+    error_checking.assert_is_numpy_array(
+        latitudes_deg_n, exact_dimensions=orig_dimensions
+    )
+
+    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e, allow_nan=False
+    )
+    error_checking.assert_is_numpy_array(
+        longitudes_deg_e, exact_dimensions=orig_dimensions
+    )
+
+    error_checking.assert_is_string(temporary_dir_name)
+    error_checking.assert_file_exists(fortran_exe_name)
+
+    # Do actual stuff.
+    valid_time_strings_1d = [
+        time_conversion.unix_sec_to_string(t, TIME_FORMAT_FOR_ALTITUDE_ANGLE)
+        for t in numpy.ravel(valid_times_unix_sec)
+    ]
+    latitudes_deg_n_1d = numpy.ravel(latitudes_deg_n)
+    longitudes_deg_e_1d = numpy.ravel(longitudes_deg_e)
+    num_points = len(valid_time_strings_1d)
+
+    temporary_file_name = tempfile.NamedTemporaryFile(
+        dir=temporary_dir_name, delete=True
+    ).name
+
+    for i in range(0, num_points, BATCH_SIZE_FOR_ALTITUDE_ANGLE):
+        if numpy.mod(i, 10 * BATCH_SIZE_FOR_ALTITUDE_ANGLE) == 0:
+            print((
+                'Have computed solar altitude angle for {0:d} of {1:d} '
+                'points...'
+            ).format(
+                i, num_points
+            ))
+
+        first_index = i
+        last_index = min([
+            i + BATCH_SIZE_FOR_ALTITUDE_ANGLE, num_points
+        ])
+
+        command_string = '; '.join([
+            '"{0:s}" {1:s} {2:.10f} {3:.10f} >> {4:s}'.format(
+                fortran_exe_name, t, y, x, temporary_file_name
+            )
+            for t, y, x in zip(
+                valid_time_strings_1d[first_index:last_index],
+                latitudes_deg_n_1d[first_index:last_index],
+                longitudes_deg_e_1d[first_index:last_index]
+            )
+        ])
+
+        exit_code = os.system(command_string)
+        if exit_code == 0:
+            continue
+
+        raise ValueError(ERROR_STRING_FOR_ALTITUDE_ANGLE)
+
+    print('Have computed solar altitude angle for all {0:d} points!'.format(
+        num_points
+    ))
+
+    found_header = False
+    current_index = 0
+    altitude_angles_deg_1d = numpy.full(num_points, numpy.nan)
+
+    for this_line in open(temporary_file_name, 'r').readlines():
+        if not found_header:
+            found_header = this_line.split()[0] == 'Time'
+            continue
+
+        try:
+            altitude_angles_deg_1d[current_index] = float(this_line.split()[3])
+            found_header = False
+            current_index += 1
+        except ValueError:
+            continue
+
+    if os.path.isfile(temporary_file_name):
+        os.remove(temporary_file_name)
+
+    assert current_index == num_points
+    return numpy.reshape(altitude_angles_deg_1d, orig_dimensions)

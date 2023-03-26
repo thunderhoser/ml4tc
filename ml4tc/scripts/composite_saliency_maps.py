@@ -103,6 +103,11 @@ def _run(input_file_names, use_pmm, pmm_max_percentile_level, output_file_name):
         if saliency_matrices[j] is None:
             continue
 
+        # TODO(thunderhoser): This HACK deals with Shapley values, where "input
+        # times gradient" contains the Shapley values and "saliency" is just a
+        # dummy variable.
+        saliency_matrices[j][numpy.isinf(saliency_matrices[j])] = 0.
+
         predictor_matrices[j][
             numpy.invert(numpy.isfinite(predictor_matrices[j]))
         ] = 0.
