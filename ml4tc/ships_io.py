@@ -42,6 +42,7 @@ INTENSITY_CHANGE_M12HOURS_KEY = (
 )
 INTENSITY_CHANGE_6HOURS_KEY = 'ships_intensity_change_6hours_m_s01'
 FORECAST_LATITUDE_KEY = 'ships_forecast_latitude_deg_n'
+FORECAST_SOLAR_ZENITH_ANGLE_KEY = 'ships_forecast_solar_zenith_angle_deg'
 FORECAST_LONGITUDE_KEY = 'ships_forecast_longitude_deg_e'
 CLIMO_SST_KEY = 'ships_climo_sst_kelvins'
 CLIMO_DEPTH_20C_KEY = 'ships_climo_depth_20c_isotherm_metres'

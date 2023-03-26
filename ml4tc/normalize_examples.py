@@ -2,24 +2,32 @@
 
 import os
 import sys
+import shutil
 import argparse
+import numpy
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import file_system_utils
+import ships_io
 import example_io
+import example_utils
 import general_utils
 import satellite_utils
 import normalization
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
+HOURS_TO_SECONDS = 3600
 
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
 YEAR_ARG_NAME = 'year'
 CYCLONE_IDS_ARG_NAME = 'cyclone_id_strings'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+TEMPORARY_DIR_ARG_NAME = 'temporary_dir_name'
+ALTITUDE_ANGLE_EXE_ARG_NAME = 'altitude_angle_exe_name'
 COMPRESS_ARG_NAME = 'compress_output_files'
 OUTPUT_DIR_ARG_NAME = 'output_example_dir_name'
 
@@ -40,6 +48,13 @@ CYCLONE_IDS_HELP_STRING = (
 NORMALIZATION_FILE_HELP_STRING = (
     'Path to file with normalization params (will be read by '
     '`normalization.read_file`).'
+)
+TEMPORARY_DIR_HELP_STRING = (
+    'Path to directory for temporary files with solar altitude angles.'
+)
+ALTITUDE_ANGLE_EXE_HELP_STRING = (
+    'Path to Fortran executable (pathless file name should probably be '
+    '"solarpos") that computes solar altitude angles.'
 )
 COMPRESS_HELP_STRING = 'Boolean flag.  If 1 (0), will (not) gzip output files.'
 OUTPUT_DIR_HELP_STRING = (
@@ -66,6 +81,15 @@ INPUT_ARG_PARSER.add_argument(
     help=NORMALIZATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + TEMPORARY_DIR_ARG_NAME, type=str, required=True,
+    help=TEMPORARY_DIR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + ALTITUDE_ANGLE_EXE_ARG_NAME, type=str, required=False,
+    default=general_utils.DEFAULT_EXE_NAME_FOR_ALTITUDE_ANGLE,
+    help=ALTITUDE_ANGLE_EXE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + COMPRESS_ARG_NAME, type=int, required=True,
     help=COMPRESS_HELP_STRING
 )
@@ -75,9 +99,90 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
+def _add_zenith_angles_to_example_table(
+        example_table_xarray, temporary_dir_name, altitude_angle_exe_name):
+    """Adds solar zenith angles to xarray table with learning examples.
+
+    :param example_table_xarray: xarray table in format returned by
+        `example_io.read_file`.
+    :param temporary_dir_name: See documentation at top of file.
+    :param altitude_angle_exe_name: Same.
+    :return: example_table_xarray: Same as input but with solar zenith angle as
+        a forecast SHIPS predictor.
+    """
+
+    xt = example_table_xarray
+
+    init_times_unix_sec = xt.coords[example_utils.SHIPS_VALID_TIME_DIM].values
+    forecast_hours = xt.coords[example_utils.SHIPS_FORECAST_HOUR_DIM].values
+    forecast_latitude_matrix_deg_n = (
+        xt[example_utils.FORECAST_LATITUDE_KEY].values
+    )
+    forecast_longitude_matrix_deg_e = (
+        xt[example_utils.FORECAST_LONGITUDE_KEY].values
+    )
+
+    forecast_hour_matrix, init_time_matrix_unix_sec = numpy.meshgrid(
+        forecast_hours, init_times_unix_sec
+    )
+    valid_time_matrix_unix_sec = (
+        init_time_matrix_unix_sec + HOURS_TO_SECONDS * forecast_hour_matrix
+    )
+
+    forecast_altitude_angle_matrix_deg = (
+        general_utils.get_solar_altitude_angles(
+            valid_times_unix_sec=valid_time_matrix_unix_sec,
+            latitudes_deg_n=forecast_latitude_matrix_deg_n,
+            longitudes_deg_e=forecast_longitude_matrix_deg_e,
+            temporary_dir_name=temporary_dir_name,
+            fortran_exe_name=altitude_angle_exe_name
+        )
+    )
+
+    forecast_zenith_angle_matrix_deg = 90. - forecast_altitude_angle_matrix_deg
+
+    forecast_predictor_matrix = (
+        xt[example_utils.SHIPS_PREDICTORS_FORECAST_KEY].values
+    )
+    forecast_predictor_names = (
+        xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values
+    )
+    xt = xt.drop_vars(names=example_utils.SHIPS_PREDICTORS_FORECAST_KEY)
+
+    assert (
+        ships_io.FORECAST_SOLAR_ZENITH_ANGLE_KEY not in forecast_predictor_names
+    )
+    forecast_predictor_names = numpy.concatenate((
+        forecast_predictor_names,
+        numpy.array([ships_io.FORECAST_SOLAR_ZENITH_ANGLE_KEY], dtype=object)
+    ))
+
+    forecast_predictor_matrix = numpy.concatenate((
+        forecast_predictor_matrix,
+        numpy.expand_dims(forecast_zenith_angle_matrix_deg, axis=-1)
+    ), axis=-1)
+
+    xt = xt.assign_coords({
+        example_utils.SHIPS_PREDICTOR_FORECAST_DIM: forecast_predictor_names
+    })
+
+    these_dim = (
+        example_utils.SHIPS_VALID_TIME_DIM,
+        example_utils.SHIPS_FORECAST_HOUR_DIM,
+        example_utils.SHIPS_PREDICTOR_FORECAST_DIM
+    )
+    xt = xt.assign({
+        example_utils.SHIPS_PREDICTORS_FORECAST_KEY:
+            (these_dim, forecast_predictor_matrix)
+    })
+    example_table_xarray = xt
+
+    return example_table_xarray
+
+
 def _run(input_example_dir_name, year, cyclone_id_strings,
-         normalization_file_name, compress_output_files,
-         output_example_dir_name):
+         normalization_file_name, temporary_dir_name, altitude_angle_exe_name,
+         compress_output_files, output_example_dir_name):
     """Normalizes learning examples.
 
     This is effectively the main method.
@@ -86,21 +191,68 @@ def _run(input_example_dir_name, year, cyclone_id_strings,
     :param year: Same.
     :param cyclone_id_strings: Same.
     :param normalization_file_name: Same.
+    :param temporary_dir_name: Same.
+    :param altitude_angle_exe_name: Same.
     :param compress_output_files: Same.
     :param output_example_dir_name: Same.
     """
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=temporary_dir_name
+    )
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
     normalization_table_xarray = normalization.read_file(
         normalization_file_name
     )
+    nt = normalization_table_xarray
+
+    forecast_predictor_matrix = (
+        nt[normalization.SHIPS_PREDICTORS_FORECAST_KEY].values
+    )
+    forecast_predictor_names = (
+        nt.coords[normalization.SHIPS_PREDICTOR_FORECAST_DIM].values
+    )
+    nt = nt.drop_vars(names=normalization.SHIPS_PREDICTORS_FORECAST_KEY)
+
+    assert (
+        ships_io.FORECAST_SOLAR_ZENITH_ANGLE_KEY not in forecast_predictor_names
+    )
+    forecast_predictor_names = numpy.concatenate((
+        forecast_predictor_names,
+        numpy.array([ships_io.FORECAST_SOLAR_ZENITH_ANGLE_KEY], dtype=object)
+    ))
+
+    num_reference_values = forecast_predictor_matrix.shape[0]
+    reference_zenith_angles_deg = numpy.linspace(
+        0, 90, num=num_reference_values, dtype=float
+    )
+    forecast_predictor_matrix = numpy.concatenate((
+        forecast_predictor_matrix,
+        numpy.expand_dims(reference_zenith_angles_deg, axis=1)
+    ), axis=1)
+
+    nt = nt.assign_coords({
+        normalization.SHIPS_PREDICTOR_FORECAST_DIM: forecast_predictor_names
+    })
+
+    these_dim = (
+        normalization.UNGRIDDED_INDEX_DIM,
+        normalization.SHIPS_PREDICTOR_FORECAST_DIM
+    )
+    nt = nt.assign({
+        normalization.SHIPS_PREDICTORS_FORECAST_KEY:
+            (these_dim, forecast_predictor_matrix)
+    })
+    normalization_table_xarray = nt
 
     if len(cyclone_id_strings) == 1 and cyclone_id_strings[0] == '':
         cyclone_id_strings = None
 
     if cyclone_id_strings is None:
         cyclone_id_strings = example_io.find_cyclones(
-            directory_name=input_example_dir_name, raise_error_if_all_missing=True
+            directory_name=input_example_dir_name,
+            raise_error_if_all_missing=True
         )
         cyclone_id_strings = set([
             c for c in cyclone_id_strings
@@ -129,6 +281,12 @@ def _run(input_example_dir_name, year, cyclone_id_strings,
         ))
         example_table_xarray = example_io.read_file(input_example_file_name)
 
+        example_table_xarray = _add_zenith_angles_to_example_table(
+            example_table_xarray=example_table_xarray,
+            temporary_dir_name=temporary_dir_name,
+            altitude_angle_exe_name=altitude_angle_exe_name
+        )
+
         example_table_xarray = normalization.normalize_data(
             example_table_xarray=example_table_xarray,
             normalization_table_xarray=normalization_table_xarray
@@ -146,6 +304,8 @@ def _run(input_example_dir_name, year, cyclone_id_strings,
             general_utils.compress_file(output_example_file_name)
             os.remove(output_example_file_name)
 
+    shutil.rmtree(temporary_dir_name)
+
 
 if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
@@ -156,6 +316,10 @@ if __name__ == '__main__':
         cyclone_id_strings=getattr(INPUT_ARG_OBJECT, CYCLONE_IDS_ARG_NAME),
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
+        ),
+        temporary_dir_name=getattr(INPUT_ARG_OBJECT, TEMPORARY_DIR_ARG_NAME),
+        altitude_angle_exe_name=getattr(
+            INPUT_ARG_OBJECT, ALTITUDE_ANGLE_EXE_ARG_NAME
         ),
         compress_output_files=bool(
             getattr(INPUT_ARG_OBJECT, COMPRESS_ARG_NAME)
