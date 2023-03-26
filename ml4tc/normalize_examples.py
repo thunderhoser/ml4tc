@@ -5,12 +5,14 @@ import sys
 import shutil
 import argparse
 import numpy
+from scipy.interpolate import interp1d
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import longitude_conversion as lng_conversion
 import file_system_utils
 import ships_io
 import example_io
@@ -120,6 +122,81 @@ def _add_zenith_angles_to_example_table(
     )
     forecast_longitude_matrix_deg_e = (
         xt[example_utils.FORECAST_LONGITUDE_KEY].values
+    )
+
+    num_examples = forecast_latitude_matrix_deg_n.shape[0]
+
+    for i in range(num_examples):
+        nan_flags = numpy.isnan(forecast_latitude_matrix_deg_n[i, :])
+        nan_indices = numpy.where(nan_flags)[0]
+        if len(nan_indices) == 0:
+            continue
+
+        real_indices = numpy.where(numpy.invert(nan_flags))[0]
+        assert len(real_indices) > 0
+
+        if len(real_indices) == 1:
+            forecast_latitude_matrix_deg_n[i, nan_indices] = (
+                forecast_latitude_matrix_deg_n[i, real_indices[0]]
+            )
+            continue
+
+        interp_object = interp1d(
+            x=forecast_hours[real_indices],
+            y=forecast_latitude_matrix_deg_n[i, real_indices],
+            kind='linear', bounds_error=False, assume_sorted=True,
+            fill_value='extrapolate'
+        )
+
+        forecast_latitude_matrix_deg_n[i, nan_indices] = interp_object(
+            forecast_hours[nan_indices]
+        )
+
+    forecast_latitude_matrix_deg_n = numpy.maximum(
+        forecast_latitude_matrix_deg_n, -90.
+    )
+    forecast_latitude_matrix_deg_n = numpy.minimum(
+        forecast_latitude_matrix_deg_n, 90.
+    )
+
+    for i in range(num_examples):
+        nan_flags = numpy.isnan(forecast_longitude_matrix_deg_e[i, :])
+        nan_indices = numpy.where(nan_flags)[0]
+        if len(nan_indices) == 0:
+            continue
+
+        real_indices = numpy.where(numpy.invert(nan_flags))[0]
+        assert len(real_indices) > 0
+
+        if len(real_indices) == 1:
+            forecast_longitude_matrix_deg_e[i, nan_indices] = (
+                forecast_longitude_matrix_deg_e[i, real_indices[0]]
+            )
+            continue
+
+        real_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+            forecast_longitude_matrix_deg_e[i, real_indices], allow_nan=False
+        )
+        if numpy.any(numpy.absolute(numpy.diff(real_longitudes_deg_e)) > 50):
+            real_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+                real_longitudes_deg_e, allow_nan=False
+            )
+
+        interp_object = interp1d(
+            x=forecast_hours[real_indices], y=real_longitudes_deg_e,
+            kind='linear', bounds_error=False, assume_sorted=True,
+            fill_value='extrapolate'
+        )
+
+        forecast_longitude_matrix_deg_e[i, nan_indices] = interp_object(
+            forecast_hours[nan_indices]
+        )
+
+    forecast_longitude_matrix_deg_e = numpy.maximum(
+        forecast_longitude_matrix_deg_e, -179.999999
+    )
+    forecast_longitude_matrix_deg_e = numpy.minimum(
+        forecast_longitude_matrix_deg_e, 359.999999
     )
 
     forecast_hour_matrix, init_time_matrix_unix_sec = numpy.meshgrid(
