@@ -47,6 +47,6 @@ python3 -u "${CODE_DIR_NAME}/split_predictions_by_intensity.py" \
 --input_ships_dir_name="${SHIPS_DIR_NAME}" \
 --intensity_cutoffs_m_s01 17.233889 32.667222 42.441667 49.129444 57.875 70.221667 \
 --num_examples_per_subset=100 \
---subset_names "tropical_depression" "tropical_storm" "cat1" "cat2" "cat3" "cat4" "cat5" \
+--subset_names "tropical-depression" "tropical-storm" "cat1" "cat2" "cat3" "cat4" "cat5" \
 --enforce_unique_cyclones=1 \
 --output_dir_name="${output_dir_name}"
