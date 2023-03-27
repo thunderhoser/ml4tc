@@ -302,7 +302,7 @@ def _run(input_example_dir_name, year, cyclone_id_strings,
 
     num_reference_values = forecast_predictor_matrix.shape[0]
     reference_zenith_angles_deg = numpy.linspace(
-        0, 90, num=num_reference_values, dtype=float
+        0, 180, num=num_reference_values, dtype=float
     )
     forecast_predictor_matrix = numpy.concatenate((
         forecast_predictor_matrix,
