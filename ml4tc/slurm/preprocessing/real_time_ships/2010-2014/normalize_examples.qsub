@@ -32,5 +32,7 @@ python3 -u "${CODE_DIR_NAME}/normalize_examples.py" \
 --input_example_dir_name="${INPUT_EXAMPLE_DIR_NAME}" \
 --cyclone_id_strings ${cyclone_id_string} \
 --input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--temporary_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}/temporary_${cyclone_id_string}" \
+--altitude_angle_exe_name="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tccf_project/solarpos/solarpos" \
 --compress_output_files=0 \
 --output_example_dir_name="${OUTPUT_EXAMPLE_DIR_NAME}"
