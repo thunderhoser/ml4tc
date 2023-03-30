@@ -47,4 +47,4 @@ python3 -u "${CODE_DIR_NAME}/get_shap_predictor_covariance_matrix.py" \
 --input_shapley_file_names ${input_file_name} \
 --num_examples_to_keep=1000 \
 --spatial_coarsening_factor=2 \
---output_saliency_file_name="${output_file_name}"
+--output_file_name="${output_file_name}"
