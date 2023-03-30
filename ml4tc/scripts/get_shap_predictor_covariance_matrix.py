@@ -23,7 +23,7 @@ PREDICTOR_PIXEL_DIM = 'predictor_pixel'
 COVARIANCE_KEY = 'covariance'
 
 INPUT_FILES_ARG_NAME = 'input_shapley_file_names'
-NUM_EXAMPLES_ARG_NAME = 'num_examples_to_keep'
+# NUM_EXAMPLES_ARG_NAME = 'num_examples_to_keep'
 COARSENING_FACTOR_ARG_NAME = 'spatial_coarsening_factor'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
@@ -32,9 +32,9 @@ INPUT_FILES_HELP_STRING = (
     'different set of examples (one example = one TC at one time).  These '
     'files will be read by `saliency.read_file`.'
 )
-NUM_EXAMPLES_HELP_STRING = (
-    'Number of examples to keep, i.e., to use in computing the covariances.'
-)
+# NUM_EXAMPLES_HELP_STRING = (
+#     'Number of examples to keep, i.e., to use in computing the covariances.'
+# )
 COARSENING_FACTOR_HELP_STRING = (
     'Will use every [K]th grid point (in both the row and column dimensions), '
     'where K = {0:s}.'
@@ -50,10 +50,10 @@ INPUT_ARG_PARSER.add_argument(
     '--' + INPUT_FILES_ARG_NAME, type=str, nargs='+', required=True,
     help=INPUT_FILES_HELP_STRING
 )
-INPUT_ARG_PARSER.add_argument(
-    '--' + NUM_EXAMPLES_ARG_NAME, type=int, required=True,
-    help=NUM_EXAMPLES_HELP_STRING
-)
+# INPUT_ARG_PARSER.add_argument(
+#     '--' + NUM_EXAMPLES_ARG_NAME, type=int, required=True,
+#     help=NUM_EXAMPLES_HELP_STRING
+# )
 INPUT_ARG_PARSER.add_argument(
     '--' + COARSENING_FACTOR_ARG_NAME, type=int, required=True,
     help=COARSENING_FACTOR_HELP_STRING
@@ -83,7 +83,8 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     num_shapley_pixels = shapley_matrix.shape[1]
     num_predictor_pixels = predictor_matrix.shape[1]
     covariance_matrix = numpy.full(
-        (num_shapley_pixels, num_predictor_pixels), numpy.nan
+        (num_shapley_pixels, num_predictor_pixels), numpy.nan,
+        dtype=numpy.float32
     )
 
     for i in range(num_shapley_pixels):
@@ -133,19 +134,16 @@ def _write_results(netcdf_file_name, covariance_matrix):
     dataset_object.close()
 
 
-def _run(shapley_file_names, num_examples_to_keep, spatial_coarsening_factor,
-         output_file_name):
+def _run(shapley_file_names, spatial_coarsening_factor, output_file_name):
     """Computes covariance matrix between Shapley values and predictor values.
 
     This is effectively the main method.
 
     :param shapley_file_names: See documentation at top of file.
-    :param num_examples_to_keep: Same.
     :param spatial_coarsening_factor: Same.
     :param output_file_name: Same.
     """
 
-    error_checking.assert_is_geq(num_examples_to_keep, 100)
     error_checking.assert_is_geq(spatial_coarsening_factor, 1)
     if spatial_coarsening_factor == 1:
         spatial_coarsening_factor = None
@@ -195,19 +193,6 @@ def _run(shapley_file_names, num_examples_to_keep, spatial_coarsening_factor,
             )
 
     print(SEPARATOR_STRING)
-
-    num_examples = shapley_matrix.shape[0]
-
-    if num_examples > num_examples_to_keep:
-        all_indices = numpy.linspace(
-            0, num_examples - 1, num=num_examples, dtype=int
-        )
-        good_indices = numpy.random.choice(
-            all_indices, size=num_examples_to_keep, replace=False
-        )
-
-        shapley_matrix = shapley_matrix[good_indices, ...]
-        norm_predictor_matrix = norm_predictor_matrix[good_indices, ...]
 
     mean_shapley_value = numpy.mean(shapley_matrix)
     stdev_shapley_value = numpy.std(shapley_matrix, ddof=1)
@@ -271,7 +256,9 @@ def _run(shapley_file_names, num_examples_to_keep, spatial_coarsening_factor,
             double_norm_predictor_matrix[:, p_start:p_end]
         ))
 
-    covariance_matrix = numpy.full((num_pixels, num_pixels), numpy.nan)
+    covariance_matrix = numpy.full(
+        (num_pixels, num_pixels), numpy.nan, dtype=numpy.float32
+    )
 
     with Pool() as pool_object:
         covariance_submatrices = pool_object.starmap(
@@ -307,7 +294,6 @@ if __name__ == '__main__':
 
     _run(
         shapley_file_names=getattr(INPUT_ARG_OBJECT, INPUT_FILES_ARG_NAME),
-        num_examples_to_keep=getattr(INPUT_ARG_OBJECT, NUM_EXAMPLES_ARG_NAME),
         spatial_coarsening_factor=getattr(
             INPUT_ARG_OBJECT, COARSENING_FACTOR_ARG_NAME
         ),
