@@ -240,7 +240,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
 
-    low_prob_indices, high_prob_indices = (
+    high_prob_indices, low_prob_indices = (
         gg_model_activation.get_hilo_activation_examples(
             storm_activations=mean_forecast_probs,
             num_high_activation_examples=num_examples_per_subset,

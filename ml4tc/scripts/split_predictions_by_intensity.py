@@ -169,7 +169,7 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
             intensity_by_prediction_m_s01 < intensity_cutoffs_m_s01[i + 1]
         )
 
-        _, subset_indices = gg_model_activation.get_hilo_activation_examples(
+        subset_indices, _ = gg_model_activation.get_hilo_activation_examples(
             storm_activations=subset_flags.astype(float),
             num_high_activation_examples=numpy.sum(subset_flags),
             num_low_activation_examples=100,
