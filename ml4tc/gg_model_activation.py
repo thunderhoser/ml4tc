@@ -43,9 +43,9 @@ def get_hilo_activation_examples(
         multiple examples from the same storm cell.
     :param full_storm_id_strings: [used only if `unique_storm_cells == True`]
         length-E list of full storm IDs.
-    :return: low_indices: 1-D numpy array with indices of low-activation
-        examples.
     :return: high_indices: 1-D numpy array with indices of high-activation
+        examples.
+    :return: low_indices: 1-D numpy array with indices of low-activation
         examples.
     """
 
