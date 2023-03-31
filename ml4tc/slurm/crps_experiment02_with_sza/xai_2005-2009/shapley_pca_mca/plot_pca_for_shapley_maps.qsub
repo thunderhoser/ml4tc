@@ -41,7 +41,7 @@ set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_drop
 set input_file_name="${model_dir_name}/validation/shapley_maps_pca.nc"
 set output_dir_name="${model_dir_name}/validation/shapley_maps_pca"
 
-python3 -u "${CODE_DIR_NAME}/run_pca_for_shapley_maps.py" \
+python3 -u "${CODE_DIR_NAME}/plot_pca_or_mca_for_shapley_maps.py" \
 --input_file_name="${input_file_name}" \
 --num_modes_to_plot=20 \
 --shapley_min_colour_percentile=0 \
