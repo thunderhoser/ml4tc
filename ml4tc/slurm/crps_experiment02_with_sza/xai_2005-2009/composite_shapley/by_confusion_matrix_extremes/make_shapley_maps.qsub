@@ -1,0 +1,48 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="make_shapley_maps"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=30:00:00
+#SBATCH --array=1-30
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=make_shapley_maps_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment02_with_sza"
+
+set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.700" "0.300" "0.500" "0.100" "0.100" "0.700" "0.300" "0.500" "0.100" "0.100" "0.700" "0.300" "0.500" "0.100" "0.100" "0.700" "0.300" "0.500" "0.100" "0.100" "0.700" "0.300" "0.500" "0.100" "0.100" "0.700" "0.300" "0.500" "0.100" "0.100")
+set THIRD_LAST_LAYER_DROPOUT_RATES=("0.700" "0.300" "0.500" "0.500" "0.500" "0.700" "0.300" "0.500" "0.500" "0.500" "0.700" "0.300" "0.500" "0.500" "0.500" "0.700" "0.300" "0.500" "0.500" "0.500" "0.700" "0.300" "0.500" "0.500" "0.500" "0.700" "0.300" "0.500" "0.500" "0.500")
+set SECOND_LAST_LAYER_DROPOUT_RATES=("0.500" "0.900" "0.100" "0.300" "0.300" "0.500" "0.900" "0.100" "0.300" "0.300" "0.500" "0.900" "0.100" "0.300" "0.300" "0.500" "0.900" "0.100" "0.300" "0.300" "0.500" "0.900" "0.100" "0.300" "0.300" "0.500" "0.900" "0.100" "0.300" "0.300")
+set SATELLITE_LAG_TIME_COUNTS=("3" "1" "3" "3" "1" "3" "1" "3" "3" "1" "3" "1" "3" "3" "1" "3" "1" "3" "3" "1" "3" "1" "3" "3" "1" "3" "1" "3" "3" "1")
+set SHIPS_FORECAST_PREDICTOR_COUNTS=("70" "70" "70" "00" "00" "70" "70" "70" "00" "00" "70" "70" "70" "00" "00" "70" "70" "70" "00" "00" "70" "70" "70" "00" "00" "70" "70" "70" "00" "00")
+set SATELLITE_USE_TEMPORAL_DIFF_FLAGS=("0" "0" "1" "1" "0" "0" "0" "1" "1" "0" "0" "0" "1" "1" "0" "0" "0" "1" "1" "0" "0" "0" "1" "1" "0" "0" "0" "1" "1" "0")
+set SUBSET_NAMES=("best_hits" "best_hits" "best_hits" "best_hits" "best_hits" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "high_prob" "high_prob" "high_prob" "high_prob" "high_prob" "low_prob" "low_prob" "low_prob" "low_prob" "low_prob")
+
+set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set satellite_lag_time_count=${SATELLITE_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set ships_forecast_predictor_count=${SHIPS_FORECAST_PREDICTOR_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set subset_name=${SUBSET_NAMES[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
+set model_file_name="${model_dir_name}/model.h5"
+set prediction_file_name="${model_dir_name}/validation/by_confusion_matrix_extremes/predictions_${subset_name}.nc"
+set shapley_file_name="${model_dir_name}/validation/by_confusion_matrix_extremes/shapley_maps_${subset_name}.nc"
+
+set this_directory_name=`pwd`
+singularity exec --nv /scratch1/RDARCH/rda-ghpcs/Jebb.Q.Stewart/ml-ryan.simg /bin/sh -c "cd ${this_directory_name}; sh make_shapley_maps.sh ${model_file_name} ${prediction_file_name} ${shapley_file_name}"
