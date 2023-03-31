@@ -171,10 +171,17 @@ def _apply_shap_sans_smoothgrad(
             numpy.array(desired_cyclone_id_strings) == this_cyclone_id_string
         )[0]
 
-        these_dict_indices = numpy.array([
-            numpy.where(data_dict[neural_net.INIT_TIMES_KEY] == t)[0][0]
-            for t in desired_cyclone_init_times_unix_sec[these_desired_indices]
-        ], dtype=int)
+        if desired_cyclone_init_times_unix_sec is None:
+            num_init_times = len(data_dict[neural_net.INIT_TIMES_KEY])
+            these_dict_indices = numpy.linspace(
+                0, num_init_times - 1, num=num_init_times, dtype=int
+            )
+        else:
+            these_dict_indices = numpy.array([
+                numpy.where(data_dict[neural_net.INIT_TIMES_KEY] == t)[0][0]
+                for t in
+                desired_cyclone_init_times_unix_sec[these_desired_indices]
+            ], dtype=int)
 
         num_examples_new = len(these_dict_indices)
         cyclone_id_strings += [this_cyclone_id_string] * num_examples_new
