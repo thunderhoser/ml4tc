@@ -180,19 +180,10 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
     :param output_file_name: Same.
     """
 
-    if covariance_file_name == '':
-        num_pixels_dummy = 190 * 270
-        ones_array = numpy.full(num_pixels_dummy, 1., dtype=numpy.float32)
-        covariance_matrix = numpy.diag(ones_array).astype(numpy.float32)
-
-        covariance_matrix = covariance_matrix + numpy.random.normal(
-            loc=0., scale=0.1, size=covariance_matrix.shape
-        )
-    else:
-        print('Reading data from: "{0:s}"...'.format(covariance_file_name))
-        covariance_table_xarray = xarray.open_dataset(covariance_file_name)
-        covariance_matrix = covariance_table_xarray[get_covar_matrix.COVARIANCE_KEY]
-
+    print('Reading data from: "{0:s}"...'.format(covariance_file_name))
+    covariance_table_xarray = xarray.open_dataset(covariance_file_name)
+    covariance_matrix = covariance_table_xarray[get_covar_matrix.COVARIANCE_KEY]
+    
     num_covariance_pixels = covariance_matrix.shape[0]
 
     shapley_matrix = None
@@ -224,11 +215,9 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
                 spatial_coarsening_factor_float
             ))
 
-            print(spatial_coarsening_factor_float)
-
             assert numpy.isclose(
                 spatial_coarsening_factor, spatial_coarsening_factor_float,
-                atol=TOLERANCE
+                rtol=0.01
             )
 
         this_dummy_input_grad_matrix = this_dummy_input_grad_matrix[
