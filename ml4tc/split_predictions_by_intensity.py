@@ -185,8 +185,13 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
             full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         )
 
+        print(numpy.sum(subset_flags))
+
         these_subindices = numpy.where(subset_flags[subset_indices])[0]
         subset_indices = subset_indices[these_subindices]
+
+        print(these_subindices)
+        print('\n\n')
 
         subset_prediction_dict = prediction_io.subset_by_index(
             prediction_dict=copy.deepcopy(prediction_dict),
