@@ -51,7 +51,7 @@ end
 set output_file_name="${model_dir_name}/validation/shapley_maps_covariance.nc"
 
 python3 -u "${CODE_DIR_NAME}/get_shap_predictor_covariance_matrix.py" \
---input_shapley_file_names ${input_file_name} \
+--input_shapley_file_names ${shapley_file_names_string} \
 --num_examples_to_keep=10000 \
 --spatial_coarsening_factor=3 \
 --output_file_name="${output_file_name}"
