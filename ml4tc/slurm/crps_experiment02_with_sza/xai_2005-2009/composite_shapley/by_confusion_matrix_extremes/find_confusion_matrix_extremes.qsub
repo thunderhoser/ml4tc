@@ -40,8 +40,8 @@ set ships_forecast_predictor_count=${SHIPS_FORECAST_PREDICTOR_COUNTS[$SLURM_ARRA
 set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
-set input_prediction_file_name="${model_dir_name}/validation/predictions.nc"
-set output_dir_name="${model_dir_name}/validation/by_confusion_matrix_extremes"
+set input_prediction_file_name="${model_dir_name}/testing/predictions.nc"
+set output_dir_name="${model_dir_name}/testing/by_confusion_matrix_extremes"
 
 python3 -u "${CODE_DIR_NAME}/find_confusion_matrix_extremes.py" \
 --input_prediction_file_name="${input_prediction_file_name}" \

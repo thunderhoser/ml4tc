@@ -204,7 +204,9 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
         )
         d = subset_prediction_dict
 
-        print('Writing data to: "{0:s}"...'.format(subset_file_name))
+        print('Writing {0:d} examples to: "{1:s}"...'.format(
+            len(subset_indices), subset_file_name
+        ))
         prediction_io.write_file(
             netcdf_file_name=subset_file_name,
             forecast_probability_matrix=d[prediction_io.PROBABILITY_MATRIX_KEY],
