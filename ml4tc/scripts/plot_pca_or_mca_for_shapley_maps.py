@@ -1,4 +1,8 @@
-"""Plots PCA (principal-component analysis) for gridded Shapley values."""
+"""Plots PCA or MCA for gridded Shapley values.
+
+PCA = principal-component analysis
+MCA = maximum-covariance analysis
+"""
 
 import argparse
 import numpy
@@ -21,19 +25,21 @@ FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
-INPUT_FILE_ARG_NAME = 'input_pca_file_name'
+INPUT_FILE_ARG_NAME = 'input_file_name'
 NUM_MODES_ARG_NAME = 'num_modes_to_plot'
 SHAPLEY_COLOUR_MAP_ARG_NAME = 'shapley_colour_map_name'
 SHAPLEY_NUM_CONTOURS_ARG_NAME = 'shapley_half_num_contours'
 SHAPLEY_MIN_PERCENTILE_ARG_NAME = 'shapley_min_colour_percentile'
 SHAPLEY_MAX_PERCENTILE_ARG_NAME = 'shapley_max_colour_percentile'
+SHAPLEY_SMOOTH_RADIUS_ARG_NAME = 'shapley_smoothing_radius_px'
 PREDICTOR_COLOUR_MAP_ARG_NAME = 'predictor_colour_map_name'
 PREDICTOR_MIN_PERCENTILE_ARG_NAME = 'predictor_min_colour_percentile'
 PREDICTOR_MAX_PERCENTILE_ARG_NAME = 'predictor_max_colour_percentile'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 INPUT_FILE_HELP_STRING = (
-    'Path to input file, containing PCA results.  Will be read by xarray.'
+    'Path to input file, containing PCA or MCA results.  Will be read by '
+    'xarray.'
 )
 NUM_MODES_HELP_STRING = (
     'Will plot the top K modes, where K = {0:s}.  For each mode, will plot '
@@ -60,6 +66,9 @@ SHAPLEY_MAX_PERCENTILE_HELP_STRING = (
     'Same as {0:s} but for max value in colour scheme.'
 ).format(SHAPLEY_MIN_PERCENTILE_ARG_NAME)
 
+SHAPLEY_SMOOTH_RADIUS_HELP_STRING = (
+    'Gaussian-smoothing radius (pixels) for Shapley maps.'
+)
 PREDICTOR_COLOUR_MAP_HELP_STRING = (
     'Same as {0:s} but for predictors.'
 ).format(SHAPLEY_COLOUR_MAP_ARG_NAME)
@@ -100,6 +109,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + SHAPLEY_MAX_PERCENTILE_ARG_NAME, type=float, required=False,
     default=99.5, help=SHAPLEY_MAX_PERCENTILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + SHAPLEY_SMOOTH_RADIUS_ARG_NAME, type=float, required=False,
+    default=-1., help=SHAPLEY_SMOOTH_RADIUS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + PREDICTOR_COLOUR_MAP_ARG_NAME, type=str, required=False,
@@ -247,27 +260,29 @@ def _plot_one_mode(
     )
 
 
-def _run(pca_file_name, num_modes_to_plot, shapley_colour_map_name,
+def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
          shapley_half_num_contours, shapley_min_colour_percentile,
-         shapley_max_colour_percentile, predictor_colour_map_name,
-         predictor_min_colour_percentile, predictor_max_colour_percentile,
-         output_dir_name):
-    """Plots PCA (principal-component analysis) for gridded Shapley values.
+         shapley_max_colour_percentile, shapley_smoothing_radius_px,
+         predictor_colour_map_name, predictor_min_colour_percentile,
+         predictor_max_colour_percentile, output_dir_name):
+    """Plots PCA or MCA for gridded Shapley values.
 
     This is effectively the main method.
 
-    :param pca_file_name: See documentation at top of file.
+    :param input_file_name: See documentation at top of file.
     :param num_modes_to_plot: Same.
     :param shapley_colour_map_name: Same.
     :param shapley_half_num_contours: Same.
     :param shapley_min_colour_percentile: Same.
     :param shapley_max_colour_percentile: Same.
+    :param shapley_smoothing_radius_px: Same.
     :param predictor_colour_map_name: Same.
     :param predictor_min_colour_percentile: Same.
     :param predictor_max_colour_percentile: Same.
     :param output_dir_name: Same.
     """
 
+    # Check input args.
     error_checking.assert_is_greater(num_modes_to_plot, 0)
     error_checking.assert_is_geq(shapley_half_num_contours, 5)
     error_checking.assert_is_geq(shapley_min_colour_percentile, 0.)
@@ -283,35 +298,40 @@ def _run(pca_file_name, num_modes_to_plot, shapley_colour_map_name,
     shapley_colour_map_object = pyplot.get_cmap(shapley_colour_map_name)
     predictor_colour_map_object = pyplot.get_cmap(predictor_colour_map_name)
 
+    if shapley_smoothing_radius_px <= 0:
+        shapley_smoothing_radius_px = None
+
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
 
-    print('Reading data from: "{0:s}"...'.format(pca_file_name))
-    pca_table_xarray = xarray.open_dataset(pca_file_name)
+    # Do actual stuff.
+    print('Reading data from: "{0:s}"...'.format(input_file_name))
+    result_table_xarray = xarray.open_dataset(input_file_name)
 
     regressed_shapley_matrix = (
-        pca_table_xarray[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values[
+        result_table_xarray[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values[
             :num_modes_to_plot, ...
         ]
     )
     regressed_predictor_matrix = (
-        pca_table_xarray[run_pca.REGRESSED_PREDICTOR_KEY].values[
+        result_table_xarray[run_pca.REGRESSED_PREDICTOR_KEY].values[
             :num_modes_to_plot, ...
         ]
     )
-    eigenvalues = pca_table_xarray[run_pca.EIGENVALUE_KEY].values
-    del pca_table_xarray
+    eigenvalues = result_table_xarray[run_pca.EIGENVALUE_KEY].values
+    del result_table_xarray
 
     num_modes_to_plot = regressed_shapley_matrix.shape[0]
 
     for i in range(num_modes_to_plot):
-        regressed_shapley_matrix[i, ...] = (
-            gg_general_utils.apply_gaussian_filter(
-                input_matrix=regressed_shapley_matrix[i, ...],
-                e_folding_radius_grid_cells=2.
+        if shapley_smoothing_radius_px is not None:
+            regressed_shapley_matrix[i, ...] = (
+                gg_general_utils.apply_gaussian_filter(
+                    input_matrix=regressed_shapley_matrix[i, ...],
+                    e_folding_radius_grid_cells=shapley_smoothing_radius_px
+                )
             )
-        )
 
         _plot_one_mode(
             regressed_predictor_matrix=regressed_predictor_matrix[i, ...],
@@ -336,7 +356,7 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        pca_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
+        input_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
         num_modes_to_plot=getattr(INPUT_ARG_OBJECT, NUM_MODES_ARG_NAME),
         shapley_colour_map_name=getattr(
             INPUT_ARG_OBJECT, SHAPLEY_COLOUR_MAP_ARG_NAME
@@ -349,6 +369,9 @@ if __name__ == '__main__':
         ),
         shapley_max_colour_percentile=getattr(
             INPUT_ARG_OBJECT, SHAPLEY_MAX_PERCENTILE_ARG_NAME
+        ),
+        shapley_smoothing_radius_px=getattr(
+            INPUT_ARG_OBJECT, SHAPLEY_SMOOTH_RADIUS_ARG_NAME
         ),
         predictor_colour_map_name=getattr(
             INPUT_ARG_OBJECT, PREDICTOR_COLOUR_MAP_ARG_NAME
