@@ -21,6 +21,8 @@ TOLERANCE = 1e-10
 COLOUR_BAR_FONT_SIZE = 30
 
 DEFAULT_FONT_SIZE = 20
+EIGENVALUE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
+
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
@@ -309,6 +311,10 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     print('Reading data from: "{0:s}"...'.format(input_file_name))
     result_table_xarray = xarray.open_dataset(input_file_name)
 
+    num_examples = (
+        result_table_xarray[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values.shape[0]
+    )
+
     regressed_shapley_matrix = (
         result_table_xarray[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values[
             :num_modes_to_plot, ...
@@ -320,7 +326,74 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
         ]
     )
     eigenvalues = result_table_xarray[run_pca.EIGENVALUE_KEY].values
+    explained_variance_fractions = eigenvalues / numpy.sum(eigenvalues)
+
     del result_table_xarray
+
+    x_coords = numpy.linspace(
+        1, num_modes_to_plot, num=num_modes_to_plot, dtype=float
+    )
+    eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (1. * num_examples))
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+    )
+    axes_object.plot(
+        x_coords, eigenvalues, linestyle='None',
+        marker='o', markersize=8, markeredgewidth=0,
+        markerfacecolor=EIGENVALUE_COLOUR, markeredgecolor=EIGENVALUE_COLOUR
+    )
+    axes_object.errorbar(
+        x=x_coords, y=eigenvalues, yerr=eigenvalue_errors, linewidth=0,
+        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=6, capthick=3
+    )
+
+    axes_object.set_xticks([], [])
+    axes_object.set_ylabel('Eigenvalue')
+    axes_object.set_title(
+        'Eigenvalue spectrum (assuming eff sample size = sample size)'
+    )
+    output_file_name = (
+        '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=1.jpg'
+    ).format(output_dir_name)
+
+    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
+
+    eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (0.25 * num_examples))
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+    )
+    axes_object.plot(
+        x_coords, eigenvalues, linestyle='None',
+        marker='o', markersize=8, markeredgewidth=0,
+        markerfacecolor=EIGENVALUE_COLOUR, markeredgecolor=EIGENVALUE_COLOUR
+    )
+    axes_object.errorbar(
+        x=x_coords, y=eigenvalues, yerr=eigenvalue_errors, linewidth=0,
+        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=6, capthick=3
+    )
+
+    axes_object.set_xticks([], [])
+    axes_object.set_ylabel('Eigenvalue')
+    axes_object.set_title(
+        'Eigenvalue spectrum (assuming eff sample size = sample size / 4)'
+    )
+    output_file_name = (
+        '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=4.jpg'
+    ).format(output_dir_name)
+
+    print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
 
     num_modes_to_plot = regressed_shapley_matrix.shape[0]
 
@@ -337,7 +410,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             regressed_predictor_matrix=regressed_predictor_matrix[i, ...],
             regressed_shapley_matrix=regressed_shapley_matrix[i, ...],
             mode_index=i,
-            explained_variance_fraction=eigenvalues[i] / numpy.sum(eigenvalues),
+            explained_variance_fraction=explained_variance_fractions[i],
             shapley_colour_map_object=shapley_colour_map_object,
             shapley_half_num_contours=shapley_half_num_contours,
             shapley_min_colour_percentile=shapley_min_colour_percentile,
