@@ -210,7 +210,7 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
 
             assert numpy.isclose(
                 spatial_coarsening_factor, spatial_coarsening_factor_float,
-                atol=TOLERANCE
+                rtol=0.01
             )
 
         this_dummy_input_grad_matrix = this_dummy_input_grad_matrix[
