@@ -224,6 +224,8 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
                 spatial_coarsening_factor_float
             ))
 
+            print(spatial_coarsening_factor_float)
+
             assert numpy.isclose(
                 spatial_coarsening_factor, spatial_coarsening_factor_float,
                 atol=TOLERANCE
