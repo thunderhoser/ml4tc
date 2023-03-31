@@ -44,7 +44,7 @@ set i=1
 set shapley_file_names_string=""
 
 while ($i <= ${#CYCLONE_ID_STRINGS})
-    shapley_file_names_string="${shapley_file_names_string} ${model_dir_name}/validation/shapley_maps_${CYCLONE_ID_STRINGS[$i]}.nc"
+    set shapley_file_names_string="${shapley_file_names_string} ${model_dir_name}/validation/shapley_maps_${CYCLONE_ID_STRINGS[$i]}.nc"
     @ i = $i + 1
 end
 
