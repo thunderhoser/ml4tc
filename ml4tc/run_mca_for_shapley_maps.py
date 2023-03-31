@@ -183,7 +183,7 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
     print('Reading data from: "{0:s}"...'.format(covariance_file_name))
     covariance_table_xarray = xarray.open_dataset(covariance_file_name)
     covariance_matrix = covariance_table_xarray[get_covar_matrix.COVARIANCE_KEY]
-    
+
     num_covariance_pixels = covariance_matrix.shape[0]
 
     shapley_matrix = None

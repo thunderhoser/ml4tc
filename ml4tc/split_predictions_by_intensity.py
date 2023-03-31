@@ -25,7 +25,6 @@ MAX_INTENSITY_CUTOFF_M_S01 = 100.
 PREDICTION_FILE_ARG_NAME = 'input_prediction_file_name'
 SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
 INTENSITY_CUTOFFS_ARG_NAME = 'intensity_cutoffs_m_s01'
-SUBSET_SIZE_ARG_NAME = 'num_examples_per_subset'
 SUBSET_NAMES_ARG_NAME = 'subset_names'
 UNIQUE_CYCLONES_ARG_NAME = 'enforce_unique_cyclones'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
@@ -43,9 +42,6 @@ INTENSITY_CUTOFFS_HELP_STRING = (
     'List of cutoffs for intensity categories.  The lowest cutoff will always '
     'be 0 m/s, and the highest will be infinity m/s, so don''t bother '
     'including these.'
-)
-SUBSET_SIZE_HELP_STRING = (
-    'Number of examples to keep for each intensity category.'
 )
 SUBSET_NAMES_HELP_STRING = (
     'Space-separated list of subset names.  There should be N + 1 items in '
@@ -76,10 +72,6 @@ INPUT_ARG_PARSER.add_argument(
     help=INTENSITY_CUTOFFS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + SUBSET_SIZE_ARG_NAME, type=int, required=True,
-    help=SUBSET_SIZE_HELP_STRING
-)
-INPUT_ARG_PARSER.add_argument(
     '--' + SUBSET_NAMES_ARG_NAME, type=str, nargs='+', required=True,
     help=SUBSET_NAMES_HELP_STRING
 )
@@ -94,8 +86,7 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
-         num_examples_per_subset, subset_names, enforce_unique_cyclones,
-         output_dir_name):
+         subset_names, enforce_unique_cyclones, output_dir_name):
     """Splits predictions by cyclone intensity (max sustained surface wind).
 
     This is effectively the same method.
@@ -103,7 +94,6 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
     :param input_prediction_file_name: See documentation at top of file.
     :param ships_dir_name: Same.
     :param intensity_cutoffs_m_s01: Same.
-    :param num_examples_per_subset: Same.
     :param subset_names: Same.
     :param enforce_unique_cyclones: Same.
     :param output_dir_name: Same.
@@ -185,15 +175,18 @@ def _run(input_prediction_file_name, ships_dir_name, intensity_cutoffs_m_s01,
         subset_flags = numpy.logical_and(
             intensity_by_prediction_m_s01 >= intensity_cutoffs_m_s01[i],
             intensity_by_prediction_m_s01 < intensity_cutoffs_m_s01[i + 1]
-        ).astype(float)
+        )
 
         _, subset_indices = gg_model_activation.get_hilo_activation_examples(
-            storm_activations=subset_flags,
-            num_high_activation_examples=num_examples_per_subset,
-            num_low_activation_examples=num_examples_per_subset,
+            storm_activations=subset_flags.astype(float),
+            num_high_activation_examples=numpy.sum(subset_flags),
+            num_low_activation_examples=100,
             unique_storm_cells=enforce_unique_cyclones,
             full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         )
+
+        these_subindices = numpy.where(subset_flags[subset_indices])[0]
+        subset_indices = subset_indices[these_subindices]
 
         subset_prediction_dict = prediction_io.subset_by_index(
             prediction_dict=copy.deepcopy(prediction_dict),
@@ -236,7 +229,6 @@ if __name__ == '__main__':
         intensity_cutoffs_m_s01=numpy.array(
             getattr(INPUT_ARG_OBJECT, INTENSITY_CUTOFFS_ARG_NAME), dtype=float
         ),
-        num_examples_per_subset=getattr(INPUT_ARG_OBJECT, SUBSET_SIZE_ARG_NAME),
         subset_names=getattr(INPUT_ARG_OBJECT, SUBSET_NAMES_ARG_NAME),
         enforce_unique_cyclones=bool(
             getattr(INPUT_ARG_OBJECT, UNIQUE_CYCLONES_ARG_NAME)
