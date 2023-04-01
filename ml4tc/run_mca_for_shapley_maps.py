@@ -131,7 +131,7 @@ def _write_mca_results(
 
     dataset_object.createVariable(
         SHAPLEY_EXPANSION_COEFF_KEY, datatype=numpy.float32,
-        dimensions=(PIXEL_DIM, PRINCIPAL_COMPONENT_DIM)
+        dimensions=(PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM)
     )
     dataset_object.variables[SHAPLEY_EXPANSION_COEFF_KEY][:] = (
         shapley_expansion_coeff_matrix
@@ -139,7 +139,7 @@ def _write_mca_results(
 
     dataset_object.createVariable(
         PREDICTOR_EXPANSION_COEFF_KEY, datatype=numpy.float32,
-        dimensions=(PIXEL_DIM, PRINCIPAL_COMPONENT_DIM)
+        dimensions=(PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM)
     )
     dataset_object.variables[PREDICTOR_EXPANSION_COEFF_KEY][:] = (
         predictor_expansion_coeff_matrix
