@@ -208,7 +208,7 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
                 this_dummy_saliency_matrix.shape[1] *
                 this_dummy_saliency_matrix.shape[2]
             )
-            spatial_coarsening_factor_float = (
+            spatial_coarsening_factor_float = numpy.sqrt(
                 float(num_orig_pixels) / num_covariance_pixels
             )
             spatial_coarsening_factor = int(numpy.round(
