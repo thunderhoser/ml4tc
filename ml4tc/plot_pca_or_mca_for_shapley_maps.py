@@ -333,8 +333,13 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             :num_modes_to_plot, ...
         ]
     )
+
     eigenvalues = result_table_xarray[run_pca.EIGENVALUE_KEY].values
     explained_variance_fractions = eigenvalues / numpy.sum(eigenvalues)
+    eigenvalues = eigenvalues[:num_modes_to_plot]
+    explained_variance_fractions = (
+        explained_variance_fractions[:num_modes_to_plot]
+    )
 
     del result_table_xarray
 
