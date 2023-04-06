@@ -182,12 +182,11 @@ def _plot_one_mode(
         -10, 10, num=regressed_shapley_matrix.shape[1], dtype=float
     )
 
-    predictor_min_colour_value = numpy.percentile(
-        regressed_predictor_matrix, predictor_min_colour_percentile
-    )
     predictor_max_colour_value = numpy.percentile(
-        regressed_predictor_matrix, predictor_max_colour_percentile
+        numpy.absolute(regressed_predictor_matrix),
+        predictor_max_colour_percentile
     )
+    predictor_min_colour_value = -1 * predictor_max_colour_value
     predictor_colour_norm_object = pyplot.Normalize(
         vmin=predictor_min_colour_value, vmax=predictor_max_colour_value
     )
