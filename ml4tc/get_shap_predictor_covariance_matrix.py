@@ -111,7 +111,7 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
             covariance_matrix[i, j] = numpy.sum(
                 (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
                 (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
-            )
+            ) / (num_examples - 1)
 
             print(covariance_matrix[i, j])
             assert not numpy.isnan(covariance_matrix[i, j])
@@ -120,7 +120,7 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
         num_shapley_pixels * num_predictor_pixels
     ))
 
-    covariance_matrix = covariance_matrix / (num_examples - 1)
+    # covariance_matrix = covariance_matrix / (num_examples - 1)
     return covariance_matrix
 
 
