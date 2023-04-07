@@ -663,6 +663,7 @@ def write_file(
     }
 
     main_data_dict = {}
+    encoding_dict = {}
     num_satellite_lag_times = None
 
     if three_saliency_matrices[0] is not None:
@@ -703,6 +704,11 @@ def write_file(
             )
         })
 
+        encoding_dict.update({
+            GRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
+            GRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'}
+        })
+
     if three_saliency_matrices[1] is not None:
         if num_satellite_lag_times is None:
             num_satellite_lag_times = three_saliency_matrices[1].shape[1]
@@ -741,6 +747,11 @@ def write_file(
             )
         })
 
+        encoding_dict.update({
+            UNGRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
+            UNGRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'}
+        })
+
     if three_saliency_matrices[2] is not None:
         num_ships_lag_times = three_saliency_matrices[2].shape[1]
         num_ships_channels = three_saliency_matrices[2].shape[2]
@@ -762,10 +773,17 @@ def write_file(
             SHIPS_SALIENCY_KEY: (these_dim, three_saliency_matrices[2]),
             SHIPS_INPUT_GRAD_KEY: (these_dim, three_input_grad_matrices[2])
         })
+        encoding_dict.update({
+            SHIPS_SALIENCY_KEY: {'dtype': 'float32'},
+            SHIPS_INPUT_GRAD_KEY: {'dtype': 'float32'}
+        })
 
     main_data_dict.update({
         CYCLONE_IDS_KEY: ((EXAMPLE_DIMENSION_KEY,), cyclone_id_strings),
         INIT_TIMES_KEY: ((EXAMPLE_DIMENSION_KEY,), init_times_unix_sec)
+    })
+    encoding_dict.update({
+        INIT_TIMES_KEY: {'dtype': 'int32'}
     })
 
     attribute_dict = {
@@ -778,16 +796,6 @@ def write_file(
     saliency_table_xarray = xarray.Dataset(
         data_vars=main_data_dict, coords=metadata_dict, attrs=attribute_dict
     )
-
-    encoding_dict = {
-        GRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
-        GRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'},
-        UNGRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
-        UNGRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'},
-        SHIPS_SALIENCY_KEY: {'dtype': 'float32'},
-        SHIPS_INPUT_GRAD_KEY: {'dtype': 'float32'},
-        INIT_TIMES_KEY: {'dtype': 'int13'}
-    }
 
     error_checking.assert_is_string(zarr_file_name)
     if os.path.isdir(zarr_file_name):
