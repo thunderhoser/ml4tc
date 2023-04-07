@@ -31,8 +31,8 @@ NUM_SAMPLES_HELP_STRING = (
     'smaller.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  The average saliency map will be written here by '
-    '`saliency.write_file`.'
+    'Path to output file (zarr format).  The average saliency map will be '
+    'written here by `saliency.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -188,7 +188,7 @@ def _run(input_file_pattern, num_smoothgrad_samples, output_file_name):
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         three_saliency_matrices=three_saliency_matrices,
         three_input_grad_matrices=three_input_grad_matrices,
         cyclone_id_strings=saliency_dict[saliency.CYCLONE_IDS_KEY],

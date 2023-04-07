@@ -32,7 +32,6 @@ PREDICTOR_PIXEL_DIM = 'predictor_pixel'
 COVARIANCE_KEY = 'covariance'
 
 INPUT_FILES_ARG_NAME = 'input_shapley_file_names'
-# NUM_EXAMPLES_ARG_NAME = 'num_examples_to_keep'
 COARSENING_FACTOR_ARG_NAME = 'spatial_coarsening_factor'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
@@ -41,9 +40,6 @@ INPUT_FILES_HELP_STRING = (
     'different set of examples (one example = one TC at one time).  These '
     'files will be read by `saliency.read_file`.'
 )
-# NUM_EXAMPLES_HELP_STRING = (
-#     'Number of examples to keep, i.e., to use in computing the covariances.'
-# )
 COARSENING_FACTOR_HELP_STRING = (
     'Will use every [K]th grid point (in both the row and column dimensions), '
     'where K = {0:s}.'
@@ -59,10 +55,6 @@ INPUT_ARG_PARSER.add_argument(
     '--' + INPUT_FILES_ARG_NAME, type=str, nargs='+', required=True,
     help=INPUT_FILES_HELP_STRING
 )
-# INPUT_ARG_PARSER.add_argument(
-#     '--' + NUM_EXAMPLES_ARG_NAME, type=int, required=True,
-#     help=NUM_EXAMPLES_HELP_STRING
-# )
 INPUT_ARG_PARSER.add_argument(
     '--' + COARSENING_FACTOR_ARG_NAME, type=int, required=True,
     help=COARSENING_FACTOR_HELP_STRING

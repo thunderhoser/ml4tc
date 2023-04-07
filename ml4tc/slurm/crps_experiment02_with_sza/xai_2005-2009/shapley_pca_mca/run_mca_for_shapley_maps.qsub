@@ -44,12 +44,12 @@ set i=1
 set shapley_file_names_string=""
 
 while ($i <= ${#CYCLONE_ID_STRINGS})
-    set shapley_file_names_string="${shapley_file_names_string} ${model_dir_name}/validation/shapley_maps_${CYCLONE_ID_STRINGS[$i]}.nc"
+    set shapley_file_names_string="${shapley_file_names_string} ${model_dir_name}/validation/shapley_maps_${CYCLONE_ID_STRINGS[$i]}.zarr"
     @ i = $i + 1
 end
 
-set covariance_file_name="${model_dir_name}/validation/shapley_maps_covariance.nc"
-set output_file_name="${model_dir_name}/validation/shapley_maps_mca.nc"
+set covariance_file_name="${model_dir_name}/validation/shapley_maps_covariance.zarr"
+set output_file_name="${model_dir_name}/validation/shapley_maps_mca.zarr"
 
 python3 -u "${CODE_DIR_NAME}/run_mca_for_shapley_maps.py" \
 --input_shapley_file_names ${shapley_file_names_string} \

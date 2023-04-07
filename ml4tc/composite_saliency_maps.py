@@ -32,8 +32,8 @@ MAX_PERCENTILE_HELP_STRING = (
     'Max percentile level for PMM, ranging from 0...100.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Composite saliency map will be written here by '
-    '`saliency.write_composite_file`.'
+    'Path to output file (NetCDF format).  Composite saliency map will be '
+    'written here by `saliency.write_composite_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
