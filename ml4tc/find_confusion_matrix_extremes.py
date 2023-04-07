@@ -328,6 +328,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         positive_event_flags = (
             prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
         )
+        print(numpy.sum(positive_event_flags))
 
         (
             positive_event_indices, _
@@ -342,6 +343,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         negative_event_flags = (
             prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 0
         )
+        print(numpy.sum(negative_event_flags))
 
         (
             negative_event_indices, _
