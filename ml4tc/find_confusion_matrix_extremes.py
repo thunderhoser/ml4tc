@@ -325,13 +325,30 @@ def _run(input_prediction_file_name, num_examples_per_subset,
     )
 
     if enforce_unique_cyclones:
+        positive_event_flags = (
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
+        )
+
         (
-            positive_event_indices, negative_event_indices
+            positive_event_indices, _
         ) = gg_model_activation.get_hilo_activation_examples(
-            storm_activations=
-            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0].astype(float),
-            num_high_activation_examples=int(1e6),
-            num_low_activation_examples=int(1e6),
+            storm_activations=positive_event_flags.astype(float),
+            num_high_activation_examples=numpy.sum(positive_event_flags),
+            num_low_activation_examples=100,
+            unique_storm_cells=enforce_unique_cyclones,
+            full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
+        )
+
+        negative_event_flags = (
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 0
+        )
+
+        (
+            negative_event_indices, _
+        ) = gg_model_activation.get_hilo_activation_examples(
+            storm_activations=negative_event_flags.astype(float),
+            num_high_activation_examples=numpy.sum(negative_event_flags),
+            num_low_activation_examples=100,
             unique_storm_cells=enforce_unique_cyclones,
             full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         )
