@@ -1,6 +1,9 @@
 """Methods for computing, reading, and writing saliency maps."""
 
+import os
+import shutil
 import numpy
+import xarray
 import netCDF4
 from tensorflow.keras import backend as K
 from gewittergefahr.gg_utils import file_system_utils
@@ -40,6 +43,144 @@ NEURON_INDICES_KEY = 'neuron_indices'
 IDEAL_ACTIVATION_KEY = 'ideal_activation'
 USE_PMM_KEY = 'use_pmm'
 PMM_MAX_PERCENTILE_KEY = 'pmm_max_percentile_level'
+
+
+def _read_netcdf_file(netcdf_file_name):
+    """Reads saliency results from NetCDF file.
+
+    :param netcdf_file_name: Path to input file.
+    :return: saliency_dict: See doc for `read_file`.
+    """
+
+    dataset_object = netCDF4.Dataset(netcdf_file_name)
+
+    three_saliency_matrices = []
+    three_input_grad_matrices = []
+
+    if GRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    if UNGRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    if SHIPS_SALIENCY_KEY in dataset_object.variables:
+        three_saliency_matrices.append(
+            dataset_object.variables[SHIPS_SALIENCY_KEY][:]
+        )
+        three_input_grad_matrices.append(
+            dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:]
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    saliency_dict = {
+        THREE_SALIENCY_KEY: three_saliency_matrices,
+        THREE_INPUT_GRAD_KEY: three_input_grad_matrices,
+        CYCLONE_IDS_KEY: [
+            str(id) for id in
+            netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
+        ],
+        INIT_TIMES_KEY: dataset_object.variables[INIT_TIMES_KEY][:],
+        MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
+        LAYER_NAME_KEY: str(getattr(dataset_object, LAYER_NAME_KEY)),
+        NEURON_INDICES_KEY: numpy.array(
+            getattr(dataset_object, NEURON_INDICES_KEY), dtype=float
+        ),
+        IDEAL_ACTIVATION_KEY: getattr(dataset_object, IDEAL_ACTIVATION_KEY)
+    }
+
+    if len(saliency_dict[NEURON_INDICES_KEY].shape) == 0:
+        saliency_dict[NEURON_INDICES_KEY] = numpy.array(
+            [saliency_dict[NEURON_INDICES_KEY]], dtype=float
+        )
+
+    dataset_object.close()
+    return saliency_dict
+
+
+def _read_zarr_file(zarr_file_name):
+    """Reads saliency results from zarr file.
+
+    :param zarr_file_name: Path to input file.
+    :return: saliency_dict: See doc for `read_file`.
+    """
+
+    saliency_table_xarray = xarray.open_zarr(zarr_file_name)
+
+    three_saliency_matrices = []
+    three_input_grad_matrices = []
+
+    if GRIDDED_SATELLITE_SALIENCY_KEY in list(saliency_table_xarray.data_vars):
+        three_saliency_matrices.append(
+            saliency_table_xarray[GRIDDED_SATELLITE_SALIENCY_KEY].values
+        )
+        three_input_grad_matrices.append(
+            saliency_table_xarray[GRIDDED_SATELLITE_INPUT_GRAD_KEY].values
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    if UNGRIDDED_SATELLITE_SALIENCY_KEY in list(
+            saliency_table_xarray.data_vars
+    ):
+        three_saliency_matrices.append(
+            saliency_table_xarray[UNGRIDDED_SATELLITE_SALIENCY_KEY].values
+        )
+        three_input_grad_matrices.append(
+            saliency_table_xarray[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY].values
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    if SHIPS_SALIENCY_KEY in list(saliency_table_xarray.data_vars):
+        three_saliency_matrices.append(
+            saliency_table_xarray[SHIPS_SALIENCY_KEY].values
+        )
+        three_input_grad_matrices.append(
+            saliency_table_xarray[SHIPS_INPUT_GRAD_KEY].values
+        )
+    else:
+        three_saliency_matrices.append(None)
+        three_input_grad_matrices.append(None)
+
+    saliency_dict = {
+        THREE_SALIENCY_KEY: three_saliency_matrices,
+        THREE_INPUT_GRAD_KEY: three_input_grad_matrices,
+        CYCLONE_IDS_KEY: saliency_table_xarray[CYCLONE_IDS_KEY].values.tolist(),
+        INIT_TIMES_KEY: saliency_table_xarray[INIT_TIMES_KEY].values,
+        MODEL_FILE_KEY: saliency_table_xarray.attrs[MODEL_FILE_KEY],
+        LAYER_NAME_KEY: saliency_table_xarray.attrs[LAYER_NAME_KEY],
+        NEURON_INDICES_KEY: numpy.array(
+            saliency_table_xarray.attrs[NEURON_INDICES_KEY], dtype=float
+        ),
+        IDEAL_ACTIVATION_KEY: saliency_table_xarray.attrs[IDEAL_ACTIVATION_KEY]
+    }
+
+    if len(saliency_dict[NEURON_INDICES_KEY].shape) == 0:
+        saliency_dict[NEURON_INDICES_KEY] = numpy.array(
+            [saliency_dict[NEURON_INDICES_KEY]], dtype=float
+        )
+
+    return saliency_dict
 
 
 def check_metadata(layer_name, neuron_indices, ideal_activation):
@@ -432,14 +573,14 @@ def read_composite_file(netcdf_file_name):
 
 
 def write_file(
-        netcdf_file_name, three_saliency_matrices, three_input_grad_matrices,
+        zarr_file_name, three_saliency_matrices, three_input_grad_matrices,
         cyclone_id_strings, init_times_unix_sec, model_file_name, layer_name,
         neuron_indices, ideal_activation):
-    """Writes saliency maps to NetCDF file.
+    """Writes saliency maps to zarr file.
 
     E = number of examples
 
-    :param netcdf_file_name: Path to output file.
+    :param zarr_file_name: Path to output file.
     :param three_saliency_matrices: length-3 list, where each element is either
         None or a numpy array of saliency values.  three_saliency_matrices[i]
         should have the same shape as the [i]th input tensor to the model.
@@ -506,18 +647,14 @@ def write_file(
 
     error_checking.assert_is_string(model_file_name)
 
-    # Write to NetCDF file.
-    file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
-    dataset_object = netCDF4.Dataset(
-        netcdf_file_name, 'w', format='NETCDF3_64BIT_OFFSET'
-    )
+    # Do actual stuff.
+    metadata_dict = {
+        EXAMPLE_DIMENSION_KEY: numpy.linspace(
+            0, num_examples - 1, num=num_examples, dtype=int
+        )
+    }
 
-    dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
-    dataset_object.setncattr(LAYER_NAME_KEY, layer_name)
-    dataset_object.setncattr(NEURON_INDICES_KEY, neuron_indices)
-    dataset_object.setncattr(IDEAL_ACTIVATION_KEY, ideal_activation)
-
-    dataset_object.createDimension(EXAMPLE_DIMENSION_KEY, num_examples)
+    main_data_dict = {}
     num_satellite_lag_times = None
 
     if three_saliency_matrices[0] is not None:
@@ -526,44 +663,48 @@ def write_file(
         num_satellite_lag_times = three_saliency_matrices[0].shape[3]
         num_gridded_satellite_channels = three_saliency_matrices[0].shape[4]
 
-        dataset_object.createDimension(GRID_ROW_DIMENSION_KEY, num_grid_rows)
-        dataset_object.createDimension(
-            GRID_COLUMN_DIMENSION_KEY, num_grid_columns
-        )
-        dataset_object.createDimension(
-            SATELLITE_LAG_TIME_KEY, num_satellite_lag_times
-        )
-        dataset_object.createDimension(
-            GRIDDED_SATELLITE_CHANNEL_KEY, num_gridded_satellite_channels
-        )
+        metadata_dict.update({
+            GRID_ROW_DIMENSION_KEY: numpy.linspace(
+                0, num_grid_rows - 1, num=num_grid_rows, dtype=int
+            ),
+            GRID_COLUMN_DIMENSION_KEY: numpy.linspace(
+                0, num_grid_columns - 1, num=num_grid_columns, dtype=int
+            ),
+            SATELLITE_LAG_TIME_KEY: numpy.linspace(
+                0, num_satellite_lag_times - 1,
+                num=num_satellite_lag_times, dtype=int
+            ),
+            GRIDDED_SATELLITE_CHANNEL_KEY: numpy.linspace(
+                0, num_gridded_satellite_channels - 1,
+                num=num_gridded_satellite_channels, dtype=int
+            )
+        })
 
         these_dim = (
             EXAMPLE_DIMENSION_KEY, GRID_ROW_DIMENSION_KEY,
             GRID_COLUMN_DIMENSION_KEY, SATELLITE_LAG_TIME_KEY,
             GRIDDED_SATELLITE_CHANNEL_KEY
         )
-        dataset_object.createVariable(
-            GRIDDED_SATELLITE_SALIENCY_KEY,
-            datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:] = (
-            three_saliency_matrices[0]
-        )
 
-        dataset_object.createVariable(
-            GRIDDED_SATELLITE_INPUT_GRAD_KEY,
-            datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
-            three_input_grad_matrices[0]
-        )
+        main_data_dict.update({
+            GRIDDED_SATELLITE_SALIENCY_KEY: (
+                these_dim, three_saliency_matrices[0]
+            ),
+            GRIDDED_SATELLITE_INPUT_GRAD_KEY: (
+                these_dim, three_input_grad_matrices[0]
+            )
+        })
 
     if three_saliency_matrices[1] is not None:
         if num_satellite_lag_times is None:
             num_satellite_lag_times = three_saliency_matrices[1].shape[1]
-            dataset_object.createDimension(
-                SATELLITE_LAG_TIME_KEY, num_satellite_lag_times
-            )
+
+            metadata_dict.update({
+                SATELLITE_LAG_TIME_KEY: numpy.linspace(
+                    0, num_satellite_lag_times - 1,
+                    num=num_satellite_lag_times, dtype=int
+                )
+            })
         else:
             assert (
                 num_satellite_lag_times ==
@@ -571,87 +712,92 @@ def write_file(
             )
 
         num_ungridded_satellite_channels = three_saliency_matrices[1].shape[2]
-        dataset_object.createDimension(
-            UNGRIDDED_SATELLITE_CHANNEL_KEY, num_ungridded_satellite_channels
-        )
+        metadata_dict.update({
+            UNGRIDDED_SATELLITE_CHANNEL_KEY: numpy.linspace(
+                0, num_ungridded_satellite_channels - 1,
+                num=num_ungridded_satellite_channels, dtype=int
+            )
+        })
 
         these_dim = (
             EXAMPLE_DIMENSION_KEY, SATELLITE_LAG_TIME_KEY,
             UNGRIDDED_SATELLITE_CHANNEL_KEY
         )
-        dataset_object.createVariable(
-            UNGRIDDED_SATELLITE_SALIENCY_KEY,
-            datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:] = (
-            three_saliency_matrices[1]
-        )
 
-        dataset_object.createVariable(
-            UNGRIDDED_SATELLITE_INPUT_GRAD_KEY,
-            datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:] = (
-            three_input_grad_matrices[1]
-        )
+        main_data_dict.update({
+            UNGRIDDED_SATELLITE_SALIENCY_KEY: (
+                these_dim, three_saliency_matrices[1]
+            ),
+            UNGRIDDED_SATELLITE_INPUT_GRAD_KEY: (
+                these_dim, three_input_grad_matrices[1]
+            )
+        })
 
     if three_saliency_matrices[2] is not None:
         num_ships_lag_times = three_saliency_matrices[2].shape[1]
         num_ships_channels = three_saliency_matrices[2].shape[2]
-        dataset_object.createDimension(SHIPS_LAG_TIME_KEY, num_ships_lag_times)
-        dataset_object.createDimension(SHIPS_CHANNEL_KEY, num_ships_channels)
+
+        metadata_dict.update({
+            SHIPS_LAG_TIME_KEY: numpy.linspace(
+                0, num_ships_lag_times - 1, num=num_ships_lag_times, dtype=int
+            ),
+            SHIPS_CHANNEL_KEY: numpy.linspace(
+                0, num_ships_channels - 1, num=num_ships_channels, dtype=int
+            )
+        })
 
         these_dim = (
             EXAMPLE_DIMENSION_KEY, SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY
         )
-        dataset_object.createVariable(
-            SHIPS_SALIENCY_KEY, datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[SHIPS_SALIENCY_KEY][:] = (
-            three_saliency_matrices[2]
-        )
 
-        dataset_object.createVariable(
-            SHIPS_INPUT_GRAD_KEY, datatype=numpy.float32, dimensions=these_dim
-        )
-        dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:] = (
-            three_input_grad_matrices[2]
-        )
+        main_data_dict.update({
+            SHIPS_SALIENCY_KEY: (these_dim, three_saliency_matrices[2]),
+            SHIPS_INPUT_GRAD_KEY: (these_dim, three_input_grad_matrices[2])
+        })
 
-    if num_examples == 0:
-        num_id_characters = 1
-    else:
-        num_id_characters = numpy.max(numpy.array([
-            len(id) for id in cyclone_id_strings
-        ]))
+    main_data_dict.update({
+        CYCLONE_IDS_KEY: ((EXAMPLE_DIMENSION_KEY,), cyclone_id_strings),
+        INIT_TIMES_KEY: ((EXAMPLE_DIMENSION_KEY,), init_times_unix_sec)
+    })
 
-    dataset_object.createDimension(CYCLONE_ID_CHAR_DIM_KEY, num_id_characters)
+    attribute_dict = {
+        MODEL_FILE_KEY: model_file_name,
+        LAYER_NAME_KEY: layer_name,
+        NEURON_INDICES_KEY: neuron_indices,
+        IDEAL_ACTIVATION_KEY: ideal_activation
+    }
 
-    this_string_format = 'S{0:d}'.format(num_id_characters)
-    cyclone_ids_char_array = netCDF4.stringtochar(numpy.array(
-        cyclone_id_strings, dtype=this_string_format
-    ))
-
-    dataset_object.createVariable(
-        CYCLONE_IDS_KEY, datatype='S1',
-        dimensions=(EXAMPLE_DIMENSION_KEY, CYCLONE_ID_CHAR_DIM_KEY)
-    )
-    dataset_object.variables[CYCLONE_IDS_KEY][:] = numpy.array(
-        cyclone_ids_char_array
+    saliency_table_xarray = xarray.Dataset(
+        data_vars=main_data_dict, coords=metadata_dict, attrs=attribute_dict
     )
 
-    dataset_object.createVariable(
-        INIT_TIMES_KEY, datatype=numpy.int32, dimensions=EXAMPLE_DIMENSION_KEY
+    encoding_dict = {
+        GRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
+        GRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'},
+        UNGRIDDED_SATELLITE_SALIENCY_KEY: {'dtype': 'float32'},
+        UNGRIDDED_SATELLITE_INPUT_GRAD_KEY: {'dtype': 'float32'},
+        SHIPS_SALIENCY_KEY: {'dtype': 'float32'},
+        SHIPS_INPUT_GRAD_KEY: {'dtype': 'float32'},
+        INIT_TIMES_KEY: {'dtype': 'int13'}
+    }
+
+    error_checking.assert_is_string(zarr_file_name)
+    if os.path.isdir(zarr_file_name):
+        shutil.rmtree(zarr_file_name)
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=zarr_file_name
     )
-    dataset_object.variables[INIT_TIMES_KEY][:] = init_times_unix_sec
 
-    dataset_object.close()
+    saliency_table_xarray.to_zarr(
+        store=zarr_file_name, mode='w', encoding=encoding_dict
+    )
 
 
-def read_file(netcdf_file_name):
-    """Reads saliency maps from NetCDF file.
+def read_file(saliency_file_name):
+    """Reads saliency maps from NetCDF or zarr file.
 
-    :param netcdf_file_name: Path to input file.
+    :param saliency_file_name: Path to input file.
     :return: saliency_dict: Dictionary with the following keys.
     saliency_dict['three_saliency_matrices']: See doc for `write_file`.
     saliency_dict['three_input_grad_matrices']: Same.
@@ -663,64 +809,33 @@ def read_file(netcdf_file_name):
     saliency_dict['ideal_activation']: Same.
     """
 
-    dataset_object = netCDF4.Dataset(netcdf_file_name)
+    if (
+            saliency_file_name.endswith('.zarr')
+            and not os.path.isdir(saliency_file_name)
+    ):
+        saliency_file_name = '{0:s}.nc'.format(saliency_file_name[:-5])
 
-    three_saliency_matrices = []
-    three_input_grad_matrices = []
+    if saliency_file_name.endswith('.zarr'):
+        return _read_zarr_file(saliency_file_name)
 
-    if GRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
-        three_saliency_matrices.append(
-            dataset_object.variables[GRIDDED_SATELLITE_SALIENCY_KEY][:]
-        )
-        three_input_grad_matrices.append(
-            dataset_object.variables[GRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
-        )
-    else:
-        three_saliency_matrices.append(None)
-        three_input_grad_matrices.append(None)
+    if not saliency_file_name.endswith('.nc'):
+        return None
 
-    if UNGRIDDED_SATELLITE_SALIENCY_KEY in dataset_object.variables:
-        three_saliency_matrices.append(
-            dataset_object.variables[UNGRIDDED_SATELLITE_SALIENCY_KEY][:]
-        )
-        three_input_grad_matrices.append(
-            dataset_object.variables[UNGRIDDED_SATELLITE_INPUT_GRAD_KEY][:]
-        )
-    else:
-        three_saliency_matrices.append(None)
-        three_input_grad_matrices.append(None)
+    saliency_dict = _read_netcdf_file(saliency_file_name)
 
-    if SHIPS_SALIENCY_KEY in dataset_object.variables:
-        three_saliency_matrices.append(
-            dataset_object.variables[SHIPS_SALIENCY_KEY][:]
-        )
-        three_input_grad_matrices.append(
-            dataset_object.variables[SHIPS_INPUT_GRAD_KEY][:]
-        )
-    else:
-        three_saliency_matrices.append(None)
-        three_input_grad_matrices.append(None)
+    zarr_file_name = '{0:s}.zarr'.format(saliency_file_name[:-3])
+    print('Writing saliency results to: "{0:s}"...'.format(zarr_file_name))
 
-    saliency_dict = {
-        THREE_SALIENCY_KEY: three_saliency_matrices,
-        THREE_INPUT_GRAD_KEY: three_input_grad_matrices,
-        CYCLONE_IDS_KEY: [
-            str(id) for id in
-            netCDF4.chartostring(dataset_object.variables[CYCLONE_IDS_KEY][:])
-        ],
-        INIT_TIMES_KEY: dataset_object.variables[INIT_TIMES_KEY][:],
-        MODEL_FILE_KEY: str(getattr(dataset_object, MODEL_FILE_KEY)),
-        LAYER_NAME_KEY: str(getattr(dataset_object, LAYER_NAME_KEY)),
-        NEURON_INDICES_KEY: numpy.array(
-            getattr(dataset_object, NEURON_INDICES_KEY), dtype=float
-        ),
-        IDEAL_ACTIVATION_KEY: getattr(dataset_object, IDEAL_ACTIVATION_KEY)
-    }
+    write_file(
+        zarr_file_name=zarr_file_name,
+        three_saliency_matrices=saliency_dict[THREE_SALIENCY_KEY],
+        three_input_grad_matrices=saliency_dict[THREE_INPUT_GRAD_KEY],
+        cyclone_id_strings=saliency_dict[CYCLONE_IDS_KEY],
+        init_times_unix_sec=saliency_dict[INIT_TIMES_KEY],
+        model_file_name=saliency_dict[MODEL_FILE_KEY],
+        layer_name=saliency_dict[LAYER_NAME_KEY],
+        neuron_indices=saliency_dict[NEURON_INDICES_KEY],
+        ideal_activation=saliency_dict[IDEAL_ACTIVATION_KEY]
+    )
 
-    if len(saliency_dict[NEURON_INDICES_KEY].shape) == 0:
-        saliency_dict[NEURON_INDICES_KEY] = numpy.array(
-            [saliency_dict[NEURON_INDICES_KEY]], dtype=float
-        )
-
-    dataset_object.close()
     return saliency_dict

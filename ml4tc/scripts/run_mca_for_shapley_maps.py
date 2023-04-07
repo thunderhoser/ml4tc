@@ -77,7 +77,13 @@ def _read_covariance_matrix(covariance_file_name):
         [i]th pixel and normalized predictor value at the [j]th pixel.
     """
 
-    if covariance_file_name.endswith('zarr'):
+    if (
+            covariance_file_name.endswith('.zarr')
+            and not os.path.isdir(covariance_file_name)
+    ):
+        covariance_file_name = '{0:s}.nc'.format(covariance_file_name[:-5])
+
+    if covariance_file_name.endswith('.zarr'):
         return xarray.open_zarr(covariance_file_name)[
             get_covar_matrix.COVARIANCE_KEY
         ].values

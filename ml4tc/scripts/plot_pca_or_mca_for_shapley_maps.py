@@ -4,6 +4,7 @@ PCA = principal-component analysis
 MCA = maximum-covariance analysis
 """
 
+import os
 import argparse
 import numpy
 import xarray
@@ -142,7 +143,13 @@ def _read_pca_or_mca_results(result_file_name):
     :return: result_table_xarray: xarray table.
     """
 
-    if result_file_name.endswith('zarr'):
+    if (
+            result_file_name.endswith('.zarr')
+            and not os.path.isdir(result_file_name)
+    ):
+        result_file_name = '{0:s}.nc'.format(result_file_name[:-5])
+
+    if result_file_name.endswith('.zarr'):
         return xarray.open_zarr(result_file_name)
 
     if not result_file_name.endswith('.nc'):
