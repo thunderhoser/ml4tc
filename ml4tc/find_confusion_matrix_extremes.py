@@ -324,12 +324,24 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
 
-    positive_event_indices = numpy.where(
-        prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
-    )[0]
-    negative_event_indices = numpy.where(
-        prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 0
-    )[0]
+    if enforce_unique_cyclones:
+        (
+            positive_event_indices, negative_event_indices
+        ) = gg_model_activation.get_hilo_activation_examples(
+            storm_activations=
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0].astype(float),
+            num_high_activation_examples=int(1e6),
+            num_low_activation_examples=int(1e6),
+            unique_storm_cells=enforce_unique_cyclones,
+            full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
+        )
+    else:
+        positive_event_indices = numpy.where(
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
+        )[0]
+        negative_event_indices = numpy.where(
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 0
+        )[0]
 
     positive_event_prediction_dict = prediction_io.subset_by_index(
         prediction_dict=copy.deepcopy(prediction_dict),
