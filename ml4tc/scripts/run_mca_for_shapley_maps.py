@@ -1,6 +1,7 @@
 """Runs MCA (maximum-covariance analysis) for maps of Shapley values."""
 
 import os
+import copy
 import shutil
 import argparse
 import numpy
@@ -77,6 +78,13 @@ def _read_covariance_matrix(covariance_file_name):
         [i]th pixel and normalized predictor value at the [j]th pixel.
     """
 
+    # TODO(thunderhoser): This is HACK to deal with change from NetCDF to zarr.
+    if (
+            covariance_file_name.endswith('.nc')
+            and not os.path.isfile(covariance_file_name)
+    ):
+        covariance_file_name = '{0:s}.zarr'.format(covariance_file_name[:-3])
+
     if (
             covariance_file_name.endswith('.zarr')
             and not os.path.isdir(covariance_file_name)
@@ -95,12 +103,15 @@ def _read_covariance_matrix(covariance_file_name):
         get_covar_matrix.COVARIANCE_KEY
     ].values
 
+    netcdf_file_name = copy.deepcopy(covariance_file_name)
     zarr_file_name = '{0:s}.zarr'.format(covariance_file_name[:-3])
 
     print('Writing covariance matrix to: "{0:s}"...'.format(zarr_file_name))
     get_covar_matrix._write_results(
         zarr_file_name=zarr_file_name, covariance_matrix=covariance_matrix
     )
+
+    os.remove(netcdf_file_name)
 
     return covariance_matrix
 

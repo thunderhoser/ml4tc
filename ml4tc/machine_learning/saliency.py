@@ -1,6 +1,7 @@
 """Methods for computing, reading, and writing saliency maps."""
 
 import os
+import copy
 import shutil
 import numpy
 import xarray
@@ -809,6 +810,13 @@ def read_file(saliency_file_name):
     saliency_dict['ideal_activation']: Same.
     """
 
+    # TODO(thunderhoser): This is HACK to deal with change from NetCDF to zarr.
+    if (
+            saliency_file_name.endswith('.nc')
+            and not os.path.isfile(saliency_file_name)
+    ):
+        saliency_file_name = '{0:s}.zarr'.format(saliency_file_name[:-3])
+
     if (
             saliency_file_name.endswith('.zarr')
             and not os.path.isdir(saliency_file_name)
@@ -822,6 +830,7 @@ def read_file(saliency_file_name):
         return None
 
     saliency_dict = _read_netcdf_file(saliency_file_name)
+    netcdf_file_name = copy.deepcopy(saliency_file_name)
 
     zarr_file_name = '{0:s}.zarr'.format(saliency_file_name[:-3])
     print('Writing saliency results to: "{0:s}"...'.format(zarr_file_name))
@@ -837,5 +846,7 @@ def read_file(saliency_file_name):
         neuron_indices=saliency_dict[NEURON_INDICES_KEY],
         ideal_activation=saliency_dict[IDEAL_ACTIVATION_KEY]
     )
+
+    os.remove(netcdf_file_name)
 
     return saliency_dict
