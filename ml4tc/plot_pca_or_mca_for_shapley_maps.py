@@ -6,6 +6,7 @@ MCA = maximum-covariance analysis
 
 import os
 import sys
+import copy
 import argparse
 import numpy
 import xarray
@@ -150,6 +151,13 @@ def _read_pca_or_mca_results(result_file_name):
     :return: result_table_xarray: xarray table.
     """
 
+    # TODO(thunderhoser): This is HACK to deal with change from NetCDF to zarr.
+    if (
+            result_file_name.endswith('.nc')
+            and not os.path.isfile(result_file_name)
+    ):
+        result_file_name = '{0:s}.zarr'.format(result_file_name[:-3])
+
     if (
             result_file_name.endswith('.zarr')
             and not os.path.isdir(result_file_name)
@@ -173,6 +181,7 @@ def _read_pca_or_mca_results(result_file_name):
     except:
         pass
 
+    netcdf_file_name = copy.deepcopy(result_file_name)
     zarr_file_name = '{0:s}.zarr'.format(result_file_name[:-3])
 
     if results_are_for_mca:
@@ -210,6 +219,7 @@ def _read_pca_or_mca_results(result_file_name):
             rt[run_pca.REGRESSED_PREDICTOR_KEY].values
         )
 
+    os.remove(netcdf_file_name)
     return result_table_xarray
 
 

@@ -48,7 +48,7 @@ while ($i <= ${#CYCLONE_ID_STRINGS})
     @ i = $i + 1
 end
 
-set output_file_name="${model_dir_name}/validation/shapley_maps_covariance.nc"
+set output_file_name="${model_dir_name}/validation/shapley_maps_covariance.zarr"
 
 python3 -u "${CODE_DIR_NAME}/get_shap_predictor_covariance_matrix.py" \
 --input_shapley_file_names ${shapley_file_names_string} \
