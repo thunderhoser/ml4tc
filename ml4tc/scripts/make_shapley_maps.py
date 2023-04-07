@@ -74,9 +74,11 @@ OUTPUT_FILE_HELP_STRING = (
     'should the actual file path.  However, if {0:s} > 1, this should be just '
     'the beginning of the file path.  For example, suppose that {1:s} is '
     '"foo/shapley_maps" and {0:s} = 5.  Then the output files will be '
-    '"foo/shapley_maps_sample000001.nc", "foo/shapley_maps_sample000002.nc", '
-    '"foo/shapley_maps_sample000003.nc", "foo/shapley_maps_sample000004.nc", '
-    'and "foo/shapley_maps_sample000005.nc".  Either way, the output file(s) '
+    '"foo/shapley_maps_sample000001.zarr", '
+    '"foo/shapley_maps_sample000002.zarr", '
+    '"foo/shapley_maps_sample000003.zarr", '
+    '"foo/shapley_maps_sample000004.zarr", '
+    'and "foo/shapley_maps_sample000005.zarr".  Either way, the output file(s) '
     'will be written by `saliency.write_file`.'
 ).format(
     NUM_SMOOTHGRAD_SAMPLES_ARG_NAME, OUTPUT_FILE_ARG_NAME
@@ -241,7 +243,7 @@ def _apply_shap_sans_smoothgrad(
     # one output file per cyclone, instead of one for all cyclones.
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         three_saliency_matrices=dummy_saliency_matrices,
         three_input_grad_matrices=dummy_input_times_grad_matrices,
         cyclone_id_strings=cyclone_id_strings,
@@ -344,7 +346,7 @@ def _apply_shap_with_smoothgrad(
             j_minor += 1
             three_shapley_matrices[j] = shapley_matrices_k[j_minor]
 
-        output_file_name = '{0:s}_sample{1:06d}.nc'.format(
+        output_file_name = '{0:s}_sample{1:06d}.zarr'.format(
             output_file_name_sans_sample_num, k
         )
 
@@ -369,7 +371,7 @@ def _apply_shap_with_smoothgrad(
 
         print('Writing results to: "{0:s}"...'.format(output_file_name))
         saliency.write_file(
-            netcdf_file_name=output_file_name,
+            zarr_file_name=output_file_name,
             three_saliency_matrices=dummy_saliency_matrices,
             three_input_grad_matrices=dummy_input_times_grad_matrices,
             cyclone_id_strings=cyclone_id_strings,
@@ -425,6 +427,11 @@ def _run(model_file_name, example_dir_name, baseline_cyclone_id_strings,
     if use_smoothgrad and output_file_name_sans_sample_num.endswith('.nc'):
         output_file_name_sans_sample_num = (
             output_file_name_sans_sample_num[:-3]
+        )
+
+    if use_smoothgrad and output_file_name_sans_sample_num.endswith('.zarr'):
+        output_file_name_sans_sample_num = (
+            output_file_name_sans_sample_num[:-5]
         )
 
     error_checking.assert_is_geq(max_num_baseline_examples, 20)

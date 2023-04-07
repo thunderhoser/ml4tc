@@ -57,7 +57,7 @@ SMOOTHGRAD_STDEV_HELP_STRING = (
     'to use SmoothGrad, leave this as the default.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Results will be saved here by '
+    'Path to output file (zarr format).  Results will be saved here by '
     '`saliency.write_file`.'
 )
 
@@ -282,7 +282,7 @@ def _run(model_file_name, example_dir_name, years, unique_cyclone_id_strings,
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     saliency.write_file(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         three_saliency_matrices=three_saliency_matrices,
         three_input_grad_matrices=three_input_grad_matrices,
         cyclone_id_strings=cyclone_id_strings,

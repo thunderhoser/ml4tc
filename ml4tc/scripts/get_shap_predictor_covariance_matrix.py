@@ -25,7 +25,6 @@ PREDICTOR_PIXEL_DIM = 'predictor_pixel'
 COVARIANCE_KEY = 'covariance'
 
 INPUT_FILES_ARG_NAME = 'input_shapley_file_names'
-# NUM_EXAMPLES_ARG_NAME = 'num_examples_to_keep'
 COARSENING_FACTOR_ARG_NAME = 'spatial_coarsening_factor'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
@@ -34,9 +33,6 @@ INPUT_FILES_HELP_STRING = (
     'different set of examples (one example = one TC at one time).  These '
     'files will be read by `saliency.read_file`.'
 )
-# NUM_EXAMPLES_HELP_STRING = (
-#     'Number of examples to keep, i.e., to use in computing the covariances.'
-# )
 COARSENING_FACTOR_HELP_STRING = (
     'Will use every [K]th grid point (in both the row and column dimensions), '
     'where K = {0:s}.'
@@ -52,10 +48,6 @@ INPUT_ARG_PARSER.add_argument(
     '--' + INPUT_FILES_ARG_NAME, type=str, nargs='+', required=True,
     help=INPUT_FILES_HELP_STRING
 )
-# INPUT_ARG_PARSER.add_argument(
-#     '--' + NUM_EXAMPLES_ARG_NAME, type=int, required=True,
-#     help=NUM_EXAMPLES_HELP_STRING
-# )
 INPUT_ARG_PARSER.add_argument(
     '--' + COARSENING_FACTOR_ARG_NAME, type=int, required=True,
     help=COARSENING_FACTOR_HELP_STRING
@@ -77,6 +69,9 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     :param predictor_matrix: E-by-P numpy array of predictor values.
     :return: covariance_matrix: S-by-P numpy array of covariances.
     """
+
+    assert not numpy.any(numpy.isnan(shapley_matrix))
+    assert not numpy.any(numpy.isnan(predictor_matrix))
 
     mean_norm_shapley_value_by_pixel = numpy.mean(shapley_matrix, axis=0)
     mean_norm_predictor_by_pixel = numpy.mean(predictor_matrix, axis=0)
@@ -104,8 +99,14 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     print('Have computed all {0:d} covariances!'.format(
         num_shapley_pixels * num_predictor_pixels
     ))
-
     covariance_matrix = covariance_matrix / (num_examples - 1)
+
+    print('Number of NaN covariances = {0:d} of {1:d}'.format(
+        numpy.sum(numpy.isnan(covariance_matrix)),
+        covariance_matrix.size
+    ))
+    covariance_matrix[numpy.isnan(covariance_matrix)] = 0.
+
     return covariance_matrix
 
 
