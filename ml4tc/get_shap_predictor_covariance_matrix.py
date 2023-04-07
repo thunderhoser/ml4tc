@@ -113,7 +113,70 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
                 (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
             ) / (num_examples - 1)
 
-            print(covariance_matrix[i, j])
+            if not numpy.isnan(covariance_matrix[i, j]):
+                continue
+
+            print((
+                'Mean normalized SHAP value for {0:d}th pixel = {1:.4g}'
+            ).format(
+                i + 1, mean_norm_shapley_value_by_pixel[i]
+            ))
+
+            print((
+                'Mean double-normalized predictor value for {0:d}th pixel '
+                '= {1:.4g}'
+            ).format(
+                j + 1, mean_norm_predictor_by_pixel[j]
+            ))
+
+            print((
+                'Sum of SHAP-value deviations from average = {0:.4g}'
+            ).format(
+                numpy.sum(
+                    shapley_matrix[:, i] -
+                    mean_norm_shapley_value_by_pixel[i]
+                )
+            ))
+
+            print((
+                'Mean of SHAP-value deviations from average = {0:.4g}'
+            ).format(
+                numpy.sum(
+                    shapley_matrix[:, i] -
+                    mean_norm_shapley_value_by_pixel[i]
+                ) / (num_examples - 1)
+            ))
+
+            print((
+                'Sum of predictor-value deviations from average = {0:.4g}'
+            ).format(
+                numpy.sum(
+                    predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j]
+                )
+            ))
+
+            print((
+                'Mean of predictor-value deviations from average = {0:.4g}'
+            ).format(
+                numpy.sum(
+                    predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j]
+                ) / (num_examples - 1)
+            ))
+
+            print('Sum of deviation products = {0:.4g}'.format(
+                numpy.sum(
+                    (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
+                    (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
+                )
+            ))
+
+            print('Mean of deviation products = {0:.4g}'.format(
+                numpy.sum(
+                    (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
+                    (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
+                ) / (num_examples - 1)
+            ))
+
             assert not numpy.isnan(covariance_matrix[i, j])
 
     print('Have computed all {0:d} covariances!'.format(
