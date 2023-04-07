@@ -328,7 +328,6 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         positive_event_flags = (
             prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
         )
-        print(numpy.sum(positive_event_flags))
 
         (
             positive_event_indices, _
@@ -340,10 +339,14 @@ def _run(input_prediction_file_name, num_examples_per_subset,
             full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         )
 
+        subindices = numpy.where(
+            positive_event_flags[positive_event_indices]
+        )[0]
+        positive_event_indices = positive_event_indices[subindices]
+
         negative_event_flags = (
             prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 0
         )
-        print(numpy.sum(negative_event_flags))
 
         (
             negative_event_indices, _
@@ -354,6 +357,11 @@ def _run(input_prediction_file_name, num_examples_per_subset,
             unique_storm_cells=enforce_unique_cyclones,
             full_storm_id_strings=prediction_dict[prediction_io.CYCLONE_IDS_KEY]
         )
+
+        subindices = numpy.where(
+            negative_event_flags[negative_event_indices]
+        )[0]
+        negative_event_indices = negative_event_indices[subindices]
     else:
         positive_event_indices = numpy.where(
             prediction_dict[prediction_io.TARGET_MATRIX_KEY][:, 0] == 1
