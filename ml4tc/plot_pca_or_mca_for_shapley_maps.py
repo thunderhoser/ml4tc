@@ -24,6 +24,7 @@ import error_checking
 import plotting_utils
 import satellite_plotting
 import run_pca_for_shapley_maps as run_pca
+import run_mca_for_shapley_maps as run_mca
 
 TOLERANCE = 1e-10
 COLOUR_BAR_FONT_SIZE = 30
@@ -140,6 +141,76 @@ INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
+
+
+def _read_pca_or_mca_results(result_file_name):
+    """Reads results from NetCDF or (ideally) zarr file.
+
+    :param result_file_name: Path to file with PCA or MCA results.
+    :return: result_table_xarray: xarray table.
+    """
+
+    if (
+            result_file_name.endswith('.zarr')
+            and not os.path.isdir(result_file_name)
+    ):
+        result_file_name = '{0:s}.nc'.format(result_file_name[:-5])
+
+    if result_file_name.endswith('.zarr'):
+        return xarray.open_zarr(result_file_name)
+
+    if not result_file_name.endswith('.nc'):
+        return None
+
+    result_table_xarray = xarray.open_dataset(result_file_name)
+    results_are_for_mca = False
+
+    try:
+        _ = result_table_xarray[run_mca.SHAPLEY_EXPANSION_COEFF_KEY].values[
+            0, 0
+        ]
+        results_are_for_mca = True
+    except:
+        pass
+
+    zarr_file_name = '{0:s}.zarr'.format(result_file_name[:-3])
+
+    if results_are_for_mca:
+        print('Writing MCA results to: "{0:s}"...'.format(zarr_file_name))
+        rt = result_table_xarray
+
+        run_mca._write_mca_results(
+            zarr_file_name=zarr_file_name,
+            shapley_singular_value_matrix=
+            rt[run_mca.SHAPLEY_SINGULAR_VALUE_KEY].values,
+            predictor_singular_value_matrix=
+            rt[run_mca.PREDICTOR_SINGULAR_VALUE_KEY].values,
+            shapley_expansion_coeff_matrix=
+            rt[run_mca.SHAPLEY_EXPANSION_COEFF_KEY].values,
+            predictor_expansion_coeff_matrix=
+            rt[run_mca.PREDICTOR_EXPANSION_COEFF_KEY].values,
+            eigenvalues=rt[run_mca.EIGENVALUE_KEY].values,
+            regressed_shapley_matrix=
+            rt[run_mca.REGRESSED_SHAPLEY_VALUE_KEY].values,
+            regressed_predictor_matrix=
+            rt[run_mca.REGRESSED_PREDICTOR_KEY].values
+        )
+    else:
+        print('Writing PCA results to: "{0:s}"...'.format(zarr_file_name))
+        rt = result_table_xarray
+
+        run_pca._write_pca_results(
+            zarr_file_name=zarr_file_name,
+            eof_matrix=rt[run_pca.EOF_KEY].values,
+            eigenvalues=rt[run_pca.EIGENVALUE_KEY].values,
+            standardized_pc_matrix=rt[run_pca.STANDARDIZED_PC_KEY].values,
+            regressed_shapley_matrix=
+            rt[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values,
+            regressed_predictor_matrix=
+            rt[run_pca.REGRESSED_PREDICTOR_KEY].values
+        )
+
+    return result_table_xarray
 
 
 def _plot_one_mode(

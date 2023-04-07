@@ -6,10 +6,11 @@ huge.
 
 import os
 import sys
+import shutil
 import argparse
 from multiprocessing import Pool
 import numpy
-import netCDF4
+import xarray
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
     os.path.join(os.getcwd(), os.path.expanduser(__file__))
@@ -49,8 +50,8 @@ COARSENING_FACTOR_HELP_STRING = (
 ).format(COARSENING_FACTOR_ARG_NAME)
 
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  The covariance matrix will be written here by '
-    '`_write_results`.'
+    'Path to output file (zarr format).  The covariance matrix will be written '
+    'here by `_write_results`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -84,12 +85,6 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     :return: covariance_matrix: S-by-P numpy array of covariances.
     """
 
-    print(numpy.any(numpy.isnan(shapley_matrix)))
-    print(numpy.any(numpy.isnan(predictor_matrix)))
-
-    assert not numpy.any(numpy.isnan(shapley_matrix))
-    assert not numpy.any(numpy.isnan(predictor_matrix))
-
     mean_norm_shapley_value_by_pixel = numpy.mean(shapley_matrix, axis=0)
     mean_norm_predictor_by_pixel = numpy.mean(predictor_matrix, axis=0)
 
@@ -111,107 +106,56 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
             covariance_matrix[i, j] = numpy.sum(
                 (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
                 (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
-            ) / (num_examples - 1)
-
-            if not numpy.isnan(covariance_matrix[i, j]):
-                continue
-
-            print((
-                'Mean normalized SHAP value for {0:d}th pixel = {1:.4g}'
-            ).format(
-                i + 1, mean_norm_shapley_value_by_pixel[i]
-            ))
-
-            print((
-                'Mean double-normalized predictor value for {0:d}th pixel '
-                '= {1:.4g}'
-            ).format(
-                j + 1, mean_norm_predictor_by_pixel[j]
-            ))
-
-            print((
-                'Sum of SHAP-value deviations from average = {0:.4g}'
-            ).format(
-                numpy.sum(
-                    shapley_matrix[:, i] -
-                    mean_norm_shapley_value_by_pixel[i]
-                )
-            ))
-
-            print((
-                'Mean of SHAP-value deviations from average = {0:.4g}'
-            ).format(
-                numpy.sum(
-                    shapley_matrix[:, i] -
-                    mean_norm_shapley_value_by_pixel[i]
-                ) / (num_examples - 1)
-            ))
-
-            print((
-                'Sum of predictor-value deviations from average = {0:.4g}'
-            ).format(
-                numpy.sum(
-                    predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j]
-                )
-            ))
-
-            print((
-                'Mean of predictor-value deviations from average = {0:.4g}'
-            ).format(
-                numpy.sum(
-                    predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j]
-                ) / (num_examples - 1)
-            ))
-
-            print('Sum of deviation products = {0:.4g}'.format(
-                numpy.sum(
-                    (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
-                    (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
-                )
-            ))
-
-            print('Mean of deviation products = {0:.4g}'.format(
-                numpy.sum(
-                    (shapley_matrix[:, i] - mean_norm_shapley_value_by_pixel[i]) *
-                    (predictor_matrix[:, j] - mean_norm_predictor_by_pixel[j])
-                ) / (num_examples - 1)
-            ))
-
-            assert not numpy.isnan(covariance_matrix[i, j])
+            )
 
     print('Have computed all {0:d} covariances!'.format(
         num_shapley_pixels * num_predictor_pixels
     ))
 
-    # covariance_matrix = covariance_matrix / (num_examples - 1)
+    covariance_matrix = covariance_matrix / (num_examples - 1)
     return covariance_matrix
 
 
-def _write_results(netcdf_file_name, covariance_matrix):
-    """Writes covariance matrix to NetCDF file.
+def _write_results(zarr_file_name, covariance_matrix):
+    """Writes covariance matrix to zarr file.
 
     P = number of pixels
 
-    :param netcdf_file_name: Path to output file.
-    :param covariance_matrix: P-by-P numpy array of covariance, where the [i, j]
-        element is the covariance between normalized Shapley value at the [i]th
-        pixel and normalized predictor value at the [j]th pixel.
+    :param zarr_file_name: Path to output file.
+    :param covariance_matrix: P-by-P numpy array of covariances, where the
+        [i, j] element is the covariance between normalized Shapley value at the
+        [i]th pixel and normalized predictor value at the [j]th pixel.
     """
 
-    file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
-    dataset_object = netCDF4.Dataset(netcdf_file_name, 'w', format='NETCDF4')
+    error_checking.assert_is_string(zarr_file_name)
+    if os.path.isdir(zarr_file_name):
+        shutil.rmtree(zarr_file_name)
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=zarr_file_name
+    )
 
     num_pixels = covariance_matrix.shape[0]
-    dataset_object.createDimension(SHAPLEY_PIXEL_DIM, num_pixels)
-    dataset_object.createDimension(PREDICTOR_PIXEL_DIM, num_pixels)
+    pixel_indices = numpy.linspace(0, num_pixels - 1, num=num_pixels, dtype=int)
 
-    dataset_object.createVariable(
-        COVARIANCE_KEY, datatype=numpy.float32,
-        dimensions=(SHAPLEY_PIXEL_DIM, PREDICTOR_PIXEL_DIM)
+    metadata_dict = {
+        SHAPLEY_PIXEL_DIM: pixel_indices,
+        PREDICTOR_PIXEL_DIM: pixel_indices
+    }
+    main_data_dict = {
+        COVARIANCE_KEY: (
+            (SHAPLEY_PIXEL_DIM, PREDICTOR_PIXEL_DIM),
+            covariance_matrix
+        )
+    }
+    covariance_table_xarray = xarray.Dataset(
+        data_vars=main_data_dict, coords=metadata_dict
     )
-    dataset_object.variables[COVARIANCE_KEY][:] = covariance_matrix
 
-    dataset_object.close()
+    covariance_table_xarray.to_zarr(
+        store=zarr_file_name, mode='w',
+        encoding={COVARIANCE_KEY: {'dtype': 'float32'}}
+    )
 
 
 def _run(shapley_file_names, spatial_coarsening_factor, output_file_name):
@@ -364,7 +308,7 @@ def _run(shapley_file_names, spatial_coarsening_factor, output_file_name):
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     _write_results(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         covariance_matrix=covariance_matrix
     )
 

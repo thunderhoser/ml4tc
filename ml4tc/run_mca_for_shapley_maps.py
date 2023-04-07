@@ -2,10 +2,10 @@
 
 import os
 import sys
+import shutil
 import argparse
 import numpy
 import xarray
-import netCDF4
 from sklearn.decomposition import IncrementalPCA
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -13,6 +13,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import error_checking
 import file_system_utils
 import saliency
 import get_shap_predictor_covariance_matrix as get_covar_matrix
@@ -52,8 +53,8 @@ COVARIANCE_FILE_HELP_STRING = (
     'exact same Shapley files.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Parameters of the fitted MCA will be written here '
-    'by `_write_mca_results`.'
+    'Path to output file (zarr format).  Parameters of the fitted MCA will be '
+    'written here by `_write_mca_results`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -71,18 +72,57 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
+def _read_covariance_matrix(covariance_file_name):
+    """Reads covariance matrix from NetCDF or (ideally) zarr file.
+
+    P = number of pixels
+
+    :param covariance_file_name: Path to input file.
+    :return: covariance_matrix: P-by-P numpy array of covariances, where the
+        [i, j] element is the covariance between normalized Shapley value at the
+        [i]th pixel and normalized predictor value at the [j]th pixel.
+    """
+
+    if (
+            covariance_file_name.endswith('.zarr')
+            and not os.path.isdir(covariance_file_name)
+    ):
+        covariance_file_name = '{0:s}.nc'.format(covariance_file_name[:-5])
+
+    if covariance_file_name.endswith('.zarr'):
+        return xarray.open_zarr(covariance_file_name)[
+            get_covar_matrix.COVARIANCE_KEY
+        ].values
+
+    if not covariance_file_name.endswith('.nc'):
+        return None
+
+    covariance_matrix = xarray.open_dataset(covariance_file_name)[
+        get_covar_matrix.COVARIANCE_KEY
+    ].values
+
+    zarr_file_name = '{0:s}.zarr'.format(covariance_file_name[:-3])
+
+    print('Writing covariance matrix to: "{0:s}"...'.format(zarr_file_name))
+    get_covar_matrix._write_results(
+        zarr_file_name=zarr_file_name, covariance_matrix=covariance_matrix
+    )
+
+    return covariance_matrix
+
+
 def _write_mca_results(
-        netcdf_file_name,
+        zarr_file_name,
         shapley_singular_value_matrix, predictor_singular_value_matrix,
         shapley_expansion_coeff_matrix, predictor_expansion_coeff_matrix,
         eigenvalues, regressed_shapley_matrix, regressed_predictor_matrix):
-    """Writes MCA results to NetCDF file.
+    """Writes MCA results to zarr file.
 
     P = number of principal components
     M = number of rows in grid
     N = number of columns in grid
 
-    :param netcdf_file_name: Path to output file.
+    :param zarr_file_name: Path to output file.
     :param shapley_singular_value_matrix: MN-by-P numpy array, where each column
         is a singular vector for the Shapley values.
     :param predictor_singular_value_matrix: MN-by-P numpy array, where each
@@ -98,76 +138,84 @@ def _write_mca_results(
         values regressed onto singular vectors.
     """
 
-    file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
-    dataset_object = netCDF4.Dataset(netcdf_file_name, 'w', format='NETCDF4')
+    error_checking.assert_is_string(zarr_file_name)
+    if os.path.isdir(zarr_file_name):
+        shutil.rmtree(zarr_file_name)
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=zarr_file_name
+    )
 
     num_principal_components = shapley_singular_value_matrix.shape[1]
     num_grid_rows = regressed_shapley_matrix.shape[1]
     num_grid_columns = regressed_shapley_matrix.shape[2]
     num_pixels = num_grid_rows * num_grid_columns
 
-    dataset_object.createDimension(
-        PRINCIPAL_COMPONENT_DIM, num_principal_components
+    pc_indices = numpy.linspace(
+        0, num_principal_components - 1, num=num_principal_components, dtype=int
     )
-    dataset_object.createDimension(GRID_ROW_DIM, num_grid_rows)
-    dataset_object.createDimension(GRID_COLUMN_DIM, num_grid_columns)
-    dataset_object.createDimension(PIXEL_DIM, num_pixels)
+    row_indices = numpy.linspace(
+        0, num_grid_rows - 1, num=num_grid_rows, dtype=int
+    )
+    column_indices = numpy.linspace(
+        0, num_grid_columns - 1, num=num_grid_columns, dtype=int
+    )
+    pixel_indices = numpy.linspace(0, num_pixels - 1, num=num_pixels, dtype=int)
 
-    dataset_object.createVariable(
-        SHAPLEY_SINGULAR_VALUE_KEY, datatype=numpy.float32,
-        dimensions=(PIXEL_DIM, PRINCIPAL_COMPONENT_DIM)
-    )
-    dataset_object.variables[SHAPLEY_SINGULAR_VALUE_KEY][:] = (
-        shapley_singular_value_matrix
-    )
+    metadata_dict = {
+        PRINCIPAL_COMPONENT_DIM: pc_indices,
+        GRID_ROW_DIM: row_indices,
+        GRID_COLUMN_DIM: column_indices,
+        PIXEL_DIM: pixel_indices
+    }
 
-    dataset_object.createVariable(
-        PREDICTOR_SINGULAR_VALUE_KEY, datatype=numpy.float32,
-        dimensions=(PIXEL_DIM, PRINCIPAL_COMPONENT_DIM)
-    )
-    dataset_object.variables[PREDICTOR_SINGULAR_VALUE_KEY][:] = (
-        predictor_singular_value_matrix
-    )
+    main_data_dict = {
+        SHAPLEY_SINGULAR_VALUE_KEY: (
+            (PIXEL_DIM, PRINCIPAL_COMPONENT_DIM),
+            shapley_singular_value_matrix
+        ),
+        PREDICTOR_SINGULAR_VALUE_KEY: (
+            (PIXEL_DIM, PRINCIPAL_COMPONENT_DIM),
+            predictor_singular_value_matrix
+        ),
+        SHAPLEY_EXPANSION_COEFF_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM),
+            shapley_expansion_coeff_matrix
+        ),
+        PREDICTOR_EXPANSION_COEFF_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM),
+            predictor_expansion_coeff_matrix
+        ),
+        EIGENVALUE_KEY: (
+            (PRINCIPAL_COMPONENT_DIM,),
+            eigenvalues
+        ),
+        REGRESSED_SHAPLEY_VALUE_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM),
+            regressed_shapley_matrix
+        ),
+        REGRESSED_PREDICTOR_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM),
+            regressed_predictor_matrix
+        )
+    }
 
-    dataset_object.createVariable(
-        SHAPLEY_EXPANSION_COEFF_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM)
-    )
-    dataset_object.variables[SHAPLEY_EXPANSION_COEFF_KEY][:] = (
-        shapley_expansion_coeff_matrix
-    )
-
-    dataset_object.createVariable(
-        PREDICTOR_EXPANSION_COEFF_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, PRINCIPAL_COMPONENT_DIM)
-    )
-    dataset_object.variables[PREDICTOR_EXPANSION_COEFF_KEY][:] = (
-        predictor_expansion_coeff_matrix
-    )
-
-    dataset_object.createVariable(
-        EIGENVALUE_KEY, datatype=numpy.float32,
-        dimensions=PRINCIPAL_COMPONENT_DIM
-    )
-    dataset_object.variables[EIGENVALUE_KEY][:] = eigenvalues
-
-    dataset_object.createVariable(
-        REGRESSED_SHAPLEY_VALUE_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM)
-    )
-    dataset_object.variables[REGRESSED_SHAPLEY_VALUE_KEY][:] = (
-        regressed_shapley_matrix
-    )
-
-    dataset_object.createVariable(
-        REGRESSED_PREDICTOR_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM)
-    )
-    dataset_object.variables[REGRESSED_PREDICTOR_KEY][:] = (
-        regressed_predictor_matrix
+    mca_table_xarray = xarray.Dataset(
+        data_vars=main_data_dict, coords=metadata_dict
     )
 
-    dataset_object.close()
+    encoding_dict = {
+        SHAPLEY_SINGULAR_VALUE_KEY: {'dtype': 'float32'},
+        PREDICTOR_SINGULAR_VALUE_KEY: {'dtype': 'float32'},
+        SHAPLEY_EXPANSION_COEFF_KEY: {'dtype': 'float32'},
+        PREDICTOR_EXPANSION_COEFF_KEY: {'dtype': 'float32'},
+        EIGENVALUE_KEY: {'dtype': 'float32'},
+        REGRESSED_SHAPLEY_VALUE_KEY: {'dtype': 'float32'},
+        REGRESSED_PREDICTOR_KEY: {'dtype': 'float32'}
+    }
+    mca_table_xarray.to_zarr(
+        store=zarr_file_name, mode='w', encoding=encoding_dict
+    )
 
 
 def _run(shapley_file_names, covariance_file_name, output_file_name):
@@ -181,9 +229,7 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
     """
 
     print('Reading data from: "{0:s}"...'.format(covariance_file_name))
-    covariance_table_xarray = xarray.open_dataset(covariance_file_name)
-    covariance_matrix = covariance_table_xarray[get_covar_matrix.COVARIANCE_KEY]
-
+    covariance_matrix = _read_covariance_matrix(covariance_file_name)
     num_covariance_pixels = covariance_matrix.shape[0]
 
     shapley_matrix = None
@@ -356,7 +402,7 @@ def _run(shapley_file_names, covariance_file_name, output_file_name):
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     _write_mca_results(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         shapley_singular_value_matrix=shapley_singular_value_matrix,
         predictor_singular_value_matrix=predictor_singular_value_matrix,
         shapley_expansion_coeff_matrix=shapley_expansion_coeff_matrix,

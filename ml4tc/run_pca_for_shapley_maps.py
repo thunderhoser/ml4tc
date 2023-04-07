@@ -2,9 +2,10 @@
 
 import os
 import sys
+import shutil
 import argparse
 import numpy
-import netCDF4
+import xarray
 from sklearn.decomposition import IncrementalPCA
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -46,8 +47,8 @@ NUM_EXAMPLES_HELP_STRING = (
     'Number of examples to keep, i.e., to use in fitting the PCA.'
 )
 OUTPUT_FILE_HELP_STRING = (
-    'Path to output file.  Parameters of the fitted PCA will be written here '
-    'by `_write_pca_results`.'
+    'Path to output file (zarr format).  Parameters of the fitted PCA will be '
+    'written here by `_write_pca_results`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -66,9 +67,9 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _write_pca_results(
-        netcdf_file_name, eof_matrix, eigenvalues, standardized_pc_matrix,
+        zarr_file_name, eof_matrix, eigenvalues, standardized_pc_matrix,
         regressed_shapley_matrix, regressed_predictor_matrix):
-    """Writes PCA results to NetCDF file.
+    """Writes PCA results to zarr file.
 
     E = number of data examples
     P = number of principal components
@@ -76,7 +77,7 @@ def _write_pca_results(
     N = number of columns in grid
     F = number of features = 2 * M * N
 
-    :param netcdf_file_name: Path to output file.
+    :param zarr_file_name: Path to output file.
     :param eof_matrix: F-by-P numpy array, where each column is an empirical
         orthogonal function.
     :param eigenvalues: length-P numpy array of eigenvalues.
@@ -89,8 +90,13 @@ def _write_pca_results(
         values regressed onto EOFs.
     """
 
-    file_system_utils.mkdir_recursive_if_necessary(file_name=netcdf_file_name)
-    dataset_object = netCDF4.Dataset(netcdf_file_name, 'w', format='NETCDF4')
+    error_checking.assert_is_string(zarr_file_name)
+    if os.path.isdir(zarr_file_name):
+        shutil.rmtree(zarr_file_name)
+
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=zarr_file_name
+    )
 
     num_examples = standardized_pc_matrix.shape[0]
     num_principal_components = standardized_pc_matrix.shape[1]
@@ -98,49 +104,67 @@ def _write_pca_results(
     num_grid_rows = regressed_shapley_matrix.shape[1]
     num_grid_columns = regressed_shapley_matrix.shape[2]
 
-    dataset_object.createDimension(EXAMPLE_DIM, num_examples)
-    dataset_object.createDimension(
-        PRINCIPAL_COMPONENT_DIM, num_principal_components
+    example_indices = numpy.linspace(
+        0, num_examples - 1, num=num_examples, dtype=int
     )
-    dataset_object.createDimension(FEATURE_DIM, num_features)
-    dataset_object.createDimension(GRID_ROW_DIM, num_grid_rows)
-    dataset_object.createDimension(GRID_COLUMN_DIM, num_grid_columns)
-
-    dataset_object.createVariable(
-        EOF_KEY, datatype=numpy.float32,
-        dimensions=(FEATURE_DIM, PRINCIPAL_COMPONENT_DIM)
+    pc_indices = numpy.linspace(
+        0, num_principal_components - 1, num=num_principal_components, dtype=int
     )
-    dataset_object.variables[EOF_KEY][:] = eof_matrix
-
-    dataset_object.createVariable(
-        EIGENVALUE_KEY, datatype=numpy.float32,
-        dimensions=PRINCIPAL_COMPONENT_DIM
+    feature_indices = numpy.linspace(
+        0, num_features - 1, num=num_features, dtype=int
     )
-    dataset_object.variables[EIGENVALUE_KEY][:] = eigenvalues
-
-    dataset_object.createVariable(
-        STANDARDIZED_PC_KEY, datatype=numpy.float32,
-        dimensions=(EXAMPLE_DIM, PRINCIPAL_COMPONENT_DIM)
+    row_indices = numpy.linspace(
+        0, num_grid_rows - 1, num=num_grid_rows, dtype=int
     )
-    dataset_object.variables[STANDARDIZED_PC_KEY][:] = standardized_pc_matrix
-
-    dataset_object.createVariable(
-        REGRESSED_SHAPLEY_VALUE_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM)
-    )
-    dataset_object.variables[REGRESSED_SHAPLEY_VALUE_KEY][:] = (
-        regressed_shapley_matrix
+    column_indices = numpy.linspace(
+        0, num_grid_columns - 1, num=num_grid_columns, dtype=int
     )
 
-    dataset_object.createVariable(
-        REGRESSED_PREDICTOR_KEY, datatype=numpy.float32,
-        dimensions=(PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM)
-    )
-    dataset_object.variables[REGRESSED_PREDICTOR_KEY][:] = (
-        regressed_predictor_matrix
+    metadata_dict = {
+        EXAMPLE_DIM: example_indices,
+        PRINCIPAL_COMPONENT_DIM: pc_indices,
+        FEATURE_DIM: feature_indices,
+        GRID_ROW_DIM: row_indices,
+        GRID_COLUMN_DIM: column_indices
+    }
+
+    main_data_dict = {
+        EOF_KEY: (
+            (FEATURE_DIM, PRINCIPAL_COMPONENT_DIM),
+            eof_matrix
+        ),
+        EIGENVALUE_KEY: (
+            (PRINCIPAL_COMPONENT_DIM,),
+            eigenvalues
+        ),
+        STANDARDIZED_PC_KEY: (
+            (EXAMPLE_DIM, PRINCIPAL_COMPONENT_DIM),
+            standardized_pc_matrix
+        ),
+        REGRESSED_SHAPLEY_VALUE_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM),
+            regressed_shapley_matrix
+        ),
+        REGRESSED_PREDICTOR_KEY: (
+            (PRINCIPAL_COMPONENT_DIM, GRID_ROW_DIM, GRID_COLUMN_DIM),
+            regressed_predictor_matrix
+        )
+    }
+
+    pca_table_xarray = xarray.Dataset(
+        data_vars=main_data_dict, coords=metadata_dict
     )
 
-    dataset_object.close()
+    encoding_dict = {
+        EOF_KEY: {'dtype': 'float32'},
+        EIGENVALUE_KEY: {'dtype': 'float32'},
+        STANDARDIZED_PC_KEY: {'dtype': 'float32'},
+        REGRESSED_SHAPLEY_VALUE_KEY: {'dtype': 'float32'},
+        REGRESSED_PREDICTOR_KEY: {'dtype': 'float32'}
+    }
+    pca_table_xarray.to_zarr(
+        store=zarr_file_name, mode='w', encoding=encoding_dict
+    )
 
 
 def _run(shapley_file_names, num_examples_to_keep, output_file_name):
@@ -283,7 +307,7 @@ def _run(shapley_file_names, num_examples_to_keep, output_file_name):
 
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     _write_pca_results(
-        netcdf_file_name=output_file_name,
+        zarr_file_name=output_file_name,
         eof_matrix=eof_matrix,
         eigenvalues=eigenvalues,
         standardized_pc_matrix=standardized_pc_matrix,
