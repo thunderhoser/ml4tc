@@ -85,6 +85,9 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     :return: covariance_matrix: S-by-P numpy array of covariances.
     """
 
+    assert not numpy.any(numpy.isnan(shapley_matrix))
+    assert not numpy.any(numpy.isnan(predictor_matrix))
+
     mean_norm_shapley_value_by_pixel = numpy.mean(shapley_matrix, axis=0)
     mean_norm_predictor_by_pixel = numpy.mean(predictor_matrix, axis=0)
 
@@ -111,8 +114,14 @@ def _get_covariance_matrix(shapley_matrix, predictor_matrix):
     print('Have computed all {0:d} covariances!'.format(
         num_shapley_pixels * num_predictor_pixels
     ))
-
     covariance_matrix = covariance_matrix / (num_examples - 1)
+
+    print('Number of NaN covariances = {0:d} of {1:d}'.format(
+        numpy.sum(numpy.isnan(covariance_matrix)),
+        covariance_matrix.size
+    ))
+    covariance_matrix[numpy.isnan(covariance_matrix)] = 0.
+
     return covariance_matrix
 
 

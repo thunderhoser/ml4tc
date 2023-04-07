@@ -1,20 +1,20 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="run_pca_for_shapley_maps_patch"
-#SBATCH --partition="bigmem"
-#SBATCH --account="gsd-hpcs"
+#SBATCH --job-name="run_mca_for_shapley_maps_patch"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=08:00:00
-#SBATCH --array=3-4,8-14
+#SBATCH --time=30:00:00
+#SBATCH --array=3-4,8-14,15,19,21,23,46-47
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=run_pca_for_shapley_maps_patch_%A_%a.out
+#SBATCH --output=run_mca_for_shapley_maps_patch_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -40,10 +40,11 @@ set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_
 set subset_name=${SUBSET_NAMES[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
-set input_file_name="${model_dir_name}/testing/by_intensity/shapley_maps_${subset_name}.nc"
-set output_file_name="${model_dir_name}/testing/by_intensity/shapley_maps_${subset_name}_pca.nc"
+set shapley_file_name="${model_dir_name}/testing/by_intensity/shapley_maps_${subset_name}.nc"
+set covariance_file_name="${model_dir_name}/testing/by_intensity/shapley_maps_${subset_name}_covariance.nc"
+set output_file_name="${model_dir_name}/testing/by_intensity/shapley_maps_${subset_name}_mca.nc"
 
-python3 -u "${CODE_DIR_NAME}/run_pca_for_shapley_maps.py" \
---input_shapley_file_names ${input_file_name} \
---num_examples_to_keep=1000000000 \
+python3 -u "${CODE_DIR_NAME}/run_mca_for_shapley_maps.py" \
+--input_shapley_file_names ${shapley_file_name} \
+--input_covariance_file_name="${covariance_file_name}" \
 --output_file_name="${output_file_name}"

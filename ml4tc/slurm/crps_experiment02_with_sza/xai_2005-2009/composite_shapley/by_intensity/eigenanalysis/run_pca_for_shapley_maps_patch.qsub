@@ -1,13 +1,13 @@
 #!/bin/tcsh
 
 #SBATCH --job-name="run_pca_for_shapley_maps_patch"
-#SBATCH --partition="bigmem"
-#SBATCH --account="gsd-hpcs"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=08:00:00
+#SBATCH --time=30:00:00
 #SBATCH --array=3-4,8-14
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
