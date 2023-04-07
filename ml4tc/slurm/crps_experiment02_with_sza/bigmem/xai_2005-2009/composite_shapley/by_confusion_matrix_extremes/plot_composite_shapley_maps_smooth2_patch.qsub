@@ -1,0 +1,52 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="plot_composite_shapley_maps_smooth2_patch"
+#SBATCH --partition="bigmem"
+#SBATCH --account="gsd-hpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=04:00:00
+#SBATCH --array=50-56
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=plot_composite_shapley_maps_smooth2_patch_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment02_with_sza"
+set NORMALIZATION_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/normalization_params_1993-2004_2015-2019.nc"
+
+set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100" "0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100")
+set THIRD_LAST_LAYER_DROPOUT_RATES=("0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500" "0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500")
+set SECOND_LAST_LAYER_DROPOUT_RATES=("0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300" "0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300")
+set SATELLITE_LAG_TIME_COUNTS=("1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1" "1" "2" "3" "3" "2" "1" "1")
+set SHIPS_FORECAST_PREDICTOR_COUNTS=("70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00" "70" "70" "70" "70" "00" "00" "00")
+set SATELLITE_USE_TEMPORAL_DIFF_FLAGS=("0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1" "0" "1" "0" "1" "0" "0" "1")
+set SUBSET_NAMES=("best_hits" "best_hits" "best_hits" "best_hits" "best_hits" "best_hits" "best_hits" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_false_alarms" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "worst_misses" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "best_correct_nulls" "high_prob" "high_prob" "high_prob" "high_prob" "high_prob" "high_prob" "high_prob" "low_prob" "low_prob" "low_prob" "low_prob" "low_prob" "low_prob" "low_prob" "positive_events" "positive_events" "positive_events" "positive_events" "positive_events" "positive_events" "positive_events" "negative_events" "negative_events" "negative_events" "negative_events" "negative_events" "negative_events" "negative_events")
+
+set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set satellite_lag_time_count=${SATELLITE_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set ships_forecast_predictor_count=${SHIPS_FORECAST_PREDICTOR_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set subset_name=${SUBSET_NAMES[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
+set input_file_name="${model_dir_name}/testing/by_confusion_matrix_extremes/composite_shapley_map_${subset_name}.nc"
+set output_dir_name="${model_dir_name}/testing/by_confusion_matrix_extremes/composite_shapley_map_${subset_name}/smoothing_radius_px=2"
+
+python3 -u "${CODE_DIR_NAME}/plot_composite_saliency_map.py" \
+--input_saliency_file_name="${input_file_name}" \
+--input_normalization_file_name="${NORMALIZATION_FILE_NAME}" \
+--plot_input_times_grad=1 \
+--smoothing_radius_px=2 \
+--output_dir_name="${output_dir_name}"
