@@ -16,6 +16,7 @@ from gewittergefahr.gg_utils import error_checking
 from ml4tc.plotting import plotting_utils
 from ml4tc.plotting import satellite_plotting
 from ml4tc.scripts import run_pca_for_shapley_maps as run_pca
+from ml4tc.scripts import run_mca_for_shapley_maps as run_mca
 
 TOLERANCE = 1e-10
 COLOUR_BAR_FONT_SIZE = 30
@@ -134,6 +135,70 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
+def _read_pca_or_mca_results(result_file_name):
+    """Reads results from NetCDF or (ideally) zarr file.
+
+    :param result_file_name: Path to file with PCA or MCA results.
+    :return: result_table_xarray: xarray table.
+    """
+
+    if result_file_name.endswith('zarr'):
+        return xarray.open_zarr(result_file_name)
+
+    if not result_file_name.endswith('.nc'):
+        return None
+
+    result_table_xarray = xarray.open_dataset(result_file_name)
+    results_are_for_mca = False
+
+    try:
+        _ = result_table_xarray[run_mca.SHAPLEY_EXPANSION_COEFF_KEY].values[
+            0, 0
+        ]
+        results_are_for_mca = True
+    except:
+        pass
+
+    zarr_file_name = '{0:s}.zarr'.format(result_file_name[:-3])
+
+    if results_are_for_mca:
+        print('Writing MCA results to: "{0:s}"...'.format(zarr_file_name))
+        rt = result_table_xarray
+
+        run_mca._write_mca_results(
+            zarr_file_name=zarr_file_name,
+            shapley_singular_value_matrix=
+            rt[run_mca.SHAPLEY_SINGULAR_VALUE_KEY].values,
+            predictor_singular_value_matrix=
+            rt[run_mca.PREDICTOR_SINGULAR_VALUE_KEY].values,
+            shapley_expansion_coeff_matrix=
+            rt[run_mca.SHAPLEY_EXPANSION_COEFF_KEY].values,
+            predictor_expansion_coeff_matrix=
+            rt[run_mca.PREDICTOR_EXPANSION_COEFF_KEY].values,
+            eigenvalues=rt[run_mca.EIGENVALUE_KEY].values,
+            regressed_shapley_matrix=
+            rt[run_mca.REGRESSED_SHAPLEY_VALUE_KEY].values,
+            regressed_predictor_matrix=
+            rt[run_mca.REGRESSED_PREDICTOR_KEY].values
+        )
+    else:
+        print('Writing PCA results to: "{0:s}"...'.format(zarr_file_name))
+        rt = result_table_xarray
+
+        run_pca._write_pca_results(
+            zarr_file_name=zarr_file_name,
+            eof_matrix=rt[run_pca.EOF_KEY].values,
+            eigenvalues=rt[run_pca.EIGENVALUE_KEY].values,
+            standardized_pc_matrix=rt[run_pca.STANDARDIZED_PC_KEY].values,
+            regressed_shapley_matrix=
+            rt[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values,
+            regressed_predictor_matrix=
+            rt[run_pca.REGRESSED_PREDICTOR_KEY].values
+        )
+
+    return result_table_xarray
+
+
 def _plot_one_mode(
         regressed_predictor_matrix, regressed_shapley_matrix, mode_index,
         explained_variance_fraction, shapley_colour_map_object,
@@ -174,12 +239,11 @@ def _plot_one_mode(
         -10, 10, num=regressed_shapley_matrix.shape[1], dtype=float
     )
 
-    predictor_min_colour_value = numpy.percentile(
-        regressed_predictor_matrix, predictor_min_colour_percentile
-    )
     predictor_max_colour_value = numpy.percentile(
-        regressed_predictor_matrix, predictor_max_colour_percentile
+        numpy.absolute(regressed_predictor_matrix),
+        predictor_max_colour_percentile
     )
+    predictor_min_colour_value = -1 * predictor_max_colour_value
     predictor_colour_norm_object = pyplot.Normalize(
         vmin=predictor_min_colour_value, vmax=predictor_max_colour_value
     )
@@ -325,8 +389,13 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             :num_modes_to_plot, ...
         ]
     )
+
     eigenvalues = result_table_xarray[run_pca.EIGENVALUE_KEY].values
     explained_variance_fractions = eigenvalues / numpy.sum(eigenvalues)
+    eigenvalues = eigenvalues[:num_modes_to_plot]
+    explained_variance_fractions = (
+        explained_variance_fractions[:num_modes_to_plot]
+    )
 
     del result_table_xarray
 
