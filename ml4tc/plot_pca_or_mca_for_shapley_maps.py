@@ -423,6 +423,9 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
 
     del result_table_xarray
 
+    num_modes_to_plot = min([
+        num_modes_to_plot, len(eigenvalues)
+    ])
     x_coords = numpy.linspace(
         1, num_modes_to_plot, num=num_modes_to_plot, dtype=float
     )
