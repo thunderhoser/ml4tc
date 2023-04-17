@@ -15,4 +15,4 @@
 #SBATCH --output=create_templates_%A.out
 
 set this_directory_name=`pwd`
-singularity exec --nv /scratch1/RDARCH/rda-ghpcs/Jebb.Q.Stewart/ml-ryan.simg /bin/sh -c "cd ${this_directory_name=}; sh create_templates.sh"
+singularity exec --nv /scratch1/RDARCH/rda-ghpcs/Jebb.Q.Stewart/ml-ryan.simg /bin/sh -c "cd ${this_directory_name}; sh create_templates.sh"
