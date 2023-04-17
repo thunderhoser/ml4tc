@@ -179,7 +179,9 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
         num_validation_batches_per_epoch=num_validation_batches_per_epoch,
         validation_option_dict=validation_option_dict,
         do_early_stopping=True,
-        plateau_lr_multiplier=plateau_lr_multiplier
+        plateau_lr_multiplier=plateau_lr_multiplier,
+        bnn_architecture_dict=
+        model_metadata_dict[neural_net.BNN_ARCHITECTURE_KEY]
     )
 
 
