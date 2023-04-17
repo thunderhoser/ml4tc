@@ -199,12 +199,13 @@ NUM_VALIDATION_BATCHES_KEY = 'num_validation_batches_per_epoch'
 VALIDATION_OPTIONS_KEY = 'validation_option_dict'
 EARLY_STOPPING_KEY = 'do_early_stopping'
 PLATEAU_LR_MUTIPLIER_KEY = 'plateau_lr_multiplier'
+BNN_ARCHITECTURE_KEY = 'bnn_architecture_dict'
 
 METADATA_KEYS = [
     NUM_EPOCHS_KEY, USE_CRPS_LOSS_KEY, QUANTILE_LEVELS_KEY,
     CENTRAL_LOSS_WEIGHT_KEY, NUM_TRAINING_BATCHES_KEY, TRAINING_OPTIONS_KEY,
     NUM_VALIDATION_BATCHES_KEY, VALIDATION_OPTIONS_KEY,
-    EARLY_STOPPING_KEY, PLATEAU_LR_MUTIPLIER_KEY
+    EARLY_STOPPING_KEY, PLATEAU_LR_MUTIPLIER_KEY, BNN_ARCHITECTURE_KEY
 ]
 
 
@@ -1671,7 +1672,8 @@ def _write_metafile(
         pickle_file_name, num_epochs, use_crps_loss, quantile_levels,
         central_loss_function_weight, num_training_batches_per_epoch,
         training_option_dict, num_validation_batches_per_epoch,
-        validation_option_dict, do_early_stopping, plateau_lr_multiplier):
+        validation_option_dict, do_early_stopping, plateau_lr_multiplier,
+        bnn_architecture_dict):
     """Writes metadata to Pickle file.
 
     :param pickle_file_name: Path to output file.
@@ -1685,6 +1687,7 @@ def _write_metafile(
     :param validation_option_dict: Same.
     :param do_early_stopping: Same.
     :param plateau_lr_multiplier: Same.
+    :param bnn_architecture_dict: Same.
     """
 
     metadata_dict = {
@@ -1697,7 +1700,8 @@ def _write_metafile(
         NUM_VALIDATION_BATCHES_KEY: num_validation_batches_per_epoch,
         VALIDATION_OPTIONS_KEY: validation_option_dict,
         EARLY_STOPPING_KEY: do_early_stopping,
-        PLATEAU_LR_MUTIPLIER_KEY: plateau_lr_multiplier
+        PLATEAU_LR_MUTIPLIER_KEY: plateau_lr_multiplier,
+        BNN_ARCHITECTURE_KEY: bnn_architecture_dict
     }
 
     file_system_utils.mkdir_recursive_if_necessary(file_name=pickle_file_name)
@@ -2047,6 +2051,7 @@ def read_metafile(pickle_file_name):
     metadata_dict['validation_option_dict']: Same.
     metadata_dict['do_early_stopping']: Same.
     metadata_dict['plateau_lr_multiplier']: Same.
+    metadata_dict['bnn_architecture_dict']: Same.
 
     :raises: ValueError: if any expected key is not found in dictionary.
     """
@@ -2063,6 +2068,8 @@ def read_metafile(pickle_file_name):
         metadata_dict[QUANTILE_LEVELS_KEY] = None
     if CENTRAL_LOSS_WEIGHT_KEY not in metadata_dict:
         metadata_dict[CENTRAL_LOSS_WEIGHT_KEY] = None
+    if BNN_ARCHITECTURE_KEY not in metadata_dict:
+        metadata_dict[BNN_ARCHITECTURE_KEY] = None
 
     training_option_dict = metadata_dict[TRAINING_OPTIONS_KEY]
     validation_option_dict = metadata_dict[VALIDATION_OPTIONS_KEY]
@@ -2788,7 +2795,8 @@ def train_model(
         model_object, output_dir_name, num_epochs,
         num_training_batches_per_epoch, training_option_dict,
         num_validation_batches_per_epoch, validation_option_dict,
-        use_crps_loss, do_early_stopping=True, quantile_levels=None,
+        use_crps_loss, bnn_architecture_dict,
+        do_early_stopping=True, quantile_levels=None,
         central_loss_function_weight=None,
         plateau_lr_multiplier=DEFAULT_LEARNING_RATE_MULTIPLIER):
     """Trains neural net.
@@ -2811,6 +2819,9 @@ def train_model(
     validation_option_dict['years']
 
     :param use_crps_loss: Boolean flag.  If True, using CRPS as a loss function.
+    :param bnn_architecture_dict: Dictionary with architecture options for
+        Bayesian neural network (BNN).  If the model being trained is not
+        Bayesian, make this None.
     :param do_early_stopping: Boolean flag.  If True, will stop training early
         if validation loss has not improved over last several epochs (see
         constants at top of file for what exactly this means).
@@ -2930,7 +2941,8 @@ def train_model(
         num_validation_batches_per_epoch=num_validation_batches_per_epoch,
         validation_option_dict=validation_option_dict,
         do_early_stopping=do_early_stopping,
-        plateau_lr_multiplier=plateau_lr_multiplier
+        plateau_lr_multiplier=plateau_lr_multiplier,
+        bnn_architecture_dict=bnn_architecture_dict
     )
 
     model_object.fit_generator(
@@ -2959,6 +2971,24 @@ def read_model(hdf5_file_name):
 
     quantile_levels = metadata_dict[QUANTILE_LEVELS_KEY]
     use_crps_loss = metadata_dict[USE_CRPS_LOSS_KEY]
+    bnn_architecture_dict = metadata_dict[BNN_ARCHITECTURE_KEY]
+
+    if bnn_architecture_dict is not None:
+        import cnn_architecture_bayesian
+
+        # TODO(thunderhoser): Calling `create_crps_model_ri` will not work if
+        # I introduce more methods to cnn_architecture_bayesian.py.
+        model_object = cnn_architecture_bayesian.create_crps_model_ri(
+            option_dict_gridded_sat=
+            bnn_architecture_dict['option_dict_gridded_sat'],
+            option_dict_ungridded_sat=
+            bnn_architecture_dict['option_dict_ungridded_sat'],
+            option_dict_ships=bnn_architecture_dict['option_dict_ships'],
+            option_dict_dense=bnn_architecture_dict['option_dict_dense']
+        )
+
+        model_object.load_weights(hdf5_file_name)
+        return model_object
 
     if quantile_levels is None and not use_crps_loss:
         return tf_keras.models.load_model(

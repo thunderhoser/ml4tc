@@ -85,6 +85,16 @@ DROPOUT_RATES_2D_LIST = [
     numpy.array([0.5, 0.1, 0.5, 0.3, 0.0])
 ]
 
+DROPOUT_RATE_ABBREVS = [
+    '0.700-0.700-0.500',
+    '0.900-0.500-0.300',
+    '0.300-0.300-0.900',
+    '0.500-0.500-0.100',
+    '0.300-0.500-0.900',
+    '0.900-0.100-0.500',
+    '0.100-0.500-0.300'
+]
+
 # LAYER_TYPE_STRINGS_2D_LIST = [
 #     [NO_UNC_STRING, NO_UNC_STRING, FLIPOUT_STRING],
 #     [NO_UNC_STRING, NO_UNC_STRING, REPARAM_STRING],
@@ -168,10 +178,6 @@ def _run():
                 LAYER_TYPE_STRINGS_2D_LIST[i]
             )
 
-            dropout_string = '-'.join([
-                '{0:.3f}'.format(d) for d in DROPOUT_RATES_2D_LIST[j]
-            ])
-
             model_object = bcnn_architecture.create_crps_model_ri(
                 option_dict_gridded_sat=OPTION_DICT_GRIDDED_SAT,
                 option_dict_ungridded_sat=None,
@@ -182,7 +188,7 @@ def _run():
             model_file_name = (
                 '{0:s}/layer-types={1:s}_dropout-rates={2:s}/model.h5'
             ).format(
-                OUTPUT_DIR_NAME, LAYER_TYPE_ABBREVS[i], dropout_string
+                OUTPUT_DIR_NAME, LAYER_TYPE_ABBREVS[i], DROPOUT_RATE_ABBREVS[j]
             )
 
             file_system_utils.mkdir_recursive_if_necessary(
@@ -218,7 +224,13 @@ def _run():
                 training_option_dict=dummy_option_dict,
                 num_validation_batches_per_epoch=100,
                 validation_option_dict=dummy_option_dict,
-                do_early_stopping=True, plateau_lr_multiplier=0.6
+                do_early_stopping=True, plateau_lr_multiplier=0.6,
+                bnn_architecture_dict={
+                    'option_dict_gridded_sat': OPTION_DICT_GRIDDED_SAT,
+                    'option_dict_ungridded_sat': None,
+                    'option_dict_ships': OPTION_DICT_SHIPS,
+                    'option_dict_dense': option_dict_dense
+                }
             )
 
 
