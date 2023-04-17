@@ -163,7 +163,7 @@ def _cumulative_sum_function(over_lead_times):
     return cumsum_function
 
 
-def _create_layers_gridded_sat(option_dict):
+def create_layers_gridded_sat(option_dict):
     """Creates layers for gridded satellite data.
 
     B = number of conv blocks
@@ -454,7 +454,7 @@ def create_basic_model_ri(
         option_dict_dense, loss_function, metric_functions):
     """Creates basic CNN (no quantile regression) for rapid intensification.
 
-    :param option_dict_gridded_sat: See doc for `_create_layers_gridded_sat`.
+    :param option_dict_gridded_sat: See doc for `create_layers_gridded_sat`.
         If you do not want to use gridded satellite data, make this None.
     :param option_dict_ungridded_sat: See doc for `create_dense_layers`.  If you
         do not want to use ungridded satellite data, make this None.
@@ -475,7 +475,7 @@ def create_basic_model_ri(
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -595,7 +595,7 @@ def create_qr_model_ri(
         option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -796,7 +796,7 @@ def create_qr_model_td_to_ts_old(
         option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -1068,7 +1068,7 @@ def create_qr_model_td_to_ts(
         option_dict_gridded_sat[DROPOUT_MC_FLAGS_KEY][:] = False
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -1256,7 +1256,7 @@ def create_basic_model_td_to_ts(
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -1430,7 +1430,7 @@ def create_crps_model_td_to_ts(
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
@@ -1598,7 +1598,7 @@ def create_crps_model_ri(
         option_dict_gridded_sat.update(option_dict_gridded_sat_orig)
 
         this_input_layer_object, this_flattening_layer_object = (
-            _create_layers_gridded_sat(option_dict_gridded_sat)
+            create_layers_gridded_sat(option_dict_gridded_sat)
         )
 
         input_layer_objects.append(this_input_layer_object)
