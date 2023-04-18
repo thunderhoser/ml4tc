@@ -67,7 +67,7 @@ BASE_OPTION_DICT_DENSE = {
     bcnn_architecture.OUTPUT_ACTIV_FUNCTION_ALPHA_KEY: 0.,
     bcnn_architecture.USE_BATCH_NORM_KEY: True,
     bcnn_architecture.LAST_DROPOUT_BEFORE_ACTIV_KEY: True,
-    bcnn_architecture.KL_SCALING_FACTOR_KEY: 1. / 128,
+    bcnn_architecture.KL_SCALING_FACTOR_KEY: 1. / 4096,
     # bcnn_architecture.LAYER_TYPES_KEY: [
     #     NO_UNC_STRING, NO_UNC_STRING,
     #     FLIPOUT_STRING, FLIPOUT_STRING, FLIPOUT_STRING
