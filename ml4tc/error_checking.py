@@ -309,8 +309,12 @@ def assert_is_real_numpy_array(input_variable):
     """
 
     assert_is_numpy_array(input_variable)
-    if not (numpy.issubdtype(input_variable.dtype, int) or numpy.issubdtype(
-            input_variable.dtype, float)):
+
+    if not (
+            numpy.issubdtype(input_variable.dtype, int)
+            or numpy.issubdtype(input_variable.dtype, float)
+            or 'float' in str(input_variable.dtype)
+    ):
         error_string = (
             '\n' + str(input_variable) +
             '\nInput array (shown above) has type "' +
