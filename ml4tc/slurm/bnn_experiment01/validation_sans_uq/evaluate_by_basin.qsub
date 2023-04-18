@@ -1,0 +1,51 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="evaluate_by_basin"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=00:30:00
+#SBATCH --array=1-7
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=evaluate_by_basin_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/bnn_experiment01"
+
+# set DROPOUT_RATE_ABBREVS=("0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300")
+# set LAYER_TYPE_ABBREVS=("point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam")
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/layer-types=${LAYER_TYPE_ABBREVS[$SLURM_ARRAY_TASK_ID]}_dropout-rates=${DROPOUT_RATE_ABBREVS[$SLURM_ARRAY_TASK_ID]}"
+set prediction_dir_name="${model_dir_name}/validation"
+
+set BASIN_ID_STRINGS=("AL" "SL" "EP" "CP" "WP" "IO" "SH")
+set i=1
+
+while ($i <= ${#BASIN_ID_STRINGS})
+    set this_input_file_name="${prediction_dir_name}/predictions_basin-id-string=${BASIN_ID_STRINGS[$i]}.nc"
+    
+    if (-e "$this_input_file_name") then
+        set this_output_file_name="${prediction_dir_name}/evaluation_basin-id-string=${BASIN_ID_STRINGS[$i]}.nc"
+
+        python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
+        --input_prediction_file_name="${this_input_file_name}" \
+        --event_freq_in_training=0.07267640234 \
+        --num_prob_thresholds=1001 \
+        --num_reliability_bins=20 \
+        --num_bootstrap_reps=1 \
+        --output_eval_file_name="${this_output_file_name}"
+    endif
+    
+    @ i = $i + 1
+end
