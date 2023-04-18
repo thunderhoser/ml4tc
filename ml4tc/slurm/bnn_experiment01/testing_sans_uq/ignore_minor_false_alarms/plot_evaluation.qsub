@@ -21,23 +21,12 @@ source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
-set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/crps_experiment02_with_sza"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/bnn_experiment01"
 
-set FOURTH_LAST_LAYER_DROPOUT_RATES=("0.900" "0.900" "0.500" "0.300" "0.500" "0.500" "0.100")
-set THIRD_LAST_LAYER_DROPOUT_RATES=("0.500" "0.100" "0.500" "0.500" "0.500" "0.500" "0.500")
-set SECOND_LAST_LAYER_DROPOUT_RATES=("0.300" "0.500" "0.100" "0.900" "0.100" "0.100" "0.300")
-set SATELLITE_LAG_TIME_COUNTS=("1" "2" "3" "3" "2" "1" "1")
-set SHIPS_FORECAST_PREDICTOR_COUNTS=("70" "70" "70" "70" "00" "00" "00")
-set SATELLITE_USE_TEMPORAL_DIFF_FLAGS=("0" "1" "0" "1" "0" "0" "1")
+# set DROPOUT_RATE_ABBREVS=("0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300" "0.700-0.700-0.500" "0.900-0.500-0.300" "0.300-0.300-0.900" "0.500-0.500-0.100" "0.300-0.500-0.900" "0.900-0.100-0.500" "0.100-0.500-0.300")
+# set LAYER_TYPE_ABBREVS=("point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam")
 
-set fourth_last_layer_dropout_rate=${FOURTH_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
-set third_last_layer_dropout_rate=${THIRD_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
-set second_last_layer_dropout_rate=${SECOND_LAST_LAYER_DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
-set satellite_lag_time_count=${SATELLITE_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
-set ships_forecast_predictor_count=${SHIPS_FORECAST_PREDICTOR_COUNTS[$SLURM_ARRAY_TASK_ID]}
-set satellite_use_temporal_diff_flag=${SATELLITE_USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
-
-set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_num-satellite-lag-times=${satellite_lag_time_count}_num-ships-forecast-predictors=${ships_forecast_predictor_count}_satellite-use-temporal_diffs=${satellite_use_temporal_diff_flag}"
+set model_dir_name="${TOP_MODEL_DIR_NAME}/layer-types=${LAYER_TYPE_ABBREVS[$SLURM_ARRAY_TASK_ID]}_dropout-rates=${DROPOUT_RATE_ABBREVS[$SLURM_ARRAY_TASK_ID]}"
 set input_file_name="${model_dir_name}/testing/evaluation_ignore-minor-false-alarms.nc"
 set output_dir_name="${model_dir_name}/testing/evaluation_ignore-minor-false-alarms"
 
