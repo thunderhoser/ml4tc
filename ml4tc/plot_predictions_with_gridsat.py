@@ -23,7 +23,7 @@ import longitude_conversion as lng_conversion
 import number_rounding
 import file_system_utils
 import error_checking
-import imagemagick_utils
+from gewittergefahr.plotting import imagemagick_utils
 import prediction_io
 import border_io
 import general_utils
@@ -410,11 +410,17 @@ def _plot_predictions_with_violin(
     legend_handles.append(violin_handles['bodies'][0])
     legend_strings.append('Forecast distribution')
 
-    this_handle = axes_object.plot(
-        lead_times_hours + numpy.array([-0.5, 0.5]),
-        mean_forecast_probs + numpy.array([0, 0]),
-        color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
-    )[0]
+    if len(lead_times_hours) == 0:
+        this_handle = axes_object.plot(
+            lead_times_hours[0] + numpy.array([-0.5, 0.5]),
+            mean_forecast_probs[0] + numpy.array([0, 0]),
+            color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
+        )[0]
+    else:
+        this_handle = axes_object.plot(
+            lead_times_hours, mean_forecast_probs,
+            color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
+        )[0]
 
     legend_handles.append(this_handle)
     legend_strings.append('Mean forecast')
