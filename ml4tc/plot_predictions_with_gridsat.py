@@ -300,6 +300,43 @@ def _plot_predictions_with_violin(
     :param output_file_name: See doc for `_plot_predictions_no_violin`.
     """
 
+    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
+
+    if example_index == -1:
+        figure_object, axes_object = pyplot.subplots(
+            1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+        )
+
+        axes_object.text(
+            0.5, 0.5,
+            'No {0:s}s at this time'.format('TD' if predict_td_to_ts else 'TC'),
+            color=numpy.full(3, 0.),
+            horizontalalignment='center', verticalalignment='center',
+            transform=axes_object.transAxes
+        )
+
+        axes_object.set_ylabel(
+            'TD-to-TS probability' if predict_td_to_ts else 'RI probability'
+        )
+        axes_object.set_xlabel('Lead time (hours)')
+        axes_object.set_ylim(0, 1)
+
+        if predict_td_to_ts:
+            axes_object.set_xlim(0, numpy.max(lead_times_hours))
+        else:
+            axes_object.set_xlim(
+                lead_times_hours[0] - 3, lead_times_hours[0] + 3
+            )
+
+        print('Saving figure to file: "{0:s}"...'.format(output_file_name))
+        figure_object.savefig(
+            output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+            pad_inches=0, bbox_inches='tight'
+        )
+        pyplot.close(figure_object)
+
+        return
+
     target_classes = (
         prediction_dict[prediction_io.TARGET_MATRIX_KEY][example_index, :]
     )
@@ -307,7 +344,6 @@ def _plot_predictions_with_violin(
         prediction_io.PROBABILITY_MATRIX_KEY
     ][example_index, 1, ...]
 
-    lead_times_hours = prediction_dict[prediction_io.LEAD_TIMES_KEY]
     quantile_levels = prediction_dict[prediction_io.QUANTILE_LEVELS_KEY]
 
     if quantile_levels is None:
@@ -349,75 +385,66 @@ def _plot_predictions_with_violin(
     legend_handles = []
     legend_strings = []
 
-    if example_index > -1:
-        violin_handles = axes_object.violinplot(
-            numpy.transpose(all_forecast_prob_matrix),
-            positions=lead_times_hours,
-            vert=True, widths=4.8, showmeans=False, showmedians=False,
-            showextrema=True
-        )
+    violin_handles = axes_object.violinplot(
+        numpy.transpose(all_forecast_prob_matrix),
+        positions=lead_times_hours,
+        vert=True, widths=4.8, showmeans=False, showmedians=False,
+        showextrema=True
+    )
 
-        for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
-            try:
-                this_handle = violin_handles[part_name]
-            except:
-                continue
+    for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
+        try:
+            this_handle = violin_handles[part_name]
+        except:
+            continue
 
-            this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
-            this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
+        this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
+        this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
 
-        for this_handle in violin_handles['bodies']:
-            this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
-            this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
-            this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
-            this_handle.set_alpha(1.)
+    for this_handle in violin_handles['bodies']:
+        this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
+        this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
+        this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
+        this_handle.set_alpha(1.)
 
-        legend_handles.append(violin_handles['bodies'][0])
-        legend_strings.append('Forecast distribution')
+    legend_handles.append(violin_handles['bodies'][0])
+    legend_strings.append('Forecast distribution')
 
-        this_handle = axes_object.plot(
-            lead_times_hours + numpy.array([-0.5, 0.5]),
-            mean_forecast_probs + numpy.array([0, 0]),
-            color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
-        )[0]
+    this_handle = axes_object.plot(
+        lead_times_hours + numpy.array([-0.5, 0.5]),
+        mean_forecast_probs + numpy.array([0, 0]),
+        color=MEAN_COLOUR, linestyle='solid', linewidth=LINE_WIDTH
+    )[0]
 
-        legend_handles.append(this_handle)
-        legend_strings.append('Mean forecast')
+    legend_handles.append(this_handle)
+    legend_strings.append('Mean forecast')
 
-        title_string = 'Forecast for storm {0:s}'.format(
-            prediction_dict[prediction_io.CYCLONE_IDS_KEY][example_index][-2:]
-        )
-        axes_object.set_title(title_string)
+    title_string = 'Forecast for storm {0:s}'.format(
+        prediction_dict[prediction_io.CYCLONE_IDS_KEY][example_index][-2:]
+    )
+    axes_object.set_title(title_string)
 
-        positive_indices = numpy.where(target_classes == 1)[0]
-        this_handle = axes_object.plot(
-            lead_times_hours[positive_indices],
-            mean_forecast_probs[positive_indices],
-            linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
-            markersize=POSITIVE_CLASS_MARKER_SIZE, markeredgewidth=0,
-            markerfacecolor=numpy.full(3, 0.),
-            markeredgecolor=numpy.full(3, 0.)
-        )[0]
+    positive_indices = numpy.where(target_classes == 1)[0]
+    this_handle = axes_object.plot(
+        lead_times_hours[positive_indices],
+        mean_forecast_probs[positive_indices],
+        linestyle='None', marker=POSITIVE_CLASS_MARKER_TYPE,
+        markersize=POSITIVE_CLASS_MARKER_SIZE, markeredgewidth=0,
+        markerfacecolor=numpy.full(3, 0.),
+        markeredgecolor=numpy.full(3, 0.)
+    )[0]
 
-        legend_handles.append(this_handle)
-        legend_strings.append(
-            'TD-to-TS observed' if predict_td_to_ts else 'RI observed'
-        )
+    legend_handles.append(this_handle)
+    legend_strings.append(
+        'TD-to-TS observed' if predict_td_to_ts else 'RI observed'
+    )
 
-        axes_object.legend(
-            legend_handles, legend_strings,
-            loc='top right', bbox_to_anchor=(0.95, 0.95),
-            fancybox=True, shadow=False,
-            facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
-        )
-    else:
-        axes_object.text(
-            0.5, 0.5,
-            'No {0:s}s at this time'.format('TD' if predict_td_to_ts else 'TC'),
-            color=numpy.full(3, 0.),
-            horizontalalignment='center', verticalalignment='center',
-            transform=axes_object.transAxes
-        )
+    axes_object.legend(
+        legend_handles, legend_strings,
+        loc='top right', bbox_to_anchor=(0.95, 0.95),
+        fancybox=True, shadow=False,
+        facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
+    )
 
     axes_object.set_ylabel(
         'TD-to-TS probability' if predict_td_to_ts else 'RI probability'
