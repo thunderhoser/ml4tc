@@ -269,6 +269,12 @@ def _read_gridsat_file(
         brightness_temp_matrix_kelvins[:, good_indices]
     )
 
+    sort_indices = numpy.argsort(grid_longitudes_deg_e)
+    grid_longitudes_deg_e = grid_longitudes_deg_e[sort_indices]
+    brightness_temp_matrix_kelvins = (
+        brightness_temp_matrix_kelvins[:, sort_indices]
+    )
+
     return (
         brightness_temp_matrix_kelvins,
         grid_latitudes_deg_n,
