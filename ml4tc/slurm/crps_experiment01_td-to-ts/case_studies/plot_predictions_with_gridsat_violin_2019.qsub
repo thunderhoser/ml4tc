@@ -40,7 +40,7 @@ set last_init_time_string=${LAST_INIT_TIME_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_west-pacific-weight=${west_pacific_weight}"
 set model_metafile_name="${model_dir_name}/model_metadata.p"
-set prediction_file_name="${model_dir_name}/validation/predictions.nc"
+set prediction_file_name="${model_dir_name}/training_2019/predictions.nc"
 set output_dir_name="${model_dir_name}/case_studies_with_gridsat/violin_plots"
 
 python3 -u "${CODE_DIR_NAME}/plot_predictions_with_gridsat.py" \

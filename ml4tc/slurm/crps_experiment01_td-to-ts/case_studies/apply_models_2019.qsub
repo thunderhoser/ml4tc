@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="apply_models"
+#SBATCH --job-name="apply_models_2019"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,7 +14,7 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=apply_models_%A_%a.out
+#SBATCH --output=apply_models_2019_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -36,10 +36,10 @@ set west_pacific_weight=${WEST_PACIFIC_WEIGHTS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/dropout-rates=${fourth_last_layer_dropout_rate}-${third_last_layer_dropout_rate}-${second_last_layer_dropout_rate}_west-pacific-weight=${west_pacific_weight}"
 set model_file_name="${model_dir_name}/model.h5"
-set output_dir_name="${model_dir_name}/validation"
+set output_dir_name="${model_dir_name}/training_2019"
 
 python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
 --input_model_file_name="${model_file_name}" \
 --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
---years 2005 2006 2007 2008 2009 \
+--years 2019 \
 --output_dir_name="${output_dir_name}"
