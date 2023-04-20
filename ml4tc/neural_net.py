@@ -2987,6 +2987,8 @@ def read_model(hdf5_file_name):
             option_dict_dense=bnn_architecture_dict['option_dict_dense']
         )
 
+        print(bnn_architecture_dict['option_dict_dense'])
+
         model_object.load_weights(hdf5_file_name)
         return model_object
 
