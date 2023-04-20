@@ -1,0 +1,33 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="apply_models"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=00:30:00
+#SBATCH --array=1-42
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=apply_models_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set EXAMPLE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/bnn_experiment02_scaling"
+
+set KL_SCALING_FACTORS=("0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278" "0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278" "0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278" "0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278" "0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278" "0.000000003162" "0.000000010000" "0.000000031623" "0.000000100000" "0.000000316228" "0.000001000000" "0.000003162278")
+set LAYER_TYPE_ABBREVS=("point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-flipout" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-point-reparam" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-flipout-flipout" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "point-reparam-reparam" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "flipout-flipout-flipout" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam" "reparam-reparam-reparam")
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/layer-types=${LAYER_TYPE_ABBREVS[$SLURM_ARRAY_TASK_ID]}_kl-scaling-factor=${KL_SCALING_FACTORS[$SLURM_ARRAY_TASK_ID]}"
+
+set this_directory_name=`pwd`
+singularity exec --nv /scratch1/RDARCH/rda-ghpcs/Jebb.Q.Stewart/ml-ryan.simg /bin/sh -c "cd ${this_directory_name}; sh apply_model.sh ${model_dir_name}"
