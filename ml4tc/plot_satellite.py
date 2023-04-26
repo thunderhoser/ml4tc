@@ -25,6 +25,10 @@ import satellite_plotting
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 
+IMAGE_CENTER_MARKER = 'o'
+IMAGE_CENTER_MARKER_COLOUR = numpy.full(3, 0.)
+IMAGE_CENTER_MARKER_SIZE = 9
+
 DEFAULT_FONT_SIZE = 20
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 15
@@ -42,6 +46,7 @@ SATELLITE_FILE_ARG_NAME = 'input_satellite_file_name'
 VALID_TIMES_ARG_NAME = 'valid_time_strings'
 FIRST_TIME_ARG_NAME = 'first_time_string'
 LAST_TIME_ARG_NAME = 'last_time_string'
+PLOT_CENTER_MARKER_ARG_NAME = 'plot_center_marker'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 SATELLITE_FILE_HELP_STRING = (
@@ -62,6 +67,9 @@ LAST_TIME_HELP_STRING = (
     '"yyyy-mm-dd-HHMMSS").'
 ).format(VALID_TIMES_ARG_NAME)
 
+PLOT_CENTER_MARKER_HELP_STRING = (
+    'Boolean flag.  If 1, will plot marker at image center.'
+)
 OUTPUT_DIR_HELP_STRING = 'Name of output directory.  Images will be saved here.'
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -82,6 +90,10 @@ INPUT_ARG_PARSER.add_argument(
     help=LAST_TIME_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_CENTER_MARKER_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_CENTER_MARKER_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
     help=OUTPUT_DIR_HELP_STRING
 )
@@ -89,7 +101,7 @@ INPUT_ARG_PARSER.add_argument(
 
 def plot_one_satellite_image(
         satellite_table_xarray, time_index, border_latitudes_deg_n,
-        border_longitudes_deg_e, output_dir_name,
+        border_longitudes_deg_e, plot_center_marker, output_dir_name,
         cbar_orientation_string='vertical', info_string=None,
         plot_motion_arrow=False, plotting_diffs=False):
     """Plots one satellite image.
@@ -101,6 +113,7 @@ def plot_one_satellite_image(
     :param time_index: Index of time to plot.
     :param border_latitudes_deg_n: length-P numpy array of latitudes (deg N).
     :param border_longitudes_deg_e: length-P numpy array of longitudes (deg E).
+    :param plot_center_marker: See documentation at top of file.
     :param cbar_orientation_string: See doc for
         `satellite_plotting.plot_2d_grid`.
     :param output_dir_name: Name of output directory.  Image will be saved here.
@@ -153,6 +166,16 @@ def plot_one_satellite_image(
         meridian_spacing_deg=2., font_size=DEFAULT_FONT_SIZE
     )
 
+    if plot_center_marker:
+        axes_object.plot(
+            0.5, 0.5, linestyle='None',
+            marker=IMAGE_CENTER_MARKER, markersize=IMAGE_CENTER_MARKER_SIZE,
+            markerfacecolor=IMAGE_CENTER_MARKER_COLOUR,
+            markeredgecolor=IMAGE_CENTER_MARKER_COLOUR,
+            markeredgewidth=0,
+            transform=axes_object.transAxes, zorder=1e10
+        )
+
     valid_time_unix_sec = (
         t.coords[satellite_utils.TIME_DIM].values[time_index]
     )
@@ -194,7 +217,7 @@ def plot_one_satellite_image(
 
 
 def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
-         last_valid_time_string, output_dir_name):
+         last_valid_time_string, plot_center_marker, output_dir_name):
     """Plots satellite images for one cyclone at the given times.
 
     This is effectively the main method.
@@ -203,6 +226,7 @@ def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
     :param valid_time_strings: Same.
     :param first_valid_time_string: Same.
     :param last_valid_time_string: Same.
+    :param plot_center_marker: Same.
     :param output_dir_name: Same.
     :raises: ValueError: if desired times cannot be found.
     """
@@ -243,6 +267,7 @@ def _run(satellite_file_name, valid_time_strings, first_valid_time_string,
             satellite_table_xarray=satellite_table_xarray, time_index=i,
             border_latitudes_deg_n=border_latitudes_deg_n,
             border_longitudes_deg_e=border_longitudes_deg_e,
+            plot_center_marker=plot_center_marker,
             cbar_orientation_string='vertical',
             output_dir_name=output_dir_name
         )
@@ -258,5 +283,8 @@ if __name__ == '__main__':
         valid_time_strings=getattr(INPUT_ARG_OBJECT, VALID_TIMES_ARG_NAME),
         first_valid_time_string=getattr(INPUT_ARG_OBJECT, FIRST_TIME_ARG_NAME),
         last_valid_time_string=getattr(INPUT_ARG_OBJECT, LAST_TIME_ARG_NAME),
+        plot_center_marker=bool(
+            getattr(INPUT_ARG_OBJECT, PLOT_CENTER_MARKER_ARG_NAME)
+        ),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
