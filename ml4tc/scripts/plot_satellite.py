@@ -215,8 +215,8 @@ def plot_one_satellite_image(
         )
 
         label_string = (
-                '{0:.4f}'.format(center_latitude_deg_n) + r' $^{\circ}$N' +
-                '\n{0:.4f}'.format(center_longitude_deg_e) + r' $^{\circ}$E'
+            '{0:.4f}'.format(center_latitude_deg_n) + r' $^{\circ}$N' +
+            '\n{0:.4f}'.format(center_longitude_deg_e) + r' $^{\circ}$E'
         )
         axes_object.text(
             0.55, 0.5, label_string, color=numpy.full(3, 0.),
