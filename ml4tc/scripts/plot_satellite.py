@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import time_conversion
+from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from ml4tc.io import satellite_io
 from ml4tc.io import border_io
@@ -20,6 +21,14 @@ TIME_FORMAT = '%Y-%m-%d-%H%M%S'
 IMAGE_CENTER_MARKER = 'o'
 IMAGE_CENTER_MARKER_COLOUR = numpy.full(3, 0.)
 IMAGE_CENTER_MARKER_SIZE = 9
+
+IMAGE_CENTER_LABEL_FONT_SIZE = 32
+IMAGE_CENTER_LABEL_BBOX_DICT = {
+    'alpha': 0.5,
+    'edgecolor': numpy.full(3, 0.),
+    'linewidth': 1,
+    'facecolor': numpy.full(3, 1.)
+}
 
 DEFAULT_FONT_SIZE = 20
 FIGURE_RESOLUTION_DPI = 300
@@ -124,11 +133,48 @@ def plot_one_satellite_image(
     """
 
     t = satellite_table_xarray
+
     grid_latitudes_deg_n = (
         t[satellite_utils.GRID_LATITUDE_KEY].values[time_index, ...]
     )
+    num_grid_rows = len(grid_latitudes_deg_n)
+
+    if numpy.mod(num_grid_rows, 2) == 0:
+        i_start = int(numpy.round(
+            float(num_grid_rows) / 2
+        ))
+        i_end = i_start + 2
+    else:
+        i_start = int(numpy.floor(
+            float(num_grid_rows) / 2
+        ))
+        i_end = i_start + 1
+
+    center_latitude_deg_n = numpy.mean(grid_latitudes_deg_n[i_start:i_end])
+
     grid_longitudes_deg_e = (
         t[satellite_utils.GRID_LONGITUDE_KEY].values[time_index, ...]
+    )
+    num_grid_columns = len(grid_longitudes_deg_e)
+
+    if numpy.mod(num_grid_columns, 2) == 0:
+        j_start = int(numpy.round(
+            float(num_grid_columns) / 2
+        ))
+        j_end = j_start + 2
+    else:
+        j_start = int(numpy.floor(
+            float(num_grid_columns) / 2
+        ))
+        j_end = j_start + 1
+
+    # TODO(thunderhoser): Does not handle wrap-around issue at International
+    # Date Line.
+    center_longitude_deg_e = numpy.mean(
+        grid_longitudes_deg_e[j_start:j_end]
+    )
+    center_longitude_deg_e = lng_conversion.convert_lng_negative_in_west(
+        center_longitude_deg_e
     )
 
     figure_object, axes_object = pyplot.subplots(
@@ -165,6 +211,18 @@ def plot_one_satellite_image(
             markerfacecolor=IMAGE_CENTER_MARKER_COLOUR,
             markeredgecolor=IMAGE_CENTER_MARKER_COLOUR,
             markeredgewidth=0,
+            transform=axes_object.transAxes, zorder=1e10
+        )
+
+        label_string = (
+                '{0:.4f}'.format(center_latitude_deg_n) + r' $^{\circ}$N' +
+                '\n{0:.4f}'.format(center_longitude_deg_e) + r' $^{\circ}$E'
+        )
+        axes_object.text(
+            0.55, 0.5, label_string, color=numpy.full(3, 0.),
+            fontsize=IMAGE_CENTER_LABEL_FONT_SIZE,
+            bbox=IMAGE_CENTER_LABEL_BBOX_DICT,
+            horizontalalignment='left', verticalalignment='center',
             transform=axes_object.transAxes, zorder=1e10
         )
 

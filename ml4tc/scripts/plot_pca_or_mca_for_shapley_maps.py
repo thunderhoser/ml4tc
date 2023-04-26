@@ -390,7 +390,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
 
     # Do actual stuff.
     print('Reading data from: "{0:s}"...'.format(input_file_name))
-    result_table_xarray = xarray.open_dataset(input_file_name)
+    result_table_xarray = _read_pca_or_mca_results(input_file_name)
 
     num_examples = (
         result_table_xarray[run_pca.REGRESSED_SHAPLEY_VALUE_KEY].values.shape[0]
@@ -416,6 +416,9 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
 
     del result_table_xarray
 
+    num_modes_to_plot = min([
+        num_modes_to_plot, len(eigenvalues)
+    ])
     x_coords = numpy.linspace(
         1, num_modes_to_plot, num=num_modes_to_plot, dtype=float
     )

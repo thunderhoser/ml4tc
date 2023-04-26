@@ -440,7 +440,7 @@ def _plot_predictions_with_violin(
 
     axes_object.legend(
         legend_handles, legend_strings,
-        loc='top right', bbox_to_anchor=(0.95, 0.95),
+        loc='center', bbox_to_anchor=(0.5, 0.5),
         fancybox=True, shadow=False,
         facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
     )
@@ -587,7 +587,7 @@ def _plot_predictions_no_violin(
     if len(example_indices) > 0:
         axes_object.legend(
             legend_handles, legend_strings,
-            loc='top right', bbox_to_anchor=(0.95, 0.95),
+            loc='center', bbox_to_anchor=(0.5, 0.5),
             fancybox=True, shadow=False,
             facecolor='white', edgecolor='k', framealpha=0.5, ncol=1
         )
