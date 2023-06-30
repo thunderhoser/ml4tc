@@ -614,7 +614,8 @@ def replace_ships_intensities_with_ebtrk(ships_table_xarray,
 
         if len(these_indices) == 0:
             error_string = (
-                'Cannot find cyclone object ({0:s} at {1:s}) in EBTRK data.'
+                'ERROR: Cannot find cyclone object ({0:s} at {1:s}) in EBTRK '
+                'data.'
             ).format(
                 ships_cyclone_id_strings[i],
                 time_conversion.unix_sec_to_string(
@@ -622,7 +623,9 @@ def replace_ships_intensities_with_ebtrk(ships_table_xarray,
                 )
             )
 
-            raise ValueError(error_string)
+            print(error_string)
+            warnings.warn(error_string)
+            continue
 
         if len(these_indices) > 1:
             these_intensities_m_s01 = ebtrk_tbl[
