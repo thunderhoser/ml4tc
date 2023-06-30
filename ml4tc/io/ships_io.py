@@ -5,12 +5,20 @@ SHIPS = Statistical Hurricane-intensity-prediction Scheme
 
 import os
 import glob
+import warnings
+import numpy
 import xarray
+from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.gg_utils import error_checking
 from ml4tc.utils import satellite_utils
+from ml4tc.utils import extended_best_track_utils as ebtrk_utils
 
 TOLERANCE = 1e-6
+
+HOURS_TO_SECONDS = 3600
+METRES_PER_SECOND_TO_KT = 3.6 / 1.852
+
 GZIP_FILE_EXTENSION = '.gz'
 CYCLONE_ID_REGEX = '[0-9][0-9][0-9][0-9][A-Z][A-Z][0-9][0-9]'
 
@@ -564,3 +572,100 @@ def write_file(ships_table_xarray, netcdf_file_name):
     ships_table_xarray.to_netcdf(
         path=netcdf_file_name, mode='w', format='NETCDF3_64BIT'
     )
+
+
+def replace_ships_intensities_with_ebtrk(ships_table_xarray,
+                                         ebtrk_table_xarray):
+    """Replaces SHIPS intensities with EBTRK intensities.
+
+    EBTRK = extended best-track
+
+    :param ships_table_xarray: xarray table in format returned by
+        `read_file`.
+    :param ebtrk_table_xarray: xarray table in format returned by
+        `extended_best_track_io.read_file`.
+    :return: ships_table_xarray: Same as input but maybe with different
+        intensities.
+    :raises: ValueError: if any cyclone object in the SHIPS data is not found in
+        the EBTRK data.
+    """
+
+    ships_cyclone_id_strings = ships_table_xarray[CYCLONE_ID_KEY].values
+    ships_valid_times_unix_sec = ships_table_xarray[VALID_TIME_KEY].values
+    ships_intensities_m_s01 = ships_table_xarray[STORM_INTENSITY_KEY].values
+
+    num_ships_cyclone_objects = len(ships_table_xarray[CYCLONE_ID_KEY].values)
+    ebtrk_tbl = ebtrk_table_xarray
+
+    for i in range(num_ships_cyclone_objects):
+        these_indices = numpy.where(numpy.logical_and(
+            ebtrk_tbl[ebtrk_utils.STORM_ID_KEY].values ==
+            ships_cyclone_id_strings[i],
+            HOURS_TO_SECONDS * ebtrk_tbl[ebtrk_utils.VALID_TIME_KEY].values ==
+            ships_valid_times_unix_sec[i]
+        ))[0]
+
+        if len(these_indices) == 0:
+            error_string = (
+                'Cannot find cyclone object ({0:s} at {1:s}) in EBTRK data.'
+            ).format(
+                ships_cyclone_id_strings[i],
+                time_conversion.unix_sec_to_string(
+                    ships_valid_times_unix_sec[i], '%Y-%m-%d-%H'
+                )
+            )
+
+            raise ValueError(error_string)
+
+        if len(these_indices) > 1:
+            these_intensities_m_s01 = ebtrk_tbl[
+                ebtrk_utils.MAX_SUSTAINED_WIND_KEY
+            ].values[these_indices]
+
+            this_intensity_range_m_s01 = (
+                numpy.max(these_intensities_m_s01) -
+                numpy.min(these_intensities_m_s01)
+            )
+
+            if this_intensity_range_m_s01 > TOLERANCE:
+                warning_string = (
+                    'POTENTIAL ERROR: found cyclone object ({0:s} at {1:s}) '
+                    'multiple times in EBTRK data, with the following '
+                    'intensities in kt:\n{2:s}'
+                ).format(
+                    ships_cyclone_id_strings[i],
+                    time_conversion.unix_sec_to_string(
+                        ships_valid_times_unix_sec[i], '%Y-%m-%d-%H'
+                    ),
+                    str(METRES_PER_SECOND_TO_KT * these_intensities_m_s01)
+                )
+
+                print(warning_string)
+                warnings.warn(warning_string)
+
+        j = these_indices[0]
+        if numpy.isclose(
+                ships_intensities_m_s01[i],
+                ebtrk_tbl[ebtrk_utils.MAX_SUSTAINED_WIND_KEY].values[j],
+                atol=TOLERANCE
+        ):
+            continue
+
+        print((
+            'Cyclone {0:s} at {1:s}: replacing SHIPS intensity ({2:.1f} kt) '
+            'with best-track intensity ({3:.1f} kt)'
+        ).format(
+            ships_cyclone_id_strings[i],
+            time_conversion.unix_sec_to_string(
+                ships_valid_times_unix_sec[i], '%Y-%m-%d-%H'
+            ),
+            METRES_PER_SECOND_TO_KT * ships_intensities_m_s01[i],
+            METRES_PER_SECOND_TO_KT *
+            ebtrk_tbl[ebtrk_utils.MAX_SUSTAINED_WIND_KEY].values[j]
+        ))
+
+        ships_table_xarray[STORM_INTENSITY_KEY].values[i] = (
+            ebtrk_tbl[ebtrk_utils.MAX_SUSTAINED_WIND_KEY].values[j]
+        )
+
+    return ships_table_xarray

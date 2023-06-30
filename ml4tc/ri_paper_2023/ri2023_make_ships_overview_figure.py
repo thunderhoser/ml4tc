@@ -20,7 +20,7 @@ from ml4tc.plotting import predictor_plotting
 TIME_FORMAT = '%Y-%m-%d-%H'
 
 MAX_FORECAST_HOUR = 24
-SATELLITE_LAG_TIMES_HOURS = numpy.array([0, 1.5, 3, numpy.nan])
+SATELLITE_LAG_TIMES_HOURS = numpy.array([0, 1.5, 3, numpy.inf, numpy.nan])
 
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 RAPID_INTENSIFN_CUTOFF_M_S01 = 30 * KT_TO_METRES_PER_SECOND
