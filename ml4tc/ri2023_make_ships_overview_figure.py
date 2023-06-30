@@ -28,6 +28,7 @@ import predictor_plotting
 TIME_FORMAT = '%Y-%m-%d-%H'
 
 MAX_FORECAST_HOUR = 24
+SATELLITE_LAG_TIMES_HOURS = numpy.array([0, 1.5, 3, numpy.nan])
 
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 RAPID_INTENSIFN_CUTOFF_M_S01 = 30 * KT_TO_METRES_PER_SECOND
@@ -116,8 +117,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         neural_net.SHIPS_LAG_TIMES_KEY: numpy.array([0], dtype=int),
         neural_net.SATELLITE_PREDICTORS_KEY: None,
         neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_lagged_predictor_names,
-        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY:
-            numpy.array([0, 1.5, 3, numpy.nan]),
+        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY: SATELLITE_LAG_TIMES_HOURS,
         neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
             ships_forecast_predictor_names,
         neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: MAX_FORECAST_HOUR,
@@ -175,7 +175,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         model_metadata_dict=
         {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
-        builtin_lag_times_hours=numpy.array([0], dtype=int),
+        builtin_lag_times_hours=SATELLITE_LAG_TIMES_HOURS,
         forecast_hours=forecast_hours,
         init_time_unix_sec=init_time_unix_sec
     )
@@ -207,7 +207,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         model_metadata_dict=
         {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
-        builtin_lag_times_hours=numpy.array([0], dtype=int),
+        builtin_lag_times_hours=SATELLITE_LAG_TIMES_HOURS,
         forecast_hours=forecast_hours,
         init_time_unix_sec=init_time_unix_sec
     )
