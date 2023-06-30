@@ -1,0 +1,32 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="make_ships_overview_figure"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=160G
+#SBATCH --time=30:00:00
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=make_ships_overview_figure_%A.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set EXAMPLE_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized/learning_examples_2019SH21.nc"
+set OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ri_paper_2023/ships_overview_figure/2019SH21_2019-03-21-18"
+
+python3 -u "${CODE_DIR_NAME}/ri2023_make_ships_overview_figure.py" \
+--input_norm_example_file_name="${EXAMPLE_FILE_NAME}" \
+--ships_forecast_predictor_names "ships_intensity_m_s01" "ships_intensity_change_6hours_m_s01" "ships_shear_850to500mb_eastward_m_s01" "ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01" "ships_temp_200mb_200to800km_kelvins" "ships_temp_gradient_850to700mb_0to500km_k_m01" "ships_max_tangential_wind_850mb_m_s01" "ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01" "ships_forecast_latitude_deg_n" "ships_max_pttl_intensity_m_s01" "ships_ocean_age_seconds" "merged_sea_surface_temp_kelvins" "merged_ocean_heat_content_j_m02" \
+--ships_lagged_predictor_names "ships_goes_ch4_temp_0to200km_kelvins" "ships_goes_ch4_temp_stdev_0to200km_kelvins" "ships_goes_ch4_temp_100to300km_kelvins" "ships_goes_ch4_temp_stdev_100to300km_kelvins" "ships_goes_ch4_fraction_temp_below_m10c_50to200km" "ships_goes_ch4_fraction_temp_below_m20c_50to200km" "ships_goes_ch4_fraction_temp_below_m30c_50to200km" "ships_goes_ch4_fraction_temp_below_m40c_50to200km" "ships_goes_ch4_fraction_temp_below_m50c_50to200km" "ships_goes_ch4_fraction_temp_below_m60c_50to200km" "ships_goes_ch4_max_temp_0to30km_kelvins" "ships_goes_ch4_mean_temp_0to30km_kelvins" "ships_goes_ch4_max_temp_radius_metres" "ships_goes_ch4_min_temp_20to120km_kelvins" "ships_goes_ch4_mean_temp_20to120km_kelvins" "ships_goes_ch4_min_temp_radius_metres" \
+--init_time_string="2019-03-21-18" \
+--output_dir_name="${OUTPUT_DIR_NAME}"
