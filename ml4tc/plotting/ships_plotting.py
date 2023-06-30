@@ -36,21 +36,23 @@ VARIABLE_ABBREV_TO_VERBOSE = {
     ships_io.SATELLITE_MEAN_TEMP_20TO120KM_KEY: r'Mean T$_{b}$, 20-120 km',
     ships_io.SATELLITE_MIN_TEMP_RADIUS_KEY: r'Radius of min T$_{b}$',
     ships_io.SATELLITE_MAX_TEMP_RADIUS_KEY: r'Radius of max T$_{b}$',
-    ships_io.INTENSITY_CHANGE_6HOURS_KEY: r'Intensity, 6-hour $\Delta$',
+
+    ships_io.INTENSITY_CHANGE_6HOURS_KEY: 'INCV (6-hour TC-intensity change)',
     ships_io.TEMP_GRADIENT_850TO700MB_INNER_RING_KEY:
-        r'$\nabla$Temp, 850-700 mb, 0-500 km',
+        'TGRD (low-level, inner-ring temp gradient)',
     ships_io.SHEAR_850TO200MB_INNER_RING_GNRL_KEY:
-        'Shear, 850-200 mb, 0-500 km',
-    ships_io.TEMP_200MB_OUTER_RING_KEY: 'Temp, 200 mb, 200-800 km',
-    ships_io.SHEAR_850TO500MB_U_KEY: r'$u$-shear, 850-500 mb',
-    ships_io.W_WIND_0TO15KM_INNER_RING_KEY: r'$w$-wind, 0-15 km, 0-500 km',
-    ships_io.OCEAN_AGE_KEY: 'Ocean age',
-    ships_io.MAX_TAN_WIND_850MB_KEY: 'Max tan wind, 850 mb',
-    ships_io.INTENSITY_KEY: 'Intensity',
-    ships_io.MERGED_OHC_KEY: 'Ocean heat content',
-    ships_io.MERGED_SST_KEY: 'Sea-surface temp',
-    ships_io.FORECAST_LATITUDE_KEY: 'TC-center latitude',
-    ships_io.MAX_PTTL_INTENSITY_KEY: 'Max pttl intensity'
+        'SHGC (deep-layer, inner-ring, no-vortex shear)',
+    ships_io.TEMP_200MB_OUTER_RING_KEY: 'T2OO (200-mb outer-ring temp)',
+    ships_io.SHEAR_850TO500MB_U_KEY: r'SHRS/SHTS (low-to-mid-level $u$-shear)',
+    ships_io.W_WIND_0TO15KM_INNER_RING_KEY:
+        r'VVAC (full-column, inner-ring, no-vortex $w$-wind)',
+    ships_io.OCEAN_AGE_KEY: 'OAGE (ocean age)',
+    ships_io.MAX_TAN_WIND_850MB_KEY: 'TWXC (max 850-mb tangential wind)',
+    ships_io.INTENSITY_KEY: 'VMAX (TC intensity)',
+    ships_io.MERGED_OHC_KEY: 'Best OHC (ocean heat content)',
+    ships_io.MERGED_SST_KEY: 'Best SST (sea-surface temp)',
+    ships_io.FORECAST_LATITUDE_KEY: 'LAT (TC-center latitude)',
+    ships_io.MAX_PTTL_INTENSITY_KEY: 'VMPI (max potential intensity)'
 }
 
 DEFAULT_FCST_HOUR_TICK_FONT_SIZE = 30
@@ -236,7 +238,7 @@ def plot_fcst_predictors_one_init_time(
     pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=forecast_hour_tick_font_size
     )
-    axes_object.set_ylabel('Fcst hour')
+    axes_object.set_ylabel('Forecast hour')
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
