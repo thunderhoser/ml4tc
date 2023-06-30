@@ -28,7 +28,7 @@ import predictor_plotting
 TIME_FORMAT = '%Y-%m-%d-%H'
 
 MAX_FORECAST_HOUR = 24
-SATELLITE_LAG_TIMES_HOURS = numpy.array([0, 1.5, 3, numpy.nan])
+SATELLITE_LAG_TIMES_HOURS = numpy.array([0, 1.5, 3, numpy.inf, numpy.nan])
 
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 RAPID_INTENSIFN_CUTOFF_M_S01 = 30 * KT_TO_METRES_PER_SECOND
@@ -188,6 +188,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
     panel_file_names = [
         '{0:s}/satellite_based_predictors.jpg'.format(output_dir_name)
     ]
+    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
         panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
         pad_inches=0, bbox_inches='tight'
@@ -220,6 +221,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
     panel_file_names.append(
         '{0:s}/enviro_and_hist_predictors.jpg'.format(output_dir_name)
     )
+    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
         panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
         pad_inches=0, bbox_inches='tight'
