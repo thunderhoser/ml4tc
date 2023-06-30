@@ -19,6 +19,11 @@ from ml4tc.plotting import predictor_plotting
 
 TIME_FORMAT = '%Y-%m-%d-%H'
 
+MAX_FORECAST_HOUR = 24
+
+KT_TO_METRES_PER_SECOND = 1.852 / 3.6
+RAPID_INTENSIFN_CUTOFF_M_S01 = 30 * KT_TO_METRES_PER_SECOND
+
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
@@ -36,29 +41,38 @@ pyplot.rc('ytick', labelsize=FONT_SIZE)
 pyplot.rc('legend', fontsize=FONT_SIZE)
 pyplot.rc('figure', titlesize=FONT_SIZE)
 
-MODEL_METAFILE_ARG_NAME = 'input_model_metafile_name'
 EXAMPLE_FILE_ARG_NAME = 'input_norm_example_file_name'
+FORECAST_PREDICTORS_ARG_NAME = 'ships_forecast_predictor_names'
+LAGGED_PREDICTORS_ARG_NAME = 'ships_lagged_predictor_names'
 INIT_TIME_ARG_NAME = 'init_time_string'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
-MODEL_METAFILE_HELP_STRING = (
-    'Path to metafile for model.  Will be read by `neural_net.read_metafile`.'
-)
 EXAMPLE_FILE_HELP_STRING = (
     'Path to file with normalized learning examples for one cyclone.  Will be '
     'read by `example_io.read_file`.'
+)
+FORECAST_PREDICTORS_HELP_STRING = (
+    'List with names of forecast (i.e., environmental and historical) SHIPS '
+    'predictors.'
+)
+LAGGED_PREDICTORS_HELP_STRING = (
+    'List with names of lagged (i.e., satellite-based) SHIPS predictors.'
 )
 INIT_TIME_HELP_STRING = 'Forecast-init time (format "yyyy-mm-dd-HH").'
 OUTPUT_DIR_HELP_STRING = 'Name of output directory.  Images will be saved here.'
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
-    '--' + MODEL_METAFILE_ARG_NAME, type=str, required=True,
-    help=MODEL_METAFILE_HELP_STRING
-)
-INPUT_ARG_PARSER.add_argument(
     '--' + EXAMPLE_FILE_ARG_NAME, type=str, required=True,
     help=EXAMPLE_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + FORECAST_PREDICTORS_ARG_NAME, type=str, nargs='+', required=True,
+    help=FORECAST_PREDICTORS_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + LAGGED_PREDICTORS_ARG_NAME, type=str, nargs='+', required=True,
+    help=LAGGED_PREDICTORS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + INIT_TIME_ARG_NAME, type=str, required=True,
@@ -70,14 +84,15 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(model_metafile_name, norm_example_file_name, init_time_string,
-         output_dir_name):
+def _run(norm_example_file_name, ships_forecast_predictor_names,
+         ships_lagged_predictor_names, init_time_string, output_dir_name):
     """Makes SHIPS-overview figure for 2023 RI (rapid intensification) paper.
 
     This is effectively the main method.
 
-    :param model_metafile_name: See documentation at top of file.
-    :param norm_example_file_name: Same.
+    :param norm_example_file_name: See documentation at top of file.
+    :param ships_forecast_predictor_names: Same.
+    :param ships_lagged_predictor_names: Same.
     :param init_time_string: Same.
     :param output_dir_name: Same.
     """
@@ -86,16 +101,36 @@ def _run(model_metafile_name, norm_example_file_name, init_time_string,
         directory_name=output_dir_name
     )
 
-    print('Reading metadata from: "{0:s}"...'.format(model_metafile_name))
-    model_metadata_dict = neural_net.read_metafile(model_metafile_name)
-
-    validation_option_dict = model_metadata_dict[
-        neural_net.VALIDATION_OPTIONS_KEY
-    ]
-    validation_option_dict[neural_net.EXAMPLE_FILE_KEY] = norm_example_file_name
-    validation_option_dict[
-        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY
-    ] = numpy.array([0], dtype=int)
+    generator_option_dict = {
+        neural_net.EXAMPLE_FILE_KEY: norm_example_file_name,
+        neural_net.LEAD_TIMES_KEY: numpy.array([24], dtype=int),
+        neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
+        neural_net.SHIPS_LAG_TIMES_KEY: numpy.array([0], dtype=int),
+        neural_net.SATELLITE_PREDICTORS_KEY: None,
+        neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_lagged_predictor_names,
+        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY:
+            numpy.array([0, 1.5, 3, numpy.nan]),
+        neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
+            ships_forecast_predictor_names,
+        neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: MAX_FORECAST_HOUR,
+        neural_net.NUM_POSITIVE_EXAMPLES_KEY: 2,
+        neural_net.NUM_NEGATIVE_EXAMPLES_KEY: 2,
+        neural_net.MAX_EXAMPLES_PER_CYCLONE_KEY: 2,
+        neural_net.PREDICT_TD_TO_TS_KEY: False,
+        neural_net.CLASS_CUTOFFS_KEY:
+            numpy.array([RAPID_INTENSIFN_CUTOFF_M_S01]),
+        neural_net.NUM_GRID_ROWS_KEY: 380,
+        neural_net.NUM_GRID_COLUMNS_KEY: 540,
+        neural_net.USE_TIME_DIFFS_KEY: False,
+        neural_net.SATELLITE_TIME_TOLERANCE_KEY: 86400,
+        neural_net.SATELLITE_MAX_MISSING_TIMES_KEY: 1,
+        neural_net.SHIPS_TIME_TOLERANCE_KEY: 0,
+        neural_net.SHIPS_MAX_MISSING_TIMES_KEY: 0,
+        neural_net.USE_CLIMO_KEY: False,
+        neural_net.DATA_AUG_NUM_TRANS_KEY: 0,
+        neural_net.DATA_AUG_NUM_ROTATIONS_KEY: 0,
+        neural_net.DATA_AUG_NUM_NOISINGS_KEY: 0
+    }
 
     print('Reading data from: "{0:s}"...'.format(norm_example_file_name))
     example_table_xarray = example_io.read_file(norm_example_file_name)
@@ -105,7 +140,7 @@ def _run(model_metafile_name, norm_example_file_name, init_time_string,
     if not isinstance(cyclone_id_string, str):
         cyclone_id_string = cyclone_id_string.decode('utf-8')
 
-    data_dict = neural_net.create_inputs(validation_option_dict)
+    data_dict = neural_net.create_inputs(generator_option_dict)
     predictor_matrices = data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     all_init_times_unix_sec = data_dict[neural_net.INIT_TIMES_KEY]
 
@@ -120,19 +155,17 @@ def _run(model_metafile_name, norm_example_file_name, init_time_string,
         None if m is None else m[[time_index], ...] for m in predictor_matrices
     ]
 
-    max_forecast_hour = (
-        validation_option_dict[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
-    )
     forecast_hours = numpy.linspace(
-        0, max_forecast_hour,
-        num=int(numpy.round(max_forecast_hour / 6)) + 1, dtype=int
+        0, MAX_FORECAST_HOUR,
+        num=int(numpy.round(MAX_FORECAST_HOUR / 6)) + 1, dtype=int
     )
 
     (
         figure_objects, axes_objects, _
     ) = predictor_plotting.plot_lagged_ships_one_example(
         predictor_matrices_one_example=predictor_matrices,
-        model_metadata_dict=model_metadata_dict,
+        model_metadata_dict=
+        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
         builtin_lag_times_hours=numpy.array([0], dtype=int),
         forecast_hours=forecast_hours,
@@ -163,7 +196,8 @@ def _run(model_metafile_name, norm_example_file_name, init_time_string,
         figure_objects, axes_objects, _
     ) = predictor_plotting.plot_forecast_ships_one_example(
         predictor_matrices_one_example=predictor_matrices,
-        model_metadata_dict=model_metadata_dict,
+        model_metadata_dict=
+        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
         builtin_lag_times_hours=numpy.array([0], dtype=int),
         forecast_hours=forecast_hours,
@@ -233,8 +267,13 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        model_metafile_name=getattr(INPUT_ARG_OBJECT, MODEL_METAFILE_ARG_NAME),
         norm_example_file_name=getattr(INPUT_ARG_OBJECT, EXAMPLE_FILE_ARG_NAME),
+        ships_forecast_predictor_names=getattr(
+            INPUT_ARG_OBJECT, FORECAST_PREDICTORS_ARG_NAME
+        ),
+        ships_lagged_predictor_names=getattr(
+            INPUT_ARG_OBJECT, LAGGED_PREDICTORS_ARG_NAME
+        ),
         init_time_string=getattr(INPUT_ARG_OBJECT, INIT_TIME_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
