@@ -12,16 +12,24 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import ships_io
 import raw_ships_io
+import extended_best_track_io as ebtrk_io
 import general_utils
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
 INPUT_FILE_ARG_NAME = 'input_file_name'
+EBTRK_FILE_ARG_NAME = 'input_extended_best_track_file_name'
 SEVEN_DAY_ARG_NAME = 'seven_day'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 INPUT_FILE_HELP_STRING = (
-    'Path to input file.  Will be read by `raw_ships_io.read_file`.'
+    'Path to main input file, containing raw SHIPS data.  Will be read by '
+    '`raw_ships_io.read_file`.'
+)
+EBTRK_FILE_HELP_STRING = (
+    'Path to file with extended best-track data (will be read by '
+    '`extended_best_track_io.read_file`).  Intensity estimates in SHIPS data '
+    'will be replaced with intensity estimates in EBTRK data.'
 )
 SEVEN_DAY_HELP_STRING = (
     'Boolean flag.  If 1 (0), will assume 7-day (5-day) files.'
@@ -38,6 +46,10 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + EBTRK_FILE_ARG_NAME, type=str, required=True,
+    help=EBTRK_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + SEVEN_DAY_ARG_NAME, type=int, required=True,
     help=SEVEN_DAY_HELP_STRING
 )
@@ -47,20 +59,29 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(input_file_name, seven_day, output_dir_name):
+def _run(raw_ships_file_name, ebtrk_file_name, seven_day, output_dir_name):
     """Processes SHIPS data (converts from raw format to my format).
 
     This is effectively the main method.
 
-    :param input_file_name: See documentation at top of file.
+    :param raw_ships_file_name: See documentation at top of file.
+    :param ebtrk_file_name: Same.
     :param seven_day: Same.
     :param output_dir_name: Same.
     """
 
-    print('Reading data from: "{0:s}"...'.format(input_file_name))
+    print('Reading data from: "{0:s}"...'.format(raw_ships_file_name))
     ships_table_xarray = raw_ships_io.read_file(
-        ascii_file_name=input_file_name, real_time_flag=False,
+        ascii_file_name=raw_ships_file_name, real_time_flag=False,
         seven_day_flag=seven_day
+    )
+    print(SEPARATOR_STRING)
+
+    print('Reading data from: "{0:s}"...'.format(ebtrk_file_name))
+    ebtrk_table_xarray = ebtrk_io.read_file(ebtrk_file_name)
+    ships_table_xarray = ships_io.replace_ships_intensities_with_ebtrk(
+        ships_table_xarray=ships_table_xarray,
+        ebtrk_table_xarray=ebtrk_table_xarray
     )
     print(SEPARATOR_STRING)
 
@@ -100,7 +121,8 @@ if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
 
     _run(
-        input_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
+        raw_ships_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
+        ebtrk_file_name=getattr(INPUT_ARG_OBJECT, EBTRK_FILE_ARG_NAME),
         seven_day=bool(getattr(INPUT_ARG_OBJECT, SEVEN_DAY_ARG_NAME)),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )

@@ -2227,8 +2227,6 @@ def ships_predictors_3d_to_4d(
         num_lagged_predictors * num_builtin_lag_times +
         num_forecast_predictors * num_forecast_hours
     )
-    print(num_scalar_predictors)
-    print(predictor_matrix_3d.shape[2])
     assert num_scalar_predictors == predictor_matrix_3d.shape[2]
 
     num_examples = predictor_matrix_3d.shape[0]
