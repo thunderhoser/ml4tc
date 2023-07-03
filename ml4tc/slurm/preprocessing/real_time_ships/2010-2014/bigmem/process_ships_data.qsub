@@ -1,0 +1,36 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="process_ships_data"
+#SBATCH --partition="bigmem"
+#SBATCH --account="gsd-hpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=80G
+#SBATCH --time=03:00:00
+#SBATCH --array=1-5
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=process_ships_data_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/raw"
+set PROCESSED_ARCHIVED_SHIPS_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed"
+set OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed"
+
+set YEARS=(2010 2011 2012 2013 2014)
+set year=${YEARS[$SLURM_ARRAY_TASK_ID]}
+
+python3 -u "${CODE_DIR_NAME}/process_real_time_ships_data.py" \
+--input_raw_real_time_ships_dir_name="${INPUT_DIR_NAME}" \
+--input_processed_archived_ships_dir_name="${PROCESSED_ARCHIVED_SHIPS_DIR_NAME}" \
+--year=${year} \
+--output_dir_name="${OUTPUT_DIR_NAME}"
