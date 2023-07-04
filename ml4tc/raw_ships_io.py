@@ -664,7 +664,6 @@ def find_real_time_cyclones_1year(top_directory_name, year,
     cyclone_id_strings = []
 
     for this_file_name in rt_ships_file_names:
-        print(this_file_name)
         _real_time_file_name_to_cyclone_id(this_file_name)
         cyclone_id_strings.append(
             _real_time_file_name_to_cyclone_id(this_file_name)
