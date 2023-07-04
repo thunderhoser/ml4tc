@@ -526,7 +526,11 @@ def _real_time_file_name_to_cyclone_id(rt_ships_file_name):
     weird_cyclone_id_string = pathless_file_name.split('_')[0][-6:]
     cyclone_id_string = '{0:04d}{1:s}'.format(year, weird_cyclone_id_string[:4])
 
+    print(cyclone_id_string)
+
     _ = satellite_utils.parse_cyclone_id(cyclone_id_string)
+    print(cyclone_id_string)
+    print('\n\n')
     return cyclone_id_string
 
 
@@ -664,7 +668,6 @@ def find_real_time_cyclones_1year(top_directory_name, year,
     cyclone_id_strings = []
 
     for this_file_name in rt_ships_file_names:
-        _real_time_file_name_to_cyclone_id(this_file_name)
         cyclone_id_strings.append(
             _real_time_file_name_to_cyclone_id(this_file_name)
         )
