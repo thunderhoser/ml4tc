@@ -660,6 +660,8 @@ def find_real_time_cyclones_1year(top_directory_name, year,
         CYCLONE_NUM_REGEX
     )
 
+    print(file_pattern)
+
     rt_ships_file_names = glob.glob(file_pattern)
     cyclone_id_strings = []
 
