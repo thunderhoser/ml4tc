@@ -120,11 +120,14 @@ def _run():
                 use_ships_historical_flags[i] or
                 use_ships_satellite_flags[i]
         ):
+            use_some_ships_data = True
             num_flattened_features += BASE_OPTION_DICT_SHIPS[
                 cnn_architecture.NUM_NEURONS_KEY
             ][-1]
+        else:
+            use_some_ships_data = False
 
-        if num_flattened_features == 0 and cira_ir_lag_time_counts[i] == 0:
+        if not use_some_ships_data and cira_ir_lag_time_counts[i] == 0:
             continue
 
         neuron_counts = architecture_utils.get_dense_layer_dimensions(
