@@ -105,6 +105,12 @@ def _run():
         UNIQUE_TEMPORAL_DIFF_FLAGS
     )
 
+    cira_ir_lag_time_counts = numpy.ravel(cira_ir_lag_time_counts)
+    use_ships_enviro_flags = numpy.ravel(use_ships_enviro_flags)
+    use_ships_historical_flags = numpy.ravel(use_ships_historical_flags)
+    use_ships_satellite_flags = numpy.ravel(use_ships_satellite_flags)
+    use_temporal_diff_flags = numpy.ravel(use_temporal_diff_flags)
+
     for i in range(len(cira_ir_lag_time_counts)):
         d = BASE_OPTION_DICT_GRIDDED_SAT
         num_flattened_features = 40 * d[cnn_architecture.NUM_CHANNELS_KEY][-1]
