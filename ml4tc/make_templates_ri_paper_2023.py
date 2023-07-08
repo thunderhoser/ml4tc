@@ -124,6 +124,9 @@ def _run():
                 cnn_architecture.NUM_NEURONS_KEY
             ][-1]
 
+        if num_flattened_features == 0 and cira_ir_lag_time_counts[i] == 0:
+            continue
+
         neuron_counts = architecture_utils.get_dense_layer_dimensions(
             num_input_units=num_flattened_features,
             num_classes=2, num_dense_layers=NUM_DENSE_LAYERS,
