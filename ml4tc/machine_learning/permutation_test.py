@@ -8,11 +8,16 @@ from ml4tc.machine_learning import permutation
 
 TOLERANCE = 1e-6
 
-NUM_BUILTIN_SHIPS_LAG_TIMES = 4
-NUM_SHIPS_FORECAST_HOURS = 1
-NUM_LAGGED_PREDICTORS = 17
+NUM_GOES_PREDICTORS = 17
+NUM_GOES_LAG_TIMES = 3
 NUM_FORECAST_PREDICTORS = 125
+NUM_FORECAST_HOURS = 2
 NUM_UNGRIDDED_SAT_PREDICTORS = 16
+
+NUM_SCALAR_SHIPS_PREDICTORS = (
+    NUM_GOES_PREDICTORS * NUM_GOES_LAG_TIMES +
+    NUM_FORECAST_PREDICTORS * NUM_FORECAST_HOURS
+)
 
 # The following constants are used to test _permute_values and
 # _depermute_values.
@@ -23,16 +28,16 @@ PREDICTOR_MATRIX_UNGRIDDED_SAT = numpy.random.normal(
     loc=0., scale=1., size=(10, 4, NUM_UNGRIDDED_SAT_PREDICTORS)
 )
 PREDICTOR_MATRIX_SHIPS = numpy.random.normal(
-    loc=0., scale=1., size=(10, 3, 193)
+    loc=0., scale=1., size=(10, NUM_SCALAR_SHIPS_PREDICTORS)
 )
 
 TRAINING_OPTION_DICT = {
-    neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
-    neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ['a'] * NUM_LAGGED_PREDICTORS,
-    neural_net.SHIPS_PREDICTORS_FORECAST_KEY: ['b'] * NUM_FORECAST_PREDICTORS,
+    neural_net.SATELLITE_LAG_TIMES_KEY:
+        numpy.array([1800, 1200, 600, 0], dtype=int),
+    neural_net.SHIPS_GOES_PREDICTORS_KEY: ['a'] * NUM_GOES_PREDICTORS,
+    neural_net.SHIPS_FORECAST_PREDICTORS_KEY: ['b'] * NUM_FORECAST_PREDICTORS,
     neural_net.SATELLITE_PREDICTORS_KEY: ['c'] * NUM_UNGRIDDED_SAT_PREDICTORS,
-    neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: 0,
-    neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY: numpy.array([numpy.inf, 0, 1.5, 3])
+    neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: 6
 }
 MODEL_METADATA_DICT = {
     neural_net.TRAINING_OPTIONS_KEY: TRAINING_OPTION_DICT
@@ -59,7 +64,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains gridded satellite data and
-        permutation is over all lag times.
+        permutation is over all model lag times.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -90,7 +95,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains gridded satellite data and
-        permutation is over one lag time only.
+        permutation is over one model lag time.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -130,7 +135,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains ungridded satellite data and
-        permutation is over all lag times.
+        permutation is over all model lag times.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -170,7 +175,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains ungridded satellite data and
-        permutation is over one lag time.
+        permutation is over one model lag time.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -211,11 +216,11 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, newnew_predictor_matrix, atol=TOLERANCE
         ))
 
-    def test_permute_values_ships_all_lags_lagged(self):
+    def test_permute_values_ships_all_lags_goes(self):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over all lag times; and a predictor with built-in lags is permuted.
+        over all model lag times; and a GOES predictor is permuted.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -231,36 +236,34 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_SHIPS, atol=TOLERANCE
         ))
 
-        new_lagged_matrix_4d, new_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_predictor_matrix,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            new_goes_matrix_3d, new_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=new_predictor_matrix,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
-        orig_lagged_matrix_4d, orig_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=PREDICTOR_MATRIX_SHIPS,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            orig_goes_matrix_3d, orig_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=PREDICTOR_MATRIX_SHIPS,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
         self.assertTrue(numpy.allclose(
-            new_forecast_matrix_4d, orig_forecast_matrix_4d, atol=TOLERANCE
+            new_forecast_matrix_3d, orig_forecast_matrix_3d, atol=TOLERANCE
         ))
 
-        num_variables = new_lagged_matrix_4d.shape[-1]
+        num_variables = new_goes_matrix_3d.shape[-1]
         indices_to_compare = numpy.arange(num_variables) != 0
 
         self.assertTrue(numpy.allclose(
-            new_lagged_matrix_4d[..., indices_to_compare],
-            orig_lagged_matrix_4d[..., indices_to_compare],
+            new_goes_matrix_3d[..., indices_to_compare],
+            orig_goes_matrix_3d[..., indices_to_compare],
             atol=TOLERANCE
         ))
 
@@ -276,11 +279,11 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, newnew_predictor_matrix, atol=TOLERANCE
         ))
 
-    def test_permute_values_ships_one_lag_lagged(self):
+    def test_permute_values_ships_one_lag_goes(self):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over one lag time; and a predictor with built-in lags is permuted.
+        over one model lag time; and a GOES predictor is permuted.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
@@ -296,39 +299,37 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_SHIPS, atol=TOLERANCE
         ))
 
-        new_lagged_matrix_4d, new_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_predictor_matrix,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            new_goes_matrix_3d, new_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=new_predictor_matrix,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
-        orig_lagged_matrix_4d, orig_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=PREDICTOR_MATRIX_SHIPS,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            orig_goes_matrix_3d, orig_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=PREDICTOR_MATRIX_SHIPS,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
         self.assertTrue(numpy.allclose(
-            new_forecast_matrix_4d, orig_forecast_matrix_4d, atol=TOLERANCE
+            new_forecast_matrix_3d, orig_forecast_matrix_3d, atol=TOLERANCE
         ))
 
-        num_variables = new_lagged_matrix_4d.shape[-1]
+        num_variables = new_goes_matrix_3d.shape[-1]
         second_indices = numpy.arange(num_variables) != 0
 
-        num_lag_times = new_lagged_matrix_4d.shape[-2]
+        num_lag_times = new_goes_matrix_3d.shape[-2]
         first_indices = numpy.arange(num_lag_times) != 1
 
         self.assertTrue(numpy.allclose(
-            new_lagged_matrix_4d[..., second_indices][..., first_indices, :],
-            orig_lagged_matrix_4d[..., second_indices][..., first_indices, :],
+            new_goes_matrix_3d[..., second_indices][..., first_indices, :],
+            orig_goes_matrix_3d[..., second_indices][..., first_indices, :],
             atol=TOLERANCE
         ))
 
@@ -348,15 +349,14 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over all lag times; and a predictor with built-in forecast hours is
-        permuted.
+        over all model lag times; and a forecast predictor is permuted.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
                 predictor_type_enum=2,
-                variable_index=NUM_LAGGED_PREDICTORS,
+                variable_index=NUM_GOES_PREDICTORS,
                 model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=None, permuted_value_matrix=None
             )
@@ -366,43 +366,41 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_SHIPS, atol=TOLERANCE
         ))
 
-        new_lagged_matrix_4d, new_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_predictor_matrix,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            new_goes_matrix_3d, new_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=new_predictor_matrix,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
-        orig_lagged_matrix_4d, orig_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=PREDICTOR_MATRIX_SHIPS,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            orig_goes_matrix_3d, orig_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=PREDICTOR_MATRIX_SHIPS,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
         self.assertTrue(numpy.allclose(
-            new_lagged_matrix_4d, orig_lagged_matrix_4d, atol=TOLERANCE
+            new_goes_matrix_3d, orig_goes_matrix_3d, atol=TOLERANCE
         ))
 
-        num_variables = new_forecast_matrix_4d.shape[-1]
+        num_variables = new_forecast_matrix_3d.shape[-1]
         indices_to_compare = numpy.arange(num_variables) != 0
 
         self.assertTrue(numpy.allclose(
-            new_forecast_matrix_4d[..., indices_to_compare],
-            orig_forecast_matrix_4d[..., indices_to_compare],
+            new_forecast_matrix_3d[..., indices_to_compare],
+            orig_forecast_matrix_3d[..., indices_to_compare],
             atol=TOLERANCE
         ))
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None,
             permuted_value_matrix=permuted_value_matrix
@@ -416,15 +414,14 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _permute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over one lag time; and a predictor with built-in forecast hours is
-        permuted.
+        over one model lag time; and a forecast predictor is permuted.
         """
 
         new_predictor_matrix, permuted_value_matrix = (
             permutation._permute_values(
                 predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
                 predictor_type_enum=2,
-                variable_index=NUM_LAGGED_PREDICTORS,
+                variable_index=NUM_GOES_PREDICTORS,
                 model_metadata_dict=MODEL_METADATA_DICT,
                 model_lag_time_index=1, permuted_value_matrix=None
             )
@@ -434,46 +431,44 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_SHIPS, atol=TOLERANCE
         ))
 
-        new_lagged_matrix_4d, new_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_predictor_matrix,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            new_goes_matrix_3d, new_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=new_predictor_matrix,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
-        orig_lagged_matrix_4d, orig_forecast_matrix_4d = (
-            neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=PREDICTOR_MATRIX_SHIPS,
-                num_lagged_predictors=NUM_LAGGED_PREDICTORS,
-                num_builtin_lag_times=NUM_BUILTIN_SHIPS_LAG_TIMES,
-                num_forecast_predictors=NUM_FORECAST_PREDICTORS,
-                num_forecast_hours=NUM_SHIPS_FORECAST_HOURS
-            )
+        (
+            orig_goes_matrix_3d, orig_forecast_matrix_3d
+        ) = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=PREDICTOR_MATRIX_SHIPS,
+            num_goes_predictors=NUM_GOES_PREDICTORS,
+            num_forecast_predictors=NUM_FORECAST_PREDICTORS,
+            num_forecast_hours=NUM_FORECAST_HOURS
         )
 
         self.assertTrue(numpy.allclose(
-            new_lagged_matrix_4d, orig_lagged_matrix_4d, atol=TOLERANCE
+            new_goes_matrix_3d, orig_goes_matrix_3d, atol=TOLERANCE
         ))
 
-        num_variables = new_forecast_matrix_4d.shape[-1]
+        num_variables = new_forecast_matrix_3d.shape[-1]
         second_indices = numpy.arange(num_variables) != 0
 
-        num_lag_times = new_forecast_matrix_4d.shape[-2]
+        num_lag_times = new_forecast_matrix_3d.shape[-2]
         first_indices = numpy.arange(num_lag_times) != 1
 
         self.assertTrue(numpy.allclose(
-            new_forecast_matrix_4d[..., second_indices][..., first_indices, :],
-            orig_forecast_matrix_4d[..., second_indices][..., first_indices, :],
+            new_forecast_matrix_3d[..., second_indices][..., first_indices, :],
+            orig_forecast_matrix_3d[..., second_indices][..., first_indices, :],
             atol=TOLERANCE
         ))
 
         newnew_predictor_matrix = permutation._permute_values(
             predictor_matrix=new_predictor_matrix + 0.,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1,
             permuted_value_matrix=permuted_value_matrix
@@ -487,7 +482,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains gridded satellite data and
-        permutation is over all lag times.
+        permutation is over all model lag times.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -512,7 +507,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains gridded satellite data and
-        permutation is over one lag time.
+        permutation is over one model lag time.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -537,7 +532,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains ungridded satellite data and
-        permutation is over all lag times.
+        permutation is over all model lag times.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -562,7 +557,7 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains ungridded satellite data and
-        permutation is over one lag time.
+        permutation is over one model lag time.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -583,11 +578,11 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_UNGRIDDED_SAT, atol=TOLERANCE
         ))
 
-    def test_depermute_values_ships_all_lags_lagged(self):
+    def test_depermute_values_ships_all_lags_goes(self):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over all lag times; and a predictor with built-in lags is permuted.
+        over all model lag times; and a GOES predictor is permuted.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -609,11 +604,11 @@ class PermutationTests(unittest.TestCase):
             new_predictor_matrix, PREDICTOR_MATRIX_SHIPS, atol=TOLERANCE
         ))
 
-    def test_depermute_values_ships_one_lag_lagged(self):
+    def test_depermute_values_ships_one_lag_goes(self):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over one lag time; and a predictor with built-in lags is permuted.
+        over one model lag time; and a GOES predictor is permuted.
         """
 
         new_predictor_matrix = permutation._permute_values(
@@ -639,14 +634,13 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over all lag times; and a predictor with built-in forecast hours is
-        permuted.
+        over all model lag times; and a forecast predictor is permuted.
         """
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None, permuted_value_matrix=None
         )[0]
@@ -655,7 +649,7 @@ class PermutationTests(unittest.TestCase):
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=None
         )
@@ -668,14 +662,13 @@ class PermutationTests(unittest.TestCase):
         """Ensures correct output from _depermute_values.
 
         In this case, the predictor matrix contains SHIPS data; permutation is
-        over one lag time; and a predictor with built-in forecast hours is
-        permuted.
+        over one model lag time; and a forecast predictor is permuted.
         """
 
         new_predictor_matrix = permutation._permute_values(
             predictor_matrix=PREDICTOR_MATRIX_SHIPS + 0.,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1, permuted_value_matrix=None
         )[0]
@@ -684,7 +677,7 @@ class PermutationTests(unittest.TestCase):
             predictor_matrix=new_predictor_matrix,
             clean_predictor_matrix=PREDICTOR_MATRIX_SHIPS,
             predictor_type_enum=2,
-            variable_index=NUM_LAGGED_PREDICTORS,
+            variable_index=NUM_GOES_PREDICTORS,
             model_metadata_dict=MODEL_METADATA_DICT,
             model_lag_time_index=1
         )

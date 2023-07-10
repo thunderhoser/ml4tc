@@ -147,75 +147,72 @@ def _permute_values(
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
     t = training_option_dict
 
-    if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is None:
+    if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is None:
         num_lagged_predictors = 0
     else:
-        num_lagged_predictors = len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+        num_lagged_predictors = len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
 
-    if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is None:
+    if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is None:
         num_forecast_predictors = 0
     else:
         num_forecast_predictors = len(
-            t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+            t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
-    num_builtin_lag_times = len(t[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY])
 
-    lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
-        neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=predictor_matrix,
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=num_builtin_lag_times,
-            num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
-        )
+    (
+        goes_predictor_matrix_3d, forecast_predictor_matrix_3d
+    ) = neural_net.separate_ships_predictors(
+        ships_predictor_matrix_2d=predictor_matrix,
+        num_goes_predictors=num_lagged_predictors,
+        num_forecast_predictors=num_forecast_predictors,
+        num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
     )
 
     if model_lag_time_index is None:
         if variable_index < num_lagged_predictors:
             if permuted_value_matrix is None:
-                permuted_value_matrix = lagged_predictor_matrix_4d[
+                permuted_value_matrix = goes_predictor_matrix_3d[
                     ..., variable_index
                 ][random_indices, ...]
 
-            lagged_predictor_matrix_4d[..., variable_index] = (
+            goes_predictor_matrix_3d[..., variable_index] = (
                 permuted_value_matrix
             )
         else:
             if permuted_value_matrix is None:
-                permuted_value_matrix = forecast_predictor_matrix_4d[
+                permuted_value_matrix = forecast_predictor_matrix_3d[
                     ..., variable_index - num_lagged_predictors
                 ][random_indices, ...]
 
-            forecast_predictor_matrix_4d[
+            forecast_predictor_matrix_3d[
                 ..., variable_index - num_lagged_predictors
             ] = permuted_value_matrix
     else:
         if variable_index < num_lagged_predictors:
             if permuted_value_matrix is None:
-                permuted_value_matrix = lagged_predictor_matrix_4d[
-                    :, model_lag_time_index, :, variable_index
+                permuted_value_matrix = goes_predictor_matrix_3d[
+                    :, model_lag_time_index, variable_index
                 ][random_indices, ...]
 
-            lagged_predictor_matrix_4d[
-                :, model_lag_time_index, :, variable_index
+            goes_predictor_matrix_3d[
+                :, model_lag_time_index, variable_index
             ] = permuted_value_matrix
         else:
             if permuted_value_matrix is None:
-                permuted_value_matrix = forecast_predictor_matrix_4d[
-                    :, model_lag_time_index, :,
+                permuted_value_matrix = forecast_predictor_matrix_3d[
+                    :, model_lag_time_index,
                     variable_index - num_lagged_predictors
                 ][random_indices, ...]
 
-            forecast_predictor_matrix_4d[
-                :, model_lag_time_index, :,
-                variable_index - num_lagged_predictors
+            forecast_predictor_matrix_3d[
+                :, model_lag_time_index, variable_index - num_lagged_predictors
             ] = permuted_value_matrix
 
-    predictor_matrix = neural_net.ships_predictors_4d_to_3d(
-        lagged_predictor_matrix_4d=lagged_predictor_matrix_4d,
-        forecast_predictor_matrix_4d=forecast_predictor_matrix_4d
+    predictor_matrix = neural_net.combine_ships_predictors(
+        ships_goes_predictor_matrix_3d=goes_predictor_matrix_3d,
+        ships_forecast_predictor_matrix_3d=forecast_predictor_matrix_3d
     )
 
     return predictor_matrix, permuted_value_matrix
@@ -255,51 +252,48 @@ def _depermute_values(
     training_option_dict = model_metadata_dict[neural_net.TRAINING_OPTIONS_KEY]
     t = training_option_dict
 
-    if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is None:
+    if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is None:
         num_lagged_predictors = 0
     else:
-        num_lagged_predictors = len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
+        num_lagged_predictors = len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
 
-    if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is None:
+    if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is None:
         num_forecast_predictors = 0
     else:
         num_forecast_predictors = len(
-            t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+            t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
         )
 
     max_forecast_hour = t[neural_net.SHIPS_MAX_FORECAST_HOUR_KEY]
-    num_builtin_lag_times = len(t[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY])
 
-    lagged_predictor_matrix_4d, forecast_predictor_matrix_4d = (
-        neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=predictor_matrix,
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=num_builtin_lag_times,
-            num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
-        )
+    (
+        goes_predictor_matrix_3d, forecast_predictor_matrix_3d
+    ) = neural_net.separate_ships_predictors(
+        ships_predictor_matrix_2d=predictor_matrix,
+        num_goes_predictors=num_lagged_predictors,
+        num_forecast_predictors=num_forecast_predictors,
+        num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
     )
 
-    clean_lagged_predictor_matrix_4d, clean_forecast_predictor_matrix_4d = (
-        neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=clean_predictor_matrix,
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=num_builtin_lag_times,
-            num_forecast_predictors=num_forecast_predictors,
-            num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
-        )
+    (
+        clean_goes_predictor_matrix_3d, clean_forecast_predictor_matrix_3d
+    ) = neural_net.separate_ships_predictors(
+        ships_predictor_matrix_2d=clean_predictor_matrix,
+        num_goes_predictors=num_lagged_predictors,
+        num_forecast_predictors=num_forecast_predictors,
+        num_forecast_hours=int(numpy.round(max_forecast_hour / 6)) + 1
     )
 
     if model_lag_time_index is None:
         if variable_index < num_lagged_predictors:
-            lagged_predictor_matrix_4d[..., variable_index] = (
-                clean_lagged_predictor_matrix_4d[..., variable_index]
+            goes_predictor_matrix_3d[..., variable_index] = (
+                clean_goes_predictor_matrix_3d[..., variable_index]
             )
         else:
-            forecast_predictor_matrix_4d[
+            forecast_predictor_matrix_3d[
                 ..., variable_index - num_lagged_predictors
             ] = (
-                clean_forecast_predictor_matrix_4d[
+                clean_forecast_predictor_matrix_3d[
                     ..., variable_index - num_lagged_predictors
                 ]
             )
@@ -308,22 +302,20 @@ def _depermute_values(
         j = variable_index
 
         if variable_index < num_lagged_predictors:
-            lagged_predictor_matrix_4d[:, i, :, j] = (
-                clean_lagged_predictor_matrix_4d[:, i, :, j]
+            goes_predictor_matrix_3d[:, i, j] = (
+                clean_goes_predictor_matrix_3d[:, i, j]
             )
         else:
-            forecast_predictor_matrix_4d[:, i, :, j - num_lagged_predictors] = (
-                clean_forecast_predictor_matrix_4d[
-                    :, i, :, j - num_lagged_predictors
+            forecast_predictor_matrix_3d[:, i, j - num_lagged_predictors] = (
+                clean_forecast_predictor_matrix_3d[
+                    :, i, j - num_lagged_predictors
                 ]
             )
 
-    predictor_matrix = neural_net.ships_predictors_4d_to_3d(
-        lagged_predictor_matrix_4d=lagged_predictor_matrix_4d,
-        forecast_predictor_matrix_4d=forecast_predictor_matrix_4d
+    return neural_net.combine_ships_predictors(
+        ships_goes_predictor_matrix_3d=goes_predictor_matrix_3d,
+        ships_forecast_predictor_matrix_3d=forecast_predictor_matrix_3d
     )
-
-    return predictor_matrix
 
 
 def _bootstrap_cost(target_class_matrix, forecast_prob_matrix, cost_function,
@@ -422,14 +414,14 @@ def _predictor_indices_to_metadata(model_metadata_dict, one_step_result_dict):
                     satellite_utils.BRIGHTNESS_TEMPERATURE_KEY
                 )
         else:
-            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+            if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
                 predictor_names_by_matrix[i] += (
-                    t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+                    t[neural_net.SHIPS_GOES_PREDICTORS_KEY]
                 )
 
-            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+            if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
                 predictor_names_by_matrix[i] += (
-                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                 )
 
     if PERMUTED_MATRICES_KEY in one_step_result_dict:
@@ -568,11 +560,11 @@ def _run_forward_test_one_step(
                 continue
         else:
             num_variables = 0
-            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
-                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
-            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+            if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
+            if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
                 num_variables += len(
-                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                 )
 
             if num_variables == 0:
@@ -723,11 +715,11 @@ def _run_backwards_test_one_step(
                 continue
         else:
             num_variables = 0
-            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
-                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
-            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+            if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
+            if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
                 num_variables += len(
-                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                 )
 
             if num_variables == 0:
@@ -948,11 +940,11 @@ def run_forward_test(
                 continue
         else:
             num_variables = 0
-            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
-                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
-            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+            if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
+            if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
                 num_variables += len(
-                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                 )
 
             if num_variables == 0:
@@ -1106,11 +1098,11 @@ def run_backwards_test(
                 continue
         else:
             num_variables = 0
-            if t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
-                num_variables += len(t[neural_net.SHIPS_PREDICTORS_LAGGED_KEY])
-            if t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+            if t[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
+                num_variables += len(t[neural_net.SHIPS_GOES_PREDICTORS_KEY])
+            if t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
                 num_variables += len(
-                    t[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    t[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                 )
 
             if num_variables == 0:

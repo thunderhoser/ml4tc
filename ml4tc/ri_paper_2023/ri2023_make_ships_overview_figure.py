@@ -105,12 +105,11 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
     generator_option_dict = {
         neural_net.EXAMPLE_FILE_KEY: norm_example_file_name,
         neural_net.LEAD_TIMES_KEY: numpy.array([24], dtype=int),
-        neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
-        neural_net.SHIPS_LAG_TIMES_KEY: numpy.array([0], dtype=int),
         neural_net.SATELLITE_PREDICTORS_KEY: None,
-        neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_lagged_predictor_names,
-        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY: SATELLITE_LAG_TIMES_HOURS,
-        neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
+        neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
+        neural_net.SHIPS_GOES_LAG_TIMES_KEY: numpy.array([0], dtype=int),
+        neural_net.SHIPS_GOES_PREDICTORS_KEY: ships_lagged_predictor_names,
+        neural_net.SHIPS_FORECAST_PREDICTORS_KEY:
             ships_forecast_predictor_names,
         neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: MAX_FORECAST_HOUR,
         neural_net.NUM_POSITIVE_EXAMPLES_KEY: 2,
@@ -167,7 +166,6 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         model_metadata_dict=
         {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
-        builtin_lag_times_hours=SATELLITE_LAG_TIMES_HOURS,
         forecast_hours=forecast_hours,
         init_time_unix_sec=init_time_unix_sec
     )
@@ -200,7 +198,6 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         model_metadata_dict=
         {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
         cyclone_id_string=cyclone_id_string,
-        builtin_lag_times_hours=SATELLITE_LAG_TIMES_HOURS,
         forecast_hours=forecast_hours,
         init_time_unix_sec=init_time_unix_sec
     )

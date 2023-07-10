@@ -122,7 +122,7 @@ class RawShipsIoTests(unittest.TestCase):
         """
 
         this_dict = raw_ships_io._forecast_hour_to_chars(
-            forecast_hour_line=FORECAST_HOUR_LINE_5DAY, seven_day=False
+            forecast_hour_line=FORECAST_HOUR_LINE_5DAY, seven_day_flag=False
         )
 
         these_keys = list(this_dict.keys())
@@ -141,7 +141,7 @@ class RawShipsIoTests(unittest.TestCase):
         """
 
         this_dict = raw_ships_io._forecast_hour_to_chars(
-            forecast_hour_line=FORECAST_HOUR_LINE_7DAY, seven_day=True
+            forecast_hour_line=FORECAST_HOUR_LINE_7DAY, seven_day_flag=True
         )
 
         these_keys = list(this_dict.keys())
@@ -161,7 +161,7 @@ class RawShipsIoTests(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             raw_ships_io._forecast_hour_to_chars(
-                forecast_hour_line=FORECAST_HOUR_LINE_BAD, seven_day=True
+                forecast_hour_line=FORECAST_HOUR_LINE_BAD, seven_day_flag=True
             )
 
     def test_reformat_cyclone_id(self):

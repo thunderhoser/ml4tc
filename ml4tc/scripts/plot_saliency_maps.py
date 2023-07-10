@@ -527,14 +527,14 @@ def _plot_lagged_ships_saliency(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_lagged_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_LAG_TIMES_KEY]
     )
 
     forecast_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
     num_forecast_predictors = (
         0 if forecast_predictor_names is None else len(forecast_predictor_names)
@@ -547,53 +547,39 @@ def _plot_lagged_ships_saliency(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-    builtin_lag_times_hours = (
-        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
-    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_lagged_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
     )
 
-    if len(builtin_lag_times_hours) == 1:
-        orig_saliency_matrix = saliency_matrix + 0.
-        saliency_matrix = numpy.array([], dtype=float)
+    orig_saliency_matrix = saliency_matrix + 0.
+    saliency_matrix = numpy.array([], dtype=float)
 
-        for j in range(num_model_lag_times):
-            new_saliency_matrix = numpy.expand_dims(
-                orig_saliency_matrix[j, :], axis=0
-            )
-            new_saliency_matrix = numpy.expand_dims(new_saliency_matrix, axis=0)
-            new_saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_saliency_matrix,
-                num_lagged_predictors=num_lagged_predictors,
-                num_builtin_lag_times=len(builtin_lag_times_hours),
-                num_forecast_predictors=num_forecast_predictors,
-                num_forecast_hours=len(forecast_hours)
-            )[0][:, 0, ...]
-
-            if saliency_matrix.size == 0:
-                saliency_matrix = new_saliency_matrix + 0.
-            else:
-                saliency_matrix = numpy.concatenate(
-                    (saliency_matrix, new_saliency_matrix), axis=1
-                )
-    else:
-        saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=len(builtin_lag_times_hours),
+    for j in range(num_model_lag_times):
+        new_saliency_matrix = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=
+            numpy.expand_dims(orig_saliency_matrix, axis=0),
+            num_goes_predictors=num_lagged_predictors,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=len(forecast_hours)
-        )[0][0, ...]
+        )[0]
 
+        new_saliency_matrix = new_saliency_matrix[:, j, :]
+
+        if saliency_matrix.size == 0:
+            saliency_matrix = new_saliency_matrix + 0.
+        else:
+            saliency_matrix = numpy.concatenate(
+                (saliency_matrix, new_saliency_matrix), axis=1
+            )
+
+    # TODO(thunderhoser): HACK: this length is always 1.
     panel_file_names = [''] * len(axes_objects)
 
     for k in range(len(axes_objects)):
@@ -714,14 +700,11 @@ def _plot_forecast_ships_saliency(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_forecast_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
-    )
-    num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
 
     lagged_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_lagged_predictors = (
         0 if lagged_predictor_names is None else len(lagged_predictor_names)
@@ -734,32 +717,28 @@ def _plot_forecast_ships_saliency(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-    builtin_lag_times_hours = (
-        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
-    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_forecast_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
     )
 
-    saliency_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=numpy.expand_dims(saliency_matrix, axis=0),
-        num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(builtin_lag_times_hours),
+    saliency_matrix = neural_net.separate_ships_predictors(
+        ships_predictor_matrix_2d=numpy.expand_dims(saliency_matrix, axis=0),
+        num_goes_predictors=num_lagged_predictors,
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
-    )[1][0, ...]
+    )[1]
 
-    panel_file_names = [''] * num_model_lag_times
+    # TODO(thunderhoser): HACK: this length is always 1.
+    panel_file_names = [''] * len(axes_objects)
 
-    for k in range(num_model_lag_times):
+    for k in range(len(axes_objects)):
         ships_plotting.plot_raw_numbers_one_init_time(
             data_matrix=saliency_matrix[k, ...],
             axes_object=axes_objects[k],
@@ -1060,7 +1039,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                     output_dir_name=output_dir_name
                 )
 
-            if option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+            if option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
                 _plot_lagged_ships_saliency(
                     data_dict=data_dict, saliency_dict=saliency_dict,
                     model_metadata_dict=model_metadata_dict,
@@ -1077,7 +1056,7 @@ def _run(saliency_file_name, example_dir_name, normalization_file_name,
                 )
 
             if (
-                    option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                     is not None
             ):
                 _plot_forecast_ships_saliency(

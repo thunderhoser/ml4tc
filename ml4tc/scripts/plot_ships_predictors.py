@@ -58,12 +58,12 @@ INPUT_ARG_PARSER.add_argument(
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + FORECAST_PREDICTORS_ARG_NAME, type=str, nargs='+', required=False,
-    default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST,
+    default=neural_net.DEFAULT_SHIPS_FORECAST_PREDICTOR_NAMES,
     help=FORECAST_PREDICTORS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + LAGGED_PREDICTORS_ARG_NAME, type=str, nargs='+', required=False,
-    default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
+    default=neural_net.DEFAULT_SHIPS_GOES_PREDICTOR_NAMES,
     help=LAGGED_PREDICTORS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(

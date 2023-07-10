@@ -30,7 +30,7 @@ SHIPS_KEYS_TO_REPLACE = [
 INPUT_DIR_ARG_NAME = 'input_example_dir_name'
 CYCLONE_ID_ARG_NAME = 'cyclone_id_string'
 YEAR_ARG_NAME = 'year'
-SHIPS_LAG_TIMES_ARG_NAME = 'ships_lag_times_hours'
+SHIPS_GOES_LAG_TIMES_ARG_NAME = 'ships_goes_lag_times_hours'
 SATELLITE_LAG_TIMES_ARG_NAME = 'satellite_lag_times_minutes'
 SHIPS_TIME_TOLERANCE_ARG_NAME = 'ships_time_tolerance_sec'
 SATELLITE_TIME_TOLERANCE_ARG_NAME = 'satellite_time_tolerance_sec'
@@ -49,7 +49,9 @@ YEAR_HELP_STRING = (
     'Will subset examples for this year.  If you want to subset examples for a '
     'specific cyclone instead, leave this argument alone.'
 )
-SHIPS_LAG_TIMES_HELP_STRING = 'List of model lag times for SHIPS data.'
+SHIPS_GOES_LAG_TIMES_HELP_STRING = (
+    'List of model lag times for SHIPS GOES data.'
+)
 SATELLITE_LAG_TIMES_HELP_STRING = 'List of model lag times for satellite data.'
 SHIPS_TIME_TOLERANCE_HELP_STRING = 'Time tolerance for SHIPS data.'
 SATELLITE_TIME_TOLERANCE_HELP_STRING = 'Time tolerance for satellite data.'
@@ -73,8 +75,8 @@ INPUT_ARG_PARSER.add_argument(
     help=YEAR_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + SHIPS_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
-    help=SHIPS_LAG_TIMES_HELP_STRING
+    '--' + SHIPS_GOES_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
+    help=SHIPS_GOES_LAG_TIMES_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SATELLITE_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
@@ -95,7 +97,7 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _run(input_example_dir_name, cyclone_id_string, year,
-         ships_lag_times_hours, satellite_lag_times_minutes,
+         ships_goes_lag_times_hours, satellite_lag_times_minutes,
          ships_time_tolerance_sec, satellite_time_tolerance_sec,
          output_example_dir_name):
     """Subsets examples for TD-to-TS prediction.
@@ -105,19 +107,19 @@ def _run(input_example_dir_name, cyclone_id_string, year,
     :param input_example_dir_name: See documentation at top of file.
     :param cyclone_id_string: Same.
     :param year: Same.
-    :param ships_lag_times_hours: Same.
+    :param ships_goes_lag_times_hours: Same.
     :param satellite_lag_times_minutes: Same.
     :param ships_time_tolerance_sec: Same.
     :param satellite_time_tolerance_sec: Same.
     :param output_example_dir_name: Same.
     """
 
-    error_checking.assert_is_geq_numpy_array(ships_lag_times_hours, 0)
+    error_checking.assert_is_geq_numpy_array(ships_goes_lag_times_hours, 0)
     error_checking.assert_is_geq_numpy_array(satellite_lag_times_minutes, 0)
     error_checking.assert_is_geq(ships_time_tolerance_sec, 0)
     error_checking.assert_is_geq(satellite_time_tolerance_sec, 0)
 
-    ships_lag_times_sec = ships_lag_times_hours * HOURS_TO_SECONDS
+    ships_goes_lag_times_sec = ships_goes_lag_times_hours * HOURS_TO_SECONDS
     satellite_lag_times_sec = satellite_lag_times_minutes * MINUTES_TO_SECONDS
 
     if year > 0:
@@ -159,7 +161,7 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             num_negative_examples_desired=LARGE_INTEGER,
             lead_times_sec=DUMMY_LEAD_TIMES_SEC,
             satellite_lag_times_sec=satellite_lag_times_sec,
-            ships_lag_times_sec=ships_lag_times_sec,
+            ships_goes_lag_times_sec=ships_goes_lag_times_sec,
             predict_td_to_ts=True,
             satellite_time_tolerance_sec=satellite_time_tolerance_sec,
             satellite_max_missing_times=LARGE_INTEGER,
@@ -177,7 +179,8 @@ def _run(input_example_dir_name, cyclone_id_string, year,
             satellite_rows_to_keep = numpy.concatenate(these_arrays, axis=0)
 
         these_arrays = [
-            r for r in data_dict[neural_net.SHIPS_ROWS_KEY] if r is not None
+            r for r in data_dict[neural_net.SHIPS_GOES_ROWS_KEY]
+            if r is not None
         ]
         if len(these_arrays) == 0:
             ships_rows_to_keep = numpy.array([], dtype=int)
@@ -281,8 +284,8 @@ if __name__ == '__main__':
         input_example_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
         cyclone_id_string=getattr(INPUT_ARG_OBJECT, CYCLONE_ID_ARG_NAME),
         year=getattr(INPUT_ARG_OBJECT, YEAR_ARG_NAME),
-        ships_lag_times_hours=numpy.array(
-            getattr(INPUT_ARG_OBJECT, SHIPS_LAG_TIMES_ARG_NAME), dtype=int
+        ships_goes_lag_times_hours=numpy.array(
+            getattr(INPUT_ARG_OBJECT, SHIPS_GOES_LAG_TIMES_ARG_NAME), dtype=int
         ),
         satellite_lag_times_minutes=numpy.array(
             getattr(INPUT_ARG_OBJECT, SATELLITE_LAG_TIMES_ARG_NAME), dtype=int

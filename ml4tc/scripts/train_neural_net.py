@@ -14,10 +14,11 @@ INPUT_ARG_PARSER = training_args.add_input_args(parser_object=INPUT_ARG_PARSER)
 
 def _run(template_file_name, output_dir_name, training_example_dir_name,
          validation_example_dir_name, training_years, validation_years,
-         lead_times_hours, satellite_lag_times_minutes, ships_lag_times_hours,
-         satellite_predictor_names, ships_predictor_names_lagged,
-         ships_builtin_lag_times_hours, ships_predictor_names_forecast,
-         ships_max_forecast_hour, satellite_time_tolerance_training_sec,
+         lead_times_hours,
+         satellite_predictor_names, satellite_lag_times_minutes,
+         ships_goes_predictor_names, ships_goes_lag_times_hours,
+         ships_forecast_predictor_names, ships_max_forecast_hour,
+         satellite_time_tolerance_training_sec,
          satellite_max_missing_times_training,
          ships_time_tolerance_training_sec, ships_max_missing_times_training,
          satellite_time_tolerance_validation_sec,
@@ -41,12 +42,11 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     :param training_years: Same.
     :param validation_years: Same.
     :param lead_times_hours: Same.
-    :param satellite_lag_times_minutes: Same.
-    :param ships_lag_times_hours: Same.
     :param satellite_predictor_names: Same.
-    :param ships_predictor_names_lagged: Same.
-    :param ships_builtin_lag_times_hours: Same.
-    :param ships_predictor_names_forecast: Same.
+    :param satellite_lag_times_minutes: Same.
+    :param ships_goes_predictor_names: Same.
+    :param ships_goes_lag_times_hours: Same.
+    :param ships_forecast_predictor_names: Same.
     :param ships_max_forecast_hour: Same.
     :param satellite_time_tolerance_training_sec: Same.
     :param satellite_max_missing_times_training: Same.
@@ -94,32 +94,34 @@ def _run(template_file_name, output_dir_name, training_example_dir_name,
     ):
         satellite_predictor_names = None
 
-    if len(ships_lag_times_hours) == 1 and ships_lag_times_hours[0] < 0:
-        ships_lag_times_hours = None
+    if (
+            len(ships_goes_lag_times_hours) == 1 and
+            ships_goes_lag_times_hours[0] < 0
+    ):
+        ships_goes_lag_times_hours = None
 
     if (
-            len(ships_predictor_names_lagged) == 1
-            and ships_predictor_names_lagged[0] in NONE_STRINGS
+            len(ships_goes_predictor_names) == 1
+            and ships_goes_predictor_names[0] in NONE_STRINGS
     ):
-        ships_predictor_names_lagged = None
+        ships_goes_predictor_names = None
 
     if (
-            len(ships_predictor_names_forecast) == 1
-            and ships_predictor_names_forecast[0] in NONE_STRINGS
+            len(ships_forecast_predictor_names) == 1
+            and ships_forecast_predictor_names[0] in NONE_STRINGS
     ):
-        ships_predictor_names_forecast = None
+        ships_forecast_predictor_names = None
 
     training_option_dict = {
         neural_net.EXAMPLE_DIRECTORY_KEY: training_example_dir_name,
         neural_net.YEARS_KEY: training_years,
         neural_net.LEAD_TIMES_KEY: lead_times_hours,
         neural_net.SATELLITE_LAG_TIMES_KEY: satellite_lag_times_minutes,
-        neural_net.SHIPS_LAG_TIMES_KEY: ships_lag_times_hours,
         neural_net.SATELLITE_PREDICTORS_KEY: satellite_predictor_names,
-        neural_net.SHIPS_PREDICTORS_LAGGED_KEY: ships_predictor_names_lagged,
-        neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY: ships_builtin_lag_times_hours,
-        neural_net.SHIPS_PREDICTORS_FORECAST_KEY:
-            ships_predictor_names_forecast,
+        neural_net.SHIPS_GOES_PREDICTORS_KEY: ships_goes_predictor_names,
+        neural_net.SHIPS_GOES_LAG_TIMES_KEY: ships_goes_lag_times_hours,
+        neural_net.SHIPS_FORECAST_PREDICTORS_KEY:
+            ships_forecast_predictor_names,
         neural_net.SHIPS_MAX_FORECAST_HOUR_KEY: ships_max_forecast_hour,
         neural_net.NUM_POSITIVE_EXAMPLES_KEY: num_positive_examples_per_batch,
         neural_net.NUM_NEGATIVE_EXAMPLES_KEY: num_negative_examples_per_batch,
@@ -213,30 +215,26 @@ if __name__ == '__main__':
             getattr(INPUT_ARG_OBJECT, training_args.LEAD_TIMES_ARG_NAME),
             dtype=int
         ),
+        satellite_predictor_names=getattr(
+            INPUT_ARG_OBJECT, training_args.SATELLITE_PREDICTORS_ARG_NAME
+        ),
         satellite_lag_times_minutes=numpy.array(
             getattr(
                 INPUT_ARG_OBJECT, training_args.SATELLITE_LAG_TIMES_ARG_NAME
             ),
             dtype=int
         ),
-        ships_lag_times_hours=numpy.array(
-            getattr(INPUT_ARG_OBJECT, training_args.SHIPS_LAG_TIMES_ARG_NAME),
+        ships_goes_predictor_names=getattr(
+            INPUT_ARG_OBJECT, training_args.SHIPS_GOES_PREDICTORS_ARG_NAME
+        ),
+        ships_goes_lag_times_hours=numpy.array(
+            getattr(
+                INPUT_ARG_OBJECT, training_args.SHIPS_GOES_LAG_TIMES_ARG_NAME
+            ),
             dtype=int
         ),
-        satellite_predictor_names=getattr(
-            INPUT_ARG_OBJECT, training_args.SATELLITE_PREDICTORS_ARG_NAME
-        ),
-        ships_predictor_names_lagged=getattr(
-            INPUT_ARG_OBJECT, training_args.SHIPS_PREDICTORS_LAGGED_ARG_NAME
-        ),
-        ships_builtin_lag_times_hours=numpy.array(
-            getattr(
-                INPUT_ARG_OBJECT, training_args.SHIPS_BUILTIN_LAG_TIMES_ARG_NAME
-            ),
-            dtype=float
-        ),
-        ships_predictor_names_forecast=getattr(
-            INPUT_ARG_OBJECT, training_args.SHIPS_PREDICTORS_FORECAST_ARG_NAME
+        ships_forecast_predictor_names=getattr(
+            INPUT_ARG_OBJECT, training_args.SHIPS_FORECAST_PREDICTORS_ARG_NAME
         ),
         ships_max_forecast_hour=getattr(
             INPUT_ARG_OBJECT, training_args.SHIPS_MAX_FORECAST_HOUR_ARG_NAME
