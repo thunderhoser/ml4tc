@@ -782,14 +782,19 @@ def _read_non_predictors_one_file(
             class_cutoffs_m_s01=class_cutoffs_m_s01
         )
 
-        print(this_target_class_matrix)
-
         if this_target_class_matrix is None:
             continue
 
         if (
                 these_satellite_indices is None
-                and these_ships_goes_indices is None
+                and satellite_lag_times_sec is not None
+                and not use_climo_as_backup
+        ):
+            continue
+
+        if (
+                these_ships_goes_indices is None
+                and ships_goes_lag_times_sec is not None
                 and not use_climo_as_backup
         ):
             continue
