@@ -1160,7 +1160,7 @@ def _read_ships_one_file(
     xt = example_table_xarray
 
     if num_goes_predictors == 0:
-        predictor_indices_goes = None
+        predictor_indices_goes = numpy.array([], dtype=int)
     else:
         this_coord_name = example_utils.SHIPS_PREDICTOR_LAGGED_DIM
         predictor_indices_goes = numpy.array([
@@ -1169,7 +1169,7 @@ def _read_ships_one_file(
         ], dtype=int)
 
     if num_forecast_predictors == 0:
-        predictor_indices_forecast = None
+        predictor_indices_forecast = numpy.array([], dtype=int)
     else:
         this_coord_name = example_utils.SHIPS_PREDICTOR_FORECAST_DIM
         predictor_indices_forecast = numpy.array([
