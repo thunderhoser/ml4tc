@@ -1337,6 +1337,8 @@ def _read_one_example_file(
         class_cutoffs_m_s01=class_cutoffs_m_s01
     )
 
+    print(data_dict)
+
     satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
     ships_goes_rows_by_example = data_dict.pop(SHIPS_GOES_ROWS_KEY)
     ships_forecast_row_by_example = data_dict.pop(SHIPS_FORECAST_ROWS_KEY)
@@ -2524,8 +2526,6 @@ def input_generator(option_dict):
                 num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
             )
-            
-            print(this_data_dict)
 
             init_times_by_file_unix_sec[file_index] = (
                 this_data_dict[INIT_TIMES_KEY]
