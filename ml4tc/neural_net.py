@@ -782,6 +782,8 @@ def _read_non_predictors_one_file(
             class_cutoffs_m_s01=class_cutoffs_m_s01
         )
 
+        print(this_target_class_matrix)
+
         if this_target_class_matrix is None:
             continue
 
@@ -1336,8 +1338,6 @@ def _read_one_example_file(
         all_init_times_unix_sec=init_times_unix_sec,
         class_cutoffs_m_s01=class_cutoffs_m_s01
     )
-
-    print(data_dict)
 
     satellite_rows_by_example = data_dict.pop(SATELLITE_ROWS_KEY)
     ships_goes_rows_by_example = data_dict.pop(SHIPS_GOES_ROWS_KEY)
