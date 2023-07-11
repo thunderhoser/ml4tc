@@ -327,7 +327,8 @@ def plot_brightness_temp_one_example(
                 border_longitudes_deg_e=border_longitudes_deg_e,
                 cbar_orientation_string=None, output_dir_name=None,
                 plot_motion_arrow=plot_motion_arrow,
-                plotting_diffs=plot_time_diffs_here
+                plotting_diffs=plot_time_diffs_here,
+                plot_center_marker=False
             )
         )
 
@@ -350,7 +351,7 @@ def plot_brightness_temp_one_example(
 
 def plot_lagged_ships_one_example(
         predictor_matrices_one_example, model_metadata_dict, cyclone_id_string,
-        init_time_unix_sec, builtin_lag_times_hours, forecast_hours):
+        init_time_unix_sec, forecast_hours):
     """Plots lagged SHIPS predictors for one example.
 
     "For one example" means for each lag time and one forecast-initialization
@@ -362,8 +363,6 @@ def plot_lagged_ships_one_example(
     :param model_metadata_dict: Same.
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
-    :param builtin_lag_times_hours: 1-D numpy array of built-in lag times for
-        lagged SHIPS predictors.
     :param forecast_hours: 1-D numpy array of forecast hours for forecast SHIPS
         predictors.
     :return: figure_objects: See doc for `plot_brightness_temp_one_example`.
@@ -382,9 +381,6 @@ def plot_lagged_ships_one_example(
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_integer(init_time_unix_sec)
-    error_checking.assert_is_numpy_array(
-        builtin_lag_times_hours, num_dimensions=1
-    )
     error_checking.assert_is_numpy_array(forecast_hours, num_dimensions=1)
     error_checking.assert_is_numpy_array_without_nan(forecast_hours)
 
@@ -394,11 +390,11 @@ def plot_lagged_ships_one_example(
     )
     model_lag_times_sec = (
         HOURS_TO_SECONDS *
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_LAG_TIMES_KEY]
     )
 
     lagged_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_lagged_predictors = len(lagged_predictor_names)
     lagged_predictor_indices = numpy.linspace(
@@ -406,7 +402,7 @@ def plot_lagged_ships_one_example(
     )
 
     forecast_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
     num_forecast_predictors = (
         0 if forecast_predictor_names is None
@@ -414,136 +410,69 @@ def plot_lagged_ships_one_example(
     )
 
     num_forecast_hours = len(forecast_hours)
-    num_builtin_lag_times = len(builtin_lag_times_hours)
     num_model_lag_times = len(model_lag_times_sec)
 
-    if num_builtin_lag_times == 1:
-        model_lag_times_hours = numpy.round(
-            model_lag_times_sec * SECONDS_TO_HOURS
-        ).astype(int)
+    model_lag_times_hours = numpy.round(
+        model_lag_times_sec * SECONDS_TO_HOURS
+    ).astype(int)
 
-        metadata_dict = {
-            example_utils.SHIPS_LAG_TIME_DIM: model_lag_times_hours,
-            example_utils.SHIPS_VALID_TIME_DIM:
-                numpy.array([init_time_unix_sec], dtype=int),
-            example_utils.SHIPS_PREDICTOR_LAGGED_DIM: lagged_predictor_names
-        }
+    metadata_dict = {
+        example_utils.SHIPS_LAG_TIME_DIM: model_lag_times_hours,
+        example_utils.SHIPS_VALID_TIME_DIM:
+            numpy.array([init_time_unix_sec], dtype=int),
+        example_utils.SHIPS_PREDICTOR_LAGGED_DIM: lagged_predictor_names
+    }
 
-        predictor_matrix = numpy.array([], dtype=float)
-
-        for j in range(num_model_lag_times):
-            this_predictor_matrix = numpy.expand_dims(
-                predictor_matrices_one_example[2][0, j, :], axis=0
-            )
-            this_predictor_matrix = numpy.expand_dims(
-                this_predictor_matrix, axis=0
-            )
-            this_predictor_matrix = neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=this_predictor_matrix,
-                num_lagged_predictors=num_lagged_predictors,
-                num_builtin_lag_times=num_builtin_lag_times,
-                num_forecast_predictors=num_forecast_predictors,
-                num_forecast_hours=num_forecast_hours
-            )[0][:, 0, ...]
-
-            if predictor_matrix.size == 0:
-                predictor_matrix = this_predictor_matrix + 0.
-            else:
-                predictor_matrix = numpy.concatenate(
-                    (predictor_matrix, this_predictor_matrix), axis=1
-                )
-
-        dimensions = (
-            example_utils.SHIPS_VALID_TIME_DIM,
-            example_utils.SHIPS_LAG_TIME_DIM,
-            example_utils.SHIPS_PREDICTOR_LAGGED_DIM
-        )
-        main_data_dict = {
-            example_utils.SHIPS_PREDICTORS_LAGGED_KEY: (
-                dimensions, predictor_matrix
-            ),
-            ships_io.CYCLONE_ID_KEY: (
-                (example_utils.SHIPS_VALID_TIME_DIM,),
-                [cyclone_id_string]
-            )
-        }
-
-        this_table_xarray = xarray.Dataset(
-            data_vars=main_data_dict, coords=metadata_dict
-        )
-
-        figure_object, axes_object, pathless_output_file_name = (
-            ships_plotting.plot_lagged_predictors_one_init_time(
-                example_table_xarray=this_table_xarray, init_time_index=0,
-                predictor_indices=lagged_predictor_indices,
-            )
-        )
-
-        return [figure_object], [axes_object], [pathless_output_file_name]
-
-    figure_objects = [None] * num_model_lag_times
-    axes_objects = [None] * num_model_lag_times
-    pathless_output_file_names = [''] * num_model_lag_times
+    predictor_matrix = numpy.array([], dtype=float)
 
     for j in range(num_model_lag_times):
-
-        # Create xarray table.
-        valid_time_unix_sec = init_time_unix_sec - model_lag_times_sec[j]
-
-        metadata_dict = {
-            example_utils.SHIPS_LAG_TIME_DIM: builtin_lag_times_hours,
-            example_utils.SHIPS_VALID_TIME_DIM:
-                numpy.array([valid_time_unix_sec], dtype=int),
-            example_utils.SHIPS_PREDICTOR_LAGGED_DIM: lagged_predictor_names
-        }
-
-        predictor_matrix = numpy.expand_dims(
-            predictor_matrices_one_example[2][0, j, :], axis=0
-        )
-        predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-        predictor_matrix = neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=predictor_matrix,
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=num_builtin_lag_times,
+        this_predictor_matrix = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=predictor_matrices_one_example[2],
+            num_goes_predictors=num_lagged_predictors,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=num_forecast_hours
-        )[0][:, 0, ...]
+        )[0]
 
-        dimensions = (
-            example_utils.SHIPS_VALID_TIME_DIM,
-            example_utils.SHIPS_LAG_TIME_DIM,
-            example_utils.SHIPS_PREDICTOR_LAGGED_DIM
-        )
-        main_data_dict = {
-            example_utils.SHIPS_PREDICTORS_LAGGED_KEY: (
-                dimensions, predictor_matrix
-            ),
-            ships_io.CYCLONE_ID_KEY: (
-                (example_utils.SHIPS_VALID_TIME_DIM,),
-                [cyclone_id_string]
+        this_predictor_matrix = this_predictor_matrix[:, [j], :]
+
+        if predictor_matrix.size == 0:
+            predictor_matrix = this_predictor_matrix + 0.
+        else:
+            predictor_matrix = numpy.concatenate(
+                (predictor_matrix, this_predictor_matrix), axis=1
             )
-        }
 
-        this_table_xarray = xarray.Dataset(
-            data_vars=main_data_dict, coords=metadata_dict
+    dimensions = (
+        example_utils.SHIPS_VALID_TIME_DIM,
+        example_utils.SHIPS_LAG_TIME_DIM,
+        example_utils.SHIPS_PREDICTOR_LAGGED_DIM
+    )
+    main_data_dict = {
+        example_utils.SHIPS_PREDICTORS_LAGGED_KEY: (
+            dimensions, predictor_matrix
+        ),
+        ships_io.CYCLONE_ID_KEY: (
+            (example_utils.SHIPS_VALID_TIME_DIM,), [cyclone_id_string]
         )
+    }
 
-        # Do plotting.
-        (
-            figure_objects[j],
-            axes_objects[j],
-            pathless_output_file_names[j]
-        ) = ships_plotting.plot_lagged_predictors_one_init_time(
+    this_table_xarray = xarray.Dataset(
+        data_vars=main_data_dict, coords=metadata_dict
+    )
+
+    figure_object, axes_object, pathless_output_file_name = (
+        ships_plotting.plot_lagged_predictors_one_init_time(
             example_table_xarray=this_table_xarray, init_time_index=0,
             predictor_indices=lagged_predictor_indices,
         )
+    )
 
-    return figure_objects, axes_objects, pathless_output_file_names
+    return [figure_object], [axes_object], [pathless_output_file_name]
 
 
 def plot_forecast_ships_one_example(
         predictor_matrices_one_example, model_metadata_dict, cyclone_id_string,
-        init_time_unix_sec, builtin_lag_times_hours, forecast_hours):
+        init_time_unix_sec, forecast_hours):
     """Plots forecast SHIPS predictors for one example.
 
     "For one example" means for each lag time and one forecast-initialization
@@ -555,7 +484,6 @@ def plot_forecast_ships_one_example(
     :param model_metadata_dict: Same.
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
-    :param builtin_lag_times_hours: See doc for `plot_lagged_ships_one_example`.
     :param forecast_hours: Same.
     :return: figure_objects: Same.
     :return: axes_objects: Same.
@@ -573,9 +501,6 @@ def plot_forecast_ships_one_example(
 
     satellite_utils.parse_cyclone_id(cyclone_id_string)
     error_checking.assert_is_integer(init_time_unix_sec)
-    error_checking.assert_is_numpy_array(
-        builtin_lag_times_hours, num_dimensions=1
-    )
     error_checking.assert_is_numpy_array(forecast_hours, num_dimensions=1)
     error_checking.assert_is_numpy_array_without_nan(forecast_hours)
 
@@ -585,11 +510,11 @@ def plot_forecast_ships_one_example(
     )
     model_lag_times_sec = (
         HOURS_TO_SECONDS *
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_LAG_TIMES_KEY]
     )
 
     forecast_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
     num_forecast_predictors = len(forecast_predictor_names)
     forecast_predictor_indices = numpy.linspace(
@@ -597,7 +522,7 @@ def plot_forecast_ships_one_example(
     )
 
     lagged_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_lagged_predictors = (
         0 if lagged_predictor_names is None
@@ -605,7 +530,6 @@ def plot_forecast_ships_one_example(
     )
 
     num_forecast_hours = len(forecast_hours)
-    num_builtin_lag_times = len(builtin_lag_times_hours)
     num_model_lag_times = len(model_lag_times_sec)
 
     # For each model lag time:
@@ -626,17 +550,12 @@ def plot_forecast_ships_one_example(
                 forecast_predictor_names
         }
 
-        predictor_matrix = numpy.expand_dims(
-            predictor_matrices_one_example[2][0, j, :], axis=0
-        )
-        predictor_matrix = numpy.expand_dims(predictor_matrix, axis=0)
-        predictor_matrix = neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=predictor_matrix,
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=num_builtin_lag_times,
+        predictor_matrix = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=predictor_matrices_one_example[2],
+            num_goes_predictors=num_lagged_predictors,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=num_forecast_hours
-        )[1][:, 0, ...]
+        )[1]
 
         dimensions = (
             example_utils.SHIPS_VALID_TIME_DIM,
@@ -648,8 +567,7 @@ def plot_forecast_ships_one_example(
                 dimensions, predictor_matrix
             ),
             ships_io.CYCLONE_ID_KEY: (
-                (example_utils.SHIPS_VALID_TIME_DIM,),
-                [cyclone_id_string]
+                (example_utils.SHIPS_VALID_TIME_DIM,), [cyclone_id_string]
             )
         }
 

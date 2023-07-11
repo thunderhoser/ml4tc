@@ -550,14 +550,14 @@ def _plot_lagged_ships_map(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_lagged_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_LAG_TIMES_KEY]
     )
 
     forecast_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
     num_forecast_predictors = (
         0 if forecast_predictor_names is None else len(forecast_predictor_names)
@@ -570,54 +570,37 @@ def _plot_lagged_ships_map(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-    builtin_lag_times_hours = (
-        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
-    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_lagged_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
     )
 
-    if len(builtin_lag_times_hours) == 1:
-        orig_occlusion_matrix = occlusion_matrix + 0.
-        occlusion_matrix = numpy.array([], dtype=float)
+    orig_occlusion_matrix = occlusion_matrix + 0.
+    occlusion_matrix = numpy.array([], dtype=float)
 
-        for j in range(num_model_lag_times):
-            new_occlusion_matrix = numpy.expand_dims(
-                orig_occlusion_matrix[j, :], axis=0
-            )
-            new_occlusion_matrix = numpy.expand_dims(
-                new_occlusion_matrix, axis=0
-            )
-            new_occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-                predictor_matrix_3d=new_occlusion_matrix,
-                num_lagged_predictors=num_lagged_predictors,
-                num_builtin_lag_times=len(builtin_lag_times_hours),
-                num_forecast_predictors=num_forecast_predictors,
-                num_forecast_hours=len(forecast_hours)
-            )[0][:, 0, ...]
-
-            if occlusion_matrix.size == 0:
-                occlusion_matrix = new_occlusion_matrix + 0.
-            else:
-                occlusion_matrix = numpy.concatenate(
-                    (occlusion_matrix, new_occlusion_matrix), axis=1
-                )
-    else:
-        occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-            predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
-            num_lagged_predictors=num_lagged_predictors,
-            num_builtin_lag_times=len(builtin_lag_times_hours),
+    for j in range(num_model_lag_times):
+        new_occlusion_matrix = neural_net.separate_ships_predictors(
+            ships_predictor_matrix_2d=
+            numpy.expand_dims(orig_occlusion_matrix, axis=0),
+            num_goes_predictors=num_lagged_predictors,
             num_forecast_predictors=num_forecast_predictors,
             num_forecast_hours=len(forecast_hours)
-        )[0][0, ...]
+        )[0]
+
+        new_occlusion_matrix = new_occlusion_matrix[:, j, :]
+
+        if occlusion_matrix.size == 0:
+            occlusion_matrix = new_occlusion_matrix + 0.
+        else:
+            occlusion_matrix = numpy.concatenate(
+                (occlusion_matrix, new_occlusion_matrix), axis=1
+            )
 
     if plot_normalized_occlusion:
         this_multiplier = 1.
@@ -744,14 +727,14 @@ def _plot_forecast_ships_map(
         model_metadata_dict[neural_net.VALIDATION_OPTIONS_KEY]
     )
     num_forecast_predictors = len(
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+        validation_option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
     )
     num_model_lag_times = len(
-        validation_option_dict[neural_net.SHIPS_LAG_TIMES_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_LAG_TIMES_KEY]
     )
 
     lagged_predictor_names = (
-        validation_option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY]
+        validation_option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY]
     )
     num_lagged_predictors = (
         0 if lagged_predictor_names is None else len(lagged_predictor_names)
@@ -764,35 +747,30 @@ def _plot_forecast_ships_map(
         0, max_forecast_hour, num=int(numpy.round(max_forecast_hour / 6)) + 1,
         dtype=int
     )
-    builtin_lag_times_hours = (
-        validation_option_dict[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
-    )
 
     figure_objects, axes_objects, pathless_output_file_names = (
         predictor_plotting.plot_forecast_ships_one_example(
             predictor_matrices_one_example=predictor_matrices_one_example,
             model_metadata_dict=model_metadata_dict,
             cyclone_id_string=cyclone_id_string,
-            builtin_lag_times_hours=builtin_lag_times_hours,
             forecast_hours=forecast_hours,
             init_time_unix_sec=init_time_unix_sec
         )
     )
 
-    occlusion_matrix = neural_net.ships_predictors_3d_to_4d(
-        predictor_matrix_3d=numpy.expand_dims(occlusion_matrix, axis=0),
-        num_lagged_predictors=num_lagged_predictors,
-        num_builtin_lag_times=len(builtin_lag_times_hours),
+    occlusion_matrix = neural_net.separate_ships_predictors(
+        ships_predictor_matrix_2d=numpy.expand_dims(occlusion_matrix, axis=0),
+        num_goes_predictors=num_lagged_predictors,
         num_forecast_predictors=num_forecast_predictors,
         num_forecast_hours=len(forecast_hours)
-    )[1][0, ...]
+    )[1]
 
     if plot_normalized_occlusion:
         this_multiplier = 1.
     else:
         this_multiplier = 100.
 
-    panel_file_names = [''] * num_model_lag_times
+    panel_file_names = [''] * len(axes_objects)
 
     for k in range(num_model_lag_times):
         ships_plotting.plot_raw_numbers_one_init_time(
@@ -1088,7 +1066,7 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                     info_string=info_strings[j], output_dir_name=output_dir_name
                 )
 
-            if option_dict[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+            if option_dict[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
                 _plot_lagged_ships_map(
                     data_dict=data_dict, occlusion_dict=occlusion_dict,
                     plot_normalized_occlusion=plot_normalized_occlusion,
@@ -1103,7 +1081,7 @@ def _run(occlusion_file_name, example_dir_name, normalization_file_name,
                 )
 
             if (
-                    option_dict[neural_net.SHIPS_PREDICTORS_FORECAST_KEY]
+                    option_dict[neural_net.SHIPS_FORECAST_PREDICTORS_KEY]
                     is not None
             ):
                 _plot_forecast_ships_map(

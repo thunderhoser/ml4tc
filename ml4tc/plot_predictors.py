@@ -693,7 +693,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
 
         v = validation_option_dict
 
-        if v[neural_net.SHIPS_PREDICTORS_LAGGED_KEY] is not None:
+        if v[neural_net.SHIPS_GOES_PREDICTORS_KEY] is not None:
             these_predictor_matrices = [
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
@@ -705,14 +705,12 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 0, max_forecast_hour,
                 num=int(numpy.round(max_forecast_hour / 6)) + 1, dtype=int
             )
-            builtin_lag_times_hours = v[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
 
             figure_objects, axes_objects, pathless_panel_file_names = (
                 predictor_plotting.plot_lagged_ships_one_example(
                     predictor_matrices_one_example=these_predictor_matrices,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=cyclone_id_string,
-                    builtin_lag_times_hours=builtin_lag_times_hours,
                     forecast_hours=forecast_hours,
                     init_time_unix_sec=init_times_unix_sec[i]
                 )
@@ -731,7 +729,7 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 cyclone_id_string=cyclone_id_string
             )
 
-        if v[neural_net.SHIPS_PREDICTORS_FORECAST_KEY] is not None:
+        if v[neural_net.SHIPS_FORECAST_PREDICTORS_KEY] is not None:
             these_predictor_matrices = [
                 None if m is None else m[[i], ...] for m in predictor_matrices
             ]
@@ -743,14 +741,12 @@ def _run(model_metafile_name, norm_example_file_name, normalization_file_name,
                 0, max_forecast_hour,
                 num=int(numpy.round(max_forecast_hour / 6)) + 1, dtype=int
             )
-            builtin_lag_times_hours = v[neural_net.SHIPS_BUILTIN_LAG_TIMES_KEY]
 
             figure_objects, axes_objects, pathless_panel_file_names = (
                 predictor_plotting.plot_forecast_ships_one_example(
                     predictor_matrices_one_example=these_predictor_matrices,
                     model_metadata_dict=model_metadata_dict,
                     cyclone_id_string=cyclone_id_string,
-                    builtin_lag_times_hours=builtin_lag_times_hours,
                     forecast_hours=forecast_hours,
                     init_time_unix_sec=init_times_unix_sec[i]
                 )

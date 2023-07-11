@@ -66,16 +66,16 @@ BASE_OPTION_DICT_DENSE = {
 
 ENSEMBLE_SIZE = 100
 NUM_DENSE_LAYERS = 5
+NUM_SHIPS_GOES_PREDICTORS = 16
+NUM_SHIPS_GOES_LAG_TIMES = 5
 NUM_SHIPS_ENVIRO_PREDICTORS = 11
-NUM_SHIPS_HISTORICAL_PREDICTORS = 2
-NUM_SHIPS_SATELLITE_PREDICTORS = 16
+NUM_SHIPS_HIST_PREDICTORS = 2
 NUM_SHIPS_FORECAST_HOURS = 5
 
 UNIQUE_CIRA_IR_LAG_TIME_COUNTS = numpy.array([0, 1, 2, 3], dtype=int)
 UNIQUE_SHIPS_ENVIRO_FLAGS = numpy.array([0, 1], dtype=bool)
 UNIQUE_SHIPS_HISTORICAL_FLAGS = numpy.array([0, 1], dtype=bool)
 UNIQUE_SHIPS_SATELLITE_FLAGS = numpy.array([0, 1], dtype=bool)
-UNIQUE_TEMPORAL_DIFF_FLAGS = numpy.array([0, 1], dtype=bool)
 
 METRIC_FUNCTION_LIST = list(neural_net.METRIC_DICT.values())
 
@@ -97,19 +97,16 @@ def _run():
 
     (
         cira_ir_lag_time_counts, use_ships_enviro_flags,
-        use_ships_historical_flags, use_ships_satellite_flags,
-        use_temporal_diff_flags
+        use_ships_historical_flags, use_ships_satellite_flags
     ) = numpy.meshgrid(
         UNIQUE_CIRA_IR_LAG_TIME_COUNTS, UNIQUE_SHIPS_ENVIRO_FLAGS,
-        UNIQUE_SHIPS_HISTORICAL_FLAGS, UNIQUE_SHIPS_SATELLITE_FLAGS,
-        UNIQUE_TEMPORAL_DIFF_FLAGS
+        UNIQUE_SHIPS_HISTORICAL_FLAGS, UNIQUE_SHIPS_SATELLITE_FLAGS
     )
 
     cira_ir_lag_time_counts = numpy.ravel(cira_ir_lag_time_counts)
     use_ships_enviro_flags = numpy.ravel(use_ships_enviro_flags)
     use_ships_historical_flags = numpy.ravel(use_ships_historical_flags)
     use_ships_satellite_flags = numpy.ravel(use_ships_satellite_flags)
-    use_temporal_diff_flags = numpy.ravel(use_temporal_diff_flags)
 
     for i in range(len(cira_ir_lag_time_counts)):
         d = BASE_OPTION_DICT_GRIDDED_SAT
@@ -163,19 +160,20 @@ def _run():
         else:
             option_dict_gridded_sat = None
 
-        num_ships_predictors = (
+        num_scalar_ships_predictors = (
             int(use_ships_enviro_flags[i]) *
             NUM_SHIPS_ENVIRO_PREDICTORS * NUM_SHIPS_FORECAST_HOURS +
             int(use_ships_historical_flags[i]) *
-            NUM_SHIPS_HISTORICAL_PREDICTORS * NUM_SHIPS_FORECAST_HOURS +
-            int(use_ships_satellite_flags[i]) * NUM_SHIPS_SATELLITE_PREDICTORS
+            NUM_SHIPS_HIST_PREDICTORS * NUM_SHIPS_FORECAST_HOURS +
+            int(use_ships_satellite_flags[i]) *
+            NUM_SHIPS_GOES_PREDICTORS * NUM_SHIPS_GOES_LAG_TIMES
         )
 
-        if num_ships_predictors > 0:
+        if num_scalar_ships_predictors > 0:
             option_dict_ships = copy.deepcopy(BASE_OPTION_DICT_SHIPS)
             option_dict_ships[
                 cnn_architecture.INPUT_DIMENSIONS_KEY
-            ] = numpy.array([1, num_ships_predictors], dtype=int)
+            ] = numpy.array([1, num_scalar_ships_predictors], dtype=int)
         else:
             option_dict_ships = None
 

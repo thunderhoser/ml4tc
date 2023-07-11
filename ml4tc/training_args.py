@@ -24,12 +24,11 @@ VALIDATION_DIR_ARG_NAME = 'validation_example_dir_name'
 TRAINING_YEARS_ARG_NAME = 'training_years'
 VALIDATION_YEARS_ARG_NAME = 'validation_years'
 LEAD_TIMES_ARG_NAME = 'lead_times_hours'
-SATELLITE_LAG_TIMES_ARG_NAME = 'satellite_lag_times_minutes'
-SHIPS_LAG_TIMES_ARG_NAME = 'ships_lag_times_hours'
 SATELLITE_PREDICTORS_ARG_NAME = 'satellite_predictor_names'
-SHIPS_PREDICTORS_LAGGED_ARG_NAME = 'ships_predictor_names_lagged'
-SHIPS_BUILTIN_LAG_TIMES_ARG_NAME = 'ships_builtin_lag_times_hours'
-SHIPS_PREDICTORS_FORECAST_ARG_NAME = 'ships_predictor_names_forecast'
+SATELLITE_LAG_TIMES_ARG_NAME = 'satellite_lag_times_minutes'
+SHIPS_GOES_PREDICTORS_ARG_NAME = 'ships_goes_predictor_names'
+SHIPS_GOES_LAG_TIMES_ARG_NAME = 'ships_goes_lag_times_hours'
+SHIPS_FORECAST_PREDICTORS_ARG_NAME = 'ships_forecast_predictor_names'
 SHIPS_MAX_FORECAST_HOUR_ARG_NAME = 'ships_max_forecast_hour'
 TRAINING_SAT_TIME_TOLERANCE_ARG_NAME = 'satellite_time_tolerance_training_sec'
 TRAINING_SAT_MAX_MISSING_ARG_NAME = 'satellite_max_missing_times_training'
@@ -75,29 +74,26 @@ VALIDATION_DIR_HELP_STRING = (
 TRAINING_YEARS_HELP_STRING = 'List of training years.'
 VALIDATION_YEARS_HELP_STRING = 'List of validation years.'
 LEAD_TIMES_HELP_STRING = 'Lead times for predicting storm intensity.'
-SATELLITE_LAG_TIMES_HELP_STRING = (
-    'List of lag times for satellite predictors.  If you do not want satellite '
-    'predictors (brightness-temperature grids or scalars), make this a one-item'
-    ' list with a negative value.'
-)
-SHIPS_LAG_TIMES_HELP_STRING = (
-    'List of lag times for SHIPS predictors.  If you do not want SHIPS '
-    'predictors, make this a one-item list with a negative value.'
-)
 SATELLITE_PREDICTORS_HELP_STRING = (
     'List with names of scalar satellite predictors to use.  If you do not want'
     ' scalar satellite predictors, make this a one-item list with the empty '
     'string, "".'
 )
-SHIPS_PREDICTORS_LAGGED_HELP_STRING = (
-    'List with names of lagged SHIPS predictors to use.  If you do not want '
-    'lagged SHIPS predictors, make this a one-item list with the empty '
+SATELLITE_LAG_TIMES_HELP_STRING = (
+    'List of lag times for satellite predictors.  If you do not want satellite '
+    'predictors (brightness-temperature grids or scalars), make this a one-item'
+    ' list with a negative value.'
+)
+SHIPS_GOES_PREDICTORS_HELP_STRING = (
+    'List with names of SHIPS GOES predictors to use.  If you do not want '
+    'SHIPS GOES predictors, make this a one-item list with the empty '
     'string, "".'
 )
-SHIPS_BUILTIN_LAG_TIMES_HELP_STRING = (
-    'List of built-in lag times for GOES-based predictors in SHIPS.'
+SHIPS_GOES_LAG_TIMES_HELP_STRING = (
+    'List of lag times for SHIPS GOES predictors.  If you do not want SHIPS '
+    'GOES predictors, make this a one-item list with a negative value.'
 )
-SHIPS_PREDICTORS_FORECAST_HELP_STRING = (
+SHIPS_FORECAST_PREDICTORS_HELP_STRING = (
     'List with names of forecast SHIPS predictors to use.  If you do not want '
     'forecast SHIPS predictors, make this a one-item list with the empty '
     'string, "".'
@@ -235,33 +231,28 @@ def add_input_args(parser_object):
         help=LEAD_TIMES_HELP_STRING
     )
     parser_object.add_argument(
-        '--' + SATELLITE_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
-        help=SATELLITE_LAG_TIMES_HELP_STRING
-    )
-    parser_object.add_argument(
-        '--' + SHIPS_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
-        help=SHIPS_LAG_TIMES_HELP_STRING
-    )
-    parser_object.add_argument(
         '--' + SATELLITE_PREDICTORS_ARG_NAME, type=str, nargs='+',
         required=False, default=neural_net.DEFAULT_SATELLITE_PREDICTOR_NAMES,
         help=SATELLITE_PREDICTORS_HELP_STRING
     )
     parser_object.add_argument(
-        '--' + SHIPS_PREDICTORS_LAGGED_ARG_NAME, type=str, nargs='+',
-        required=False, default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_LAGGED,
-        help=SHIPS_PREDICTORS_LAGGED_HELP_STRING
+        '--' + SATELLITE_LAG_TIMES_ARG_NAME, type=int, nargs='+', required=True,
+        help=SATELLITE_LAG_TIMES_HELP_STRING
     )
     parser_object.add_argument(
-        '--' + SHIPS_BUILTIN_LAG_TIMES_ARG_NAME, type=float, nargs='+',
-        required=False, default=[numpy.nan],
-        help=SHIPS_BUILTIN_LAG_TIMES_HELP_STRING
+        '--' + SHIPS_GOES_PREDICTORS_ARG_NAME, type=str, nargs='+',
+        required=False, default=neural_net.DEFAULT_SHIPS_GOES_PREDICTOR_NAMES,
+        help=SHIPS_GOES_PREDICTORS_HELP_STRING
     )
     parser_object.add_argument(
-        '--' + SHIPS_PREDICTORS_FORECAST_ARG_NAME, type=str, nargs='+',
+        '--' + SHIPS_GOES_LAG_TIMES_ARG_NAME, type=int, nargs='+',
+        required=True, help=SHIPS_GOES_LAG_TIMES_HELP_STRING
+    )
+    parser_object.add_argument(
+        '--' + SHIPS_FORECAST_PREDICTORS_ARG_NAME, type=str, nargs='+',
         required=False,
-        default=neural_net.DEFAULT_SHIPS_PREDICTOR_NAMES_FORECAST,
-        help=SHIPS_PREDICTORS_FORECAST_HELP_STRING
+        default=neural_net.DEFAULT_SHIPS_FORECAST_PREDICTOR_NAMES,
+        help=SHIPS_FORECAST_PREDICTORS_HELP_STRING
     )
     parser_object.add_argument(
         '--' + SHIPS_MAX_FORECAST_HOUR_ARG_NAME, type=int, required=False,
