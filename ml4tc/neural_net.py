@@ -2668,9 +2668,6 @@ def input_generator(option_dict):
                 target_array.shape[0], numpy.sum(target_array == 1)
             ))
 
-        for m in predictor_matrices:
-            print(m.shape)
-
         if west_pacific_weight is None:
             yield predictor_matrices, target_array
 
