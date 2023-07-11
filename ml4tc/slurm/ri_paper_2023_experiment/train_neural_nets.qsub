@@ -42,7 +42,7 @@ set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 
 if ("$num_cira_ir_lag_times" == "0") then
-    set satellite_lag_time_string_minutes=""
+    set satellite_lag_time_string_minutes="-1"
     set satellite_time_tolerance_sec="3630"
     set satellite_predictor_names_string="None"
 else if ("$num_cira_ir_lag_times" == "1") then
