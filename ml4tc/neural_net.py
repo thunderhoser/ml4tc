@@ -1822,6 +1822,9 @@ def _augment_data(
         augmentation changes only the predictors, not the targets).
     """
 
+    if len(predictor_matrices[0].shape) < 4:
+        return predictor_matrices, target_array
+
     orig_num_examples = predictor_matrices[0].shape[0]
     num_matrices = len(predictor_matrices)
 
