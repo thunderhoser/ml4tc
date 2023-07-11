@@ -173,7 +173,7 @@ def _run():
             option_dict_ships = copy.deepcopy(BASE_OPTION_DICT_SHIPS)
             option_dict_ships[
                 cnn_architecture.INPUT_DIMENSIONS_KEY
-            ] = numpy.array([1, num_scalar_ships_predictors], dtype=int)
+            ] = numpy.array([num_scalar_ships_predictors], dtype=int)
         else:
             option_dict_ships = None
 
