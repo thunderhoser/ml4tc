@@ -2524,6 +2524,8 @@ def input_generator(option_dict):
                 num_grid_rows=num_grid_rows, num_grid_columns=num_grid_columns,
                 init_times_unix_sec=init_times_by_file_unix_sec[file_index]
             )
+            
+            print(this_data_dict)
 
             init_times_by_file_unix_sec[file_index] = (
                 this_data_dict[INIT_TIMES_KEY]
