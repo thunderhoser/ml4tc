@@ -110,6 +110,7 @@ def _run():
     use_ships_enviro_flags = numpy.ravel(use_ships_enviro_flags)
     use_ships_historical_flags = numpy.ravel(use_ships_historical_flags)
     use_ships_satellite_flags = numpy.ravel(use_ships_satellite_flags)
+    dropout_rates = numpy.ravel(dropout_rates)
 
     for i in range(len(cira_ir_lag_time_counts)):
         d = BASE_OPTION_DICT_GRIDDED_SAT
