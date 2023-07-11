@@ -1204,16 +1204,19 @@ def _read_ships_one_file(
             max_forecast_hour=max_forecast_hour
         )
 
-    goes_predictor_matrix = _interp_missing_times(
-        data_matrix=goes_predictor_matrix, times_sec=-1 * goes_lag_times_sec
-    )
+    if num_goes_predictors > 0:
+        goes_predictor_matrix = _interp_missing_times(
+            data_matrix=goes_predictor_matrix, times_sec=-1 * goes_lag_times_sec
+        )
 
-    dummy_times_unix_sec = 6 * HOURS_TO_SECONDS * numpy.linspace(
-        0, num_forecast_hours - 1, num=num_forecast_hours, dtype=int
-    )
-    forecast_predictor_matrix = _interp_missing_times(
-        data_matrix=forecast_predictor_matrix, times_sec=dummy_times_unix_sec
-    )
+    if num_forecast_predictors > 0:
+        dummy_times_unix_sec = 6 * HOURS_TO_SECONDS * numpy.linspace(
+            0, num_forecast_hours - 1, num=num_forecast_hours, dtype=int
+        )
+        forecast_predictor_matrix = _interp_missing_times(
+            data_matrix=forecast_predictor_matrix,
+            times_sec=dummy_times_unix_sec
+        )
 
     return combine_ships_predictors(
         ships_goes_predictor_matrix_3d=goes_predictor_matrix,
@@ -2657,6 +2660,9 @@ def input_generator(option_dict):
             ).format(
                 target_array.shape[0], numpy.sum(target_array == 1)
             ))
+
+        for m in predictor_matrices:
+            print(m.shape)
 
         if west_pacific_weight is None:
             yield predictor_matrices, target_array
