@@ -1147,8 +1147,12 @@ def _read_ships_one_file(
     else:
         num_forecast_predictors = len(forecast_predictor_names)
 
+    if goes_lag_times_sec is None:
+        num_goes_lag_times = 0
+    else:
+        num_goes_lag_times = len(goes_lag_times_sec)
+
     num_examples = len(forecast_row_by_example)
-    num_goes_lag_times = len(goes_lag_times_sec)
     num_forecast_hours = int(numpy.round(max_forecast_hour / 6)) + 1
 
     goes_predictor_matrix = numpy.full(
