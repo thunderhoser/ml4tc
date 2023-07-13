@@ -34,6 +34,13 @@ set DROPOUT_RATES=(             "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" 
 set i=SLURM_ARRAY_TASK_ID
 
 while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
+    echo $i
+    @ i = $i + 1
+end
+
+set i=SLURM_ARRAY_TASK_ID
+
+while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
     set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$i]}
     set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$i]}
     set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$i]}
