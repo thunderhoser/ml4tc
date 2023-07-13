@@ -40,13 +40,13 @@ while ($i <= ${#DROPOUT_RATES})
     @ i = $i + 1
 end
 
-set i=SLURM_ARRAY_TASK_ID
+set i=$SLURM_ARRAY_TASK_ID
 while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6`)
     echo $i
     @ i = $i + 1
 end
 
-set i=SLURM_ARRAY_TASK_ID
+set i=$SLURM_ARRAY_TASK_ID
 
 while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
     set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$i]}
