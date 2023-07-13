@@ -31,29 +31,30 @@ set USE_SHIPS_SATELLITE_FLAGS=( "1" "1" "1" "1" "1" "1" "1" "1" "1" "1" "0" "0" 
 set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1" "0" "0" "0" "0" "0" "1" "1" "1" "1" "1")
 set DROPOUT_RATES=(             "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" "0.8" "0.9")
 
-foreach i (`seq $SLURM_ARRAY_TASK_ID $(($SLURM_ARRAY_TASK_ID + 6))`)
-    echo $#DROPOUT_RATES
-    if ( $i <= $#DROPOUT_RATES ) then
-        set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$i]}
-        set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$i]}
-        set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$i]}
-        set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$i]}
-        set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$i]}
-        set dropout_rate=${DROPOUT_RATES[$i]}
-        
-        if ("$dropout_rate" == "0.5") then
-            set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}"
-        else
-            set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_dense-dropout-rate=${dropout_rate}"
-        endif
-        
-        set model_file_name="${model_dir_name}/model.h5"
-        set output_dir_name="${model_dir_name}/validation"
-        
-        python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
-        --input_model_file_name="${model_file_name}" \
-        --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
-        --years 2005 2006 2007 2008 2009 \
-        --output_dir_name="${output_dir_name}"
+set i=SLURM_ARRAY_TASK_ID
+
+while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
+    set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$i]}
+    set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$i]}
+    set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$i]}
+    set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$i]}
+    set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$i]}
+    set dropout_rate=${DROPOUT_RATES[$i]}
+    
+    if ("$dropout_rate" == "0.5") then
+        set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}"
+    else
+        set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_dense-dropout-rate=${dropout_rate}"
     endif
+    
+    set model_file_name="${model_dir_name}/model.h5"
+    set output_dir_name="${model_dir_name}/validation"
+    
+    python3 -u "${CODE_DIR_NAME}/apply_neural_net.py" \
+    --input_model_file_name="${model_file_name}" \
+    --input_example_dir_name="${EXAMPLE_DIR_NAME}" \
+    --years 2005 2006 2007 2008 2009 \
+    --output_dir_name="${output_dir_name}"
+
+    @ i = $i + 1
 end
