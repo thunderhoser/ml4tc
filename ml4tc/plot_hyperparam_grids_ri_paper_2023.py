@@ -441,7 +441,6 @@ def _run(experiment_dir_name, top_output_dir_name):
                     int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
                     int(SHIPS_HISTORICAL_FLAGS_AXIS3[k]),
                     int(SHIPS_SATELLITE_FLAGS_AXIS3[k]),
-                    int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
                     '',
                     '_dense-dropout-rate={0:.1f}'.format(DROPOUT_RATES_AXIS1[i])
                     if DROPOUT_RATES_AXIS1[i] > 0.55 else ''
