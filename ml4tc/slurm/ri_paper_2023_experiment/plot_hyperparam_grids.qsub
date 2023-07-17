@@ -20,4 +20,6 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 
-python3 -u "${CODE_DIR_NAME}/plot_hyperparam_grids_ri_paper_2023.py"
+python3 -u "${CODE_DIR_NAME}/plot_hyperparam_grids_ri_paper_2023.py" \
+--experiment_dir_name="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment" \
+--output_dir_name="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/hyperparam_grids"
