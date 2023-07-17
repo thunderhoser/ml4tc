@@ -38,9 +38,9 @@ set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 if ("$dropout_rate" == "0.5") then
-    set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}"
+    set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}"
 else
-    set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_dense-dropout-rate=${dropout_rate}"
+    set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}"
 endif
 
 set input_dir_name="${model_dir_name}/validation"

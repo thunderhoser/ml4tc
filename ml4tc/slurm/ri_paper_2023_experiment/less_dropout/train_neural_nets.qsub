@@ -89,7 +89,7 @@ echo $ships_goes_predictor_string
 echo $ships_forecast_predictor_string
 
 set template_file_name="${TEMPLATE_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}/model.h5"
-set output_dir_name="${TOP_OUTPUT_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}"
 echo $output_dir_name
 
 python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \

@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=12:00:00
+#SBATCH --time=01:00:00
 #SBATCH --array=1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134,141,148,155,162,169,176,183,190,197,204,211,218,225,232,239,246,253,260,267,274,281,288,295,302,309
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
@@ -41,9 +41,9 @@ while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
     set dropout_rate=${DROPOUT_RATES[$i]}
     
     if ("$dropout_rate" == "0.5") then
-        set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}"
+        set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}"
     else
-        set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_dense-dropout-rate=${dropout_rate}"
+        set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}"
     endif
     
     set input_file_name="${model_dir_name}/validation/discard_test.nc"
