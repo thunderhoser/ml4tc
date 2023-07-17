@@ -432,7 +432,7 @@ def _run(experiment_dir_name, top_output_dir_name):
                 this_eval_file_name = (
                     '{0:s}/{1:s}num-cira-ir-lag-times={2:d}_'
                     'use-ships-enviro={3:d}_use-ships-historical={4:d}_'
-                    'use-ships-satellite={5:d}_use-temporal-diffs={6:d}{7:s}/'
+                    'use-ships-satellite={5:d}{6:s}{7:s}/'
                     'validation/evaluation.nc'
                 ).format(
                     experiment_dir_name,
@@ -442,10 +442,28 @@ def _run(experiment_dir_name, top_output_dir_name):
                     int(SHIPS_HISTORICAL_FLAGS_AXIS3[k]),
                     int(SHIPS_SATELLITE_FLAGS_AXIS3[k]),
                     int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
-                    int(TEMPORAL_DIFF_FLAGS_AXIS3[k]),
+                    '',
                     '_dense-dropout-rate={0:.1f}'.format(DROPOUT_RATES_AXIS1[i])
                     if DROPOUT_RATES_AXIS1[i] > 0.55 else ''
                 )
+
+                # this_eval_file_name = (
+                #     '{0:s}/{1:s}num-cira-ir-lag-times={2:d}_'
+                #     'use-ships-enviro={3:d}_use-ships-historical={4:d}_'
+                #     'use-ships-satellite={5:d}_use-temporal-diffs={6:d}{7:s}/'
+                #     'validation/evaluation.nc'
+                # ).format(
+                #     experiment_dir_name,
+                #     'more_dropout/' if DROPOUT_RATES_AXIS1[i] > 0.55 else '',
+                #     CIRA_IR_LAG_TIME_COUNTS_AXIS2[j],
+                #     int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
+                #     int(SHIPS_HISTORICAL_FLAGS_AXIS3[k]),
+                #     int(SHIPS_SATELLITE_FLAGS_AXIS3[k]),
+                #     int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
+                #     int(TEMPORAL_DIFF_FLAGS_AXIS3[k]),
+                #     '_dense-dropout-rate={0:.1f}'.format(DROPOUT_RATES_AXIS1[i])
+                #     if DROPOUT_RATES_AXIS1[i] > 0.55 else ''
+                # )
 
                 print('Reading data from: "{0:s}"...'.format(
                     this_eval_file_name
