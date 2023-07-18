@@ -719,7 +719,7 @@ def write_spread_vs_skill(
 
     for this_key in [EXAMPLE_COUNTS_KEY]:
         dataset_object.createVariable(
-            this_key, datatype=numpy.int64,
+            this_key, datatype=numpy.int32,
             dimensions=SPREAD_SKILL_BIN_DIM_KEY
         )
         dataset_object.variables[this_key][:] = result_dict[this_key]

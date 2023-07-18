@@ -329,13 +329,13 @@ def write_file(
     )
 
     dataset_object.createVariable(
-        TARGET_MATRIX_KEY, datatype=numpy.int64,
+        TARGET_MATRIX_KEY, datatype=numpy.int32,
         dimensions=(EXAMPLE_DIMENSION_KEY, LEAD_TIME_DIMENSION_KEY)
     )
     dataset_object.variables[TARGET_MATRIX_KEY][:] = target_class_matrix
 
     dataset_object.createVariable(
-        INIT_TIMES_KEY, datatype=numpy.int64,
+        INIT_TIMES_KEY, datatype=numpy.int32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_TIMES_KEY][:] = init_times_unix_sec
