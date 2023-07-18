@@ -270,7 +270,7 @@ def _print_ranking_all_scores(
 
     if rank_mainly_by_auc:
         these_scores = -1 * numpy.ravel(auc_matrix)
-        these_scores[numpy.isnan(these_scores)] = -numpy.inf
+        these_scores[numpy.isnan(these_scores)] = numpy.inf
     else:
         these_scores = numpy.ravel(ssrel_matrix)
         these_scores[numpy.isnan(these_scores)] = numpy.inf
@@ -366,7 +366,7 @@ def _print_ranking_all_scores(
             'AUC rank = {5:.1f} ... AUPD rank = {6:.1f} ... '
             'BSS rank = {7:.1f} ... CSI rank = {8:.1f} ... '
             'frequency-bias rank = {9:.1f} ... '
-            'SSREL rank = {10:.1f} ... SSREL rank = {11:.1f} ... '
+            'SSREL rank = {10:.1f} ... SSRAT rank = {11:.1f} ... '
             'MF rank = {12:.1f} ... spread rank = {13:.1f}'
         ).format(
             a + 1,

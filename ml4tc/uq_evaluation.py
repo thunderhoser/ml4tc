@@ -613,7 +613,7 @@ def write_discard_results(
             EXAMPLE_FRACTIONS_KEY
     ]:
         dataset_object.createVariable(
-            this_key, datatype=numpy.float32,
+            this_key, datatype=numpy.float64,
             dimensions=DISCARD_FRACTION_DIM_KEY
         )
         dataset_object.variables[this_key][:] = result_dict[this_key]
@@ -704,13 +704,13 @@ def write_spread_vs_skill(
             MEAN_CENTRAL_PREDICTIONS_KEY, MEAN_TARGET_VALUES_KEY
     ]:
         dataset_object.createVariable(
-            this_key, datatype=numpy.float32,
+            this_key, datatype=numpy.float64,
             dimensions=SPREAD_SKILL_BIN_DIM_KEY
         )
         dataset_object.variables[this_key][:] = result_dict[this_key]
 
     dataset_object.createVariable(
-        BIN_EDGE_PREDICTION_STDEVS_KEY, datatype=numpy.float32,
+        BIN_EDGE_PREDICTION_STDEVS_KEY, datatype=numpy.float64,
         dimensions=SPREAD_SKILL_BIN_EDGE_DIM_KEY
     )
     dataset_object.variables[BIN_EDGE_PREDICTION_STDEVS_KEY][:] = (
@@ -719,7 +719,7 @@ def write_spread_vs_skill(
 
     for this_key in [EXAMPLE_COUNTS_KEY]:
         dataset_object.createVariable(
-            this_key, datatype=numpy.int32,
+            this_key, datatype=numpy.int64,
             dimensions=SPREAD_SKILL_BIN_DIM_KEY
         )
         dataset_object.variables[this_key][:] = result_dict[this_key]

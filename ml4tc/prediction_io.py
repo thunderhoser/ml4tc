@@ -322,39 +322,39 @@ def write_file(
         PREDICTION_SET_DIMENSION_KEY
     )
     dataset_object.createVariable(
-        PROBABILITY_MATRIX_KEY, datatype=numpy.float32, dimensions=these_dim
+        PROBABILITY_MATRIX_KEY, datatype=numpy.float64, dimensions=these_dim
     )
     dataset_object.variables[PROBABILITY_MATRIX_KEY][:] = (
         forecast_probability_matrix
     )
 
     dataset_object.createVariable(
-        TARGET_MATRIX_KEY, datatype=numpy.int32,
+        TARGET_MATRIX_KEY, datatype=numpy.int64,
         dimensions=(EXAMPLE_DIMENSION_KEY, LEAD_TIME_DIMENSION_KEY)
     )
     dataset_object.variables[TARGET_MATRIX_KEY][:] = target_class_matrix
 
     dataset_object.createVariable(
-        INIT_TIMES_KEY, datatype=numpy.int32,
+        INIT_TIMES_KEY, datatype=numpy.int64,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[INIT_TIMES_KEY][:] = init_times_unix_sec
 
     dataset_object.createVariable(
-        STORM_LATITUDES_KEY, datatype=numpy.float32,
+        STORM_LATITUDES_KEY, datatype=numpy.float64,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[STORM_LATITUDES_KEY][:] = storm_latitudes_deg_n
 
     dataset_object.createVariable(
-        STORM_LONGITUDES_KEY, datatype=numpy.float32,
+        STORM_LONGITUDES_KEY, datatype=numpy.float64,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[STORM_LONGITUDES_KEY][:] = storm_longitudes_deg_e
 
     if storm_intensity_changes_m_s01 is not None:
         dataset_object.createVariable(
-            STORM_INTENSITY_CHANGES_KEY, datatype=numpy.float32,
+            STORM_INTENSITY_CHANGES_KEY, datatype=numpy.float64,
             dimensions=EXAMPLE_DIMENSION_KEY
         )
         dataset_object.variables[STORM_INTENSITY_CHANGES_KEY][:] = (
@@ -384,7 +384,7 @@ def write_file(
     )
 
     dataset_object.createVariable(
-        LEAD_TIMES_KEY, datatype=numpy.int32, dimensions=LEAD_TIME_DIMENSION_KEY
+        LEAD_TIMES_KEY, datatype=numpy.int64, dimensions=LEAD_TIME_DIMENSION_KEY
     )
     dataset_object.variables[LEAD_TIMES_KEY][:] = lead_times_hours
 
@@ -394,7 +394,7 @@ def write_file(
         )
 
         dataset_object.createVariable(
-            QUANTILE_LEVELS_KEY, datatype=numpy.float32,
+            QUANTILE_LEVELS_KEY, datatype=numpy.float64,
             dimensions=QUANTILE_DIMENSION_KEY
         )
         dataset_object.variables[QUANTILE_LEVELS_KEY][:] = quantile_levels
@@ -668,13 +668,13 @@ def write_grid_metafile(grid_latitudes_deg_n, grid_longitudes_deg_e,
     )
 
     dataset_object.createVariable(
-        GRID_LATITUDE_KEY, datatype=numpy.float32,
+        GRID_LATITUDE_KEY, datatype=numpy.float64,
         dimensions=GRID_ROW_DIMENSION_KEY
     )
     dataset_object.variables[GRID_LATITUDE_KEY][:] = grid_latitudes_deg_n
 
     dataset_object.createVariable(
-        GRID_LONGITUDE_KEY, datatype=numpy.float32,
+        GRID_LONGITUDE_KEY, datatype=numpy.float64,
         dimensions=GRID_COLUMN_DIMENSION_KEY
     )
     dataset_object.variables[GRID_LONGITUDE_KEY][:] = grid_longitudes_deg_e
