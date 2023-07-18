@@ -384,7 +384,7 @@ def write_file(
     )
 
     dataset_object.createVariable(
-        LEAD_TIMES_KEY, datatype=numpy.int64, dimensions=LEAD_TIME_DIMENSION_KEY
+        LEAD_TIMES_KEY, datatype=numpy.int32, dimensions=LEAD_TIME_DIMENSION_KEY
     )
     dataset_object.variables[LEAD_TIMES_KEY][:] = lead_times_hours
 
