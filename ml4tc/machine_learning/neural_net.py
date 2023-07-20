@@ -780,7 +780,14 @@ def _read_non_predictors_one_file(
 
         if (
                 these_satellite_indices is None
-                and these_ships_goes_indices is None
+                and satellite_lag_times_sec is not None
+                and not use_climo_as_backup
+        ):
+            continue
+
+        if (
+                these_ships_goes_indices is None
+                and ships_goes_lag_times_sec is not None
                 and not use_climo_as_backup
         ):
             continue
@@ -1140,8 +1147,12 @@ def _read_ships_one_file(
     else:
         num_forecast_predictors = len(forecast_predictor_names)
 
+    if goes_lag_times_sec is None:
+        num_goes_lag_times = 0
+    else:
+        num_goes_lag_times = len(goes_lag_times_sec)
+
     num_examples = len(forecast_row_by_example)
-    num_goes_lag_times = len(goes_lag_times_sec)
     num_forecast_hours = int(numpy.round(max_forecast_hour / 6)) + 1
 
     goes_predictor_matrix = numpy.full(
@@ -1153,7 +1164,7 @@ def _read_ships_one_file(
     xt = example_table_xarray
 
     if num_goes_predictors == 0:
-        predictor_indices_goes = None
+        predictor_indices_goes = numpy.array([], dtype=int)
     else:
         this_coord_name = example_utils.SHIPS_PREDICTOR_LAGGED_DIM
         predictor_indices_goes = numpy.array([
@@ -1162,7 +1173,7 @@ def _read_ships_one_file(
         ], dtype=int)
 
     if num_forecast_predictors == 0:
-        predictor_indices_forecast = None
+        predictor_indices_forecast = numpy.array([], dtype=int)
     else:
         this_coord_name = example_utils.SHIPS_PREDICTOR_FORECAST_DIM
         predictor_indices_forecast = numpy.array([
@@ -1193,16 +1204,19 @@ def _read_ships_one_file(
             max_forecast_hour=max_forecast_hour
         )
 
-    goes_predictor_matrix = _interp_missing_times(
-        data_matrix=goes_predictor_matrix, times_sec=-1 * goes_lag_times_sec
-    )
+    if num_goes_predictors > 0:
+        goes_predictor_matrix = _interp_missing_times(
+            data_matrix=goes_predictor_matrix, times_sec=-1 * goes_lag_times_sec
+        )
 
-    dummy_times_unix_sec = 6 * HOURS_TO_SECONDS * numpy.linspace(
-        0, num_forecast_hours - 1, num=num_forecast_hours, dtype=int
-    )
-    forecast_predictor_matrix = _interp_missing_times(
-        data_matrix=forecast_predictor_matrix, times_sec=dummy_times_unix_sec
-    )
+    if num_forecast_predictors > 0:
+        dummy_times_unix_sec = 6 * HOURS_TO_SECONDS * numpy.linspace(
+            0, num_forecast_hours - 1, num=num_forecast_hours, dtype=int
+        )
+        forecast_predictor_matrix = _interp_missing_times(
+            data_matrix=forecast_predictor_matrix,
+            times_sec=dummy_times_unix_sec
+        )
 
     return combine_ships_predictors(
         ships_goes_predictor_matrix_3d=goes_predictor_matrix,
@@ -1814,6 +1828,9 @@ def _augment_data(
         examples will be just copies of the old examples (i.e., data
         augmentation changes only the predictors, not the targets).
     """
+
+    if len(predictor_matrices[0].shape) < 4:
+        return predictor_matrices, target_array
 
     orig_num_examples = predictor_matrices[0].shape[0]
     num_matrices = len(predictor_matrices)
