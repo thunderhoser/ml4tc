@@ -441,10 +441,10 @@ def read_file(netcdf_file_name, raise_error_if_fail=True):
 
     try:
         storm_type_strings = numpy.array(
-            orig_table_xarray[STORM_TYPE_KEY].values, dtype='S10'
+            [s for s in orig_table_xarray[STORM_TYPE_KEY].values], dtype='S10'
         )
         storm_names = numpy.array(
-            orig_table_xarray[STORM_NAME_KEY].values, dtype='S10'
+            [s for s in orig_table_xarray[STORM_NAME_KEY].values], dtype='S10'
         )
     except TypeError:
         storm_type_strings = numpy.array(
