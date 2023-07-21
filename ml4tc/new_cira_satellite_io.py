@@ -208,8 +208,8 @@ def find_files_one_cyclone(top_directory_name, cyclone_id_string,
     error_checking.assert_is_boolean(raise_error_if_all_missing)
 
     file_pattern = (
-        '{0:s}/{1:s}/{2:s}/TC-IRAR_v02r02_{3:s}{4:s}_e{5:s}{6:s}{7:s}{8:s}{9:s}'
-        '_s{5:s}{6:s}{7:s}{8:s}{9:s}.nc'
+        '{0:s}/{1:s}/{2:s}/TC-IRAR_v02r02_{3:s}{4:s}_s{5:s}{6:s}{7:s}{8:s}{9:s}'
+        '_e{5:s}{6:s}{7:s}{8:s}{9:s}.nc'
     ).format(
         top_directory_name, cyclone_id_string[:4], cyclone_id_string,
         cyclone_id_string[4:], cyclone_id_string[:4],
