@@ -28,7 +28,7 @@ YEAR_REGEX = '[0-9][0-9][0-9][0-9]'
 MONTH_REGEX = '[0-1][0-9]'
 DAY_REGEX = '[0-3][0-9]'
 HOUR_REGEX = '[0-2][0-9]'
-MINUTE_REGEX = '[0-5][0-9]'
+MINUTE_SECOND_REGEX = '0[0-5]0[0,5]'
 
 TOLERANCE = 1e-6
 DEGREES_TO_RADIANS = numpy.pi / 180
@@ -213,7 +213,7 @@ def find_files_one_cyclone(top_directory_name, cyclone_id_string,
     ).format(
         top_directory_name, cyclone_id_string[:4], cyclone_id_string,
         cyclone_id_string[4:], cyclone_id_string[:4],
-        YEAR_REGEX, MONTH_REGEX, DAY_REGEX, HOUR_REGEX, MINUTE_REGEX
+        YEAR_REGEX, MONTH_REGEX, DAY_REGEX, HOUR_REGEX, MINUTE_SECOND_REGEX
     )
 
     satellite_file_names = glob.glob(file_pattern)
