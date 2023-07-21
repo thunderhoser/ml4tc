@@ -11,7 +11,7 @@ from gewittergefahr.gg_utils import error_checking
 from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 
-FILE_TIME_TOLERANCE_SEC = 60
+FILE_TIME_TOLERANCE_SEC = 300
 MINUTES_TO_SECONDS = 60
 TEN_MIN_TO_SECONDS = 600
 
