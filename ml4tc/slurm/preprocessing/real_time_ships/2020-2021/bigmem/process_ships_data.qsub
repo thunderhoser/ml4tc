@@ -22,7 +22,7 @@ conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set INPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/real_time/raw"
-set PROCESSED_ARCHIVED_SHIPS_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/processed/5day"
+set EXTENDED_BEST_TRACK_FILE_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tccf_project/extended_best_track_data.nc"
 set OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/ships_data/real_time/processed"
 
 set YEARS=(2020 2021)
@@ -30,6 +30,6 @@ set year=${YEARS[$SLURM_ARRAY_TASK_ID]}
 
 python3 -u "${CODE_DIR_NAME}/process_real_time_ships_data.py" \
 --input_raw_real_time_ships_dir_name="${INPUT_DIR_NAME}" \
---input_processed_archived_ships_dir_name="${PROCESSED_ARCHIVED_SHIPS_DIR_NAME}" \
+--input_extended_best_track_file_name="${EXTENDED_BEST_TRACK_FILE_NAME}" \
 --year=${year} \
 --output_dir_name="${OUTPUT_DIR_NAME}"
