@@ -12,7 +12,7 @@ from ml4tc.utils import general_utils
 from ml4tc.utils import satellite_utils
 
 FILE_TIME_TOLERANCE_SEC = 60
-FIVE_MIN_TO_SECONDS = 300
+MINUTES_TO_SECONDS = 60
 TEN_MIN_TO_SECONDS = 600
 
 TIME_FORMAT_IN_FILES = '%Y-%m-%dT%H:%M:%S'
@@ -21,7 +21,7 @@ YEAR_REGEX = '[0-9][0-9][0-9][0-9]'
 MONTH_REGEX = '[0-1][0-9]'
 DAY_REGEX = '[0-3][0-9]'
 HOUR_REGEX = '[0-2][0-9]'
-MINUTE_REGEX = '[0-5][0-9]'
+MINUTE_SECOND_REGEX = '0[0-5]0[0-9]'
 
 TOLERANCE = 1e-6
 DEGREES_TO_RADIANS = numpy.pi / 180
@@ -90,7 +90,7 @@ def _unix_time_to_file_name(valid_time_unix_sec):
     :return: valid_time_string: Time in file-name format.
     """
 
-    assert numpy.mod(valid_time_unix_sec, FIVE_MIN_TO_SECONDS) == 0
+    assert numpy.mod(valid_time_unix_sec, MINUTES_TO_SECONDS) == 0
 
     valid_time_string_hour_only = time_conversion.unix_sec_to_string(
         valid_time_unix_sec, '%Y%m%d%H'
@@ -102,18 +102,18 @@ def _unix_time_to_file_name(valid_time_unix_sec):
         )
     )
 
-    if numpy.mod(seconds_after_hour, TEN_MIN_TO_SECONDS) == 0:
-        minute_second_string = '{0:04d}'.format(
-            int(numpy.round(
-                float(seconds_after_hour) / 6
-            ))
-        )
-    else:
-        minute_second_string = '{0:04d}'.format(
-            5 + int(numpy.round(
-                float(seconds_after_hour - FIVE_MIN_TO_SECONDS) / 6
-            ))
-        )
+    ten_min_chunks_after_hour = int(numpy.floor(
+        float(seconds_after_hour) / TEN_MIN_TO_SECONDS
+    ))
+    seconds_after_ten_min_chunk = (
+        seconds_after_hour - TEN_MIN_TO_SECONDS * ten_min_chunks_after_hour
+    )
+    minutes_after_ten_min_chunk = int(numpy.round(
+        float(seconds_after_ten_min_chunk) / MINUTES_TO_SECONDS
+    ))
+    minute_second_string = '{0:02d}{1:02d}'.format(
+        ten_min_chunks_after_hour, minutes_after_ten_min_chunk
+    )
 
     return '{0:s}{1:s}'.format(
         valid_time_string_hour_only, minute_second_string
@@ -128,15 +128,12 @@ def _file_name_time_to_unix(valid_time_string):
     """
 
     minute_second_string = valid_time_string[-4:]
-
-    if minute_second_string[-1] == '5':
-        seconds_after_hour = (
-            6 * int(minute_second_string) - 30 + FIVE_MIN_TO_SECONDS
-        )
-    else:
-        seconds_after_hour = 6 * int(minute_second_string)
-
-    assert numpy.mod(seconds_after_hour, FIVE_MIN_TO_SECONDS) == 0
+    ten_min_chunks_after_hour = int(minute_second_string[:2])
+    minutes_after_ten_min_chunk = int(minute_second_string[2:])
+    seconds_after_hour = (
+        TEN_MIN_TO_SECONDS * ten_min_chunks_after_hour +
+        MINUTES_TO_SECONDS * minutes_after_ten_min_chunk
+    )
 
     valid_time_string_hour_only = valid_time_string[:-4]
     return seconds_after_hour + time_conversion.string_to_unix_sec(
@@ -201,12 +198,12 @@ def find_files_one_cyclone(top_directory_name, cyclone_id_string,
     error_checking.assert_is_boolean(raise_error_if_all_missing)
 
     file_pattern = (
-        '{0:s}/{1:s}/{2:s}/TC-IRAR_v02r02_{3:s}{4:s}_e{5:s}{6:s}{7:s}{8:s}{9:s}'
-        '_s{5:s}{6:s}{7:s}{8:s}{9:s}.nc'
+        '{0:s}/{1:s}/{2:s}/TC-IRAR_v02r02_{3:s}{4:s}_s{5:s}{6:s}{7:s}{8:s}{9:s}'
+        '_e{5:s}{6:s}{7:s}{8:s}{9:s}.nc'
     ).format(
         top_directory_name, cyclone_id_string[:4], cyclone_id_string,
         cyclone_id_string[4:], cyclone_id_string[:4],
-        YEAR_REGEX, MONTH_REGEX, DAY_REGEX, HOUR_REGEX, MINUTE_REGEX
+        YEAR_REGEX, MONTH_REGEX, DAY_REGEX, HOUR_REGEX, MINUTE_SECOND_REGEX
     )
 
     satellite_file_names = glob.glob(file_pattern)
@@ -221,7 +218,27 @@ def find_files_one_cyclone(top_directory_name, cyclone_id_string,
     for this_file_name in satellite_file_names:
         _ = file_name_to_time(this_file_name)
 
-    return satellite_file_names
+    netcdf_file_pattern = '{0:s}/{1:s}/{2:s}/*.nc'.format(
+        top_directory_name, cyclone_id_string[:4], cyclone_id_string
+    )
+    netcdf_file_names = glob.glob(netcdf_file_pattern)
+
+    if len(netcdf_file_names) == len(satellite_file_names):
+        return satellite_file_names
+
+    reject_file_names = list(set(netcdf_file_names) - set(satellite_file_names))
+
+    error_string = (
+        'Found {0:d} NetCDF files in directory ("{1:s}"), but {2:d} of these '
+        'files do not appear to contain new CIRA IR data:\n{3:s}'
+    ).format(
+        len(netcdf_file_names),
+        os.path.split(netcdf_file_names[0])[0],
+        len(reject_file_names),
+        str(reject_file_names)
+    )
+
+    raise ValueError(error_string)
 
 
 def find_cyclones_one_year(top_directory_name, year,
@@ -434,10 +451,10 @@ def read_file(netcdf_file_name, raise_error_if_fail=True):
 
     try:
         storm_type_strings = numpy.array(
-            orig_table_xarray[STORM_TYPE_KEY].values, dtype='S10'
+            [s for s in orig_table_xarray[STORM_TYPE_KEY].values], dtype='S10'
         )
         storm_names = numpy.array(
-            orig_table_xarray[STORM_NAME_KEY].values, dtype='S10'
+            [s for s in orig_table_xarray[STORM_NAME_KEY].values], dtype='S10'
         )
     except TypeError:
         storm_type_strings = numpy.array(
