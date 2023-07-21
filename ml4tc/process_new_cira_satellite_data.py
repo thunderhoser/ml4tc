@@ -107,7 +107,7 @@ def _run(top_input_dir_name, cyclone_id_strings, num_cropped_rows,
         for this_input_file_name in input_file_names:
             print('Reading data from: "{0:s}"...'.format(this_input_file_name))
             this_table_xarray = new_cira_satellite_io.read_file(
-                netcdf_file_name=this_input_file_name, raise_error_if_fail=True
+                netcdf_file_name=this_input_file_name, raise_error_if_fail=False
             )
 
             if this_table_xarray is None:
