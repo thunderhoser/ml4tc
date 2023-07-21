@@ -18,7 +18,7 @@ import error_checking
 import general_utils
 import satellite_utils
 
-FILE_TIME_TOLERANCE_SEC = 60
+FILE_TIME_TOLERANCE_SEC = 300
 MINUTES_TO_SECONDS = 60
 TEN_MIN_TO_SECONDS = 600
 
