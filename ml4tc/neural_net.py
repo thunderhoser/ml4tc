@@ -2482,6 +2482,9 @@ def input_generator(option_dict):
         num_positive_examples_per_batch + num_negative_examples_per_batch
     )
 
+    # TODO(thunderhoser): This is a HACK to allow no-oversampling.
+    num_examples_per_batch = min([num_examples_per_batch, 16])
+
     while True:
         predictor_matrices = None
         target_array = None
