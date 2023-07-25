@@ -8,7 +8,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=01:00:00
-#SBATCH --array=1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134,141,148,155,162,169,176,183,190,197,204,211,218,225,232,239,246,253,260,267,274,281,288,295,302,309
+#SBATCH --array=31,34,76,115,184,203,224,241,248,252,302-304,306-307
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
@@ -32,7 +32,7 @@ set DROPOUT_RATES=(             "0.5" "0.6" "0.7" "0.8" "0.9" "0.5" "0.6" "0.7" 
 
 set i=$SLURM_ARRAY_TASK_ID
 
-while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
+while ($i <= `expr $SLURM_ARRAY_TASK_ID` && $i <= $#DROPOUT_RATES)
     set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$i]}
     set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$i]}
     set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$i]}
