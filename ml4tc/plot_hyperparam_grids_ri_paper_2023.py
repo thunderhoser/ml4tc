@@ -1196,11 +1196,6 @@ def _run(experiment_dir_name, top_output_dir_name):
     ]
 
     for m in range(len(concat_file_name_by_score)):
-        if 'freq_bias' in concat_file_name_by_score[m]:
-            continue
-        if 'ssrat' in concat_file_name_by_score[m]:
-            continue
-
         for this_file_name in panel_file_names_by_score[m]:
             imagemagick_utils.resize_image(
                 input_file_name=this_file_name, output_file_name=this_file_name,
