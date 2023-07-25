@@ -250,7 +250,7 @@ def _print_ranking_all_scores(
         these_scores = -1 * numpy.ravel(auc_matrix)
         these_scores[numpy.isnan(these_scores)] = numpy.inf
     else:
-        these_scores = numpy.ravel(ssrel_matrix)
+        these_scores = numpy.ravel(ssrel_matrix) + 0.
         these_scores[numpy.isnan(these_scores)] = numpy.inf
 
     sort_indices_1d = numpy.argsort(these_scores)
@@ -816,58 +816,58 @@ def _run(experiment_dir_name, top_output_dir_name):
         pyplot.close(figure_object)
 
         # Plot frequency bias.
-        this_offset = numpy.nanpercentile(
-            numpy.absolute(1. - frequency_bias_matrix), 100
-        )
-        if numpy.isnan(this_offset):
-            this_offset = 1.
-
-        this_cmap_object, this_cnorm_object = _get_bias_colour_scheme(
-            colour_map_name=BIAS_COLOUR_MAP_NAME,
-            max_colour_value=1. + this_offset
-        )
-        cmap_object_by_score.append(this_cmap_object)
-        cnorm_object_by_score.append(this_cnorm_object)
-
-        figure_object, axes_object = _plot_scores_2d(
-            score_matrix=frequency_bias_matrix[..., k],
-            x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
-            min_colour_value=0., max_colour_value=1. + this_offset,
-            colour_map_object=cmap_object_by_score[-1],
-            colour_norm_object=cnorm_object_by_score[-1]
-        )
-
-        axes_object.set_xlabel(x_axis_label)
-        axes_object.set_ylabel(y_axis_label)
-        axes_object.set_title(title_string)
-
-        fb_offset_matrix = numpy.absolute(1. - frequency_bias_matrix)
-        best_indices = numpy.unravel_index(
-            numpy.nanargmin(numpy.ravel(fb_offset_matrix)),
-            fb_offset_matrix.shape
-        )
-
-        if best_indices[2] == k:
-            axes_object.plot(
-                best_indices[1], best_indices[0],
-                linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
-            )
-
-        freq_bias_panel_file_names[k] = (
-            '{0:s}/freq_bias_panel{1:02d}.jpg'.format(top_output_dir_name, k)
-        )
-
-        print('Saving figure to: "{0:s}"...'.format(
-            freq_bias_panel_file_names[k]
-        ))
-        figure_object.savefig(
-            freq_bias_panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
-            pad_inches=0, bbox_inches='tight'
-        )
-        pyplot.close(figure_object)
+        # this_offset = numpy.nanpercentile(
+        #     numpy.absolute(1. - frequency_bias_matrix), 100
+        # )
+        # if numpy.isnan(this_offset):
+        #     this_offset = 1.
+        #
+        # this_cmap_object, this_cnorm_object = _get_bias_colour_scheme(
+        #     colour_map_name=BIAS_COLOUR_MAP_NAME,
+        #     max_colour_value=1. + this_offset
+        # )
+        # cmap_object_by_score.append(this_cmap_object)
+        # cnorm_object_by_score.append(this_cnorm_object)
+        #
+        # figure_object, axes_object = _plot_scores_2d(
+        #     score_matrix=frequency_bias_matrix[..., k],
+        #     x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
+        #     min_colour_value=0., max_colour_value=1. + this_offset,
+        #     colour_map_object=cmap_object_by_score[-1],
+        #     colour_norm_object=cnorm_object_by_score[-1]
+        # )
+        #
+        # axes_object.set_xlabel(x_axis_label)
+        # axes_object.set_ylabel(y_axis_label)
+        # axes_object.set_title(title_string)
+        #
+        # fb_offset_matrix = numpy.absolute(1. - frequency_bias_matrix)
+        # best_indices = numpy.unravel_index(
+        #     numpy.nanargmin(numpy.ravel(fb_offset_matrix)),
+        #     fb_offset_matrix.shape
+        # )
+        #
+        # if best_indices[2] == k:
+        #     axes_object.plot(
+        #         best_indices[1], best_indices[0],
+        #         linestyle='None', marker=BEST_MARKER_TYPE,
+        #         markersize=marker_size_px, markeredgewidth=0,
+        #         markerfacecolor=BEST_MARKER_COLOUR,
+        #         markeredgecolor=BEST_MARKER_COLOUR
+        #     )
+        #
+        # freq_bias_panel_file_names[k] = (
+        #     '{0:s}/freq_bias_panel{1:02d}.jpg'.format(top_output_dir_name, k)
+        # )
+        #
+        # print('Saving figure to: "{0:s}"...'.format(
+        #     freq_bias_panel_file_names[k]
+        # ))
+        # figure_object.savefig(
+        #     freq_bias_panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+        #     pad_inches=0, bbox_inches='tight'
+        # )
+        # pyplot.close(figure_object)
 
         # Plot SSREL.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
@@ -876,11 +876,6 @@ def _run(experiment_dir_name, top_output_dir_name):
             vmax=numpy.nanpercentile(ssrel_matrix, 100),
             clip=False
         ))
-
-        print(numpy.nanpercentile(ssrel_matrix, 0))
-        print(numpy.nanpercentile(ssrel_matrix, 100))
-        print(ssrel_matrix[..., k])
-        print('\n\n\n')
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=ssrel_matrix[..., k],
@@ -921,56 +916,56 @@ def _run(experiment_dir_name, top_output_dir_name):
         pyplot.close(figure_object)
 
         # Plot SSRAT.
-        this_offset = numpy.nanpercentile(
-            numpy.absolute(1. - ssrat_matrix), 100
-        )
-        if numpy.isnan(this_offset):
-            this_offset = 1.
-
-        this_cmap_object, this_cnorm_object = _get_bias_colour_scheme(
-            colour_map_name=BIAS_COLOUR_MAP_NAME,
-            max_colour_value=1. + this_offset
-        )
-        cmap_object_by_score.append(this_cmap_object)
-        cnorm_object_by_score.append(this_cnorm_object)
-
-        figure_object, axes_object = _plot_scores_2d(
-            score_matrix=ssrat_matrix[..., k],
-            x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
-            min_colour_value=0., max_colour_value=1. + this_offset,
-            colour_map_object=cmap_object_by_score[-1],
-            colour_norm_object=cnorm_object_by_score[-1]
-        )
-
-        axes_object.set_xlabel(x_axis_label)
-        axes_object.set_ylabel(y_axis_label)
-        axes_object.set_title(title_string)
-
-        ssrat_offset_matrix = numpy.absolute(1. - ssrat_matrix)
-        best_indices = numpy.unravel_index(
-            numpy.nanargmin(numpy.ravel(ssrat_offset_matrix)),
-            ssrat_offset_matrix.shape
-        )
-
-        if best_indices[2] == k:
-            axes_object.plot(
-                best_indices[1], best_indices[0],
-                linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
-            )
-
-        ssrat_panel_file_names[k] = '{0:s}/ssrat_panel{1:02d}.jpg'.format(
-            top_output_dir_name, k
-        )
-
-        print('Saving figure to: "{0:s}"...'.format(ssrat_panel_file_names[k]))
-        figure_object.savefig(
-            ssrat_panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
-            pad_inches=0, bbox_inches='tight'
-        )
-        pyplot.close(figure_object)
+        # this_offset = numpy.nanpercentile(
+        #     numpy.absolute(1. - ssrat_matrix), 100
+        # )
+        # if numpy.isnan(this_offset):
+        #     this_offset = 1.
+        #
+        # this_cmap_object, this_cnorm_object = _get_bias_colour_scheme(
+        #     colour_map_name=BIAS_COLOUR_MAP_NAME,
+        #     max_colour_value=1. + this_offset
+        # )
+        # cmap_object_by_score.append(this_cmap_object)
+        # cnorm_object_by_score.append(this_cnorm_object)
+        #
+        # figure_object, axes_object = _plot_scores_2d(
+        #     score_matrix=ssrat_matrix[..., k],
+        #     x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
+        #     min_colour_value=0., max_colour_value=1. + this_offset,
+        #     colour_map_object=cmap_object_by_score[-1],
+        #     colour_norm_object=cnorm_object_by_score[-1]
+        # )
+        #
+        # axes_object.set_xlabel(x_axis_label)
+        # axes_object.set_ylabel(y_axis_label)
+        # axes_object.set_title(title_string)
+        #
+        # ssrat_offset_matrix = numpy.absolute(1. - ssrat_matrix)
+        # best_indices = numpy.unravel_index(
+        #     numpy.nanargmin(numpy.ravel(ssrat_offset_matrix)),
+        #     ssrat_offset_matrix.shape
+        # )
+        #
+        # if best_indices[2] == k:
+        #     axes_object.plot(
+        #         best_indices[1], best_indices[0],
+        #         linestyle='None', marker=BEST_MARKER_TYPE,
+        #         markersize=marker_size_px, markeredgewidth=0,
+        #         markerfacecolor=BEST_MARKER_COLOUR,
+        #         markeredgecolor=BEST_MARKER_COLOUR
+        #     )
+        #
+        # ssrat_panel_file_names[k] = '{0:s}/ssrat_panel{1:02d}.jpg'.format(
+        #     top_output_dir_name, k
+        # )
+        #
+        # print('Saving figure to: "{0:s}"...'.format(ssrat_panel_file_names[k]))
+        # figure_object.savefig(
+        #     ssrat_panel_file_names[k], dpi=FIGURE_RESOLUTION_DPI,
+        #     pad_inches=0, bbox_inches='tight'
+        # )
+        # pyplot.close(figure_object)
 
         # Plot mean predictive stdev.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
@@ -1086,6 +1081,11 @@ def _run(experiment_dir_name, top_output_dir_name):
     ]
 
     for m in range(len(concat_file_name_by_score)):
+        if 'freq_bias' in concat_file_name_by_score[m]:
+            continue
+        if 'ssrat' in concat_file_name_by_score[m]:
+            continue
+
         for this_file_name in panel_file_names_by_score[m]:
             imagemagick_utils.resize_image(
                 input_file_name=this_file_name, output_file_name=this_file_name,
