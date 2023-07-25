@@ -1,0 +1,131 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="train_neural_nets"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --nodes=1
+#SBATCH --ntasks=8           # 8 tasks per node
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks-per-node=8  # 8 GPUs per node
+#SBATCH --exclusive
+#SBATCH --time=30:00:00
+#SBATCH --array=2,3,5,6,8,9,11,12,14,15,17,18,20,21,23,24,26,27,29,30,32,33,35,36,38,39,41,42,44,45,47,48,50,51,53,54,56,57,59,60,62,63,65,66,68,69,71,72,74,75,77,78,80,81,83,84,86,87,89,90,92,93,95,96,98,99,101,102,104,105,107,108,110,111,113,114,116,117,119,120,122,123,125,126,128,129,131,132,134,135,137,138,140,141,143,144,146,147,149,150%70
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=train_neural_nets_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TEMPLATE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/multimodel_ensembles/templates"
+set TOP_OUTPUT_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/multimodel_ensembles"
+
+set TRAINING_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_project/learning_examples/rotated_with_storm_motion/imputed/normalized"
+set VALIDATION_DIR_NAME="${TRAINING_DIR_NAME}"
+
+set CIRA_IR_LAG_TIME_COUNTS=(   "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1" "0" "2" "1")
+set USE_SHIPS_ENVIRO_FLAGS=(    "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_TEMPORAL_DIFF_FLAGS=(   "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0" "0" "1" "0")
+set DROPOUT_RATES=(             "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8" "0.8" "0.5" "0.8")
+set ENSEMBLE_MEMBERS=(          "01" "01" "01" "02" "02" "02" "03" "03" "03" "04" "04" "04" "05" "05" "05" "06" "06" "06" "07" "07" "07" "08" "08" "08" "09" "09" "09" "10" "10" "10" "11" "11" "11" "12" "12" "12" "13" "13" "13" "14" "14" "14" "15" "15" "15" "16" "16" "16" "17" "17" "17" "18" "18" "18" "19" "19" "19" "20" "20" "20" "21" "21" "21" "22" "22" "22" "23" "23" "23" "24" "24" "24" "25" "25" "25" "26" "26" "26" "27" "27" "27" "28" "28" "28" "29" "29" "29" "30" "30" "30" "31" "31" "31" "32" "32" "32" "33" "33" "33" "34" "34" "34" "35" "35" "35" "36" "36" "36" "37" "37" "37" "38" "38" "38" "39" "39" "39" "40" "40" "40" "41" "41" "41" "42" "42" "42" "43" "43" "43" "44" "44" "44" "45" "45" "45" "46" "46" "46" "47" "47" "47" "48" "48" "48" "49" "49" "49" "50" "50" "50")
+
+set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set ensemble_member=${ENSEMBLE_MEMBERS[$SLURM_ARRAY_TASK_ID]}
+
+if ("$num_cira_ir_lag_times" == "0") then
+    set satellite_lag_time_string_minutes="-1"
+    set satellite_time_tolerance_sec="3630"
+    set satellite_predictor_names_string="None"
+else if ("$num_cira_ir_lag_times" == "1") then
+    set satellite_lag_time_string_minutes="0"
+    set satellite_time_tolerance_sec="3630"
+    set satellite_predictor_names_string="satellite_brightness_temp_kelvins"
+else if ("$num_cira_ir_lag_times" == "2") then
+    set satellite_lag_time_string_minutes="0 240"
+    set satellite_time_tolerance_sec="14400"
+    set satellite_predictor_names_string="satellite_brightness_temp_kelvins"
+else if ("$num_cira_ir_lag_times" == "3") then
+    set satellite_lag_time_string_minutes="0 120 240"
+    set satellite_time_tolerance_sec="7200"
+    set satellite_predictor_names_string="satellite_brightness_temp_kelvins"
+endif
+
+if ("$use_ships_satellite" == "1") then
+    set ships_goes_predictor_string="ships_goes_ch4_temp_0to200km_kelvins ships_goes_ch4_temp_stdev_0to200km_kelvins ships_goes_ch4_temp_100to300km_kelvins ships_goes_ch4_temp_stdev_100to300km_kelvins ships_goes_ch4_fraction_temp_below_m10c_50to200km ships_goes_ch4_fraction_temp_below_m20c_50to200km ships_goes_ch4_fraction_temp_below_m30c_50to200km ships_goes_ch4_fraction_temp_below_m40c_50to200km ships_goes_ch4_fraction_temp_below_m50c_50to200km ships_goes_ch4_fraction_temp_below_m60c_50to200km ships_goes_ch4_max_temp_0to30km_kelvins ships_goes_ch4_mean_temp_0to30km_kelvins ships_goes_ch4_max_temp_radius_metres ships_goes_ch4_min_temp_20to120km_kelvins ships_goes_ch4_mean_temp_20to120km_kelvins ships_goes_ch4_min_temp_radius_metres"
+else
+    set ships_goes_predictor_string=""
+endif
+
+if ("$use_ships_enviro" == "1") then
+    set ships_forecast_predictor_string="ships_shear_850to500mb_eastward_m_s01 ships_shear_850to200mb_gnrl_0to500km_no_vortex_m_s01 ships_temp_200mb_200to800km_kelvins ships_temp_gradient_850to700mb_0to500km_k_m01 ships_max_tangential_wind_850mb_m_s01 ships_w_wind_0to15km_agl_0to500km_no_vortex_m_s01 ships_forecast_latitude_deg_n ships_max_pttl_intensity_m_s01 ships_ocean_age_seconds merged_sea_surface_temp_kelvins merged_ocean_heat_content_j_m02"
+else
+    set ships_forecast_predictor_string=""
+endif
+
+if ("$use_ships_historical" == "1") then
+    set ships_forecast_predictor_string="${ships_forecast_predictor_string} ships_intensity_m_s01 ships_intensity_change_6hours_m_s01"
+else
+    set ships_forecast_predictor_string="${ships_forecast_predictor_string}"
+endif
+
+if ("$ships_goes_predictor_string" == "") then
+    set ships_goes_predictor_string="None"
+endif
+
+if ("$ships_forecast_predictor_string" == "") then
+    set ships_forecast_predictor_string="None"
+endif
+
+echo $ships_goes_predictor_string
+echo $ships_forecast_predictor_string
+
+set template_file_name="${TEMPLATE_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_dense-dropout-rate=${dropout_rate}/ensemble_member_${ensemble_member}/model.h5"
+set output_dir_name="${TOP_OUTPUT_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}/ensemble_member_${ensemble_member}"
+echo $output_dir_name
+
+python3 -u "${CODE_DIR_NAME}/train_neural_net.py" \
+--input_template_file_name="${template_file_name}" \
+--output_model_dir_name="${output_dir_name}" \
+--training_example_dir_name="${TRAINING_DIR_NAME}" \
+--validation_example_dir_name="${VALIDATION_DIR_NAME}" \
+--lead_times_hours 24 \
+--satellite_predictor_names ${satellite_predictor_names_string} \
+--satellite_lag_times_minutes ${satellite_lag_time_string_minutes} \
+--use_time_diffs_gridded_sat=${use_temporal_diffs} \
+--ships_goes_predictor_names ${ships_goes_predictor_string} \
+--ships_goes_lag_times_hours 0 6 12 18 24 \
+--ships_forecast_predictor_names ${ships_forecast_predictor_string} \
+--ships_max_forecast_hour=24 \
+--satellite_time_tolerance_training_sec=${satellite_time_tolerance_sec} \
+--satellite_max_missing_times_training=0 \
+--ships_time_tolerance_training_sec=0 \
+--ships_max_missing_times_training=1 \
+--satellite_time_tolerance_validation_sec=${satellite_time_tolerance_sec} \
+--ships_time_tolerance_validation_sec=21610 \
+--num_positive_examples_per_batch=4 \
+--num_negative_examples_per_batch=12 \
+--max_examples_per_cyclone_in_batch=3 \
+--class_cutoffs_kt 30 \
+--num_epochs=1000 \
+--num_training_batches_per_epoch=32 \
+--num_validation_batches_per_epoch=16 \
+--data_aug_num_translations=2 \
+--data_aug_max_translation_px=6 \
+--data_aug_num_rotations=2 \
+--data_aug_max_rotation_deg=50 \
+--data_aug_num_noisings=3 \
+--data_aug_noise_stdev=0.5 \
+--plateau_lr_multiplier=0.6
