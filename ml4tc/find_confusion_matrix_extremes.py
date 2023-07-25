@@ -137,6 +137,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -173,6 +174,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -208,6 +210,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -244,6 +247,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -286,6 +290,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -320,6 +325,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -395,6 +401,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
@@ -424,6 +431,7 @@ def _run(input_prediction_file_name, num_examples_per_subset,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
+        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
         uncertainty_calib_model_file_name=
         d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )

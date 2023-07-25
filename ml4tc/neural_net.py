@@ -2860,7 +2860,7 @@ def read_model(hdf5_file_name):
     bnn_architecture_dict = metadata_dict[BNN_ARCHITECTURE_KEY]
 
     if bnn_architecture_dict is not None:
-        import cnn_architecture_bayesian
+        from ml4tc.machine_learning import cnn_architecture_bayesian
 
         # TODO(thunderhoser): Calling `create_crps_model_ri` will not work if
         # I introduce more methods to cnn_architecture_bayesian.py.

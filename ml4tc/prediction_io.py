@@ -36,6 +36,7 @@ STORM_LATITUDES_KEY = 'storm_latitudes_deg_n'
 STORM_LONGITUDES_KEY = 'storm_longitudes_deg_e'
 STORM_INTENSITY_CHANGES_KEY = 'storm_intensity_changes_m_s01'
 MODEL_FILE_KEY = 'model_file_name'
+ISOTONIC_MODEL_FILE_KEY = 'isotonic_model_file_name'
 UNCERTAINTY_CALIB_MODEL_FILE_KEY = 'uncertainty_calib_model_file_name'
 LEAD_TIMES_KEY = 'lead_times_hours'
 QUANTILE_LEVELS_KEY = 'quantile_levels'
@@ -173,7 +174,8 @@ def write_file(
         netcdf_file_name, forecast_probability_matrix, target_class_matrix,
         cyclone_id_strings, init_times_unix_sec, storm_latitudes_deg_n,
         storm_longitudes_deg_e, storm_intensity_changes_m_s01, model_file_name,
-        lead_times_hours, quantile_levels, uncertainty_calib_model_file_name):
+        lead_times_hours, quantile_levels, isotonic_model_file_name,
+        uncertainty_calib_model_file_name):
     """Writes predictions to NetCDF file.
 
     E = number of examples
@@ -200,6 +202,10 @@ def write_file(
     :param quantile_levels: If `forecast_probability_matrix` contains quantiles,
         this should be a length-(S - 1) numpy array of quantile levels, ranging
         from (0, 1).  Otherwise, this should be None.
+    :param isotonic_model_file_name: Path to file with trained
+        isotonic-regression model (readable by
+        `isotonic_regression.read_model`).  If predictions do not have bias
+        correction, make this None.
     :param uncertainty_calib_model_file_name: Path to file with trained
         uncertainty-calibration model (readable by
         `uncertainty_calibration.read_model`).  If predictions do not have
@@ -281,8 +287,12 @@ def write_file(
 
     error_checking.assert_is_string(model_file_name)
 
+    if isotonic_model_file_name is None:
+        isotonic_model_file_name = ''
     if uncertainty_calib_model_file_name is None:
         uncertainty_calib_model_file_name = ''
+
+    error_checking.assert_is_string(isotonic_model_file_name)
     error_checking.assert_is_string(uncertainty_calib_model_file_name)
 
     expected_dim = numpy.array([num_lead_times], dtype=int)
@@ -308,6 +318,9 @@ def write_file(
 
     dataset_object.setncattr(MODEL_FILE_KEY, model_file_name)
     dataset_object.setncattr(
+        ISOTONIC_MODEL_FILE_KEY, isotonic_model_file_name
+    )
+    dataset_object.setncattr(
         UNCERTAINTY_CALIB_MODEL_FILE_KEY, uncertainty_calib_model_file_name
     )
     dataset_object.createDimension(EXAMPLE_DIMENSION_KEY, num_examples)
@@ -322,7 +335,7 @@ def write_file(
         PREDICTION_SET_DIMENSION_KEY
     )
     dataset_object.createVariable(
-        PROBABILITY_MATRIX_KEY, datatype=numpy.float64, dimensions=these_dim
+        PROBABILITY_MATRIX_KEY, datatype=numpy.float32, dimensions=these_dim
     )
     dataset_object.variables[PROBABILITY_MATRIX_KEY][:] = (
         forecast_probability_matrix
@@ -341,20 +354,20 @@ def write_file(
     dataset_object.variables[INIT_TIMES_KEY][:] = init_times_unix_sec
 
     dataset_object.createVariable(
-        STORM_LATITUDES_KEY, datatype=numpy.float64,
+        STORM_LATITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[STORM_LATITUDES_KEY][:] = storm_latitudes_deg_n
 
     dataset_object.createVariable(
-        STORM_LONGITUDES_KEY, datatype=numpy.float64,
+        STORM_LONGITUDES_KEY, datatype=numpy.float32,
         dimensions=EXAMPLE_DIMENSION_KEY
     )
     dataset_object.variables[STORM_LONGITUDES_KEY][:] = storm_longitudes_deg_e
 
     if storm_intensity_changes_m_s01 is not None:
         dataset_object.createVariable(
-            STORM_INTENSITY_CHANGES_KEY, datatype=numpy.float64,
+            STORM_INTENSITY_CHANGES_KEY, datatype=numpy.float32,
             dimensions=EXAMPLE_DIMENSION_KEY
         )
         dataset_object.variables[STORM_INTENSITY_CHANGES_KEY][:] = (
@@ -394,7 +407,7 @@ def write_file(
         )
 
         dataset_object.createVariable(
-            QUANTILE_LEVELS_KEY, datatype=numpy.float64,
+            QUANTILE_LEVELS_KEY, datatype=numpy.float32,
             dimensions=QUANTILE_DIMENSION_KEY
         )
         dataset_object.variables[QUANTILE_LEVELS_KEY][:] = quantile_levels
@@ -415,6 +428,7 @@ def read_file(netcdf_file_name):
     prediction_dict['storm_longitudes_deg_e']: Same.
     prediction_dict['storm_intensity_changes_m_s01']: Same.
     prediction_dict['model_file_name']: Same.
+    prediction_dict['isotonic_model_file_name']: Same.
     prediction_dict['uncertainty_calib_model_file_name']: Same.
     prediction_dict['lead_times_hours']: Same.
     prediction_dict['quantile_levels']: Same.
@@ -445,6 +459,16 @@ def read_file(netcdf_file_name):
         prediction_dict[PROBABILITY_MATRIX_KEY] = numpy.expand_dims(
             prediction_dict[PROBABILITY_MATRIX_KEY], axis=-2
         )
+
+    try:
+        prediction_dict[ISOTONIC_MODEL_FILE_KEY] = str(getattr(
+            dataset_object, ISOTONIC_MODEL_FILE_KEY
+        ))
+    except:
+        prediction_dict[ISOTONIC_MODEL_FILE_KEY] = ''
+
+    if prediction_dict[ISOTONIC_MODEL_FILE_KEY] == '':
+        prediction_dict[ISOTONIC_MODEL_FILE_KEY] = None
 
     try:
         prediction_dict[UNCERTAINTY_CALIB_MODEL_FILE_KEY] = str(getattr(
@@ -668,13 +692,13 @@ def write_grid_metafile(grid_latitudes_deg_n, grid_longitudes_deg_e,
     )
 
     dataset_object.createVariable(
-        GRID_LATITUDE_KEY, datatype=numpy.float64,
+        GRID_LATITUDE_KEY, datatype=numpy.float32,
         dimensions=GRID_ROW_DIMENSION_KEY
     )
     dataset_object.variables[GRID_LATITUDE_KEY][:] = grid_latitudes_deg_n
 
     dataset_object.createVariable(
-        GRID_LONGITUDE_KEY, datatype=numpy.float64,
+        GRID_LONGITUDE_KEY, datatype=numpy.float32,
         dimensions=GRID_COLUMN_DIMENSION_KEY
     )
     dataset_object.variables[GRID_LONGITUDE_KEY][:] = grid_longitudes_deg_e

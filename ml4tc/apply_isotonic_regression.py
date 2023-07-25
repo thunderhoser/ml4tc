@@ -1,4 +1,4 @@
-"""Applies uncertainty-calibration model to neural-net predictions."""
+"""Applies isotonic-regression model to neural-net predictions."""
 
 import os
 import sys
@@ -10,7 +10,7 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
 import prediction_io
-import uncertainty_calibration
+import isotonic_regression
 
 SEPARATOR_STRING = '\n\n' + '*' * 50 + '\n\n'
 
@@ -19,16 +19,16 @@ MODEL_FILE_ARG_NAME = 'input_model_file_name'
 OUTPUT_PREDICTION_FILE_ARG_NAME = 'output_prediction_file_name'
 
 INPUT_PREDICTION_FILE_HELP_STRING = (
-    'Path to file containing neural-net predictions with no uncertainty '
-    'calibration.  Will be read by `prediction_io.read_file`.'
+    'Path to file containing neural-net predictions with no bias '
+    'correction.  Will be read by `prediction_io.read_file`.'
 )
 MODEL_FILE_HELP_STRING = (
-    'Path to file with trained uncertainty-calibration model.  Will be read'
-    ' by `uncertainty_calibration.read_model`.'
+    'Path to file with trained isotonic-regression model.  Will be read'
+    ' by `isotonic_regression.read_model`.'
 )
 OUTPUT_PREDICTION_FILE_HELP_STRING = (
-    'Path to output file, containing model predictions after uncertainty '
-    'calibration.  Will be written by `prediction_io.write_file`.'
+    'Path to output file, containing model predictions after bias '
+    'correction.  Will be written by `prediction_io.write_file`.'
 )
 
 INPUT_ARG_PARSER = argparse.ArgumentParser()
@@ -48,7 +48,7 @@ INPUT_ARG_PARSER.add_argument(
 
 def _run(input_prediction_file_name, model_file_name,
          output_prediction_file_name):
-    """Applies uncertainty-calibration model to neural-net predictions.
+    """Applies isotonic-regression model to neural-net predictions.
 
     This is effectively the main method.
 
@@ -56,7 +56,7 @@ def _run(input_prediction_file_name, model_file_name,
     :param model_file_name: Same.
     :param output_prediction_file_name: Same.
     :raises: ValueError: if predictions in `input_prediction_file_name` already
-        have calibrated uncertainty.
+        have bias correction.
     """
 
     print('Reading original predictions from: "{0:s}"...'.format(
@@ -65,28 +65,22 @@ def _run(input_prediction_file_name, model_file_name,
     prediction_dict = prediction_io.read_file(input_prediction_file_name)
 
     if (
-            prediction_dict[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
+            prediction_dict[prediction_io.ISOTONIC_MODEL_FILE_KEY]
             is not None
     ):
-        raise ValueError(
-            'Input predictions already have calibrated uncertainty.'
-        )
+        raise ValueError('Input predictions already have bias correction.')
 
-    print('Reading uncertainty-calibration model from: "{0:s}"...'.format(
+    print('Reading isotonic-regression model from: "{0:s}"...'.format(
         model_file_name
     ))
-    bin_edge_prediction_stdevs, stdev_inflation_factors = (
-        uncertainty_calibration.read_model(model_file_name)
-    )
-    prediction_dict = uncertainty_calibration.apply_model(
-        prediction_dict=prediction_dict,
-        bin_edge_prediction_stdevs=bin_edge_prediction_stdevs,
-        stdev_inflation_factors=stdev_inflation_factors
+    model_object = isotonic_regression.read_file(model_file_name)
+    prediction_dict = isotonic_regression.apply_model(
+        prediction_dict=prediction_dict, model_object=model_object
     )
 
-    print((
-        'Writing predictions with calibrated uncertainty to: "{0:s}"...'
-    ).format(output_prediction_file_name))
+    print('Writing predictions with bias correction to: "{0:s}"...'.format(
+        output_prediction_file_name
+    ))
 
     d = prediction_dict
 
@@ -103,8 +97,9 @@ def _run(input_prediction_file_name, model_file_name,
         model_file_name=d[prediction_io.MODEL_FILE_KEY],
         lead_times_hours=d[prediction_io.LEAD_TIMES_KEY],
         quantile_levels=d[prediction_io.QUANTILE_LEVELS_KEY],
-        isotonic_model_file_name=d[prediction_io.ISOTONIC_MODEL_FILE_KEY],
-        uncertainty_calib_model_file_name=model_file_name
+        isotonic_model_file_name=model_file_name,
+        uncertainty_calib_model_file_name=
+        d[prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY]
     )
 
 
