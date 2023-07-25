@@ -40,6 +40,7 @@ while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
     set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$i]}
     set dropout_rate=${DROPOUT_RATES[$i]}
     
+    
     if ("$dropout_rate" == "0.5") then
         set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}"
     else
