@@ -29,21 +29,13 @@ RMSE_VALUES_KEY = uq_evaluation.RMSE_VALUES_KEY
 EXAMPLE_COUNTS_KEY = uq_evaluation.EXAMPLE_COUNTS_KEY
 
 DROPOUT_RATES_AXIS1 = numpy.array([0.5, 0.6, 0.7, 0.8, 0.9])
-CIRA_IR_LAG_TIME_COUNTS_AXIS2 = numpy.array([0, 1, 2, 3], dtype=int)
-TEMPORAL_DIFF_FLAGS_AXIS3 = numpy.array(
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], dtype=bool
-)
-SHIPS_ENVIRO_FLAGS_AXIS3 = numpy.array(
-    [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1], dtype=bool
-)
-SHIPS_HISTORICAL_FLAGS_AXIS3 = numpy.array(
-    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1], dtype=bool
-)
-SHIPS_SATELLITE_FLAGS_AXIS3 = numpy.array(
-    [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1], dtype=bool
-)
+CIRA_IR_LAG_TIME_COUNTS_AXIS2 = numpy.array([0, 1, 2, 2, 3, 3], dtype=int)
+TEMPORAL_DIFF_FLAGS_AXIS2 = numpy.array([0, 0, 0, 1, 0, 1], dtype=bool)
+SHIPS_ENVIRO_FLAGS_AXIS3 = numpy.array([0, 0, 0, 0, 1, 1, 1, 1], dtype=bool)
+SHIPS_HISTORICAL_FLAGS_AXIS3 = numpy.array([0, 1, 0, 1, 0, 1, 0, 1], dtype=bool)
+SHIPS_SATELLITE_FLAGS_AXIS3 = numpy.array([0, 0, 1, 1, 0, 0, 1, 1], dtype=bool)
 
-DEFAULT_FONT_SIZE = 20
+DEFAULT_FONT_SIZE = 32
 
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
@@ -57,12 +49,17 @@ BIAS_COLOUR_MAP_NAME = 'seismic'
 DEFAULT_COLOUR_MAP_OBJECT = pyplot.get_cmap('plasma')
 BSS_COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
 
+BEST_MARKER_TYPE = '*'
+BEST_MARKER_SIZE_GRID_CELLS = 0.175
+WHITE_COLOUR = numpy.full(3, 1.)
+BLACK_COLOUR = numpy.full(3, 0.)
+
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
-NUM_PANEL_ROWS = 4
-NUM_PANEL_COLUMNS = 4
+NUM_PANEL_ROWS = 3
+NUM_PANEL_COLUMNS = 3
 PANEL_SIZE_PX = int(2.5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
@@ -153,10 +150,6 @@ def _plot_scores_2d(
             score_matrix, cmap=colour_map_object, origin='lower',
             vmin=min_colour_value, vmax=max_colour_value
         )
-
-        colour_norm_object = matplotlib.colors.Normalize(
-            vmin=min_colour_value, vmax=max_colour_value, clip=False
-        )
     else:
         axes_object.imshow(
             score_matrix, cmap=colour_map_object, origin='lower',
@@ -173,20 +166,6 @@ def _plot_scores_2d(
     pyplot.xticks(x_tick_values, x_tick_labels, rotation=90.)
     pyplot.yticks(y_tick_values, y_tick_labels)
 
-    # colour_bar_object = gg_plotting_utils.plot_colour_bar(
-    #     axes_object_or_matrix=axes_object,
-    #     data_matrix=score_matrix[numpy.invert(numpy.isnan(score_matrix))],
-    #     colour_map_object=colour_map_object,
-    #     colour_norm_object=colour_norm_object,
-    #     orientation_string='vertical', extend_min=False, extend_max=False,
-    #     fraction_of_axis_length=0.8, font_size=DEFAULT_FONT_SIZE
-    # )
-    #
-    # tick_values = colour_bar_object.get_ticks()
-    # tick_strings = ['{0:.2g}'.format(v) for v in tick_values]
-    # colour_bar_object.set_ticks(tick_values)
-    # colour_bar_object.set_ticklabels(tick_strings)
-
     return figure_object, axes_object
 
 
@@ -194,10 +173,10 @@ def _print_ranking_one_score(score_matrix, score_name):
     """Prints ranking for one score.
 
     D = number of dropout rates
-    C = number of CIRA IR lag-time counts
+    L = number of CIRA IR lag-time setups
     S = number of SHIPS-predictor combinations
 
-    :param score_matrix: D-by-C-by-S numpy array of scores.
+    :param score_matrix: D-by-L-by-S numpy array of scores.
     :param score_name: Name of score.
     """
 
@@ -237,7 +216,7 @@ def _print_ranking_one_score(score_matrix, score_name):
             a + 1, score_name, score_matrix[i, j, k],
             DROPOUT_RATES_AXIS1[i],
             CIRA_IR_LAG_TIME_COUNTS_AXIS2[j],
-            'yes' if TEMPORAL_DIFF_FLAGS_AXIS3[k] else 'no',
+            'yes' if TEMPORAL_DIFF_FLAGS_AXIS2[j] else 'no',
             this_ships_predictor_type_string
         ))
 
@@ -251,10 +230,10 @@ def _print_ranking_all_scores(
     """Prints ranking for all scores.
 
     D = number of dropout rates
-    C = number of CIRA IR lag-time counts
+    L = number of CIRA IR lag-time setups
     S = number of SHIPS-predictor combinations
 
-    :param auc_matrix: D-by-C-by-S numpy array with AUC (area under ROC curve).
+    :param auc_matrix: D-by-L-by-S numpy array with AUC (area under ROC curve).
     :param aupd_matrix: Same but for AUPD (area under performance diagram).
     :param bss_matrix: Same but for Brier skill score.
     :param csi_matrix: Same but for critical success index.
@@ -372,7 +351,7 @@ def _print_ranking_all_scores(
             a + 1,
             DROPOUT_RATES_AXIS1[i],
             CIRA_IR_LAG_TIME_COUNTS_AXIS2[j],
-            'yes' if TEMPORAL_DIFF_FLAGS_AXIS3[k] else 'no',
+            'yes' if TEMPORAL_DIFF_FLAGS_AXIS2[j] else 'no',
             this_ships_predictor_type_string,
             auc_rank_matrix[i, j, k], aupd_rank_matrix[i, j, k],
             bss_rank_matrix[i, j, k], csi_rank_matrix[i, j, k],
@@ -414,9 +393,11 @@ def _run(experiment_dir_name, top_output_dir_name):
     x_tick_labels = [
         '{0:d}'.format(n) for n in CIRA_IR_LAG_TIME_COUNTS_AXIS2
     ]
+    extra_strings = ['*' if f else '' for f in TEMPORAL_DIFF_FLAGS_AXIS2]
+    x_tick_labels = [a + b for a, b in zip(x_tick_labels, extra_strings)]
 
     y_axis_label = 'Dropout rate'
-    x_axis_label = 'Number of CIRA IR lag times'
+    x_axis_label = 'Number of CIRA IR lag times (* = with diffs)'
 
     for i in range(axis1_length):
         for j in range(axis2_length):
@@ -458,7 +439,7 @@ def _run(experiment_dir_name, top_output_dir_name):
                     int(SHIPS_ENVIRO_FLAGS_AXIS3[k]),
                     int(SHIPS_HISTORICAL_FLAGS_AXIS3[k]),
                     int(SHIPS_SATELLITE_FLAGS_AXIS3[k]),
-                    int(TEMPORAL_DIFF_FLAGS_AXIS3[k]),
+                    int(TEMPORAL_DIFF_FLAGS_AXIS2[j]),
                     '_dense-dropout-rate={0:.1f}'.format(DROPOUT_RATES_AXIS1[i])
                     if DROPOUT_RATES_AXIS1[i] > 0.55 else ''
                 )
@@ -632,14 +613,14 @@ def _run(experiment_dir_name, top_output_dir_name):
         # Plot AUC.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
-            vmin=numpy.nanpercentile(auc_matrix, 5),
+            vmin=numpy.nanpercentile(auc_matrix, 0),
             vmax=numpy.nanpercentile(auc_matrix, 100),
             clip=False
         ))
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=auc_matrix[..., k],
-            min_colour_value=numpy.nanpercentile(auc_matrix, 5),
+            min_colour_value=numpy.nanpercentile(auc_matrix, 0),
             max_colour_value=numpy.nanpercentile(auc_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
             colour_map_object=cmap_object_by_score[-1],
@@ -651,17 +632,33 @@ def _run(experiment_dir_name, top_output_dir_name):
         else:
             letter_label = chr(ord(letter_label) + 1)
 
-        title_string = (
-            '({0:s}) CIRA IR temporal diffs = {1:s}\nSHIPS predictors = {2:s}'
-        ).format(
-            letter_label,
-            'yes' if TEMPORAL_DIFF_FLAGS_AXIS3[k] else 'no',
-            this_ships_predictor_type_string
+        title_string = '({0:s}) SHIPS predictors = {1:s}'.format(
+            letter_label, this_ships_predictor_type_string
         )
 
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        best_indices = numpy.unravel_index(
+            numpy.nanargmax(numpy.ravel(auc_matrix)),
+            auc_matrix.shape
+        )
+        figure_width_px = (
+            figure_object.get_size_inches()[0] * figure_object.dpi
+        )
+        marker_size_px = figure_width_px * (
+            BEST_MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
 
         auc_panel_file_names[k] = '{0:s}/auc_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
@@ -677,14 +674,14 @@ def _run(experiment_dir_name, top_output_dir_name):
         # Plot AUPD.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
-            vmin=numpy.nanpercentile(aupd_matrix, 5),
+            vmin=numpy.nanpercentile(aupd_matrix, 0),
             vmax=numpy.nanpercentile(aupd_matrix, 100),
             clip=False
         ))
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=aupd_matrix[..., k],
-            min_colour_value=numpy.nanpercentile(aupd_matrix, 5),
+            min_colour_value=numpy.nanpercentile(aupd_matrix, 0),
             max_colour_value=numpy.nanpercentile(aupd_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
             colour_map_object=cmap_object_by_score[-1],
@@ -694,6 +691,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        best_indices = numpy.unravel_index(
+            numpy.nanargmax(numpy.ravel(aupd_matrix)),
+            aupd_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
 
         aupd_panel_file_names[k] = '{0:s}/aupd_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
@@ -708,7 +719,7 @@ def _run(experiment_dir_name, top_output_dir_name):
 
         # Plot BSS.
         this_max_value = numpy.nanpercentile(bss_matrix, 100)
-        this_min_value = numpy.nanpercentile(bss_matrix, 5)
+        this_min_value = numpy.nanpercentile(bss_matrix, 0)
         this_min_value = max([this_min_value, -1.])
 
         if numpy.absolute(this_max_value) > numpy.absolute(this_min_value):
@@ -734,6 +745,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
 
+        best_indices = numpy.unravel_index(
+            numpy.nanargmax(numpy.ravel(bss_matrix)),
+            bss_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
+
         bss_panel_file_names[k] = '{0:s}/bss_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
         )
@@ -748,14 +773,14 @@ def _run(experiment_dir_name, top_output_dir_name):
         # Plot CSI.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
-            vmin=numpy.nanpercentile(csi_matrix, 5),
+            vmin=numpy.nanpercentile(csi_matrix, 0),
             vmax=numpy.nanpercentile(csi_matrix, 100),
             clip=False
         ))
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=csi_matrix[..., k],
-            min_colour_value=numpy.nanpercentile(csi_matrix, 5),
+            min_colour_value=numpy.nanpercentile(csi_matrix, 0),
             max_colour_value=numpy.nanpercentile(csi_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
             colour_map_object=cmap_object_by_score[-1],
@@ -765,6 +790,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        best_indices = numpy.unravel_index(
+            numpy.nanargmax(numpy.ravel(csi_matrix)),
+            csi_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
 
         csi_panel_file_names[k] = '{0:s}/csi_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
@@ -779,7 +818,7 @@ def _run(experiment_dir_name, top_output_dir_name):
 
         # Plot frequency bias.
         this_offset = numpy.nanpercentile(
-            numpy.absolute(1. - frequency_bias_matrix), 95
+            numpy.absolute(1. - frequency_bias_matrix), 100
         )
         if numpy.isnan(this_offset):
             this_offset = 1.
@@ -803,6 +842,21 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
 
+        fb_offset_matrix = numpy.absolute(1. - frequency_bias_matrix)
+        best_indices = numpy.unravel_index(
+            numpy.nanargmin(numpy.ravel(fb_offset_matrix)),
+            fb_offset_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=BLACK_COLOUR,
+                markeredgecolor=BLACK_COLOUR
+            )
+
         freq_bias_panel_file_names[k] = (
             '{0:s}/freq_bias_panel{1:02d}.jpg'.format(top_output_dir_name, k)
         )
@@ -820,14 +874,14 @@ def _run(experiment_dir_name, top_output_dir_name):
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
             vmin=numpy.nanpercentile(ssrel_matrix, 0),
-            vmax=numpy.nanpercentile(ssrel_matrix, 95),
+            vmax=numpy.nanpercentile(ssrel_matrix, 100),
             clip=False
         ))
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=ssrel_matrix[..., k],
             min_colour_value=numpy.nanpercentile(ssrel_matrix, 0),
-            max_colour_value=numpy.nanpercentile(ssrel_matrix, 95),
+            max_colour_value=numpy.nanpercentile(ssrel_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
             colour_map_object=cmap_object_by_score[-1],
             colour_norm_object=cnorm_object_by_score[-1]
@@ -836,6 +890,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        best_indices = numpy.unravel_index(
+            numpy.nanargmin(numpy.ravel(ssrel_matrix)),
+            ssrel_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
 
         ssrel_panel_file_names[k] = '{0:s}/ssrel_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
@@ -850,7 +918,7 @@ def _run(experiment_dir_name, top_output_dir_name):
 
         # Plot SSRAT.
         this_offset = numpy.nanpercentile(
-            numpy.absolute(1. - ssrat_matrix), 95
+            numpy.absolute(1. - ssrat_matrix), 100
         )
         if numpy.isnan(this_offset):
             this_offset = 1.
@@ -874,6 +942,21 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
 
+        ssrat_offset_matrix = numpy.absolute(1. - ssrat_matrix)
+        best_indices = numpy.unravel_index(
+            numpy.nanargmin(numpy.ravel(ssrat_offset_matrix)),
+            ssrat_offset_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=BLACK_COLOUR,
+                markeredgecolor=BLACK_COLOUR
+            )
+
         ssrat_panel_file_names[k] = '{0:s}/ssrat_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
         )
@@ -888,7 +971,7 @@ def _run(experiment_dir_name, top_output_dir_name):
         # Plot mean predictive stdev.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
-            vmin=numpy.nanpercentile(mean_predictive_stdev_matrix, 5),
+            vmin=numpy.nanpercentile(mean_predictive_stdev_matrix, 0),
             vmax=numpy.nanpercentile(mean_predictive_stdev_matrix, 100),
             clip=False
         ))
@@ -896,7 +979,7 @@ def _run(experiment_dir_name, top_output_dir_name):
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=mean_predictive_stdev_matrix[..., k],
             min_colour_value=
-            numpy.nanpercentile(mean_predictive_stdev_matrix, 5),
+            numpy.nanpercentile(mean_predictive_stdev_matrix, 0),
             max_colour_value=
             numpy.nanpercentile(mean_predictive_stdev_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
@@ -922,7 +1005,7 @@ def _run(experiment_dir_name, top_output_dir_name):
         # Plot monotonicity fraction.
         cmap_object_by_score.append(DEFAULT_COLOUR_MAP_OBJECT)
         cnorm_object_by_score.append(matplotlib.colors.Normalize(
-            vmin=numpy.nanpercentile(monotonicity_fraction_matrix, 5),
+            vmin=numpy.nanpercentile(monotonicity_fraction_matrix, 0),
             vmax=numpy.nanpercentile(monotonicity_fraction_matrix, 100),
             clip=False
         ))
@@ -930,7 +1013,7 @@ def _run(experiment_dir_name, top_output_dir_name):
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=monotonicity_fraction_matrix[..., k],
             min_colour_value=
-            numpy.nanpercentile(monotonicity_fraction_matrix, 5),
+            numpy.nanpercentile(monotonicity_fraction_matrix, 0),
             max_colour_value=
             numpy.nanpercentile(monotonicity_fraction_matrix, 100),
             x_tick_labels=x_tick_labels, y_tick_labels=y_tick_labels,
@@ -941,6 +1024,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        best_indices = numpy.unravel_index(
+            numpy.nanargmax(numpy.ravel(monotonicity_fraction_matrix)),
+            monotonicity_fraction_matrix.shape
+        )
+
+        if best_indices[2] == k:
+            axes_object.plot(
+                best_indices[1], best_indices[0],
+                linestyle='None', marker=BEST_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=WHITE_COLOUR,
+                markeredgecolor=WHITE_COLOUR
+            )
 
         mf_panel_file_names[k] = '{0:s}/mono_fraction_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
