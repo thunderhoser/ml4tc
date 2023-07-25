@@ -50,9 +50,8 @@ DEFAULT_COLOUR_MAP_OBJECT = pyplot.get_cmap('plasma')
 BSS_COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
 
 BEST_MARKER_TYPE = '*'
-BEST_MARKER_SIZE_GRID_CELLS = 0.175
-WHITE_COLOUR = numpy.full(3, 1.)
-BLACK_COLOUR = numpy.full(3, 0.)
+BEST_MARKER_SIZE_GRID_CELLS = 0.375
+BEST_MARKER_COLOUR = numpy.full(3, 0.)
 
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
@@ -656,8 +655,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         auc_panel_file_names[k] = '{0:s}/auc_panel{1:02d}.jpg'.format(
@@ -702,8 +701,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         aupd_panel_file_names[k] = '{0:s}/aupd_panel{1:02d}.jpg'.format(
@@ -755,8 +754,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         bss_panel_file_names[k] = '{0:s}/bss_panel{1:02d}.jpg'.format(
@@ -801,8 +800,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         csi_panel_file_names[k] = '{0:s}/csi_panel{1:02d}.jpg'.format(
@@ -853,8 +852,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BLACK_COLOUR,
-                markeredgecolor=BLACK_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         freq_bias_panel_file_names[k] = (
@@ -877,6 +876,11 @@ def _run(experiment_dir_name, top_output_dir_name):
             vmax=numpy.nanpercentile(ssrel_matrix, 100),
             clip=False
         ))
+
+        print(numpy.nanpercentile(ssrel_matrix, 0))
+        print(numpy.nanpercentile(ssrel_matrix, 100))
+        print(ssrel_matrix[..., k])
+        print('\n\n\n')
         
         figure_object, axes_object = _plot_scores_2d(
             score_matrix=ssrel_matrix[..., k],
@@ -901,8 +905,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         ssrel_panel_file_names[k] = '{0:s}/ssrel_panel{1:02d}.jpg'.format(
@@ -953,8 +957,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BLACK_COLOUR,
-                markeredgecolor=BLACK_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         ssrat_panel_file_names[k] = '{0:s}/ssrat_panel{1:02d}.jpg'.format(
@@ -1035,8 +1039,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=WHITE_COLOUR,
-                markeredgecolor=WHITE_COLOUR
+                markerfacecolor=BEST_MARKER_COLOUR,
+                markeredgecolor=BEST_MARKER_COLOUR
             )
 
         mf_panel_file_names[k] = '{0:s}/mono_fraction_panel{1:02d}.jpg'.format(
