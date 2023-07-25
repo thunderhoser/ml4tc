@@ -339,6 +339,7 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
         model_file_name=model_file_name,
         lead_times_hours=lead_times_hours,
         quantile_levels=quantile_levels_to_write,
+        isotonic_model_file_name=None,
         uncertainty_calib_model_file_name=None
     )
 
