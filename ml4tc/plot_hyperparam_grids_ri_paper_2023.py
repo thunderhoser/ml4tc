@@ -50,8 +50,15 @@ DEFAULT_COLOUR_MAP_OBJECT = pyplot.get_cmap('plasma')
 BSS_COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
 
 BEST_MARKER_TYPE = '*'
-BEST_MARKER_SIZE_GRID_CELLS = 0.375
-BEST_MARKER_COLOUR = numpy.full(3, 0.)
+SELECTED_MARKER_TYPE = 'o'
+MARKER_SIZE_GRID_CELLS = 0.375
+MARKER_COLOUR = numpy.full(3, 0.)
+
+SELECTED_MARKER_INDICES_LIST = [
+    numpy.array([3, 0, 7], dtype=int),
+    numpy.array([0, 3, 0], dtype=int),
+    numpy.array([3, 1, 7], dtype=int)
+]
 
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
@@ -290,7 +297,7 @@ def _print_ranking_all_scores(
         frequency_bias_matrix.shape
     )
 
-    these_scores = numpy.ravel(ssrel_matrix)
+    these_scores = numpy.ravel(ssrel_matrix) + 0.
     these_scores[numpy.isnan(these_scores)] = numpy.inf
     ssrel_rank_matrix = numpy.reshape(
         rankdata(these_scores, method='average'), ssrel_matrix.shape
@@ -647,7 +654,7 @@ def _run(experiment_dir_name, top_output_dir_name):
             figure_object.get_size_inches()[0] * figure_object.dpi
         )
         marker_size_px = figure_width_px * (
-            BEST_MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
+            MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
         )
 
         if best_indices[2] == k:
@@ -655,8 +662,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         auc_panel_file_names[k] = '{0:s}/auc_panel{1:02d}.jpg'.format(
@@ -701,8 +720,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         aupd_panel_file_names[k] = '{0:s}/aupd_panel{1:02d}.jpg'.format(
@@ -754,8 +785,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         bss_panel_file_names[k] = '{0:s}/bss_panel{1:02d}.jpg'.format(
@@ -800,8 +843,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         csi_panel_file_names[k] = '{0:s}/csi_panel{1:02d}.jpg'.format(
@@ -852,8 +907,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         #         best_indices[1], best_indices[0],
         #         linestyle='None', marker=BEST_MARKER_TYPE,
         #         markersize=marker_size_px, markeredgewidth=0,
-        #         markerfacecolor=BEST_MARKER_COLOUR,
-        #         markeredgecolor=BEST_MARKER_COLOUR
+        #         markerfacecolor=MARKER_COLOUR,
+        #         markeredgecolor=MARKER_COLOUR
+        #     )
+        #
+        # for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        #     if selected_indices[2] != k:
+        #         continue
+        #
+        #     axes_object.plot(
+        #         selected_indices[1], selected_indices[0],
+        #         linestyle='None', marker=SELECTED_MARKER_TYPE,
+        #         markersize=marker_size_px, markeredgewidth=0,
+        #         markerfacecolor=MARKER_COLOUR,
+        #         markeredgecolor=MARKER_COLOUR
         #     )
         #
         # freq_bias_panel_file_names[k] = (
@@ -900,8 +967,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         ssrel_panel_file_names[k] = '{0:s}/ssrel_panel{1:02d}.jpg'.format(
@@ -952,8 +1031,20 @@ def _run(experiment_dir_name, top_output_dir_name):
         #         best_indices[1], best_indices[0],
         #         linestyle='None', marker=BEST_MARKER_TYPE,
         #         markersize=marker_size_px, markeredgewidth=0,
-        #         markerfacecolor=BEST_MARKER_COLOUR,
-        #         markeredgecolor=BEST_MARKER_COLOUR
+        #         markerfacecolor=MARKER_COLOUR,
+        #         markeredgecolor=MARKER_COLOUR
+        #     )
+        #
+        # for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        #     if selected_indices[2] != k:
+        #         continue
+        #
+        #     axes_object.plot(
+        #         selected_indices[1], selected_indices[0],
+        #         linestyle='None', marker=SELECTED_MARKER_TYPE,
+        #         markersize=marker_size_px, markeredgewidth=0,
+        #         markerfacecolor=MARKER_COLOUR,
+        #         markeredgecolor=MARKER_COLOUR
         #     )
         #
         # ssrat_panel_file_names[k] = '{0:s}/ssrat_panel{1:02d}.jpg'.format(
@@ -989,6 +1080,18 @@ def _run(experiment_dir_name, top_output_dir_name):
         axes_object.set_xlabel(x_axis_label)
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
 
         spread_panel_file_names[k] = '{0:s}/spread_panel{1:02d}.jpg'.format(
             top_output_dir_name, k
@@ -1034,8 +1137,20 @@ def _run(experiment_dir_name, top_output_dir_name):
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
                 markersize=marker_size_px, markeredgewidth=0,
-                markerfacecolor=BEST_MARKER_COLOUR,
-                markeredgecolor=BEST_MARKER_COLOUR
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
+            )
+
+        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+            if selected_indices[2] != k:
+                continue
+
+            axes_object.plot(
+                selected_indices[1], selected_indices[0],
+                linestyle='None', marker=SELECTED_MARKER_TYPE,
+                markersize=marker_size_px, markeredgewidth=0,
+                markerfacecolor=MARKER_COLOUR,
+                markeredgecolor=MARKER_COLOUR
             )
 
         mf_panel_file_names[k] = '{0:s}/mono_fraction_panel{1:02d}.jpg'.format(
