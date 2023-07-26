@@ -900,35 +900,6 @@ def concat_over_ensemble_members(prediction_dicts):
     forecast_prob_matrix = prediction_dicts[0][PROBABILITY_MATRIX_KEY]
 
     for i in range(len(prediction_dicts)):
-        print(
-            prediction_dicts[i][CYCLONE_IDS_KEY] ==
-            prediction_dicts[0][CYCLONE_IDS_KEY]
-        )
-        print(numpy.array_equal(
-            prediction_dicts[i][INIT_TIMES_KEY],
-            prediction_dicts[0][INIT_TIMES_KEY]
-        ))
-        print(numpy.array_equal(
-            prediction_dicts[i][TARGET_MATRIX_KEY],
-            prediction_dicts[0][TARGET_MATRIX_KEY]
-        ))
-        print(numpy.allclose(
-            prediction_dicts[i][STORM_LATITUDES_KEY],
-            prediction_dicts[0][STORM_LATITUDES_KEY], atol=TOLERANCE
-        ))
-        print(numpy.allclose(
-            prediction_dicts[i][STORM_LONGITUDES_KEY],
-            prediction_dicts[0][STORM_LONGITUDES_KEY], atol=TOLERANCE
-        ))
-        print(numpy.allclose(
-            prediction_dicts[i][STORM_INTENSITY_CHANGES_KEY],
-            prediction_dicts[0][STORM_INTENSITY_CHANGES_KEY], atol=TOLERANCE
-        ))
-        print(numpy.array_equal(
-            prediction_dicts[i][LEAD_TIMES_KEY],
-            prediction_dicts[0][LEAD_TIMES_KEY]
-        ))
-
         assert (
             prediction_dicts[i][CYCLONE_IDS_KEY] ==
             prediction_dicts[0][CYCLONE_IDS_KEY]
