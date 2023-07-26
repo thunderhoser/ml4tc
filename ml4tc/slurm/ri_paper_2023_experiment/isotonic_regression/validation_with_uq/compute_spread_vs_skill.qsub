@@ -46,8 +46,8 @@ while ($i <= `expr $SLURM_ARRAY_TASK_ID + 6` && $i <= $#DROPOUT_RATES)
         set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}"
     endif
     
-    set input_file_name="${model_dir_name}/validation/predictions.nc"
-    set output_file_name="${model_dir_name}/validation/spread_vs_skill.nc"
+    set input_file_name="${model_dir_name}/validation/isotonic_regression/predictions.nc"
+    set output_file_name="${model_dir_name}/validation/isotonic_regression/spread_vs_skill.nc"
     
     python3 -u "${CODE_DIR_NAME}/compute_spread_vs_skill.py" \
     --input_prediction_file_name="${input_file_name}" \
