@@ -1,17 +1,24 @@
 """Input/output methods for model predictions."""
 
 import os
+import sys
 import copy
 import math
 import numpy
 import netCDF4
 from scipy.stats import norm
 from scipy.integrate import simps
-from gewittergefahr.gg_utils import time_conversion
-from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
-from gewittergefahr.gg_utils import file_system_utils
-from gewittergefahr.gg_utils import error_checking
-from ml4tc.utils import satellite_utils
+
+THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
+    os.path.join(os.getcwd(), os.path.expanduser(__file__))
+))
+sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
+
+import time_conversion
+import longitude_conversion as lng_conversion
+import file_system_utils
+import error_checking
+import satellite_utils
 
 TOLERANCE = 1e-6
 

@@ -1,10 +1,18 @@
 """Creates multi-model ensemble."""
 
+import os
+import sys
 import copy
 import argparse
 import numpy
-from gewittergefahr.gg_utils import error_checking
-from ml4tc.io import prediction_io
+
+THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
+    os.path.join(os.getcwd(), os.path.expanduser(__file__))
+))
+sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
+
+import error_checking
+import prediction_io
 
 INPUT_FILES_ARG_NAME = 'input_prediction_file_names'
 MAX_ENSEMBLE_SIZE_ARG_NAME = 'max_total_ensemble_size'
