@@ -1,8 +1,8 @@
 #!/bin/tcsh
 
 #SBATCH --job-name="apply_neural_nets_validation"
-#SBATCH --partition="bigmem"
-#SBATCH --account="gsd-hpcs"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
