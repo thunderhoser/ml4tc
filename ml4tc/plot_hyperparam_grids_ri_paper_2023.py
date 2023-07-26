@@ -70,11 +70,16 @@ PANEL_SIZE_PX = int(2.5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 EXPERIMENT_DIR_ARG_NAME = 'experiment_dir_name'
+USE_ISOTONIC_ARG_NAME = 'use_isotonic_regression'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 EXPERIMENT_DIR_HELP_STRING = (
     'Name of top-level directory with models.  Evaluation scores will be found '
     'therein.'
+)
+USE_ISOTONIC_HELP_STRING = (
+    'Boolean flag.  If 1 (0), will use models bias-corrected with isotonic '
+    'regression (raw NN models).'
 )
 OUTPUT_DIR_HELP_STRING = (
     'Name of output directory.  Figures will be saved here.'
@@ -84,6 +89,10 @@ INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
     '--' + EXPERIMENT_DIR_ARG_NAME, type=str, required=True,
     help=EXPERIMENT_DIR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + USE_ISOTONIC_ARG_NAME, type=int, required=True,
+    help=USE_ISOTONIC_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_DIR_ARG_NAME, type=str, required=True,
@@ -369,12 +378,13 @@ def _print_ranking_all_scores(
     print('\n')
 
 
-def _run(experiment_dir_name, top_output_dir_name):
+def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
     """Plots hyperparameter grids for main experiment in 2023 RI paper.
 
     This is effectively the main method.
 
     :param experiment_dir_name: See documentation at top of file.
+    :param use_isotonic_regression: Same.
     :param top_output_dir_name: Same.
     """
 
@@ -437,7 +447,7 @@ def _run(experiment_dir_name, top_output_dir_name):
                     '{0:s}/{1:s}num-cira-ir-lag-times={2:d}_'
                     'use-ships-enviro={3:d}_use-ships-historical={4:d}_'
                     'use-ships-satellite={5:d}_use-temporal-diffs={6:d}{7:s}/'
-                    'validation/evaluation.nc'
+                    'validation/{8:s}evaluation.nc'
                 ).format(
                     experiment_dir_name,
                     'more_dropout/' if DROPOUT_RATES_AXIS1[i] > 0.55 else '',
@@ -447,7 +457,8 @@ def _run(experiment_dir_name, top_output_dir_name):
                     int(SHIPS_SATELLITE_FLAGS_AXIS3[k]),
                     int(TEMPORAL_DIFF_FLAGS_AXIS2[j]),
                     '_dense-dropout-rate={0:.1f}'.format(DROPOUT_RATES_AXIS1[i])
-                    if DROPOUT_RATES_AXIS1[i] > 0.55 else ''
+                    if DROPOUT_RATES_AXIS1[i] > 0.55 else '',
+                    'isotonic_regression/' if use_isotonic_regression else ''
                 )
 
                 print('Reading data from: "{0:s}"...'.format(
@@ -1227,5 +1238,8 @@ if __name__ == '__main__':
 
     _run(
         experiment_dir_name=getattr(INPUT_ARG_OBJECT, EXPERIMENT_DIR_ARG_NAME),
+        use_isotonic_regression=bool(
+            getattr(INPUT_ARG_OBJECT, USE_ISOTONIC_ARG_NAME)
+        ),
         top_output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
