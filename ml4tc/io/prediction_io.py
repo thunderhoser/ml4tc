@@ -1,6 +1,7 @@
 """Input/output methods for model predictions."""
 
 import os
+import copy
 import math
 import numpy
 import netCDF4
@@ -865,3 +866,58 @@ def get_predictive_stdevs(prediction_dict, use_fancy_quantile_method=True,
     )
 
     return prob_iqr_values / eta_value
+
+
+def concat_over_ensemble_members(prediction_dicts):
+    """Concatenates predictions over ensemble members.
+
+    :param prediction_dicts: 1-D list of dictionaries, each in format returned
+        by `read_file`, each containing a different set of ensemble members.
+    :return: prediction_dict: A single dictionary, also in the format returned
+        by `read_file`, containing all ensemble members.
+    """
+
+    forecast_prob_matrix = prediction_dicts[0][PROBABILITY_MATRIX_KEY]
+
+    for i in range(len(prediction_dicts)):
+        assert (
+            prediction_dicts[i][CYCLONE_IDS_KEY] ==
+            prediction_dicts[0][CYCLONE_IDS_KEY]
+        )
+        assert numpy.array_equal(
+            prediction_dicts[i][TARGET_MATRIX_KEY],
+            prediction_dicts[0][TARGET_MATRIX_KEY]
+        )
+        assert numpy.array_equal(
+            prediction_dicts[i][INIT_TIMES_KEY],
+            prediction_dicts[0][INIT_TIMES_KEY]
+        )
+        assert numpy.allclose(
+            prediction_dicts[i][STORM_LATITUDES_KEY],
+            prediction_dicts[0][STORM_LATITUDES_KEY], atol=TOLERANCE
+        )
+        assert numpy.allclose(
+            prediction_dicts[i][STORM_LONGITUDES_KEY],
+            prediction_dicts[0][STORM_LONGITUDES_KEY], atol=TOLERANCE
+        )
+        assert numpy.allclose(
+            prediction_dicts[i][STORM_INTENSITY_CHANGES_KEY],
+            prediction_dicts[0][STORM_INTENSITY_CHANGES_KEY], atol=TOLERANCE
+        )
+        assert numpy.array_equal(
+            prediction_dicts[i][LEAD_TIMES_KEY],
+            prediction_dicts[0][LEAD_TIMES_KEY]
+        )
+        assert prediction_dicts[i][QUANTILE_LEVELS_KEY] is None
+
+        if i == 0:
+            continue
+
+        forecast_prob_matrix = numpy.concatenate(
+            (forecast_prob_matrix, prediction_dicts[i][PROBABILITY_MATRIX_KEY]),
+            axis=-1
+        )
+
+    prediction_dict = copy.deepcopy(prediction_dicts[0])
+    prediction_dict[PROBABILITY_MATRIX_KEY] = forecast_prob_matrix
+    return prediction_dict
