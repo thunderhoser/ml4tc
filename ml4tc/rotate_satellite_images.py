@@ -91,26 +91,29 @@ def _run(input_dir_name, cyclone_id_string, normalization_file_name,
     print('Reading data from: "{0:s}"...'.format(input_file_name))
     example_table_xarray = example_io.read_file(input_file_name)
 
-    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
-    normalization_table_xarray = normalization.read_file(
-        normalization_file_name
-    )
-
-    xt = example_table_xarray
-    nt = normalization_table_xarray
-
     # Find climo mean brightness temperature.
-    training_values_kelvins = (
-        nt[normalization.SATELLITE_PREDICTORS_GRIDDED_KEY].values
-    )
-    training_values_kelvins = training_values_kelvins[
-        numpy.isfinite(training_values_kelvins)
-    ]
-    climo_mean_kelvins = numpy.mean(training_values_kelvins)
+    if normalization_file_name == '':
+        climo_mean_kelvins = 269.80128466
+    else:
+        print('Reading data from: "{0:s}"...'.format(normalization_file_name))
+        normalization_table_xarray = normalization.read_file(
+            normalization_file_name
+        )
+        nt = normalization_table_xarray
+
+        training_values_kelvins = (
+            nt[normalization.SATELLITE_PREDICTORS_GRIDDED_KEY].values
+        )
+        training_values_kelvins = training_values_kelvins[
+            numpy.isfinite(training_values_kelvins)
+        ]
+        climo_mean_kelvins = numpy.mean(training_values_kelvins)
 
     print('Climatological mean brightness temperature = {0:.1f} K'.format(
         climo_mean_kelvins
     ))
+
+    xt = example_table_xarray
 
     # Find rotation vector for each satellite image (i.e., for each time).
     if eastward_shear_variable_name != '':
