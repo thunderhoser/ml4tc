@@ -50,13 +50,20 @@ DEFAULT_COLOUR_MAP_OBJECT = pyplot.get_cmap('plasma')
 BSS_COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
 
 BEST_MARKER_TYPE = '*'
+BEST_MARKER_SIZE_GRID_CELLS = 0.375
 SELECTED_MARKER_TYPE = 'o'
-MARKER_SIZE_GRID_CELLS = 0.375
+SELECTED_MARKER_SIZE_GRID_CELLS = 0.25
 MARKER_COLOUR = numpy.full(3, 0.)
 
-SELECTED_MARKER_INDICES_LIST = [
+SELECTED_MARKER_INDICES_LIST_NO_IR = [
     numpy.array([3, 0, 7], dtype=int),
     numpy.array([0, 3, 0], dtype=int),
+    numpy.array([3, 1, 7], dtype=int)
+]
+
+SELECTED_MARKER_INDICES_LIST_WITH_IR = [
+    numpy.array([3, 0, 7], dtype=int),
+    numpy.array([2, 1, 0], dtype=int),
     numpy.array([3, 1, 7], dtype=int)
 ]
 
@@ -611,6 +618,11 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
 
     letter_label = None
 
+    if use_isotonic_regression:
+        selected_marker_indices_list = SELECTED_MARKER_INDICES_LIST_WITH_IR
+    else:
+        selected_marker_indices_list = SELECTED_MARKER_INDICES_LIST_NO_IR
+
     for k in range(axis3_length):
         these_ships_predictor_types = []
         if SHIPS_ENVIRO_FLAGS_AXIS3[k]:
@@ -664,27 +676,30 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
         figure_width_px = (
             figure_object.get_size_inches()[0] * figure_object.dpi
         )
-        marker_size_px = figure_width_px * (
-            MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
+        best_marker_size_px = figure_width_px * (
+            BEST_MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
+        )
+        selected_marker_size_px = figure_width_px * (
+            SELECTED_MARKER_SIZE_GRID_CELLS / auc_matrix.shape[1]
         )
 
         if best_indices[2] == k:
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -730,19 +745,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -795,19 +810,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -853,19 +868,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -917,19 +932,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -977,19 +992,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -1041,19 +1056,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -1092,14 +1107,14 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
         axes_object.set_ylabel(y_axis_label)
         axes_object.set_title(title_string)
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
@@ -1147,19 +1162,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             axes_object.plot(
                 best_indices[1], best_indices[0],
                 linestyle='None', marker=BEST_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=best_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )
 
-        for selected_indices in SELECTED_MARKER_INDICES_LIST:
+        for selected_indices in selected_marker_indices_list:
             if selected_indices[2] != k:
                 continue
 
             axes_object.plot(
                 selected_indices[1], selected_indices[0],
                 linestyle='None', marker=SELECTED_MARKER_TYPE,
-                markersize=marker_size_px, markeredgewidth=0,
+                markersize=selected_marker_size_px, markeredgewidth=0,
                 markerfacecolor=MARKER_COLOUR,
                 markeredgecolor=MARKER_COLOUR
             )

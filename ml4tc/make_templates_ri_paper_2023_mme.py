@@ -74,11 +74,11 @@ NUM_SHIPS_ENVIRO_PREDICTORS = 11
 NUM_SHIPS_HIST_PREDICTORS = 2
 NUM_SHIPS_FORECAST_HOURS = 5
 
-CIRA_IR_LAG_TIME_COUNTS = numpy.array([0, 2, 1], dtype=int)
+CIRA_IR_LAG_TIME_COUNTS = numpy.array([0, 1, 1], dtype=int)
 USE_SHIPS_ENVIRO_FLAGS = numpy.array([1, 0, 1], dtype=bool)
 USE_SHIPS_HISTORICAL_FLAGS = numpy.array([1, 0, 1], dtype=bool)
 USE_SHIPS_SATELLITE_FLAGS = numpy.array([1, 0, 1], dtype=bool)
-DROPOUT_RATES = numpy.array([0.8, 0.5, 0.8])
+DROPOUT_RATES = numpy.array([0.8, 0.7, 0.8])
 
 METRIC_FUNCTION_LIST = list(neural_net.METRIC_DICT.values())
 
