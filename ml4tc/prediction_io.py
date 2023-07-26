@@ -884,12 +884,25 @@ def concat_over_ensemble_members(prediction_dicts):
         by `read_file`, containing all ensemble members.
     """
 
+    for i in range(len(prediction_dicts)):
+        these_cyclone_time_strings = [
+            '{0:s}_{1:d}'.format(c, t) for c, t in zip(
+                prediction_dicts[i][CYCLONE_IDS_KEY],
+                prediction_dicts[i][INIT_TIMES_KEY]
+            )
+        ]
+
+        sort_indices = numpy.argsort(numpy.array(these_cyclone_time_strings))
+        prediction_dicts[i] = subset_by_index(
+            prediction_dict=prediction_dicts[i], desired_indices=sort_indices
+        )
+
     forecast_prob_matrix = prediction_dicts[0][PROBABILITY_MATRIX_KEY]
 
     for i in range(len(prediction_dicts)):
         print(
-                prediction_dicts[i][CYCLONE_IDS_KEY] ==
-                prediction_dicts[0][CYCLONE_IDS_KEY]
+            prediction_dicts[i][CYCLONE_IDS_KEY] ==
+            prediction_dicts[0][CYCLONE_IDS_KEY]
         )
         print(numpy.array_equal(
             prediction_dicts[i][INIT_TIMES_KEY],
