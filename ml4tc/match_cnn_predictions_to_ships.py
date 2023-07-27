@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import warnings
 import numpy
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -122,10 +123,17 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
         )[0]
 
         if len(js) == 0:
-            print('POTENTIAL ERROR: Cannot find time match for CNN cyclone {0:s} at {1:s}.'.format(
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find time match for CNN cyclone '
+                '{0:s} at {1:s}.'
+            ).format(
                 cnn_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
-                time_conversion.unix_sec_to_string(cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S')
-            ))
+                time_conversion.unix_sec_to_string(
+                    cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                )
+            )
+
+            warnings.warn(warning_string)
             continue
 
         first_distances_deg = numpy.sqrt(
@@ -141,17 +149,43 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
         )
 
         if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
+            cnn_pos_longitudes_deg_e[i] *= -1
+            cnn_neg_longitudes_deg_e[i] *= -1
+
+            first_distances_deg = numpy.sqrt(
+                (cnn_latitudes_deg_n[i] - ships_latitudes_deg_n[js]) ** 2 +
+                (cnn_pos_longitudes_deg_e[i] - ships_pos_longitudes_deg_e[js])
+                ** 2
+            )
+            second_distances_deg = numpy.sqrt(
+                (cnn_latitudes_deg_n[i] - ships_latitudes_deg_n[js]) ** 2 +
+                (cnn_neg_longitudes_deg_e[i] - ships_neg_longitudes_deg_e[js])
+                ** 2
+            )
+            these_distances_deg = numpy.minimum(
+                first_distances_deg, second_distances_deg
+            )
+
+        if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
             this_ships_index = js[numpy.argmin(these_distances_deg)]
 
-            print('POTENTIAL ERROR: Cannot find distance match for CNN cyclone {0:s} at {1:s}.  CNN cyclone is at {2:.2f} deg N, {3:.2f} deg E; SHIPS cyclone is at {4:.2f} deg N, {5:.2f} deg E.'.format(
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find distance match for CNN cyclone '
+                '{0:s} at {1:s}.  CNN cyclone is at '
+                '{2:.2f} deg N, {3:.2f} deg E; SHIPS cyclone is at '
+                '{4:.2f} deg N, {5:.2f} deg E.'
+            ).format(
                 cnn_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
-                time_conversion.unix_sec_to_string(cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'),
+                time_conversion.unix_sec_to_string(
+                    cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                ),
                 cnn_latitudes_deg_n[i],
                 cnn_pos_longitudes_deg_e[i],
                 ships_latitudes_deg_n[this_ships_index],
                 ships_pos_longitudes_deg_e[this_ships_index]
-            ))
+            )
 
+            warnings.warn(warning_string)
             continue
 
         cnn_to_ships_indices[i] = js[numpy.argmin(these_distances_deg)]
