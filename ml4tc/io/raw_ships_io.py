@@ -24,6 +24,8 @@ HOUR_REGEX = '[0-2][0-9]'
 BASIN_REGEX = '[A-Z][A-Z]'
 CYCLONE_NUM_REGEX = '[0-9][0-9]'
 
+RT_CUTOFF_TIME_FOR_WEIRD_LNG_UNIX_SEC = 1575183600
+
 KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 MB_TO_PASCALS = 100.
 HOURS_TO_SECONDS = 3600.
@@ -1102,7 +1104,13 @@ def read_file(ascii_file_name, real_time_flag, seven_day_flag):
     storm_longitudes_deg_e = (
         ships_table_xarray[ships_io.STORM_LONGITUDE_KEY].values
     )
-    storm_longitudes_deg_e = multipliers * storm_longitudes_deg_e
+
+    if not (
+            real_time_flag and
+            numpy.mean(storm_times_unix_sec) >=
+            RT_CUTOFF_TIME_FOR_WEIRD_LNG_UNIX_SEC
+    ):
+        storm_longitudes_deg_e = multipliers * storm_longitudes_deg_e
 
     storm_longitudes_deg_e[storm_longitudes_deg_e < -180.] += 360.
     storm_longitudes_deg_e[storm_longitudes_deg_e > 360.] -= 360.

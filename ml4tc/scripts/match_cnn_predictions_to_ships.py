@@ -1,7 +1,9 @@
 """Matches CNN predictions to SHIPS predictions."""
 
+import warnings
 import argparse
 import numpy
+from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
 from ml4tc.io import prediction_io
 from ml4tc.io import ships_prediction_io
@@ -113,6 +115,17 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
         )[0]
 
         if len(js) == 0:
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find time match for CNN cyclone '
+                '{0:s} at {1:s}.'
+            ).format(
+                cnn_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
+                time_conversion.unix_sec_to_string(
+                    cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                )
+            )
+
+            warnings.warn(warning_string)
             continue
 
         first_distances_deg = numpy.sqrt(
@@ -128,6 +141,43 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
         )
 
         if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
+            cnn_pos_longitudes_deg_e[i] *= -1
+            cnn_neg_longitudes_deg_e[i] *= -1
+
+            first_distances_deg = numpy.sqrt(
+                (cnn_latitudes_deg_n[i] - ships_latitudes_deg_n[js]) ** 2 +
+                (cnn_pos_longitudes_deg_e[i] - ships_pos_longitudes_deg_e[js])
+                ** 2
+            )
+            second_distances_deg = numpy.sqrt(
+                (cnn_latitudes_deg_n[i] - ships_latitudes_deg_n[js]) ** 2 +
+                (cnn_neg_longitudes_deg_e[i] - ships_neg_longitudes_deg_e[js])
+                ** 2
+            )
+            these_distances_deg = numpy.minimum(
+                first_distances_deg, second_distances_deg
+            )
+
+        if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
+            this_ships_index = js[numpy.argmin(these_distances_deg)]
+
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find distance match for CNN cyclone '
+                '{0:s} at {1:s}.  CNN cyclone is at '
+                '{2:.2f} deg N, {3:.2f} deg E; SHIPS cyclone is at '
+                '{4:.2f} deg N, {5:.2f} deg E.'
+            ).format(
+                cnn_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
+                time_conversion.unix_sec_to_string(
+                    cnn_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                ),
+                cnn_latitudes_deg_n[i],
+                cnn_pos_longitudes_deg_e[i],
+                ships_latitudes_deg_n[this_ships_index],
+                ships_pos_longitudes_deg_e[this_ships_index]
+            )
+
+            warnings.warn(warning_string)
             continue
 
         cnn_to_ships_indices[i] = js[numpy.argmin(these_distances_deg)]
@@ -214,7 +264,7 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         )
         ships_prob_matrix_ships_lead_times[
             ships_prob_matrix_ships_lead_times < -0.1
-        ] = numpy.nan
+            ] = numpy.nan
 
         # This creates an E-by-L matrix.
         ships_prob_matrix_cnn_lead_times = numpy.transpose(numpy.vstack([
