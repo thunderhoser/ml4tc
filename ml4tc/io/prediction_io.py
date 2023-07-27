@@ -877,6 +877,19 @@ def concat_over_ensemble_members(prediction_dicts):
         by `read_file`, containing all ensemble members.
     """
 
+    for i in range(len(prediction_dicts)):
+        these_cyclone_time_strings = [
+            '{0:s}_{1:d}'.format(c, t) for c, t in zip(
+                prediction_dicts[i][CYCLONE_IDS_KEY],
+                prediction_dicts[i][INIT_TIMES_KEY]
+            )
+        ]
+
+        sort_indices = numpy.argsort(numpy.array(these_cyclone_time_strings))
+        prediction_dicts[i] = subset_by_index(
+            prediction_dict=prediction_dicts[i], desired_indices=sort_indices
+        )
+
     forecast_prob_matrix = prediction_dicts[0][PROBABILITY_MATRIX_KEY]
 
     for i in range(len(prediction_dicts)):
@@ -885,12 +898,12 @@ def concat_over_ensemble_members(prediction_dicts):
             prediction_dicts[0][CYCLONE_IDS_KEY]
         )
         assert numpy.array_equal(
-            prediction_dicts[i][TARGET_MATRIX_KEY],
-            prediction_dicts[0][TARGET_MATRIX_KEY]
-        )
-        assert numpy.array_equal(
             prediction_dicts[i][INIT_TIMES_KEY],
             prediction_dicts[0][INIT_TIMES_KEY]
+        )
+        assert numpy.array_equal(
+            prediction_dicts[i][TARGET_MATRIX_KEY],
+            prediction_dicts[0][TARGET_MATRIX_KEY]
         )
         assert numpy.allclose(
             prediction_dicts[i][STORM_LATITUDES_KEY],

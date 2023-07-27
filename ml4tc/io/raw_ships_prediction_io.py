@@ -327,6 +327,7 @@ def _read_ri_new_file(ascii_file_name):
     :param ascii_file_name: Path to input file.
     :return: ships_rii_probability: Probability from SHIPS-RII model.
     :return: consensus_probability: Probability from model consensus.
+    :return: dtops_probability: Probability from DTOPS model.
     """
 
     file_handle = open(ascii_file_name, 'r')
@@ -335,11 +336,13 @@ def _read_ri_new_file(ascii_file_name):
     ri_30hour_index = -1
     ships_rii_probability = numpy.nan
     consensus_probability = numpy.nan
+    dtops_probability = numpy.nan
 
     for this_line in file_handle.readlines():
         if not (
                 numpy.isnan(ships_rii_probability) or
-                numpy.isnan(consensus_probability)
+                numpy.isnan(consensus_probability) or
+                numpy.isnan(dtops_probability)
         ):
             break
 
@@ -380,10 +383,23 @@ def _read_ri_new_file(ascii_file_name):
 
             consensus_probability = 0.01 * float(prob_string[:-1])
             assert 0. <= consensus_probability <= 1.
+            continue
+
+        if this_line.strip().startswith('DTOPS:'):
+            prob_string = this_line.split()[ri_30hour_index]
+            assert prob_string.endswith('%')
+
+            if prob_string.startswith('999'):
+                dtops_probability = numpy.inf
+                continue
+
+            dtops_probability = 0.01 * float(prob_string[:-1])
+            assert 0. <= dtops_probability <= 1.
 
     assert not (
         numpy.isnan(ships_rii_probability) or
-        numpy.isnan(consensus_probability)
+        numpy.isnan(consensus_probability) or
+        numpy.isnan(dtops_probability)
     )
 
     file_handle.close()
@@ -392,8 +408,10 @@ def _read_ri_new_file(ascii_file_name):
         ships_rii_probability = numpy.nan
     if numpy.isinf(consensus_probability):
         consensus_probability = numpy.nan
+    if numpy.isinf(dtops_probability):
+        dtops_probability = numpy.nan
 
-    return ships_rii_probability, consensus_probability
+    return ships_rii_probability, consensus_probability, dtops_probability
 
 
 def _read_ri_old_file(ascii_file_name):
@@ -517,9 +535,9 @@ def read_ri_predictions(ascii_file_name):
 
     :param ascii_file_name: Path to input file.
     :return: prediction_dict: Dictionary with the following keys.
-    prediction_dict['ri_probabilities']: length-1 or length-2 numpy array of
-        probabilities.  If length-2, the entries are
-        [ships_rii_probability, consensus_probability].
+    prediction_dict['ri_probabilities']: length-1 or length-3 numpy array of
+        probabilities.  If length-3, the entries are
+        [ships_rii_probability, consensus_probability, dtops_probability].
     prediction_dict['init_latitude_deg_n']: Initial latitude of TC center
         (deg north).
     prediction_dict['init_longitude_deg_e']: Initial longitude of TC center
@@ -533,11 +551,11 @@ def read_ri_predictions(ascii_file_name):
     )
 
     if init_time_unix_sec >= RI_CUTOFF_TIME_UNIX_SEC:
-        ships_rii_probability, consensus_probability = _read_ri_new_file(
-            ascii_file_name
+        ships_rii_probability, consensus_probability, dtops_probability = (
+            _read_ri_new_file(ascii_file_name)
         )
         ri_probabilities = numpy.array([
-            ships_rii_probability, consensus_probability
+            ships_rii_probability, consensus_probability, dtops_probability
         ])
     else:
         ri_probabilities = numpy.array([

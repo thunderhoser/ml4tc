@@ -67,11 +67,11 @@ def _run(input_file_names, max_ensemble_size, output_file_name):
         model_file_names[i] = copy.deepcopy(
             prediction_dicts[i][prediction_io.MODEL_FILE_KEY]
         )
-        model_file_names[i] = copy.deepcopy(
-            isotonic_model_file_names[i][prediction_io.ISOTONIC_MODEL_FILE_KEY]
+        isotonic_model_file_names[i] = copy.deepcopy(
+            prediction_dicts[i][prediction_io.ISOTONIC_MODEL_FILE_KEY]
         )
         uncty_calib_model_file_names[i] = copy.deepcopy(
-            isotonic_model_file_names[i][
+            prediction_dicts[i][
                 prediction_io.UNCERTAINTY_CALIB_MODEL_FILE_KEY
             ]
         )
