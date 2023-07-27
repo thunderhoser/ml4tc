@@ -273,6 +273,9 @@ def _run(model_file_name, example_dir_name, years, num_dropout_iterations,
             )
         )
 
+        if this_data_dict is None:
+            continue
+
         cyclone_id_string_by_example += (
             [cyclone_id_string_by_file[i]] *
             len(this_data_dict[neural_net.INIT_TIMES_KEY])
