@@ -1,14 +1,14 @@
 #!/bin/tcsh
 
 #SBATCH --job-name="evaluate_by_grid_cell"
-#SBATCH --partition="fge"
-#SBATCH --account="rda-ghpcs"
+#SBATCH --partition="bigmem"
+#SBATCH --account="gsd-hpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=03:00:00
-#SBATCH --array=1-3
+#SBATCH --array=1
 #SBATCH --exclude=h28n12
 ##SBATCH --exclude=h31n03,h28n12
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
@@ -52,7 +52,7 @@ while ($i <= ${#GRID_ROWS})
         set this_input_file_name="${prediction_dir_name}/grid-row=${GRID_ROWS[$i]}/predictions_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_COLUMNS[$j]}.nc"
         
         if (-e "$this_input_file_name") then
-            set this_output_file_name="${prediction_dir_name}/evaluation_ignore-minor-false-alarms/grid-row=${GRID_ROWS[$i]}/evaluation_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_COLUMNS[$j]}.nc"
+            set this_output_file_name="${prediction_dir_name}/grid-row=${GRID_ROWS[$i]}/evaluation_grid-row=${GRID_ROWS[$i]}_grid-column=${GRID_COLUMNS[$j]}.nc"
 
             python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
             --input_prediction_file_name="${this_input_file_name}" \
@@ -60,7 +60,6 @@ while ($i <= ${#GRID_ROWS})
             --num_prob_thresholds=1001 \
             --num_reliability_bins=20 \
             --num_bootstrap_reps=1 \
-            --ignore_fa_intensity_change_thres_m_s01=12.86 \
             --output_eval_file_name="${this_output_file_name}"
         endif
     

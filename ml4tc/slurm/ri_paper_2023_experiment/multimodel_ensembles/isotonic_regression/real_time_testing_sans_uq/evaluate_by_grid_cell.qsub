@@ -38,7 +38,7 @@ set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}/full_ensemble"
-set prediction_dir_name="${model_dir_name}/testing/isotonic_regression"
+set prediction_dir_name="${model_dir_name}/real_time_testing/isotonic_regression"
 
 set GRID_ROWS=("000" "001" "002" "003" "004" "005" "006" "007" "008" "009" "010" "011" "012")
 set GRID_COLUMNS=("000" "001" "002" "003" "004" "005" "006" "007" "008" "009" "010" "011" "012" "013" "014" "015" "016" "017" "018" "019" "020" "021" "022" "023" "024" "025" "026" "027" "028" "029" "030" "031" "032" "033" "034" "035" "036")
