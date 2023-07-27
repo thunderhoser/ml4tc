@@ -20,6 +20,7 @@ CYCLONE_ID_CHAR_DIM_KEY = 'cyclone_id_character'
 
 MAIN_PROBABILITIES_KEY = 'main_probabilities'
 CONSENSUS_PROBABILITIES_KEY = 'consensus_probabilities'
+DTOPS_PROBABILITIES_KEY = 'dtops_probabilities'
 
 RI_PROBABILITIES_KEY = 'ri_probability_matrix'
 FORECAST_LABELS_LAND_KEY = 'forecast_label_matrix_land'
@@ -218,7 +219,7 @@ def write_ri_file(
     E = number of examples
 
     :param netcdf_file_name: Path to output file.
-    :param ri_probability_matrix: E-by-2 numpy array of rapid-intensification
+    :param ri_probability_matrix: E-by-3 numpy array of rapid-intensification
         probabilities.
     :param cyclone_id_strings: length-E list of cyclone IDs.
     :param init_latitudes_deg_n: length-E numpy array of initial latitudes
@@ -238,7 +239,7 @@ def write_ri_file(
 
     error_checking.assert_is_numpy_array(
         ri_probability_matrix,
-        exact_dimensions=numpy.array([num_examples, 2], dtype=int)
+        exact_dimensions=numpy.array([num_examples, 3], dtype=int)
     )
     error_checking.assert_is_geq_numpy_array(
         ri_probability_matrix, 0, allow_nan=True
@@ -297,6 +298,14 @@ def write_ri_file(
     )
     dataset_object.variables[CONSENSUS_PROBABILITIES_KEY][:] = (
         ri_probability_matrix[:, 1]
+    )
+
+    dataset_object.createVariable(
+        DTOPS_PROBABILITIES_KEY, datatype=numpy.float32,
+        dimensions=EXAMPLE_DIMENSION_KEY
+    )
+    dataset_object.variables[DTOPS_PROBABILITIES_KEY][:] = (
+        ri_probability_matrix[:, 2]
     )
 
     dataset_object.createVariable(
@@ -362,7 +371,8 @@ def read_ri_file(netcdf_file_name):
     prediction_dict = {
         RI_PROBABILITIES_KEY: numpy.transpose(numpy.vstack((
             dataset_object.variables[MAIN_PROBABILITIES_KEY][:],
-            dataset_object.variables[CONSENSUS_PROBABILITIES_KEY][:]
+            dataset_object.variables[CONSENSUS_PROBABILITIES_KEY][:],
+            dataset_object.variables[DTOPS_PROBABILITIES_KEY][:]
         ))),
         INIT_LATITUDES_KEY: dataset_object.variables[INIT_LATITUDES_KEY][:],
         INIT_LONGITUDES_KEY: dataset_object.variables[INIT_LONGITUDES_KEY][:],

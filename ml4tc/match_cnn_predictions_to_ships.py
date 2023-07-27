@@ -2,8 +2,8 @@
 
 import os
 import sys
-import argparse
 import warnings
+import argparse
 import numpy
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -22,6 +22,7 @@ MAX_DISTANCE_DEG = 1.
 CNN_FILE_ARG_NAME = 'input_cnn_prediction_file_name'
 SHIPS_FILE_ARG_NAME = 'input_ships_prediction_file_name'
 USE_RI_CONSENSUS_ARG_NAME = 'use_ri_consensus'
+USE_RI_DTOPS_ARG_NAME = 'use_ri_dtops'
 USE_TD_TO_TS_LGE_ARG_NAME = 'use_td_to_ts_lge'
 OUTPUT_CNN_FILE_ARG_NAME = 'output_cnn_prediction_file_name'
 OUTPUT_SHIPS_FILE_ARG_NAME = 'output_ships_prediction_file_name'
@@ -38,6 +39,10 @@ SHIPS_FILE_HELP_STRING = (
 USE_RI_CONSENSUS_HELP_STRING = (
     '[used only if files contain rapid-intensification predictions] Boolean '
     'flag.  If 1 (0), will use consensus (SHIPS-RII) model from SHIPS files.'
+)
+USE_RI_DTOPS_HELP_STRING = (
+    '[used only if files contain rapid-intensification predictions] Boolean '
+    'flag.  If 1 (0), will use DTOPS (SHIPS-RII) model from SHIPS files.'
 )
 USE_TD_TO_TS_LGE_HELP_STRING = (
     '[used only if files contain TD-to-TS predictions] Boolean flag.  If 1 (0),'
@@ -64,6 +69,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + USE_RI_CONSENSUS_ARG_NAME, type=int, required=True,
     help=USE_RI_CONSENSUS_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + USE_RI_DTOPS_ARG_NAME, type=int, required=True,
+    help=USE_RI_DTOPS_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + USE_TD_TO_TS_LGE_ARG_NAME, type=int, required=True,
@@ -201,8 +210,8 @@ def _match_examples(cnn_prediction_dict, ships_prediction_dict):
 
 
 def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
-         use_ri_consensus, use_td_to_ts_lge, output_cnn_prediction_file_name,
-         output_ships_prediction_file_name):
+         use_ri_consensus, use_ri_dtops, use_td_to_ts_lge,
+         output_cnn_prediction_file_name, output_ships_prediction_file_name):
     """Matches CNN predictions to SHIPS predictions.
 
     This is effectively the main method.
@@ -210,10 +219,16 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
     :param input_cnn_prediction_file_name: See documentation at top of file.
     :param input_ships_prediction_file_name: Same.
     :param use_ri_consensus: Same.
+    :param use_ri_dtops: Same.
     :param use_td_to_ts_lge: Same.
     :param output_cnn_prediction_file_name: Same.
     :param output_ships_prediction_file_name: Same.
     """
+
+    if use_ri_consensus:
+        use_ri_dtops = False
+    if use_ri_dtops:
+        use_ri_consensus = False
 
     print('Reading CNN predictions from: "{0:s}"...'.format(
         input_cnn_prediction_file_name
@@ -272,7 +287,7 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         )
         ships_prob_matrix_ships_lead_times[
             ships_prob_matrix_ships_lead_times < -0.1
-        ] = numpy.nan
+            ] = numpy.nan
 
         # This creates an E-by-L matrix.
         ships_prob_matrix_cnn_lead_times = numpy.transpose(numpy.vstack([
@@ -351,10 +366,17 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         )
 
         return
+    
+    if use_ri_consensus:
+        column_index = 1
+    elif use_ri_dtops:
+        column_index = 2
+    else:
+        column_index = 0
 
     ships_probabilities = (
         ships_prediction_dict[ships_prediction_io.RI_PROBABILITIES_KEY][
-            ships_indices, int(use_ri_consensus)
+            ships_indices, column_index
         ]
     ).astype(float)
 
@@ -438,6 +460,7 @@ if __name__ == '__main__':
         use_ri_consensus=bool(
             getattr(INPUT_ARG_OBJECT, USE_RI_CONSENSUS_ARG_NAME)
         ),
+        use_ri_dtops=bool(getattr(INPUT_ARG_OBJECT, USE_RI_DTOPS_ARG_NAME)),
         use_td_to_ts_lge=bool(
             getattr(INPUT_ARG_OBJECT, USE_TD_TO_TS_LGE_ARG_NAME)
         ),

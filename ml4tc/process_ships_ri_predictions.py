@@ -55,7 +55,7 @@ def _run(top_input_dir_name, output_file_name):
     input_file_names.sort()
 
     num_examples = len(input_file_names)
-    ri_probability_matrix = numpy.full((num_examples, 2), numpy.nan)
+    ri_probability_matrix = numpy.full((num_examples, 3), numpy.nan)
     init_latitudes_deg_n = numpy.full(num_examples, numpy.nan)
     init_longitudes_deg_e = numpy.full(num_examples, numpy.nan)
     cyclone_id_strings = [''] * num_examples

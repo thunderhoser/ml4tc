@@ -43,15 +43,26 @@ set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_la
 python3 -u "${CODE_DIR_NAME}/match_cnn_predictions_to_ships.py" \
 --input_cnn_prediction_file_name="${model_dir_name}/testing/predictions.nc" \
 --input_ships_prediction_file_name="${INPUT_SHIPS_PREDICTION_FILE_NAME}" \
---use_ri_consensus=1 \
+--use_ri_consensus=0 \
+--use_ri_dtops=0 \
 --use_td_to_ts_lge=0 \
---output_cnn_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions_cf_consensus.nc" \
---output_ships_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_consensus.nc"
+--output_cnn_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions_cf_basic.nc" \
+--output_ships_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_basic.nc"
 
 python3 -u "${CODE_DIR_NAME}/match_cnn_predictions_to_ships.py" \
 --input_cnn_prediction_file_name="${model_dir_name}/testing/predictions.nc" \
 --input_ships_prediction_file_name="${INPUT_SHIPS_PREDICTION_FILE_NAME}" \
 --use_ri_consensus=0 \
+--use_ri_dtops=1 \
 --use_td_to_ts_lge=0 \
---output_cnn_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions_cf_basic.nc" \
---output_ships_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_basic.nc"
+--output_cnn_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions_cf_dtops.nc" \
+--output_ships_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_dtops.nc"
+
+python3 -u "${CODE_DIR_NAME}/match_cnn_predictions_to_ships.py" \
+--input_cnn_prediction_file_name="${model_dir_name}/testing/predictions.nc" \
+--input_ships_prediction_file_name="${INPUT_SHIPS_PREDICTION_FILE_NAME}" \
+--use_ri_consensus=1 \
+--use_ri_dtops=0 \
+--use_td_to_ts_lge=0 \
+--output_cnn_prediction_file_name="${model_dir_name}/testing_matched_with_ships/cnn_predictions_cf_consensus.nc" \
+--output_ships_prediction_file_name="${model_dir_name}/testing_matched_with_ships/ships_predictions_consensus.nc"
