@@ -287,7 +287,7 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         )
         ships_prob_matrix_ships_lead_times[
             ships_prob_matrix_ships_lead_times < -0.1
-            ] = numpy.nan
+        ] = numpy.nan
 
         # This creates an E-by-L matrix.
         ships_prob_matrix_cnn_lead_times = numpy.transpose(numpy.vstack([
@@ -295,6 +295,17 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
             else ships_prob_matrix_ships_lead_times[:, l]
             for l in lead_time_indices
         ]))
+
+        nan_example_flags = numpy.any(
+            numpy.isnan(ships_prob_matrix_ships_lead_times), axis=1
+        )
+        real_subindices = numpy.where(numpy.invert(nan_example_flags))[0]
+        ships_prob_matrix_cnn_lead_times = (
+            ships_prob_matrix_cnn_lead_times[real_subindices, :]
+        )
+
+        cnn_indices = cnn_indices[real_subindices]
+        del ships_indices
 
         # This creates an E-by-K-by-L-by-S matrix.
         ships_prob_matrix_cnn_lead_times = numpy.expand_dims(
@@ -366,7 +377,7 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
         )
 
         return
-    
+
     if use_ri_consensus:
         column_index = 1
     elif use_ri_dtops:
@@ -381,6 +392,13 @@ def _run(input_cnn_prediction_file_name, input_ships_prediction_file_name,
     ).astype(float)
 
     ships_probabilities[ships_probabilities < -0.1] = numpy.nan
+
+    real_subindices = numpy.where(
+        numpy.invert(numpy.isnan(ships_probabilities))
+    )[0]
+    ships_probabilities = ships_probabilities[real_subindices]
+    cnn_indices = cnn_indices[real_subindices]
+    del ships_indices
 
     # Create an E-by-K-by-L-by-S matrix.
     ships_prob_matrix = numpy.expand_dims(ships_probabilities, axis=-1)
