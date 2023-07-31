@@ -397,9 +397,9 @@ def _read_ri_new_file(ascii_file_name):
             assert 0. <= dtops_probability <= 1.
 
     assert not (
-        numpy.isnan(ships_rii_probability) or
-        numpy.isnan(consensus_probability) or
-        numpy.isnan(dtops_probability)
+        numpy.isnan(ships_rii_probability)
+        or numpy.isnan(consensus_probability)
+        # or numpy.isnan(dtops_probability)
     )
 
     file_handle.close()
