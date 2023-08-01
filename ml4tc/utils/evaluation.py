@@ -444,18 +444,31 @@ def evaluate_model_binary(
     return evaluation_table_xarray
 
 
-def find_best_threshold(evaluation_table_xarray):
+def find_best_threshold(evaluation_table_xarray, maximize_peirce_score=False):
     """Finds best probability threshold (that which maximizes CSI).
 
     :param evaluation_table_xarray: xarray table in format created by
         `evaluate_model_binary`.
+    :param maximize_peirce_score: Boolean flag.  If True, will maximize Peirce
+        score instead.
     :return: best_threshold: Best probability threshold.
     """
 
-    csi_by_threshold = numpy.mean(
-        evaluation_table_xarray[CSI_KEY].values, axis=1
-    )
-    best_index = numpy.argmax(csi_by_threshold)
+    error_checking.assert_is_boolean(maximize_peirce_score)
+
+    if maximize_peirce_score:
+        peirce_score_matrix = (
+            evaluation_table_xarray[POD_KEY].values -
+            evaluation_table_xarray[POFD_KEY].values
+        )
+        peirce_score_by_threshold = numpy.mean(peirce_score_matrix, axis=1)
+        best_index = numpy.argmax(peirce_score_by_threshold)
+    else:
+        csi_by_threshold = numpy.mean(
+            evaluation_table_xarray[CSI_KEY].values, axis=1
+        )
+        best_index = numpy.argmax(csi_by_threshold)
+
     best_threshold = evaluation_table_xarray.coords[
         PROBABILITY_THRESHOLD_DIM
     ].values[best_index]
@@ -473,13 +486,23 @@ def find_best_threshold(evaluation_table_xarray):
         evaluation_table_xarray[NUM_TRUE_NEGATIVES_KEY].values[best_index, :]
     )
 
-    print((
-        'Best CSI = {0:.3f} ... prob threshold = {1:.3f} ... a, b, c, d at '
-        'same threshold = {2:.1f}, {3:.1f}, {4:.1f}, {5:.1f}'
-    ).format(
-        csi_by_threshold[best_index], best_threshold, num_true_positives,
-        num_false_positives, num_false_negatives, num_true_negatives
-    ))
+    if maximize_peirce_score:
+        print((
+            'Best Peirce score = {0:.3f} ... prob threshold = {1:.3f} ... '
+            'a, b, c, d at same threshold = {2:.1f}, {3:.1f}, {4:.1f}, {5:.1f}'
+        ).format(
+            peirce_score_by_threshold[best_index], best_threshold,
+            num_true_positives, num_false_positives,
+            num_false_negatives, num_true_negatives
+        ))
+    else:
+        print((
+            'Best CSI = {0:.3f} ... prob threshold = {1:.3f} ... a, b, c, d at '
+            'same threshold = {2:.1f}, {3:.1f}, {4:.1f}, {5:.1f}'
+        ).format(
+            csi_by_threshold[best_index], best_threshold, num_true_positives,
+            num_false_positives, num_false_negatives, num_true_negatives
+        ))
 
     return best_threshold
 

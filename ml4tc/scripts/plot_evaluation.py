@@ -13,17 +13,33 @@ from ml4tc.plotting import evaluation_plotting
 # TODO(thunderhoser): Currently this script works only for binary
 # classification.
 
+MARKER_TYPE = '*'
+MARKER_SIZE = 50
+MARKER_EDGE_WIDTH = 0
+
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
 EVALUATION_FILE_ARG_NAME = 'input_evaluation_file_name'
+BEST_THRESHOLD_ARG_NAME = 'best_prob_threshold'
+MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 EVALUATION_FILE_HELP_STRING = (
     'Path to file with evaluation results.  Will be read by '
     '`evaluation.read_file`.'
+)
+BEST_THRESHOLD_HELP_STRING = (
+    'Best probability threshold, ranging from 0...1.  If you want the best '
+    'threshold to be determined on the fly (CSI-maxxing), leave this argument '
+    'alone.'
+)
+MODEL_DESCRIPTION_HELP_STRING = (
+    'Model description, for use in figure titles.  If you want plain figure '
+    'titles (like just "ROC curve" and "Performance diagram"), leave this '
+    'argument alone.'
 )
 CONFIDENCE_LEVEL_HELP_STRING = (
     'Level (in range 0...1) for confidence intervals based on bootstrapping.'
@@ -38,6 +54,14 @@ INPUT_ARG_PARSER.add_argument(
     help=EVALUATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + BEST_THRESHOLD_ARG_NAME, type=float, required=False, default=-1,
+    help=BEST_THRESHOLD_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
+    help=MODEL_DESCRIPTION_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=0.95,
     help=CONFIDENCE_LEVEL_HELP_STRING
 )
@@ -47,15 +71,32 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(evaluation_file_name, confidence_level, output_dir_name):
+def _run(evaluation_file_name, best_prob_threshold, model_description_string,
+         confidence_level, output_dir_name):
     """Plots model evaluation.
 
     This is effectively the main method.
 
     :param evaluation_file_name: See documentation at top of file.
+    :param best_prob_threshold: Same.
+    :param model_description_string: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     """
+
+    if best_prob_threshold < 0:
+        best_prob_threshold = None
+    if best_prob_threshold is not None:
+        error_checking.assert_is_geq(best_prob_threshold, 0.)
+        error_checking.assert_is_leq(best_prob_threshold, 1.)
+
+    if model_description_string == '':
+        model_description_string = None
+
+    model_description_string = (
+        '' if model_description_string is None
+        else ' for {0:s}'.format(model_description_string)
+    )
 
     error_checking.assert_is_geq(confidence_level, 0.9)
     error_checking.assert_is_leq(confidence_level, 1.)
@@ -80,13 +121,36 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
         confidence_level=confidence_level
     )
 
+    if best_prob_threshold is None:
+        best_prob_threshold = evaluation.find_best_threshold(
+            evaluation_table_xarray=evaluation_table_xarray,
+            maximize_peirce_score=False
+        )
+
+    best_threshold_index = numpy.argmin(numpy.absolute(
+        et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
+        best_prob_threshold
+    ))
+
+    best_x = numpy.mean(et[evaluation.POFD_KEY].values[best_threshold_index, :])
+    best_y = numpy.mean(et[evaluation.POD_KEY].values[best_threshold_index, :])
+    axes_object.plot(
+        best_x, best_y, linestyle='None', marker=MARKER_TYPE,
+        markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
+        markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
+        markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
+    )
+
     auc_values = et[evaluation.AUC_KEY].values
     num_bootstrap_reps = len(auc_values)
 
     if num_bootstrap_reps == 1:
-        title_string = 'ROC curve (AUC = {0:.3f})'.format(auc_values[0])
+        title_string = 'ROC curve{0:s}\n(AUC = {1:.3f})'.format(
+            model_description_string, auc_values[0]
+        )
     else:
-        title_string = 'ROC curve\nAUC = [{0:.3f}, {1:.3f}]'.format(
+        title_string = 'ROC curve{0:s}\nAUC = [{1:.3f}, {2:.3f}]'.format(
+            model_description_string,
             numpy.percentile(auc_values, min_percentile),
             numpy.percentile(auc_values, max_percentile)
         )
@@ -115,13 +179,16 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     aupd_values = et[evaluation.AUPD_KEY].values
 
-    best_prob_threshold = evaluation.find_best_threshold(
-        evaluation_table_xarray
+    best_x = numpy.mean(
+        et[evaluation.SUCCESS_RATIO_KEY].values[best_threshold_index, :]
     )
-    best_threshold_index = numpy.argmin(numpy.absolute(
-        et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
-        best_prob_threshold
-    ))
+    best_y = numpy.mean(et[evaluation.POD_KEY].values[best_threshold_index, :])
+    axes_object.plot(
+        best_x, best_y, linestyle='None', marker=MARKER_TYPE,
+        markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
+        markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
+        markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
+    )
 
     csi_values = et[evaluation.CSI_KEY].values[best_threshold_index, :]
     freq_bias_values = (
@@ -130,16 +197,17 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     if num_bootstrap_reps == 1:
         title_string = (
-            'Performance diagram\n'
-            'AUPD = {0:.3f}; CSI* = {1:.3f}; FB* = {2:.3f}'
+            'Performance diagram{0:s}\n'
+            'AUPD = {1:.3f}; CSI* = {2:.3f}; FB* = {3:.3f}'
         ).format(
             aupd_values[0], csi_values[0], freq_bias_values[0]
         )
     else:
         title_string = (
-            'Performance diagram\nAUPD = [{0:.3f}, {1:.3f}];\n'
-            'CSI* = [{2:.3f}, {3:.3f}]; FB* = [{4:.3f}, {5:.3f}]'
+            'Performance diagram{0:s}\nAUPD = [{1:.3f}, {2:.3f}];\n'
+            'CSI* = [{3:.3f}, {4:.3f}]; FB* = [{5:.3f}, {6:.3f}]'
         ).format(
+            model_description_string,
             numpy.percentile(aupd_values, min_percentile),
             numpy.percentile(aupd_values, max_percentile),
             numpy.percentile(csi_values, min_percentile),
@@ -179,16 +247,17 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     if num_bootstrap_reps == 1:
         title_string = (
-            'Attributes diagram\n'
-            'BS = {0:.3f}; BSS = {1:.3f}'
+            'Attributes diagram{0:s}\n'
+            'BS = {1:.3f}; BSS = {2:.3f}'
         ).format(
-            brier_scores[0], bss_values[0]
+            model_description_string, brier_scores[0], bss_values[0]
         )
     else:
         title_string = (
-            'Attributes diagram\n'
-            'BS = [{0:.3f}, {1:.3f}]; BSS = [{2:.3f}, {3:.3f}]'
+            'Attributes diagram{0:s}\n'
+            'BS = [{1:.3f}, {2:.3f}]; BSS = [{3:.3f}, {4:.3f}]'
         ).format(
+            model_description_string,
             numpy.percentile(brier_scores, min_percentile),
             numpy.percentile(brier_scores, max_percentile),
             numpy.percentile(bss_values, min_percentile),
@@ -213,6 +282,10 @@ if __name__ == '__main__':
     _run(
         evaluation_file_name=getattr(
             INPUT_ARG_OBJECT, EVALUATION_FILE_ARG_NAME
+        ),
+        best_prob_threshold=getattr(INPUT_ARG_OBJECT, BEST_THRESHOLD_ARG_NAME),
+        model_description_string=getattr(
+            INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
         ),
         confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
