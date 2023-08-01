@@ -436,16 +436,16 @@ def confidence_interval_to_polygon(
     max_percentile = 50 * (1. + confidence_level)
 
     x_values_bottom = numpy.nanpercentile(
-        x_value_matrix, min_percentile, axis=0, interpolation='nearest'
+        x_value_matrix, min_percentile, axis=0, interpolation='midpoint'
     )
     x_values_top = numpy.nanpercentile(
-        x_value_matrix, max_percentile, axis=0, interpolation='nearest'
+        x_value_matrix, max_percentile, axis=0, interpolation='midpoint'
     )
     y_values_bottom = numpy.nanpercentile(
-        y_value_matrix, min_percentile, axis=0, interpolation='nearest'
+        y_value_matrix, min_percentile, axis=0, interpolation='midpoint'
     )
     y_values_top = numpy.nanpercentile(
-        y_value_matrix, max_percentile, axis=0, interpolation='nearest'
+        y_value_matrix, max_percentile, axis=0, interpolation='midpoint'
     )
 
     real_indices = numpy.where(numpy.invert(numpy.logical_or(
