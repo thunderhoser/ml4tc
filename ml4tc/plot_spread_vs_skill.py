@@ -65,7 +65,7 @@ def _run(input_file_name, output_file_name):
     axes_object.set_xlabel('Spread (stdev of predictive distribution)')
 
     title_string = (
-        'Spread-skill plot;\n(SSREL = {0:.2g}; SSRAT = {1:.2g})'
+        'Spread-skill plot;\nSSREL = {0:.3f}; SSRAT = {1:.3f}'
     ).format(
         result_dict[uq_evaluation.SPREAD_SKILL_RELIABILITY_KEY],
         result_dict[uq_evaluation.SPREAD_SKILL_RATIO_KEY]

@@ -94,7 +94,7 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     if num_bootstrap_reps == 1:
         title_string = 'ROC curve (AUC = {0:.3f})'.format(auc_values[0])
     else:
-        title_string = 'ROC curve (AUC = {0:.3f}...{1:.3f})'.format(
+        title_string = 'ROC curve\nAUC = [{0:.3f}, {1:.3f}]'.format(
             numpy.percentile(auc_values, min_percentile),
             numpy.percentile(auc_values, max_percentile)
         )
@@ -126,10 +126,10 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     best_prob_threshold = evaluation.find_best_threshold(
         evaluation_table_xarray
     )
-    best_threshold_index = numpy.argmin(
+    best_threshold_index = numpy.argmin(numpy.absolute(
         et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
         best_prob_threshold
-    )
+    ))
 
     csi_values = et[evaluation.CSI_KEY].values[best_threshold_index, :]
     freq_bias_values = (
@@ -139,14 +139,14 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     if num_bootstrap_reps == 1:
         title_string = (
             'Performance diagram\n'
-            '(AUPD = {0:.3f}; CSI* = {1:.3f}; FB* = {2:.3f})'
+            'AUPD = {0:.3f}; CSI* = {1:.3f}; FB* = {2:.3f}'
         ).format(
             aupd_values[0], csi_values[0], freq_bias_values[0]
         )
     else:
         title_string = (
-            'Performance diagram (AUPD = {0:.3f}...{1:.3f};\n'
-            'CSI* = {2:.3f}...{3:.3f}; FB* = {4:.3f}...{5:.3f})'
+            'Performance diagram\nAUPD = [{0:.3f}, {1:.3f}];\n'
+            'CSI* = [{2:.3f}, {3:.3f}]; FB* = [{4:.3f}, {5:.3f}]'
         ).format(
             numpy.percentile(aupd_values, min_percentile),
             numpy.percentile(aupd_values, max_percentile),
@@ -188,14 +188,14 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     if num_bootstrap_reps == 1:
         title_string = (
             'Attributes diagram\n'
-            '(BS = {0:.3f}; BSS = {1:.3f})'
+            'BS = {0:.3f}; BSS = {1:.3f}'
         ).format(
             brier_scores[0], bss_values[0]
         )
     else:
         title_string = (
             'Attributes diagram\n'
-            '(BS = {0:.3f}...{1:.3f}; BSS = {2:.3f}...{3:.3f})'
+            'BS = [{0:.3f}, {1:.3f}]; BSS = [{2:.3f}, {3:.3f}]'
         ).format(
             numpy.percentile(brier_scores, min_percentile),
             numpy.percentile(brier_scores, max_percentile),
