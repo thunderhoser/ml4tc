@@ -444,16 +444,16 @@ def confidence_interval_to_polygon(
     max_percentile = 50 * (1. + confidence_level)
 
     x_values_bottom = numpy.nanpercentile(
-        x_value_matrix, min_percentile, axis=0, interpolation='linear'
+        x_value_matrix, min_percentile, axis=0, interpolation='nearest'
     )
     x_values_top = numpy.nanpercentile(
-        x_value_matrix, max_percentile, axis=0, interpolation='linear'
+        x_value_matrix, max_percentile, axis=0, interpolation='nearest'
     )
     y_values_bottom = numpy.nanpercentile(
-        y_value_matrix, min_percentile, axis=0, interpolation='linear'
+        y_value_matrix, min_percentile, axis=0, interpolation='nearest'
     )
     y_values_top = numpy.nanpercentile(
-        y_value_matrix, max_percentile, axis=0, interpolation='linear'
+        y_value_matrix, max_percentile, axis=0, interpolation='nearest'
     )
 
     real_indices = numpy.where(numpy.invert(numpy.logical_or(
@@ -551,7 +551,9 @@ def plot_reliability_curve(
 
         main_line_handle = axes_object.plot(
             mean_predictions[real_indices], mean_observations[real_indices],
-            color=line_colour, linestyle=line_style, linewidth=line_width
+            color=line_colour, linestyle=line_style, linewidth=line_width,
+            marker='o', markersize=12, markeredgewidth=0,
+            markerfacecolor=line_colour, markeredgecolor=line_colour
         )[0]
 
     num_bootstrap_reps = mean_prediction_matrix.shape[0]

@@ -41,6 +41,7 @@ BIN_EDGE_PREDICTION_STDEVS_KEY = 'bin_edge_prediction_stdevs'
 RMSE_VALUES_KEY = 'rmse_values'
 EXAMPLE_COUNTS_KEY = 'example_counts'
 SPREAD_SKILL_RELIABILITY_KEY = 'spread_skill_reliability'
+SPREAD_SKILL_RATIO_KEY = 'spread_skill_ratio'
 
 
 def _log2(input_array):
@@ -469,6 +470,7 @@ def get_spread_vs_skill(
         entry is the root mean squared error of central (mean or median)
         predictions in the [i]th bin.
     result_dict['spread_skill_reliability']: Spread-skill reliability (SSREL).
+    result_dict['spread_skill_ratio']: Spread-skill ratio (SSRAT).
     result_dict['example_counts']: length-B numpy array of corresponding example
         counts.
     result_dict['mean_central_predictions']: length-B numpy array, where the
@@ -556,11 +558,24 @@ def get_spread_vs_skill(
         these_diffs, weights=example_counts
     )
 
+    non_zero_indices = numpy.where(example_counts > 0)[0]
+
+    this_numer = numpy.sqrt(numpy.average(
+        mean_prediction_stdevs[non_zero_indices] ** 2,
+        weights=example_counts[non_zero_indices]
+    ))
+    this_denom = numpy.sqrt(numpy.average(
+        rmse_values[non_zero_indices] ** 2,
+        weights=example_counts[non_zero_indices]
+    ))
+    spread_skill_ratio = this_numer / this_denom
+
     return {
         MEAN_PREDICTION_STDEVS_KEY: mean_prediction_stdevs,
         BIN_EDGE_PREDICTION_STDEVS_KEY: bin_edge_prediction_stdevs,
         RMSE_VALUES_KEY: rmse_values,
         SPREAD_SKILL_RELIABILITY_KEY: spread_skill_reliability,
+        SPREAD_SKILL_RATIO_KEY: spread_skill_ratio,
         EXAMPLE_COUNTS_KEY: example_counts,
         MEAN_CENTRAL_PREDICTIONS_KEY: mean_central_predictions,
         MEAN_TARGET_VALUES_KEY: mean_target_values
@@ -694,6 +709,9 @@ def write_spread_vs_skill(
     dataset_object.setncattr(
         SPREAD_SKILL_RELIABILITY_KEY, result_dict[SPREAD_SKILL_RELIABILITY_KEY]
     )
+    dataset_object.setncattr(
+        SPREAD_SKILL_RATIO_KEY, result_dict[SPREAD_SKILL_RATIO_KEY]
+    )
 
     num_bins = len(result_dict[MEAN_PREDICTION_STDEVS_KEY])
     dataset_object.createDimension(SPREAD_SKILL_BIN_DIM_KEY, num_bins)
@@ -767,6 +785,23 @@ def read_spread_vs_skill(netcdf_file_name):
         result_dict[this_key] = numpy.array(
             dataset_object.variables[this_key][:], dtype=int
         )
+
+    if hasattr(dataset_object, SPREAD_SKILL_RATIO_KEY):
+        result_dict[SPREAD_SKILL_RATIO_KEY] = float(
+            getattr(dataset_object, SPREAD_SKILL_RATIO_KEY)
+        )
+    else:
+        non_zero_indices = numpy.where(result_dict[EXAMPLE_COUNTS_KEY] > 0)[0]
+
+        this_numer = numpy.sqrt(numpy.average(
+            result_dict[MEAN_PREDICTION_STDEVS_KEY][non_zero_indices] ** 2,
+            weights=result_dict[EXAMPLE_COUNTS_KEY][non_zero_indices]
+        ))
+        this_denom = numpy.sqrt(numpy.average(
+            result_dict[RMSE_VALUES_KEY][non_zero_indices] ** 2,
+            weights=result_dict[EXAMPLE_COUNTS_KEY][non_zero_indices]
+        ))
+        result_dict[SPREAD_SKILL_RATIO_KEY] = this_numer / this_denom
 
     dataset_object.close()
     return result_dict
