@@ -284,7 +284,7 @@ def plot_discard_test(
         result_dict[uq_evaluation.MEAN_CENTRAL_PREDICTIONS_KEY],
         bin_mean_target_values=
         result_dict[uq_evaluation.MEAN_TARGET_VALUES_KEY],
-        plotting_corner_string='bottom_left'
+        plotting_corner_string='top_right'
     )
 
     inset_axes_object.set_xticks(axes_object.get_xticks())

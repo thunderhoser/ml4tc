@@ -84,9 +84,9 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     num_bootstrap_reps = len(auc_values)
 
     if num_bootstrap_reps == 1:
-        title_string = 'ROC curve (area = {0:.3f})'.format(auc_values[0])
+        title_string = 'ROC curve (AUC = {0:.3f})'.format(auc_values[0])
     else:
-        title_string = 'ROC curve (area = [{0:.3f}, {1:.3f}])'.format(
+        title_string = 'ROC curve (AUC = {0:.3f}...{1:.3f})'.format(
             numpy.percentile(auc_values, min_percentile),
             numpy.percentile(auc_values, max_percentile)
         )
@@ -114,23 +114,42 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
     )
 
     aupd_values = et[evaluation.AUPD_KEY].values
-    max_csi_values = numpy.max(et[evaluation.CSI_KEY].values, axis=0)
+
+    best_prob_threshold = evaluation.find_best_threshold(
+        evaluation_table_xarray
+    )
+    best_threshold_index = numpy.argmin(
+        et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
+        best_prob_threshold
+    )
+
+    csi_values = et[evaluation.CSI_KEY].values[best_threshold_index, :]
+    freq_bias_values = (
+        et[evaluation.FREQUENCY_BIAS_KEY].values[best_threshold_index, :]
+    )
 
     if num_bootstrap_reps == 1:
-        title_string = 'Performance diagram (max CSI = {0:.3f})'.format(
-            max_csi_values[0]
+        title_string = (
+            'Performance diagram\n'
+            '(AUPD = {0:.3f}; CSI* = {1:.3f}; FB* = {2:.3f})'
+        ).format(
+            aupd_values[0], csi_values[0], freq_bias_values[0]
         )
     else:
         title_string = (
-            'Performance diagram (max CSI = [{0:.3f}, {1:.3f}])'
+            'Performance diagram (AUPD = {0:.3f}...{1:.3f};\n'
+            'CSI* = {2:.3f}...{3:.3f}; FB* = {4:.3f}...{5:.3f})'
         ).format(
-            numpy.percentile(max_csi_values, min_percentile),
-            numpy.percentile(max_csi_values, max_percentile)
+            numpy.percentile(aupd_values, min_percentile),
+            numpy.percentile(aupd_values, max_percentile),
+            numpy.percentile(csi_values, min_percentile),
+            numpy.percentile(csi_values, max_percentile),
+            numpy.percentile(freq_bias_values, min_percentile),
+            numpy.percentile(freq_bias_values, max_percentile),
         )
 
     axes_object.set_title(title_string)
     print(title_string)
-    _ = evaluation.find_best_threshold(evaluation_table_xarray)
 
     figure_file_name = '{0:s}/performance_diagram.jpg'.format(output_dir_name)
     print('Saving figure to file: "{0:s}"...'.format(figure_file_name))
@@ -157,28 +176,23 @@ def _run(evaluation_file_name, confidence_level, output_dir_name):
 
     brier_scores = et[evaluation.BRIER_SCORE_KEY].values
     bss_values = et[evaluation.BRIER_SKILL_SCORE_KEY].values
-    reliabilities = et[evaluation.RELIABILITY_KEY].values
-    resolutions = et[evaluation.RESOLUTION_KEY].values
 
     if num_bootstrap_reps == 1:
         title_string = (
-            'Attributes diagram (BS = {0:.3f}; BSS = {1:.3f};\nREL = {2:.3f}; RES = {3:.3f})'
+            'Attributes diagram\n'
+            '(BS = {0:.3f}; BSS = {1:.3f})'
         ).format(
-            brier_scores[0], bss_values[0], reliabilities[0], resolutions[0]
+            brier_scores[0], bss_values[0]
         )
     else:
         title_string = (
-            'Attributes diagram\n(BS = [{0:.3f}, {1:.3f}]; BSS = [{2:.3f}, {3:.3f}];\n'
-            'REL = [{4:.3f}, {5:.3f}]; RES = [{6:.3f}, {7:.3f}])'
+            'Attributes diagram\n'
+            '(BS = {0:.3f}...{1:.3f}; BSS = {2:.3f}...{3:.3f})'
         ).format(
             numpy.percentile(brier_scores, min_percentile),
             numpy.percentile(brier_scores, max_percentile),
             numpy.percentile(bss_values, min_percentile),
-            numpy.percentile(bss_values, max_percentile),
-            numpy.percentile(reliabilities, min_percentile),
-            numpy.percentile(reliabilities, max_percentile),
-            numpy.percentile(resolutions, min_percentile),
-            numpy.percentile(resolutions, max_percentile)
+            numpy.percentile(bss_values, max_percentile)
         )
 
     axes_object.set_title(title_string)
