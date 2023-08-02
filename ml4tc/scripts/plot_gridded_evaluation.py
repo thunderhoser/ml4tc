@@ -135,9 +135,9 @@ def _get_bias_colour_scheme(colour_map_name, max_colour_value):
 
 def _plot_one_score(
         score_matrix, grid_latitudes_deg_n, grid_longitudes_deg_e,
-        border_latitudes_deg_n, border_longitudes_deg_e, colour_map_name,
-        is_frequency_bias, is_bss, output_file_name,
-        title_string=None, panel_letter=None):
+        border_latitudes_deg_n, border_longitudes_deg_e,
+        colour_map_name, is_frequency_bias, is_bss, output_file_name,
+        title_string=None, panel_letter=None, num_examples_matrix=None):
     """Plots one score on 2-D georeferenced grid.
 
     M = number of rows in grid
@@ -161,6 +161,9 @@ def _plot_one_score(
         add "(a)" at top-left of figure, assuming that it will eventually be a
         panel in a larger figure.  If you do not want a panel letter, make this
         None.
+    :param num_examples_matrix: M-by-N numpy array with number of examples at
+        each grid cell.  Set this arg only if you want num examples to be
+        printed in text over each grid cell.
     """
 
     figure_object, axes_object = pyplot.subplots(
@@ -253,8 +256,26 @@ def _plot_one_score(
         plot_latitudes_deg_n=grid_latitudes_deg_n,
         plot_longitudes_deg_e=sorted_grid_longitudes_deg_e,
         axes_object=axes_object,
-        parallel_spacing_deg=10., meridian_spacing_deg=20., font_size=FONT_SIZE
+        parallel_spacing_deg=20., meridian_spacing_deg=40., font_size=FONT_SIZE
     )
+
+    if num_examples_matrix is not None:
+        num_grid_rows = score_matrix.shape[0]
+        num_grid_columns = score_matrix.shape[1]
+
+        for i in range(num_grid_rows):
+            for j in range(num_grid_columns):
+                if num_examples_matrix[i, j] < TOLERANCE:
+                    continue
+
+                this_string = '{0:d}'.format(
+                    int(numpy.round(num_examples_matrix[i, j]))
+                )
+                axes_object.text(
+                    grid_longitudes_deg_e[j], grid_latitudes_deg_n[i],
+                    this_string, fontsize=20, color=numpy.full(3, 1.),
+                    horizontalalignment='center', verticalalignment='center'
+                )
 
     latitude_spacing_deg = numpy.diff(grid_latitudes_deg_n[:2])[0]
     min_plot_latitude_deg_n = max([
@@ -342,6 +363,11 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
 
     # Read evaluation files.
     dimensions = (num_grid_rows, num_grid_columns)
+    auc_matrix = numpy.full(dimensions, numpy.nan)
+    aupd_matrix = numpy.full(dimensions, numpy.nan)
+    num_examples_matrix = numpy.full(dimensions, numpy.nan)
+    num_positive_examples_matrix = numpy.full(dimensions, numpy.nan)
+
     brier_score_matrix = numpy.full(dimensions, numpy.nan)
     bss_matrix = numpy.full(dimensions, numpy.nan)
     event_freq_matrix = numpy.full(dimensions, numpy.nan)
@@ -363,6 +389,25 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
 
             print('Reading data from: "{0:s}"...'.format(this_file_name))
             et = evaluation.read_file(this_file_name)
+
+            auc_matrix[i, j] = numpy.mean(et[evaluation.AUC_KEY].values)
+            aupd_matrix[i, j] = numpy.mean(et[evaluation.AUPD_KEY].values)
+
+            num_bootstrap_reps = len(
+                et.coords[evaluation.BOOTSTRAP_REPLICATE_DIM].values
+            )
+            assert num_bootstrap_reps == 1
+
+            num_examples_matrix[i, j] = (
+                et[evaluation.NUM_TRUE_POSITIVES_KEY].values[0, 0] +
+                et[evaluation.NUM_FALSE_POSITIVES_KEY].values[0, 0] +
+                et[evaluation.NUM_FALSE_NEGATIVES_KEY].values[0, 0] +
+                et[evaluation.NUM_TRUE_NEGATIVES_KEY].values[0, 0]
+            )
+            num_positive_examples_matrix[i, j] = (
+                et[evaluation.NUM_TRUE_POSITIVES_KEY].values[0, 0] +
+                et[evaluation.NUM_FALSE_NEGATIVES_KEY].values[0, 0]
+            )
 
             brier_score_matrix[i, j] = numpy.mean(
                 et[evaluation.BRIER_SCORE_KEY].values
@@ -409,6 +454,32 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
             csi_matrix[i, j] = numpy.nanmean(
                 et[evaluation.CSI_KEY].values[threshold_index, :]
             )
+
+    _plot_one_score(
+        score_matrix=auc_matrix,
+        num_examples_matrix=num_examples_matrix,
+        grid_latitudes_deg_n=grid_latitudes_deg_n,
+        grid_longitudes_deg_e=grid_longitudes_deg_e,
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        colour_map_name=sequential_colour_map_name,
+        is_frequency_bias=False, is_bss=False,
+        output_file_name='{0:s}/auc.jpg'.format(output_dir_name),
+        title_string='Area under ROC curve (AUC)'
+    )
+
+    _plot_one_score(
+        score_matrix=aupd_matrix,
+        num_examples_matrix=num_positive_examples_matrix,
+        grid_latitudes_deg_n=grid_latitudes_deg_n,
+        grid_longitudes_deg_e=grid_longitudes_deg_e,
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        colour_map_name=sequential_colour_map_name,
+        is_frequency_bias=False, is_bss=False,
+        output_file_name='{0:s}/aupd.jpg'.format(output_dir_name),
+        title_string='Area under performance diagram (AUPD)'
+    )
 
     _plot_one_score(
         score_matrix=brier_score_matrix,
