@@ -90,6 +90,9 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
 
     if eval_file_name_for_best_thres == '':
         eval_file_name_for_best_thres = None
+    else:
+        assert 'testing' not in eval_file_name_for_best_thres
+
     if model_description_string == '':
         model_description_string = None
 

@@ -354,6 +354,8 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
     :param output_dir_name: Same.
     """
 
+    assert 'testing' not in total_validn_eval_file_name
+
     if model_description_string == '':
         model_description_string = None
 
