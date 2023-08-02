@@ -372,8 +372,8 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
     dimensions = (num_grid_rows, num_grid_columns)
     auc_matrix = numpy.full(dimensions, numpy.nan)
     aupd_matrix = numpy.full(dimensions, numpy.nan)
-    num_examples_matrix = numpy.full(dimensions, numpy.nan)
-    num_positive_examples_matrix = numpy.full(dimensions, numpy.nan)
+    num_examples_matrix = numpy.full(dimensions, 0.)
+    num_positive_examples_matrix = numpy.full(dimensions, 0.)
 
     brier_score_matrix = numpy.full(dimensions, numpy.nan)
     bss_matrix = numpy.full(dimensions, numpy.nan)
