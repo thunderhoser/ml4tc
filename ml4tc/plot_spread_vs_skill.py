@@ -19,10 +19,15 @@ import uq_evaluation_plotting as uq_eval_plotting
 FIGURE_RESOLUTION_DPI = 300
 
 INPUT_FILE_ARG_NAME = 'input_file_name'
+MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 INPUT_FILE_HELP_STRING = (
     'Path to input file.  Will be read by `uq_evaluation.read_spread_vs_skill`.'
+)
+MODEL_DESCRIPTION_HELP_STRING = (
+    'Model description, for use in figure title.  If you want a plain figure '
+    'title (just "Spread-skill plot"), leave this argument alone.'
 )
 OUTPUT_FILE_HELP_STRING = (
     'Path to output file.  Figure will be saved as an image here.'
@@ -34,19 +39,32 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
+    help=MODEL_DESCRIPTION_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
     help=OUTPUT_FILE_HELP_STRING
 )
 
 
-def _run(input_file_name, output_file_name):
+def _run(input_file_name, model_description_string, output_file_name):
     """Creates spread-skill plot and saves plot to image file.
 
     This is effectively the main method.
 
     :param input_file_name: See documentation at top of file.
+    :param model_description_string: Same.
     :param output_file_name: Same.
     """
+
+    if model_description_string == '':
+        model_description_string = None
+
+    model_description_string = (
+        '' if model_description_string is None
+        else ' for {0:s}'.format(model_description_string)
+    )
 
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
 
@@ -65,8 +83,9 @@ def _run(input_file_name, output_file_name):
     axes_object.set_xlabel('Spread (stdev of predictive distribution)')
 
     title_string = (
-        'Spread-skill plot;\nSSREL = {0:.3f}; SSRAT = {1:.3f}'
+        'Spread-skill plot{0:s};\nSSREL = {1:.3f}; SSRAT = {2:.3f}'
     ).format(
+        model_description_string,
         result_dict[uq_evaluation.SPREAD_SKILL_RELIABILITY_KEY],
         result_dict[uq_evaluation.SPREAD_SKILL_RATIO_KEY]
     )
@@ -86,5 +105,8 @@ if __name__ == '__main__':
 
     _run(
         input_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
+        model_description_string=getattr(
+            INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
+        ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )

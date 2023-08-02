@@ -19,10 +19,15 @@ import uq_evaluation_plotting as uq_eval_plotting
 FIGURE_RESOLUTION_DPI = 300
 
 INPUT_FILE_ARG_NAME = 'input_file_name'
+MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 OUTPUT_FILE_ARG_NAME = 'output_file_name'
 
 INPUT_FILE_HELP_STRING = (
     'Path to input file.  Will be read by `uq_evaluation.read_discard_results`.'
+)
+MODEL_DESCRIPTION_HELP_STRING = (
+    'Model description, for use in figure title.  If you want a plain figure '
+    'title (just "Discard test"), leave this argument alone.'
 )
 OUTPUT_FILE_HELP_STRING = (
     'Path to output file.  Figure will be saved as an image here.'
@@ -34,19 +39,32 @@ INPUT_ARG_PARSER.add_argument(
     help=INPUT_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
+    help=MODEL_DESCRIPTION_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + OUTPUT_FILE_ARG_NAME, type=str, required=True,
     help=OUTPUT_FILE_HELP_STRING
 )
 
 
-def _run(input_file_name, output_file_name):
+def _run(input_file_name, model_description_string, output_file_name):
     """Plots results of discard test (error vs. discard fraction).
 
     This is effectively the main method.
 
     :param input_file_name: See documentation at top of file.
+    :param model_description_string: Same.
     :param output_file_name: Same.
     """
+
+    if model_description_string == '':
+        model_description_string = None
+
+    model_description_string = (
+        '' if model_description_string is None
+        else ' for {0:s}'.format(model_description_string)
+    )
 
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
 
@@ -57,7 +75,8 @@ def _run(input_file_name, output_file_name):
         result_dict=result_dict
     )
 
-    title_string = 'Discard test (MF = {0:.2f}%)'.format(
+    title_string = 'Discard test{0:s}\nMF = {1:.2f}%'.format(
+        model_description_string,
         100 * result_dict[uq_evaluation.MONOTONICITY_FRACTION_KEY]
     )
 
@@ -77,5 +96,8 @@ if __name__ == '__main__':
 
     _run(
         input_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
+        model_description_string=getattr(
+            INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
+        ),
         output_file_name=getattr(INPUT_ARG_OBJECT, OUTPUT_FILE_ARG_NAME)
     )
