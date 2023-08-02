@@ -24,17 +24,21 @@ INPUT_FILE_SUFFIXES = [
     'evaluation/performance_diagram.jpg',
     'evaluation/attributes_diagram.jpg',
     'spread_vs_skill.jpg',
-    'discard_test.jpg'
+    'discard_test.jpg',
+    'eval_by_month_and_basin/evaluation_by_month.jpg',
+    'eval_by_month_and_basin/evaluation_by_basin.jpg',
+    'gridded_evaluation/auc.jpg',
+    'gridded_evaluation/aupd.jpg'
 ]
 
-PANEL_LETTERS = ['a', 'b', 'c', 'd', 'e']
+PANEL_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
 
 CONVERT_EXE_NAME = '/usr/bin/convert'
 TITLE_FONT_SIZE = 250
 TITLE_FONT_NAME = 'DejaVu-Sans-Bold'
 
 NUM_PANEL_ROWS = 3
-NUM_PANEL_COLUMNS = 2
+NUM_PANEL_COLUMNS = 3
 PANEL_SIZE_PX = int(5e6)
 CONCAT_FIGURE_SIZE_PX = int(2e7)
 
