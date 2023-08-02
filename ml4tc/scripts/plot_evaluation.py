@@ -22,7 +22,7 @@ FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
 EVALUATION_FILE_ARG_NAME = 'input_evaluation_file_name'
-BEST_THRESHOLD_ARG_NAME = 'best_prob_threshold'
+EVAL_FILE_FOR_BEST_THRES_ARG_NAME = 'input_eval_file_name_for_best_thres'
 MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
@@ -31,11 +31,13 @@ EVALUATION_FILE_HELP_STRING = (
     'Path to file with evaluation results.  Will be read by '
     '`evaluation.read_file`.'
 )
-BEST_THRESHOLD_HELP_STRING = (
-    'Best probability threshold, ranging from 0...1.  If you want the best '
-    'threshold to be determined on the fly (CSI-maxxing), leave this argument '
-    'alone.'
-)
+EVAL_FILE_FOR_BEST_THRES_HELP_STRING = (
+    'Same as {0:s}, except this file (containing validation data, hopefully) '
+    'will be used only to determine the best probability threshold.  If you '
+    'want to determine the best probability threshold from {0:s} instead, '
+    'leave this argument alone.'
+).format(EVALUATION_FILE_ARG_NAME)
+
 MODEL_DESCRIPTION_HELP_STRING = (
     'Model description, for use in figure titles.  If you want plain figure '
     'titles (like just "ROC curve" and "Performance diagram"), leave this '
@@ -54,8 +56,8 @@ INPUT_ARG_PARSER.add_argument(
     help=EVALUATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
-    '--' + BEST_THRESHOLD_ARG_NAME, type=float, required=False, default=-1,
-    help=BEST_THRESHOLD_HELP_STRING
+    '--' + EVAL_FILE_FOR_BEST_THRES_ARG_NAME, type=str, required=False,
+    default='', help=EVAL_FILE_FOR_BEST_THRES_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
@@ -71,25 +73,21 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _run(evaluation_file_name, best_prob_threshold, model_description_string,
-         confidence_level, output_dir_name):
+def _run(evaluation_file_name, eval_file_name_for_best_thres,
+         model_description_string, confidence_level, output_dir_name):
     """Plots model evaluation.
 
     This is effectively the main method.
 
     :param evaluation_file_name: See documentation at top of file.
-    :param best_prob_threshold: Same.
+    :param eval_file_name_for_best_thres: Same.
     :param model_description_string: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     """
 
-    if best_prob_threshold < 0:
-        best_prob_threshold = None
-    if best_prob_threshold is not None:
-        error_checking.assert_is_geq(best_prob_threshold, 0.)
-        error_checking.assert_is_leq(best_prob_threshold, 1.)
-
+    if eval_file_name_for_best_thres == '':
+        eval_file_name_for_best_thres = None
     if model_description_string == '':
         model_description_string = None
 
@@ -121,9 +119,21 @@ def _run(evaluation_file_name, best_prob_threshold, model_description_string,
         confidence_level=confidence_level
     )
 
-    if best_prob_threshold is None:
+    if eval_file_name_for_best_thres is None:
         best_prob_threshold = evaluation.find_best_threshold(
             evaluation_table_xarray=evaluation_table_xarray,
+            maximize_peirce_score=False
+        )
+    else:
+        print('Reading data from: "{0:s}"...'.format(
+            eval_file_name_for_best_thres
+        ))
+        this_eval_table_xarray = evaluation.read_file(
+            eval_file_name_for_best_thres
+        )
+
+        best_prob_threshold = evaluation.find_best_threshold(
+            evaluation_table_xarray=this_eval_table_xarray,
             maximize_peirce_score=False
         )
 
@@ -200,6 +210,7 @@ def _run(evaluation_file_name, best_prob_threshold, model_description_string,
             'Performance diagram{0:s}\n'
             'AUPD = {1:.3f}; CSI* = {2:.3f}; FB* = {3:.3f}'
         ).format(
+            model_description_string,
             aupd_values[0], csi_values[0], freq_bias_values[0]
         )
     else:
@@ -283,7 +294,9 @@ if __name__ == '__main__':
         evaluation_file_name=getattr(
             INPUT_ARG_OBJECT, EVALUATION_FILE_ARG_NAME
         ),
-        best_prob_threshold=getattr(INPUT_ARG_OBJECT, BEST_THRESHOLD_ARG_NAME),
+        eval_file_name_for_best_thres=getattr(
+            INPUT_ARG_OBJECT, EVAL_FILE_FOR_BEST_THRES_ARG_NAME
+        ),
         model_description_string=getattr(
             INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
         ),
