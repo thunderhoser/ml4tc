@@ -29,6 +29,7 @@ set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1")
 set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1")
 set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0")
 set DROPOUT_RATES=(             "0.8" "0.7" "0.8")
+set MODEL_DESCRIPTION_STRINGS=("NN w/out CIRA IR" "NN w/out SHIPS" "NN w/ everything")
 
 set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
 set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$SLURM_ARRAY_TASK_ID]}
@@ -44,5 +45,6 @@ set output_dir_name="${evaluation_dir_name}/gridded_evaluation"
 python3 -u "${CODE_DIR_NAME}/plot_gridded_evaluation.py" \
 --input_evaluation_dir_name="${evaluation_dir_name}" \
 --input_grid_metafile_name="${evaluation_dir_name}/grid_metadata.nc" \
---input_total_validn_eval_file_name="${evaluation_dir_name}/evaluation.nc" \
+--model_description_string="${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}" \
+--input_total_validn_eval_file_name="${model_dir_name}/validation/isotonic_regression/evaluation.nc" \
 --output_dir_name="${output_dir_name}"

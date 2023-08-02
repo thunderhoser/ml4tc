@@ -2,7 +2,7 @@
 
 #SBATCH --job-name="evaluate_by_grid_cell"
 #SBATCH --partition="bigmem"
-#SBATCH --account="rda-ghpcs"
+#SBATCH --account="gsd-hpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1

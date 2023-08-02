@@ -25,7 +25,7 @@ MARKER_TYPE = '*'
 MARKER_SIZE = 50
 MARKER_EDGE_WIDTH = 0
 
-TITLE_FONT_SIZE = 25
+TITLE_FONT_SIZE = 30
 
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
@@ -98,6 +98,9 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
 
     if eval_file_name_for_best_thres == '':
         eval_file_name_for_best_thres = None
+    else:
+        assert 'testing' not in eval_file_name_for_best_thres
+
     if model_description_string == '':
         model_description_string = None
 

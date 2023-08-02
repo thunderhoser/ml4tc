@@ -2,7 +2,7 @@
 
 #SBATCH --job-name="evaluate_models"
 #SBATCH --partition="bigmem"
-#SBATCH --account="rda-ghpcs"
+#SBATCH --account="gsd-hpcs"
 #SBATCH --qos="batch"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1

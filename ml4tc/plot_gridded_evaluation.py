@@ -67,8 +67,7 @@ TOTAL_VALIDN_EVAL_FILE_HELP_STRING = (
 )
 MODEL_DESCRIPTION_HELP_STRING = (
     'Model description, for use in figure titles.  If you want plain figure '
-    'titles (like just "ROC curve" and "Performance diagram"), leave this '
-    'argument alone.'
+    'titles (like just "AUC" and "AUPD"), leave this argument alone.'
 )
 SEQ_COLOUR_MAP_HELP_STRING = (
     'Name of sequential colour map (must be accepted by '
@@ -361,6 +360,8 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
     :param bias_colour_map_name: Same.
     :param output_dir_name: Same.
     """
+
+    assert 'testing' not in total_validn_eval_file_name
 
     if model_description_string == '':
         model_description_string = None
