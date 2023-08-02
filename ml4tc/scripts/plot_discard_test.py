@@ -8,6 +8,7 @@ from gewittergefahr.gg_utils import file_system_utils
 from ml4tc.utils import uq_evaluation
 from ml4tc.plotting import uq_evaluation_plotting as uq_eval_plotting
 
+TITLE_FONT_SIZE = 25
 FIGURE_RESOLUTION_DPI = 300
 
 INPUT_FILE_ARG_NAME = 'input_file_name'
@@ -73,7 +74,7 @@ def _run(input_file_name, model_description_string, output_file_name):
     )
 
     print(title_string)
-    axes_object.set_title(title_string)
+    axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
