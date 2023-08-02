@@ -44,8 +44,8 @@ set SHIPS_TYPE_STRINGS=("basic" "dtops" "consensus")
 
 foreach ships_type_string ($SHIPS_TYPE_STRINGS)
     python3 -u "${CODE_DIR_NAME}/ri2023_make_8panel_matched_eval_figure.py" \
-    --input_nn_mean_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_1rep_cf_${ships_type_string}" \
-    --input_baseline_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ships_evaluation_1rep_${ships_type_string}" \
-    --input_nn_uq_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_cf_${ships_type_string}" \
-    --output_dir_name="$${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/nice_figures_${ships_type_string}"
+    --input_nn_mean_evaluation_dir_name="${model_dir_name}/testing_matched_with_ships/isotonic_regression/cnn_evaluation_1rep_cf_${ships_type_string}" \
+    --input_baseline_evaluation_dir_name="${model_dir_name}/testing_matched_with_ships/isotonic_regression/ships_evaluation_1rep_${ships_type_string}" \
+    --input_nn_uq_evaluation_dir_name="${model_dir_name}/testing_matched_with_ships/isotonic_regression/cnn_evaluation_cf_${ships_type_string}" \
+    --output_dir_name="$${model_dir_name}/testing_matched_with_ships/isotonic_regression/nice_figures_${ships_type_string}"
 end
