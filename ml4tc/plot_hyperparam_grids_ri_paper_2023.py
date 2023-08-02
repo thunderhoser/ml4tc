@@ -400,6 +400,11 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
     axis3_length = len(SHIPS_SATELLITE_FLAGS_AXIS3)
     dimensions = (axis1_length, axis2_length, axis3_length)
 
+    dropout_rate_matrix = numpy.full(dimensions, numpy.nan)
+    cira_ir_lag_time_count_matrix = numpy.full(dimensions, numpy.nan)
+    temporal_diff_flag_matrix = numpy.full(dimensions, numpy.nan)
+    ships_pred_type_count_matrix = numpy.full(dimensions, numpy.nan)
+
     auc_matrix = numpy.full(dimensions, numpy.nan)
     aupd_matrix = numpy.full(dimensions, numpy.nan)
     bss_matrix = numpy.full(dimensions, numpy.nan)
@@ -425,6 +430,19 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
     for i in range(axis1_length):
         for j in range(axis2_length):
             for k in range(axis3_length):
+                dropout_rate_matrix[i, j, k] = DROPOUT_RATES_AXIS1[i]
+                cira_ir_lag_time_count_matrix[i, j, k] = (
+                    CIRA_IR_LAG_TIME_COUNTS_AXIS2[j]
+                )
+                temporal_diff_flag_matrix[i, j, k] = float(
+                    int(TEMPORAL_DIFF_FLAGS_AXIS2[j])
+                )
+                ships_pred_type_count_matrix[i, j, k] = float(
+                    int(SHIPS_ENVIRO_FLAGS_AXIS3[k]) +
+                    int(SHIPS_HISTORICAL_FLAGS_AXIS3[k]) +
+                    int(SHIPS_SATELLITE_FLAGS_AXIS3[k])
+                )
+
                 if (
                         CIRA_IR_LAG_TIME_COUNTS_AXIS2[j] == 0
                         and not SHIPS_ENVIRO_FLAGS_AXIS3[k]
@@ -537,6 +555,106 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
                 )
 
     print(SEPARATOR_STRING)
+
+    print('Correlation between AUC and dropout rate = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(auc_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))],
+            numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUC and num CIRA IR lag times = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(auc_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))],
+            numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUC and use of temporal diffs = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(auc_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))],
+            numpy.ravel(temporal_diff_flag_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUC and num SHIPS types = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(auc_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))],
+            numpy.ravel(ships_pred_type_count_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
+        )[0, 1]
+    ))
+
+    print('Correlation between AUPD and dropout rate = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(aupd_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))],
+            numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUPD and num CIRA IR lag times = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(aupd_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))],
+            numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUPD and use of temporal diffs = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(aupd_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))],
+            numpy.ravel(temporal_diff_flag_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between AUPD and num SHIPS types = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(aupd_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))],
+            numpy.ravel(ships_pred_type_count_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
+        )[0, 1]
+    ))
+
+    print('Correlation between SSREL and dropout rate = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(ssrel_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))],
+            numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between SSREL and num CIRA IR lag times = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(ssrel_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))],
+            numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between SSREL and use of temporal diffs = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(ssrel_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))],
+            numpy.ravel(temporal_diff_flag_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between SSREL and num SHIPS types = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(ssrel_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))],
+            numpy.ravel(ships_pred_type_count_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
+        )[0, 1]
+    ))
+
+    print('Correlation between MF and dropout rate = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(monotonicity_fraction_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))],
+            numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between MF and num CIRA IR lag times = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(monotonicity_fraction_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))],
+            numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between MF and use of temporal diffs = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(monotonicity_fraction_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))],
+            numpy.ravel(temporal_diff_flag_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
+        )[0, 1]
+    ))
+    print('Correlation between MF and num SHIPS types = {0:.4f}'.format(
+        numpy.corrcoef(
+            numpy.ravel(monotonicity_fraction_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))],
+            numpy.ravel(ships_pred_type_count_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
+        )[0, 1]
+    ))
 
     _print_ranking_all_scores(
         auc_matrix=auc_matrix, aupd_matrix=aupd_matrix, bss_matrix=bss_matrix,
