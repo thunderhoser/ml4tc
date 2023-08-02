@@ -43,18 +43,18 @@ set SHIPS_TYPE_STRINGS=("basic" "dtops" "consensus")
 
 foreach ships_type_string ($SHIPS_TYPE_STRINGS)
     python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
-    --input_prediction_file_name="${model_dir_name}/real_time_testing_matched_with_ships/cnn_predictions_cf_${ships_type_string}.nc" \
+    --input_prediction_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_predictions_cf_${ships_type_string}.nc" \
     --event_freq_in_training=0.07267640234 \
     --num_prob_thresholds=1001 \
     --num_reliability_bins=20 \
     --num_bootstrap_reps=1 \
-    --output_eval_file_name="${model_dir_name}/real_time_testing_matched_with_ships/cnn_evaluation_1rep_cf_${ships_type_string}.nc"
+    --output_eval_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_1rep_cf_${ships_type_string}.nc"
     
     python3 -u "${CODE_DIR_NAME}/evaluate_model.py" \
-    --input_prediction_file_name="${model_dir_name}/real_time_testing_matched_with_ships/ships_predictions_${ships_type_string}.nc" \
+    --input_prediction_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ships_predictions_${ships_type_string}.nc" \
     --event_freq_in_training=0.07267640234 \
     --num_prob_thresholds=1001 \
     --num_reliability_bins=20 \
     --num_bootstrap_reps=1 \
-    --output_eval_file_name="${model_dir_name}/real_time_testing_matched_with_ships/ships_evaluation_1rep_${ships_type_string}.nc"
+    --output_eval_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ships_evaluation_1rep_${ships_type_string}.nc"
 end

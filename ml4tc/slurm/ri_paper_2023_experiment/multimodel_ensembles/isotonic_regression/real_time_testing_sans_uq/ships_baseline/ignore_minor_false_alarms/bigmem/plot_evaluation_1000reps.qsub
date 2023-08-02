@@ -44,10 +44,10 @@ set SHIPS_TYPE_STRINGS=("basic" "dtops" "consensus")
 
 foreach ships_type_string ($SHIPS_TYPE_STRINGS)
     python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
-    --input_evaluation_file_name="${model_dir_name}/real_time_testing_matched_with_ships/ignore_minor_false_alarms/cnn_evaluation_1000reps_cf_${ships_type_string}.nc" \
+    --input_evaluation_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ignore_minor_false_alarms/cnn_evaluation_1000reps_cf_${ships_type_string}.nc" \
     --confidence_level=0.95 \
     --model_description_string="${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}" \
-    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/ignore_minor_false_alarms/cnn_evaluation_1000reps_cf_${ships_type_string}"
+    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ignore_minor_false_alarms/cnn_evaluation_1000reps_cf_${ships_type_string}"
     
     if ($ships_type_string == "basic") then
         set ships_model_description_string="SHIPS-RII"
@@ -58,8 +58,8 @@ foreach ships_type_string ($SHIPS_TYPE_STRINGS)
     endif
     
     python3 -u "${CODE_DIR_NAME}/plot_evaluation.py" \
-    --input_evaluation_file_name="${model_dir_name}/real_time_testing_matched_with_ships/ignore_minor_false_alarms/ships_evaluation_1000reps_${ships_type_string}.nc" \
+    --input_evaluation_file_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ignore_minor_false_alarms/ships_evaluation_1000reps_${ships_type_string}.nc" \
     --confidence_level=0.95 \
     --model_description_string="${ships_model_description_string}" \
-    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/ignore_minor_false_alarms/ships_evaluation_1000reps_${ships_type_string}"
+    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ignore_minor_false_alarms/ships_evaluation_1000reps_${ships_type_string}"
 end

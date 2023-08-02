@@ -25,6 +25,8 @@ MARKER_TYPE = '*'
 MARKER_SIZE = 50
 MARKER_EDGE_WIDTH = 0
 
+TITLE_FONT_SIZE = 25
+
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
@@ -173,7 +175,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             numpy.percentile(auc_values, max_percentile)
         )
 
-    axes_object.set_title(title_string)
+    axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
     print(title_string)
 
     figure_file_name = '{0:s}/roc_curve.jpg'.format(output_dir_name)
@@ -235,7 +237,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             numpy.percentile(freq_bias_values, max_percentile),
         )
 
-    axes_object.set_title(title_string)
+    axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
     print(title_string)
 
     figure_file_name = '{0:s}/performance_diagram.jpg'.format(output_dir_name)
@@ -283,7 +285,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             numpy.percentile(bss_values, max_percentile)
         )
 
-    axes_object.set_title(title_string)
+    axes_object.set_title(title_string, fontsize=TITLE_FONT_SIZE)
     print(title_string)
 
     figure_file_name = '{0:s}/attributes_diagram.jpg'.format(output_dir_name)
