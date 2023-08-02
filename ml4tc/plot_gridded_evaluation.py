@@ -27,7 +27,7 @@ TOLERANCE = 1e-6
 DUMMY_FIELD_NAME = 'reflectivity_column_max_dbz'
 
 MAX_COLOUR_PERCENTILE = 100.
-WHITE_COLOUR = numpy.full(3, 1.)
+NUM_EXAMPLES_COLOUR = numpy.full(3, 0.)
 
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 20
@@ -286,7 +286,7 @@ def _plot_one_score(
                 font_size = 16 if num_examples_matrix[i, j] > 9.1 else 20
                 axes_object.text(
                     grid_longitudes_deg_e[j], grid_latitudes_deg_n[i],
-                    label_string, fontsize=font_size, color=WHITE_COLOUR,
+                    label_string, fontsize=font_size, color=NUM_EXAMPLES_COLOUR,
                     horizontalalignment='center', verticalalignment='center'
                 )
 
