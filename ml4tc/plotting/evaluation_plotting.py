@@ -436,16 +436,16 @@ def confidence_interval_to_polygon(
     max_percentile = 50 * (1. + confidence_level)
 
     x_values_bottom = numpy.nanpercentile(
-        x_value_matrix, min_percentile, axis=0, interpolation='midpoint'
+        x_value_matrix, min_percentile, axis=0, interpolation='nearest'
     )
     x_values_top = numpy.nanpercentile(
-        x_value_matrix, max_percentile, axis=0, interpolation='midpoint'
+        x_value_matrix, max_percentile, axis=0, interpolation='nearest'
     )
     y_values_bottom = numpy.nanpercentile(
-        y_value_matrix, min_percentile, axis=0, interpolation='midpoint'
+        y_value_matrix, min_percentile, axis=0, interpolation='nearest'
     )
     y_values_top = numpy.nanpercentile(
-        y_value_matrix, max_percentile, axis=0, interpolation='midpoint'
+        y_value_matrix, max_percentile, axis=0, interpolation='nearest'
     )
 
     real_indices = numpy.where(numpy.invert(numpy.logical_or(
@@ -530,8 +530,10 @@ def plot_reliability_curve(
             linestyle='dashed', linewidth=REFERENCE_LINE_WIDTH
         )
 
-    mean_predictions = numpy.nanmean(mean_prediction_matrix, axis=0)
-    mean_observations = numpy.nanmean(mean_observation_matrix, axis=0)
+    # mean_predictions = numpy.nanmean(mean_prediction_matrix, axis=0)
+    # mean_observations = numpy.nanmean(mean_observation_matrix, axis=0)
+    mean_predictions = numpy.nanmedian(mean_prediction_matrix, axis=0)
+    mean_observations = numpy.nanmedian(mean_observation_matrix, axis=0)
     nan_flags = numpy.logical_or(
         numpy.isnan(mean_predictions), numpy.isnan(mean_observations)
     )
