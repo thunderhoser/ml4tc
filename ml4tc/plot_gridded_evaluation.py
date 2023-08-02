@@ -28,7 +28,7 @@ DUMMY_FIELD_NAME = 'reflectivity_column_max_dbz'
 
 MAX_COLOUR_PERCENTILE = 100.
 NUM_EXAMPLES_COLOUR = numpy.full(3, 0.)
-NUM_EXAMPLES_FONT_SIZE = 17.5
+NUM_EXAMPLES_FONT_SIZE = 20
 
 FIGURE_RESOLUTION_DPI = 300
 FIGURE_WIDTH_INCHES = 20
@@ -46,6 +46,7 @@ pyplot.rc('figure', titlesize=FONT_SIZE)
 INPUT_DIR_ARG_NAME = 'input_evaluation_dir_name'
 GRID_METAFILE_ARG_NAME = 'input_grid_metafile_name'
 TOTAL_VALIDN_EVAL_FILE_ARG_NAME = 'input_total_validn_eval_file_name'
+MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 SEQ_COLOUR_MAP_ARG_NAME = 'sequential_colour_map_name'
 DIV_COLOUR_MAP_ARG_NAME = 'diverging_colour_map_name'
 BIAS_COLOUR_MAP_ARG_NAME = 'bias_colour_map_name'
@@ -63,6 +64,11 @@ GRID_METAFILE_HELP_STRING = (
 TOTAL_VALIDN_EVAL_FILE_HELP_STRING = (
     'Path to evaluation file for total validation set.  Will be read by '
     '`evaluation.read_file` and used to determine best probability threshold.'
+)
+MODEL_DESCRIPTION_HELP_STRING = (
+    'Model description, for use in figure titles.  If you want plain figure '
+    'titles (like just "ROC curve" and "Performance diagram"), leave this '
+    'argument alone.'
 )
 SEQ_COLOUR_MAP_HELP_STRING = (
     'Name of sequential colour map (must be accepted by '
@@ -93,6 +99,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + TOTAL_VALIDN_EVAL_FILE_ARG_NAME, type=str, required=True,
     help=TOTAL_VALIDN_EVAL_FILE_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
+    help=MODEL_DESCRIPTION_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SEQ_COLOUR_MAP_ARG_NAME, type=str, required=False, default='plasma',
@@ -337,8 +347,8 @@ def _plot_one_score(
 
 
 def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
-         sequential_colour_map_name, diverging_colour_map_name,
-         bias_colour_map_name, output_dir_name):
+         model_description_string, sequential_colour_map_name,
+         diverging_colour_map_name, bias_colour_map_name, output_dir_name):
     """Plots evaluation scores on grid.
 
     This is effectively the main method.
@@ -351,6 +361,14 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
     :param bias_colour_map_name: Same.
     :param output_dir_name: Same.
     """
+
+    if model_description_string == '':
+        model_description_string = None
+
+    model_description_string = (
+        '' if model_description_string is None
+        else ' for {0:s}'.format(model_description_string)
+    )
 
     print('Reading data from: "{0:s}"...'.format(total_validn_eval_file_name))
     this_table_xarray = evaluation.read_file(total_validn_eval_file_name)
@@ -482,7 +500,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/auc.jpg'.format(output_dir_name),
-        title_string='Area under ROC curve (AUC)'
+        title_string='AUC{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -495,7 +513,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/aupd.jpg'.format(output_dir_name),
-        title_string='Area under performance diagram (AUPD)'
+        title_string='AUPD{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -507,7 +525,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/brier_score.jpg'.format(output_dir_name),
-        title_string='Brier score'
+        title_string='Brier score{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -519,7 +537,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=diverging_colour_map_name,
         is_frequency_bias=False, is_bss=True,
         output_file_name='{0:s}/brier_skill_score.jpg'.format(output_dir_name),
-        title_string='Brier skill score'
+        title_string='BSS{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -532,7 +550,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name=
         '{0:s}/event_frequency.jpg'.format(output_dir_name),
-        title_string='Label-based climatology'
+        title_string='Label-based climo{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -545,7 +563,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name=
         '{0:s}/mean_forecast_prob.jpg'.format(output_dir_name),
-        title_string='Model-based climatology'
+        title_string='Model-based climo{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -557,7 +575,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/pod.jpg'.format(output_dir_name),
-        title_string='Probability of detection'
+        title_string='POD{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -569,7 +587,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/far.jpg'.format(output_dir_name),
-        title_string='False-alarm ratio'
+        title_string='FAR{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -581,7 +599,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=bias_colour_map_name,
         is_frequency_bias=True, is_bss=False,
         output_file_name='{0:s}/frequency_bias.jpg'.format(output_dir_name),
-        title_string='Frequency bias'
+        title_string='FB{0:s}'.format(model_description_string)
     )
 
     _plot_one_score(
@@ -593,7 +611,7 @@ def _run(evaluation_dir_name, grid_metafile_name, total_validn_eval_file_name,
         colour_map_name=sequential_colour_map_name,
         is_frequency_bias=False, is_bss=False,
         output_file_name='{0:s}/csi.jpg'.format(output_dir_name),
-        title_string='Critical success index'
+        title_string='CSI{0:s}'.format(model_description_string)
     )
 
 
@@ -605,6 +623,9 @@ if __name__ == '__main__':
         grid_metafile_name=getattr(INPUT_ARG_OBJECT, GRID_METAFILE_ARG_NAME),
         total_validn_eval_file_name=getattr(
             INPUT_ARG_OBJECT, TOTAL_VALIDN_EVAL_FILE_ARG_NAME
+        ),
+        model_description_string=getattr(
+            INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
         ),
         sequential_colour_map_name=getattr(
             INPUT_ARG_OBJECT, SEQ_COLOUR_MAP_ARG_NAME
