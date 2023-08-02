@@ -218,6 +218,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             'Performance diagram{0:s}\n'
             'AUPD = {1:.3f}; CSI* = {2:.3f}; FB* = {3:.3f}'
         ).format(
+            model_description_string,
             aupd_values[0], csi_values[0], freq_bias_values[0]
         )
     else:
