@@ -39,6 +39,7 @@ set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 echo $dropout_rate
+echo ${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_description_string=${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
