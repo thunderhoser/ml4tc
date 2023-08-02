@@ -181,7 +181,10 @@ def _plot_one_score(
     plotting_utils.plot_borders(
         border_latitudes_deg_n=border_latitudes_deg_n,
         border_longitudes_deg_e=border_longitudes_deg_e,
-        axes_object=axes_object
+        axes_object=axes_object,
+        line_colour=matplotlib.colors.to_rgba(
+            c=plotting_utils.DEFAULT_BORDER_COLOUR, alpha=0.5
+        )
     )
 
     if is_frequency_bias:
@@ -283,10 +286,9 @@ def _plot_one_score(
                         int(numpy.round(num_examples_matrix[i, j]))
                     )
 
-                font_size = 16 if num_examples_matrix[i, j] > 9.1 else 20
                 axes_object.text(
                     grid_longitudes_deg_e[j], grid_latitudes_deg_n[i],
-                    label_string, fontsize=font_size, color=NUM_EXAMPLES_COLOUR,
+                    label_string, fontsize=20, color=NUM_EXAMPLES_COLOUR,
                     horizontalalignment='center', verticalalignment='center'
                 )
 
