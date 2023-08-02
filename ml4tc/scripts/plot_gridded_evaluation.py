@@ -60,8 +60,7 @@ TOTAL_VALIDN_EVAL_FILE_HELP_STRING = (
 )
 MODEL_DESCRIPTION_HELP_STRING = (
     'Model description, for use in figure titles.  If you want plain figure '
-    'titles (like just "ROC curve" and "Performance diagram"), leave this '
-    'argument alone.'
+    'titles (like just "AUC" and "AUPD"), leave this argument alone.'
 )
 SEQ_COLOUR_MAP_HELP_STRING = (
     'Name of sequential colour map (must be accepted by '

@@ -8,7 +8,7 @@ from gewittergefahr.gg_utils import file_system_utils
 from ml4tc.utils import uq_evaluation
 from ml4tc.plotting import uq_evaluation_plotting as uq_eval_plotting
 
-TITLE_FONT_SIZE = 25
+TITLE_FONT_SIZE = 30
 FIGURE_RESOLUTION_DPI = 300
 
 INPUT_FILE_ARG_NAME = 'input_file_name'

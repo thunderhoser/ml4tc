@@ -44,12 +44,18 @@ FIGURE_RESOLUTION_DPI = 300
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
 INPUT_DIR_ARG_NAME = 'input_evaluation_dir_name'
+MODEL_DESCRIPTION_ARG_NAME = 'model_description_string'
 CONFIDENCE_LEVEL_ARG_NAME = 'confidence_level'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
 
 INPUT_DIR_HELP_STRING = (
     'Name of input directory.  Evaluation files therein will be found by '
     '`evaluation.find_file` and read by `evaluation.read_file`.'
+)
+MODEL_DESCRIPTION_HELP_STRING = (
+    'Model description, for use in figure titles.  If you want plain figure '
+    'titles (like just "Monthly results" and "By-basin results"), leave this '
+    'argument alone.'
 )
 CONFIDENCE_LEVEL_HELP_STRING = 'Confidence level for error bars.'
 OUTPUT_DIR_HELP_STRING = (
@@ -60,6 +66,10 @@ INPUT_ARG_PARSER = argparse.ArgumentParser()
 INPUT_ARG_PARSER.add_argument(
     '--' + INPUT_DIR_ARG_NAME, type=str, required=True,
     help=INPUT_DIR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + MODEL_DESCRIPTION_ARG_NAME, type=str, required=False, default='',
+    help=MODEL_DESCRIPTION_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + CONFIDENCE_LEVEL_ARG_NAME, type=float, required=False, default=0.95,
@@ -212,10 +222,12 @@ def _plot_metrics(auc_matrix, aupd_matrix, example_counts,
     return figure_object, main_axes_object
 
 
-def _plot_by_month(evaluation_dir_name, confidence_level, output_dir_name):
+def _plot_by_month(evaluation_dir_name, model_description_string,
+                   confidence_level, output_dir_name):
     """Plots evaluation metrics by month.
 
     :param evaluation_dir_name: See documentation at top of file.
+    :param model_description_string: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     :return: output_file_name: Path to figure saved by this method.
@@ -287,6 +299,9 @@ def _plot_by_month(evaluation_dir_name, confidence_level, output_dir_name):
 
     axes_object.set_xticks(x_tick_values)
     axes_object.set_xticklabels(x_tick_labels, rotation=90.)
+    axes_object.set_title(
+        'Monthly results{0:s}'.format(model_description_string)
+    )
 
     output_file_name = '{0:s}/evaluation_by_month.jpg'.format(output_dir_name)
     print('Saving figure to: "{0:s}"...'.format(output_file_name))
@@ -299,10 +314,12 @@ def _plot_by_month(evaluation_dir_name, confidence_level, output_dir_name):
     return output_file_name
 
 
-def _plot_by_basin(evaluation_dir_name, confidence_level, output_dir_name):
+def _plot_by_basin(evaluation_dir_name, model_description_string,
+                   confidence_level, output_dir_name):
     """Plots evaluation metrics by basin.
 
     :param evaluation_dir_name: See documentation at top of file.
+    :param model_description_string: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     :return: output_file_name: Path to figure saved by this method.
@@ -383,6 +400,9 @@ def _plot_by_basin(evaluation_dir_name, confidence_level, output_dir_name):
 
     axes_object.set_xticks(x_tick_values)
     axes_object.set_xticklabels(x_tick_labels, rotation=90.)
+    axes_object.set_title(
+        'By-basin results{0:s}'.format(model_description_string)
+    )
 
     output_file_name = '{0:s}/evaluation_by_basin.jpg'.format(output_dir_name)
     print('Saving figure to: "{0:s}"...'.format(output_file_name))
@@ -395,15 +415,25 @@ def _plot_by_basin(evaluation_dir_name, confidence_level, output_dir_name):
     return output_file_name
 
 
-def _run(evaluation_dir_name, confidence_level, output_dir_name):
+def _run(evaluation_dir_name, model_description_string, confidence_level,
+         output_dir_name):
     """Plots evaluation by month, then by ocean basin, separately.
 
     This is effectively the main method.
 
     :param evaluation_dir_name: See documentation at top of file.
+    :param model_description_string: Same.
     :param confidence_level: Same.
     :param output_dir_name: Same.
     """
+
+    if model_description_string == '':
+        model_description_string = None
+
+    model_description_string = (
+        '' if model_description_string is None
+        else ' for {0:s}'.format(model_description_string)
+    )
 
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
@@ -411,12 +441,14 @@ def _run(evaluation_dir_name, confidence_level, output_dir_name):
 
     _plot_by_month(
         evaluation_dir_name=evaluation_dir_name,
+        model_description_string=model_description_string,
         confidence_level=confidence_level,
         output_dir_name=output_dir_name
     )
 
     _plot_by_basin(
         evaluation_dir_name=evaluation_dir_name,
+        model_description_string=model_description_string,
         confidence_level=confidence_level,
         output_dir_name=output_dir_name
     )
@@ -427,6 +459,9 @@ if __name__ == '__main__':
 
     _run(
         evaluation_dir_name=getattr(INPUT_ARG_OBJECT, INPUT_DIR_ARG_NAME),
+        model_description_string=getattr(
+            INPUT_ARG_OBJECT, MODEL_DESCRIPTION_ARG_NAME
+        ),
         confidence_level=getattr(INPUT_ARG_OBJECT, CONFIDENCE_LEVEL_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
     )
