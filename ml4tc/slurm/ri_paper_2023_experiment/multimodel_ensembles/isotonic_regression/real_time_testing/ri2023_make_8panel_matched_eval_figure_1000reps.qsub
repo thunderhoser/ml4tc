@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-#SBATCH --job-name="ri2023_make_8panel_matched_eval_figure"
+#SBATCH --job-name="ri2023_make_8panel_matched_eval_figure_1000reps"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
 #SBATCH --qos="batch"
@@ -14,7 +14,7 @@
 ##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
-#SBATCH --output=ri2023_make_8panel_matched_eval_figure_%A_%a.out
+#SBATCH --output=ri2023_make_8panel_matched_eval_figure_1000reps_%A_%a.out
 
 module load cuda/10.1
 source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
@@ -43,8 +43,8 @@ set SHIPS_TYPE_STRINGS=("basic" "dtops" "consensus")
 
 foreach ships_type_string ($SHIPS_TYPE_STRINGS)
     python3 -u "${CODE_DIR_NAME}/ri2023_make_8panel_matched_eval_figure.py" \
-    --input_nn_mean_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_1rep_cf_${ships_type_string}" \
-    --input_baseline_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ships_evaluation_1rep_${ships_type_string}" \
+    --input_nn_mean_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_1000reps_cf_${ships_type_string}" \
+    --input_baseline_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/ships_evaluation_1000reps_${ships_type_string}" \
     --input_nn_uq_evaluation_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/cnn_evaluation_cf_${ships_type_string}" \
-    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/nice_figures_${ships_type_string}"
+    --output_dir_name="${model_dir_name}/real_time_testing_matched_with_ships/isotonic_regression/nice_figures_1000reps_${ships_type_string}"
 end
