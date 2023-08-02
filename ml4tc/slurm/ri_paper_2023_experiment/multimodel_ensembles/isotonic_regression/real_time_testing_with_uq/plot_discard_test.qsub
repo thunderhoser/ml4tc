@@ -37,7 +37,6 @@ set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
 set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
-set model_description_string=${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}
 
 set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}/full_ensemble"
 set input_file_name="${model_dir_name}/real_time_testing/isotonic_regression/discard_test.nc"
@@ -45,5 +44,5 @@ set output_file_name="${model_dir_name}/real_time_testing/isotonic_regression/di
 
 python3 -u "${CODE_DIR_NAME}/plot_discard_test.py" \
 --input_file_name="${input_file_name}" \
---model_description_string="${model_description_string}" \
+--model_description_string="${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}" \
 --output_file_name="${output_file_name}"
