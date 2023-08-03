@@ -230,7 +230,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
         best_current_x + 0.01, best_current_y + 0.01, 'T',
         color=evaluation_plotting.ROC_CURVE_COLOUR,
         fontsize=40, fontweight='bold',
-        horizontalalignment='left', verticalalignment='center'
+        horizontalalignment='left', verticalalignment='bottom'
     )
 
     if best_validn_threshold_index is None:
@@ -257,7 +257,7 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             best_validation_x + 0.01, best_validation_y + 0.01, 'V',
             color=evaluation_plotting.ROC_CURVE_COLOUR,
             fontsize=40, fontweight='bold',
-            horizontalalignment='left', verticalalignment='center'
+            horizontalalignment='left', verticalalignment='bottom'
         )
 
     csi_values = et[evaluation.CSI_KEY].values[this_index, :]
