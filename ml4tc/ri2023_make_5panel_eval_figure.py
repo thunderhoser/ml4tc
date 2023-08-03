@@ -27,11 +27,14 @@ INPUT_FILE_SUFFIXES = [
     'discard_test.jpg',
     'eval_by_month_and_basin/evaluation_by_month.jpg',
     'eval_by_month_and_basin/evaluation_by_basin.jpg',
-    'gridded_evaluation/auc.jpg',
-    'gridded_evaluation/aupd.jpg'
+    # 'gridded_evaluation/auc.jpg',
+    # 'gridded_evaluation/aupd.jpg'
 ]
 
-PANEL_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
+PANEL_LETTERS = [
+    'a', 'b', 'c', 'd', 'e', 'f', 'g',
+    # 'h', 'i'
+]
 
 CONVERT_EXE_NAME = '/usr/bin/convert'
 TITLE_FONT_SIZE = 250
