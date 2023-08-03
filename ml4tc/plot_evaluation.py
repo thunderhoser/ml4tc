@@ -227,9 +227,9 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
         markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
     )
     axes_object.text(
-        best_current_x, best_current_y, 'T',
+        best_current_x + 0.01, best_current_y + 0.01, 'T',
         color=evaluation_plotting.ROC_CURVE_COLOUR,
-        fontsize=24, fontweight='bold',
+        fontsize=40, fontweight='bold',
         horizontalalignment='left', verticalalignment='center'
     )
 
@@ -254,9 +254,9 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
             markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
         )
         axes_object.text(
-            best_validation_x, best_validation_y, 'V',
+            best_validation_x + 0.01, best_validation_y + 0.01, 'V',
             color=evaluation_plotting.ROC_CURVE_COLOUR,
-            fontsize=24, fontweight='bold',
+            fontsize=40, fontweight='bold',
             horizontalalignment='left', verticalalignment='center'
         )
 
