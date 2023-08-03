@@ -425,7 +425,7 @@ def _plot_by_basin(evaluation_dir_name, model_description_string,
 
         auc_matrix[:, k] = et[evaluation.AUC_KEY].values
         aupd_matrix[:, k] = et[evaluation.AUPD_KEY].values
-        bss_matrix[:, k] = et[evaluation.BSS_KEY].values
+        bss_matrix[:, k] = et[evaluation.BRIER_SKILL_SCORE_KEY].values
 
     x_tick_values = numpy.linspace(
         0, num_basins - 1, num=num_basins, dtype=float
