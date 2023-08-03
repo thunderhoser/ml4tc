@@ -275,7 +275,7 @@ def plot_discard_test(
     )
 
     axes_object.set_xlabel('Discard fraction')
-    axes_object.set_ylabel('Model performance (cross-entropy)')
+    axes_object.set_ylabel('Model error (Brier score)')
     axes_object.set_xlim(left=0.)
 
     inset_axes_object = _plot_means_as_inset(

@@ -93,7 +93,9 @@ def _run(prediction_file_name, discard_fractions,
     uncertainty_function = uq_evaluation.get_stdev_uncertainty_function(
         use_fancy_quantile_method=use_fancy_quantile_method_for_stdev
     )
-    error_function = uq_evaluation.get_xentropy_error_function(use_median=False)
+    error_function = uq_evaluation.get_brier_score_error_function(
+        use_median=False
+    )
 
     result_dict = uq_evaluation.run_discard_test(
         prediction_dict=prediction_dict, discard_fractions=discard_fractions,
@@ -105,7 +107,7 @@ def _run(prediction_file_name, discard_fractions,
     print('Writing results to: "{0:s}"...'.format(output_file_name))
     uq_evaluation.write_discard_results(
         netcdf_file_name=output_file_name, result_dict=result_dict,
-        error_function_name='cross-entropy',
+        error_function_name='Brier score',
         uncertainty_function_name='pixelwise stdev',
         use_fancy_quantile_method_for_stdev=
         use_fancy_quantile_method_for_stdev

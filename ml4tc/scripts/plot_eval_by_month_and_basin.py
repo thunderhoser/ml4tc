@@ -24,6 +24,7 @@ POLYGON_OPACITY = 0.5
 
 AUC_COLOUR = numpy.array([117, 112, 179], dtype=float) / 255
 AUPD_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
+BSS_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
 
 NUM_EXAMPLES_FACE_COLOUR = numpy.full(3, 152. / 255)
 NUM_EXAMPLES_FACE_COLOUR = matplotlib.colors.to_rgba(
@@ -81,7 +82,7 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
-def _plot_metrics(auc_matrix, aupd_matrix, example_counts,
+def _plot_metrics(auc_matrix, aupd_matrix, bss_matrix, example_counts,
                   positive_example_counts, confidence_level, plot_legend):
     """Plots evaluation metrics either by month or by basin.
 
@@ -90,6 +91,7 @@ def _plot_metrics(auc_matrix, aupd_matrix, example_counts,
 
     :param auc_matrix: B-by-N numpy array of AUC values.
     :param aupd_matrix: B-by-N numpy array of AUPD values.
+    :param bss_matrix: B-by-N numpy array of BSS values.
     :param example_counts: length-N numpy array with number of examples for each
         subset.
     :param positive_example_counts: Same but for positive examples only.
@@ -169,7 +171,34 @@ def _plot_metrics(auc_matrix, aupd_matrix, example_counts,
         )
         main_axes_object.add_patch(patch_object)
 
-    main_axes_object.set_ylabel('Evaluation metric (AUC or AUPD)')
+    # Plot mean BSS.
+    this_handle = main_axes_object.plot(
+        x_values, numpy.mean(bss_matrix, axis=0), color=BSS_COLOUR,
+        linewidth=LINE_WIDTH, marker=MARKER_TYPE, markersize=MARKER_SIZE,
+        markerfacecolor=BSS_COLOUR, markeredgecolor=BSS_COLOUR,
+        markeredgewidth=0
+    )[0]
+
+    legend_handles.append(this_handle)
+    legend_strings.append('BSS')
+
+    # Plot confidence interval for BSS.
+    if num_bootstrap_reps > 1:
+        x_matrix = numpy.expand_dims(x_values, axis=0)
+        x_matrix = numpy.repeat(x_matrix, axis=0, repeats=num_bootstrap_reps)
+
+        polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
+            x_value_matrix=x_matrix, y_value_matrix=bss_matrix,
+            confidence_level=confidence_level, same_order=False
+        )
+
+        polygon_colour = matplotlib.colors.to_rgba(BSS_COLOUR, POLYGON_OPACITY)
+        patch_object = matplotlib.patches.Polygon(
+            polygon_coord_matrix, lw=0, ec=polygon_colour, fc=polygon_colour
+        )
+        main_axes_object.add_patch(patch_object)
+
+    main_axes_object.set_ylabel('Evaluation metric (AUC/AUPD/BSS)')
     main_axes_object.set_xlim([
         numpy.min(x_values) - 0.5, numpy.max(x_values) + 0.5
     ])
@@ -235,6 +264,7 @@ def _plot_by_month(evaluation_dir_name, model_description_string,
 
     auc_matrix = None
     aupd_matrix = None
+    bss_matrix = None
     num_bootstrap_reps = None
     example_counts = numpy.full(NUM_MONTHS, 0, dtype=int)
     positive_example_counts = numpy.full(NUM_MONTHS, 0, dtype=int)
@@ -263,6 +293,7 @@ def _plot_by_month(evaluation_dir_name, model_description_string,
             num_bootstrap_reps = this_num_bootstrap_reps
             auc_matrix = numpy.full((num_bootstrap_reps, NUM_MONTHS), numpy.nan)
             aupd_matrix = numpy.full((num_bootstrap_reps, NUM_MONTHS), numpy.nan)
+            bss_matrix = numpy.full((num_bootstrap_reps, NUM_MONTHS), numpy.nan)
 
         assert num_bootstrap_reps == this_num_bootstrap_reps
 
@@ -279,6 +310,7 @@ def _plot_by_month(evaluation_dir_name, model_description_string,
 
         auc_matrix[:, k] = et[evaluation.AUC_KEY].values
         aupd_matrix[:, k] = et[evaluation.AUPD_KEY].values
+        bss_matrix[:, k] = et[evaluation.BRIER_SKILL_SCORE_KEY].values
 
     x_tick_values = numpy.linspace(
         0, NUM_MONTHS - 1, num=NUM_MONTHS, dtype=float
@@ -291,6 +323,7 @@ def _plot_by_month(evaluation_dir_name, model_description_string,
     figure_object, axes_object = _plot_metrics(
         auc_matrix=auc_matrix,
         aupd_matrix=aupd_matrix,
+        bss_matrix=bss_matrix,
         example_counts=example_counts,
         positive_example_counts=positive_example_counts,
         confidence_level=confidence_level,
@@ -336,6 +369,7 @@ def _plot_by_basin(evaluation_dir_name, model_description_string,
 
     auc_matrix = None
     aupd_matrix = None
+    bss_matrix = None
     num_bootstrap_reps = None
 
     num_basins = len(basin_id_strings)
@@ -367,6 +401,7 @@ def _plot_by_basin(evaluation_dir_name, model_description_string,
             num_bootstrap_reps = this_num_bootstrap_reps
             auc_matrix = numpy.full((num_bootstrap_reps, num_basins), numpy.nan)
             aupd_matrix = numpy.full((num_bootstrap_reps, num_basins), numpy.nan)
+            bss_matrix = numpy.full((num_bootstrap_reps, num_basins), numpy.nan)
 
         assert num_bootstrap_reps == this_num_bootstrap_reps
 
@@ -383,6 +418,7 @@ def _plot_by_basin(evaluation_dir_name, model_description_string,
 
         auc_matrix[:, k] = et[evaluation.AUC_KEY].values
         aupd_matrix[:, k] = et[evaluation.AUPD_KEY].values
+        bss_matrix[:, k] = et[evaluation.BSS_KEY].values
 
     x_tick_values = numpy.linspace(
         0, num_basins - 1, num=num_basins, dtype=float
@@ -391,6 +427,7 @@ def _plot_by_basin(evaluation_dir_name, model_description_string,
 
     figure_object, axes_object = _plot_metrics(
         auc_matrix=auc_matrix,
+        bss_matrix=bss_matrix,
         aupd_matrix=aupd_matrix,
         example_counts=example_counts,
         positive_example_counts=positive_example_counts,
