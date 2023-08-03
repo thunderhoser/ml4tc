@@ -21,8 +21,8 @@ import evaluation_plotting
 # TODO(thunderhoser): Currently this script works only for binary
 # classification.
 
-MARKER_TYPE = '*'
-MARKER_SIZE = 50
+MARKER_TYPE = 'o'
+MARKER_SIZE = 25
 MARKER_EDGE_WIDTH = 0
 
 TITLE_FONT_SIZE = 30
@@ -132,11 +132,17 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
         confidence_level=confidence_level
     )
 
+    best_current_prob_threshold = evaluation.find_best_threshold(
+        evaluation_table_xarray=evaluation_table_xarray,
+        maximize_peirce_score=False
+    )
+    best_current_threshold_index = numpy.argmin(numpy.absolute(
+        et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
+        best_current_prob_threshold
+    ))
+
     if eval_file_name_for_best_thres is None:
-        best_prob_threshold = evaluation.find_best_threshold(
-            evaluation_table_xarray=evaluation_table_xarray,
-            maximize_peirce_score=False
-        )
+        best_validn_threshold_index = None
     else:
         print('Reading data from: "{0:s}"...'.format(
             eval_file_name_for_best_thres
@@ -144,31 +150,29 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
         this_eval_table_xarray = evaluation.read_file(
             eval_file_name_for_best_thres
         )
-
-        best_prob_threshold = evaluation.find_best_threshold(
+        best_validn_prob_threshold = evaluation.find_best_threshold(
             evaluation_table_xarray=this_eval_table_xarray,
             maximize_peirce_score=False
         )
+        best_validn_threshold_index = numpy.argmin(numpy.absolute(
+            et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
+            best_validn_prob_threshold
+        ))
 
-    best_threshold_index = numpy.argmin(numpy.absolute(
-        et.coords[evaluation.PROBABILITY_THRESHOLD_DIM].values -
-        best_prob_threshold
-    ))
-
-    best_x = numpy.mean(et[evaluation.POFD_KEY].values[best_threshold_index, :])
-    best_y = numpy.mean(et[evaluation.POD_KEY].values[best_threshold_index, :])
-    axes_object.plot(
-        best_x, best_y, linestyle='None', marker=MARKER_TYPE,
-        markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
-        markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
-        markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
-    )
+    # best_x = numpy.mean(et[evaluation.POFD_KEY].values[best_threshold_index, :])
+    # best_y = numpy.mean(et[evaluation.POD_KEY].values[best_threshold_index, :])
+    # axes_object.plot(
+    #     best_x, best_y, linestyle='None', marker=MARKER_TYPE,
+    #     markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
+    #     markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
+    #     markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
+    # )
 
     auc_values = et[evaluation.AUC_KEY].values
     num_bootstrap_reps = len(auc_values)
 
     if num_bootstrap_reps == 1:
-        title_string = 'ROC curve{0:s}\n(AUC = {1:.3f})'.format(
+        title_string = 'ROC curve{0:s}\nAUC = {1:.3f}'.format(
             model_description_string, auc_values[0]
         )
     else:
@@ -202,21 +206,62 @@ def _run(evaluation_file_name, eval_file_name_for_best_thres,
 
     aupd_values = et[evaluation.AUPD_KEY].values
 
-    best_x = numpy.mean(
-        et[evaluation.SUCCESS_RATIO_KEY].values[best_threshold_index, :]
+    best_prob_threshold = evaluation.find_best_threshold(
+        evaluation_table_xarray=evaluation_table_xarray,
+        maximize_peirce_score=False
     )
-    best_y = numpy.mean(et[evaluation.POD_KEY].values[best_threshold_index, :])
+
+    if eval_file_name_for_best_thres is not None:
+        pass
+
+    best_current_x = numpy.mean(
+        et[evaluation.SUCCESS_RATIO_KEY].values[best_current_threshold_index, :]
+    )
+    best_current_y = numpy.mean(
+        et[evaluation.POD_KEY].values[best_current_threshold_index, :]
+    )
     axes_object.plot(
-        best_x, best_y, linestyle='None', marker=MARKER_TYPE,
+        best_current_x, best_current_y, linestyle='None', marker=MARKER_TYPE,
         markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
         markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
         markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
     )
-
-    csi_values = et[evaluation.CSI_KEY].values[best_threshold_index, :]
-    freq_bias_values = (
-        et[evaluation.FREQUENCY_BIAS_KEY].values[best_threshold_index, :]
+    axes_object.text(
+        best_current_x, best_current_y, 'T',
+        color=evaluation_plotting.ROC_CURVE_COLOUR,
+        fontsize=24, fontweight='bold',
+        horizontalalignment='left', verticalalignment='center'
     )
+
+    if best_validn_threshold_index is None:
+        this_index = best_current_threshold_index
+    else:
+        this_index = best_validn_threshold_index
+
+        best_validation_x = numpy.mean(
+            et[evaluation.SUCCESS_RATIO_KEY].values[
+                best_validn_threshold_index, :
+            ]
+        )
+        best_validation_y = numpy.mean(
+            et[evaluation.POD_KEY].values[best_validn_threshold_index, :]
+        )
+        axes_object.plot(
+            best_validation_x, best_validation_y, linestyle='None',
+            marker=MARKER_TYPE,
+            markersize=MARKER_SIZE, markeredgewidth=MARKER_EDGE_WIDTH,
+            markerfacecolor=evaluation_plotting.ROC_CURVE_COLOUR,
+            markeredgecolor=evaluation_plotting.ROC_CURVE_COLOUR
+        )
+        axes_object.text(
+            best_validation_x, best_validation_y, 'V',
+            color=evaluation_plotting.ROC_CURVE_COLOUR,
+            fontsize=24, fontweight='bold',
+            horizontalalignment='left', verticalalignment='center'
+        )
+
+    csi_values = et[evaluation.CSI_KEY].values[this_index, :]
+    freq_bias_values = et[evaluation.FREQUENCY_BIAS_KEY].values[this_index, :]
 
     if num_bootstrap_reps == 1:
         title_string = (

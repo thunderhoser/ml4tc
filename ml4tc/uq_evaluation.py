@@ -271,6 +271,60 @@ def get_xentropy_error_function(use_median):
     return error_function
 
 
+def get_brier_score_error_function(use_median):
+    """Creates error function to compute Brier score.
+
+    :param use_median: Boolean flag.  If True (False), will use median (mean) of
+        each predictive distribution.
+    :return: error_function: Function handle.
+    """
+
+    def error_function(prediction_dict, use_flag_matrix):
+        """Computes Brier score.
+
+        E = number of examples
+        L = number of lead times
+
+        :param prediction_dict: Dictionary in format returned by
+            `prediction_io.read_file`.
+        :param use_flag_matrix: E-by-L numpy array of Boolean flags, indicating
+            which examples to use.
+        :return: brier_score: Brier score (scalar).
+        :raises: ValueError: if there are more than 2 classes.
+        """
+
+        num_classes = (
+            prediction_dict[prediction_io.PROBABILITY_MATRIX_KEY].shape[1]
+        )
+        if num_classes > 2:
+            raise ValueError('Cannot do this with more than 2 classes.')
+
+        expected_dim = numpy.array(
+            prediction_dict[prediction_io.TARGET_MATRIX_KEY].shape, dtype=int
+        )
+        error_checking.assert_is_numpy_array(
+            use_flag_matrix, exact_dimensions=expected_dim
+        )
+        error_checking.assert_is_boolean_numpy_array(use_flag_matrix)
+
+        if use_median:
+            forecast_probs = prediction_io.get_median_predictions(
+                prediction_dict
+            )[use_flag_matrix == True]
+        else:
+            forecast_probs = prediction_io.get_mean_predictions(
+                prediction_dict
+            )[use_flag_matrix == True]
+
+        target_values = prediction_dict[prediction_io.TARGET_MATRIX_KEY][
+            use_flag_matrix == True
+        ]
+
+        return numpy.mean((target_values - forecast_probs) ** 2)
+
+    return error_function
+
+
 def get_stdev_uncertainty_function(use_fancy_quantile_method):
     """Creates function to compute stdev of predictive distribution.
 
