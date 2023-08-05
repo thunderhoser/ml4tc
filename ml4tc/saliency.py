@@ -750,7 +750,7 @@ def write_file(
         })
 
     if three_saliency_matrices[2] is not None:
-        num_ships_channels = three_saliency_matrices[2].shape[2]
+        num_ships_channels = three_saliency_matrices[2].shape[1]
 
         metadata_dict.update({
             SHIPS_CHANNEL_KEY: numpy.linspace(
