@@ -27,7 +27,6 @@ GRID_COLUMN_DIMENSION_KEY = 'grid_column'
 SATELLITE_LAG_TIME_KEY = 'satellite_lag_time'
 GRIDDED_SATELLITE_CHANNEL_KEY = 'gridded_satellite_channel'
 UNGRIDDED_SATELLITE_CHANNEL_KEY = 'ungridded_satellite_channel'
-SHIPS_LAG_TIME_KEY = 'ships_lag_time'
 SHIPS_CHANNEL_KEY = 'ships_channel'
 
 CYCLONE_IDS_KEY = 'cyclone_id_strings'
@@ -471,12 +470,10 @@ def write_composite_file(
         )
 
     if three_saliency_matrices[2] is not None:
-        num_ships_lag_times = three_saliency_matrices[2].shape[0]
-        num_ships_channels = three_saliency_matrices[2].shape[1]
-        dataset_object.createDimension(SHIPS_LAG_TIME_KEY, num_ships_lag_times)
+        num_ships_channels = three_saliency_matrices[2].shape[0]
         dataset_object.createDimension(SHIPS_CHANNEL_KEY, num_ships_channels)
 
-        these_dim = (SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY)
+        these_dim = (SHIPS_CHANNEL_KEY,)
         dataset_object.createVariable(
             SHIPS_SALIENCY_KEY, datatype=numpy.float32, dimensions=these_dim
         )
@@ -753,21 +750,15 @@ def write_file(
         })
 
     if three_saliency_matrices[2] is not None:
-        num_ships_lag_times = three_saliency_matrices[2].shape[1]
         num_ships_channels = three_saliency_matrices[2].shape[2]
 
         metadata_dict.update({
-            SHIPS_LAG_TIME_KEY: numpy.linspace(
-                0, num_ships_lag_times - 1, num=num_ships_lag_times, dtype=int
-            ),
             SHIPS_CHANNEL_KEY: numpy.linspace(
                 0, num_ships_channels - 1, num=num_ships_channels, dtype=int
             )
         })
 
-        these_dim = (
-            EXAMPLE_DIMENSION_KEY, SHIPS_LAG_TIME_KEY, SHIPS_CHANNEL_KEY
-        )
+        these_dim = (EXAMPLE_DIMENSION_KEY, SHIPS_CHANNEL_KEY)
 
         main_data_dict.update({
             SHIPS_SALIENCY_KEY: (these_dim, three_saliency_matrices[2]),
