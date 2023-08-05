@@ -1,0 +1,49 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="run_pca_for_shapley_maps"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="batch"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=30:00:00
+#SBATCH --array=1-21
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=run_pca_for_shapley_maps_%A_%a.out
+
+module load cuda/10.1
+source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment"
+
+set CIRA_IR_LAG_TIME_COUNTS=(   "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1")
+set USE_SHIPS_ENVIRO_FLAGS=(    "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1" "1" "0" "1")
+set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0" "0")
+set DROPOUT_RATES=(             "0.8" "0.7" "0.8" "0.8" "0.7" "0.8" "0.8" "0.7" "0.8" "0.8" "0.7" "0.8" "0.8" "0.7" "0.8" "0.8" "0.7" "0.8" "0.8" "0.7" "0.8")
+set SUBSET_NAMES=("tropical-depression" "tropical-depression" "tropical-depression" "tropical-storm" "tropical-storm" "tropical-storm" "cat1" "cat1" "cat1" "cat2" "cat2" "cat2" "cat3" "cat3" "cat3" "cat4" "cat4" "cat4" "cat5" "cat5" "cat5")
+
+set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+set subset_name=${SUBSET_NAMES[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/more_dropout/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}"
+set input_file_name="${model_dir_name}/testing/by_intensity/unique_cyclones/shapley_maps_${subset_name}.zarr"
+set output_file_name="${model_dir_name}/testing/by_intensity/unique_cyclones/shapley_maps_${subset_name}_pca.zarr"
+
+python3 -u "${CODE_DIR_NAME}/run_pca_for_shapley_maps.py" \
+--input_shapley_file_names ${input_file_name} \
+--num_examples_to_keep=1000000000 \
+--output_file_name="${output_file_name}"
