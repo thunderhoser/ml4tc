@@ -625,7 +625,7 @@ def write_file(
         error_checking.assert_is_numpy_array_without_nan(
             three_input_grad_matrices[i]
         )
-        if i == 0:
+        if num_examples == -1:
             num_examples = three_saliency_matrices[i].shape[0]
 
         expected_dim = numpy.array(
