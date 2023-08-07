@@ -134,7 +134,7 @@ def _run(nn_mean_evaluation_dir_name, baseline_evaluation_dir_name,
         '{0:s}/nn_discard_test.jpg'.format(output_dir_name)
     ]
 
-    panel_letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    panel_letters = ['a', 'f', 'b', 'g', 'c', 'h', 'd', 'e']
 
     for i in range(len(panel_file_names)):
         print('Resizing panel and saving to: "{0:s}"...'.format(
