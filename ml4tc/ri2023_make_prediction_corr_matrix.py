@@ -7,6 +7,7 @@ baselines (SHIPS-RII, SHIPS consensus, and DTOPS).
 import os
 import sys
 import argparse
+import warnings
 import numpy
 
 THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
@@ -14,8 +15,11 @@ THIS_DIRECTORY_NAME = os.path.dirname(os.path.realpath(
 ))
 sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 
+import time_conversion
+import longitude_conversion as lng_conversion
 import prediction_io
-import match_cnn_predictions_to_ships as match_predictions
+
+MAX_DISTANCE_DEG = 1.
 
 BASELINE_DESCRIPTION_STRINGS = ['basis', 'consensus', 'dtops']
 BASELINE_DESCRIPTION_STRINGS_FANCY = ['SHIPS-RII', 'SHIPS consensus', 'DTOPS']
@@ -50,6 +54,130 @@ INPUT_ARG_PARSER.add_argument(
 )
 
 
+def _match_examples(first_prediction_dict, second_prediction_dict):
+    """Matches examples between two prediction sets.
+
+    E = number of examples matched
+
+    :param first_prediction_dict: Dictionary read by `prediction_io.read_file`.
+    :param second_prediction_dict: Same but for second model.
+    :return: first_indices: length-E numpy array of indices in first dictionary.
+    :return: second_indices: length-E numpy array of indices in second
+        dictionary.
+    """
+
+    first_init_times_unix_sec = (
+        first_prediction_dict[prediction_io.INIT_TIMES_KEY]
+    )
+    first_latitudes_deg_n = (
+        first_prediction_dict[prediction_io.STORM_LATITUDES_KEY]
+    )
+    first_pos_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+        first_prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+    first_neg_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        first_prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+
+    second_init_times_unix_sec = (
+        second_prediction_dict[prediction_io.INIT_TIMES_KEY]
+    )
+    second_latitudes_deg_n = (
+        second_prediction_dict[prediction_io.STORM_LATITUDES_KEY]
+    )
+    second_pos_longitudes_deg_e = lng_conversion.convert_lng_positive_in_west(
+        second_prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+    second_neg_longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        second_prediction_dict[prediction_io.STORM_LONGITUDES_KEY]
+    )
+
+    num_second_examples = len(second_init_times_unix_sec)
+    second_to_first_indices = numpy.full(num_second_examples, -1, dtype=int)
+
+    for i in range(num_second_examples):
+        js = numpy.where(
+            first_init_times_unix_sec == second_init_times_unix_sec[i]
+        )[0]
+
+        if len(js) == 0:
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find time match for CNN cyclone '
+                '{0:s} at {1:s}.'
+            ).format(
+                second_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
+                time_conversion.unix_sec_to_string(
+                    second_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                )
+            )
+
+            warnings.warn(warning_string)
+            continue
+
+        first_distances_deg = numpy.sqrt(
+            (second_latitudes_deg_n[i] - first_latitudes_deg_n[js]) ** 2 +
+            (second_pos_longitudes_deg_e[i] - first_pos_longitudes_deg_e[js]) ** 2
+        )
+        second_distances_deg = numpy.sqrt(
+            (second_latitudes_deg_n[i] - first_latitudes_deg_n[js]) ** 2 +
+            (second_neg_longitudes_deg_e[i] - first_neg_longitudes_deg_e[js]) ** 2
+        )
+        these_distances_deg = numpy.minimum(
+            first_distances_deg, second_distances_deg
+        )
+
+        if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
+            second_pos_longitudes_deg_e[i] *= -1
+            second_neg_longitudes_deg_e[i] *= -1
+
+            first_distances_deg = numpy.sqrt(
+                (second_latitudes_deg_n[i] - first_latitudes_deg_n[js]) ** 2 +
+                (second_pos_longitudes_deg_e[i] - first_pos_longitudes_deg_e[js])
+                ** 2
+            )
+            second_distances_deg = numpy.sqrt(
+                (second_latitudes_deg_n[i] - first_latitudes_deg_n[js]) ** 2 +
+                (second_neg_longitudes_deg_e[i] - first_neg_longitudes_deg_e[js])
+                ** 2
+            )
+            these_distances_deg = numpy.minimum(
+                first_distances_deg, second_distances_deg
+            )
+
+        if numpy.min(these_distances_deg) > MAX_DISTANCE_DEG:
+            this_first_index = js[numpy.argmin(these_distances_deg)]
+
+            warning_string = (
+                'POTENTIAL ERROR: Cannot find distance match for CNN cyclone '
+                '{0:s} at {1:s}.  CNN cyclone is at '
+                '{2:.2f} deg N, {3:.2f} deg E; SHIPS cyclone is at '
+                '{4:.2f} deg N, {5:.2f} deg E.'
+            ).format(
+                second_prediction_dict[prediction_io.CYCLONE_IDS_KEY][i],
+                time_conversion.unix_sec_to_string(
+                    second_init_times_unix_sec[i], '%Y-%m-%d-%H%M%S'
+                ),
+                second_latitudes_deg_n[i],
+                second_pos_longitudes_deg_e[i],
+                first_latitudes_deg_n[this_first_index],
+                first_pos_longitudes_deg_e[this_first_index]
+            )
+
+            warnings.warn(warning_string)
+            continue
+
+        second_to_first_indices[i] = js[numpy.argmin(these_distances_deg)]
+
+    second_indices = numpy.where(second_to_first_indices >= 0)[0]
+    first_indices = second_to_first_indices[second_indices]
+
+    print('Matched {0:d} of {1:d} second examples to a first example!'.format(
+        len(second_indices), num_second_examples
+    ))
+
+    return first_indices, second_indices
+
+
 def _compute_one_correlation(first_prediction_file_name,
                              second_prediction_file_name):
     """Computes correlation between predictions for two models.
@@ -68,11 +196,9 @@ def _compute_one_correlation(first_prediction_file_name,
         second_prediction_file_name
     )
 
-    first_example_indices, second_example_indices = (
-        match_predictions._match_examples(
-            cnn_prediction_dict=first_prediction_dict,
-            ships_prediction_dict=second_prediction_dict
-        )
+    first_example_indices, second_example_indices = _match_examples(
+        first_prediction_dict=first_prediction_dict,
+        second_prediction_dict=second_prediction_dict
     )
 
     first_ri_probs = prediction_io.get_mean_predictions(
