@@ -225,24 +225,24 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     violin_handles = axes_object.violinplot(
         numpy.transpose(nn_forecast_prob_matrix),
         positions=x_tick_values,
-        vert=True, widths=0.8, showmeans=False, showmedians=False,
+        vert=True, widths=0.8, showmeans=True, showmedians=False,
         showextrema=True
     )
 
-    for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
-        try:
-            this_handle = violin_handles[part_name]
-        except:
-            continue
-
-        this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
-        this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
-
-    for this_handle in violin_handles['bodies']:
-        this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
-        this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
-        this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
-        this_handle.set_alpha(1.)
+    # for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
+    #     try:
+    #         this_handle = violin_handles[part_name]
+    #     except:
+    #         continue
+    #
+    #     this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
+    #     this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
+    #
+    # for this_handle in violin_handles['bodies']:
+    #     this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
+    #     this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
+    #     this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
+    #     this_handle.set_alpha(1.)
 
     for i in range(num_baseline_models):
         for this_x in x_tick_values:
