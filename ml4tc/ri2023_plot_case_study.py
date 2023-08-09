@@ -23,10 +23,14 @@ import gg_plotting_utils
 import prediction_io
 import example_io
 import ships_io
+import border_io
 import satellite_utils
 import general_utils
+import normalization
 import neural_net
 import predictor_plotting
+import ships_plotting
+import satellite_plotting
 
 TIME_FORMAT = '%Y-%m-%d-%H'
 
@@ -360,6 +364,11 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         output_file_name='{0:s}/forecast_probs.jpg'.format(output_dir_name)
     )
 
+    print('Reading data from: "{0:s}"...'.format(normalization_file_name))
+    normalization_table_xarray = normalization.read_file(
+        normalization_file_name
+    )
+
     norm_example_file_name = example_io.find_file(
         directory_name=norm_example_dir_name,
         cyclone_id_string=cyclone_id_string,
@@ -400,6 +409,10 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     data_dict = neural_net.create_inputs(generator_option_dict)
     predictor_matrices = data_dict[neural_net.PREDICTOR_MATRICES_KEY]
     all_init_times_unix_sec = data_dict[neural_net.INIT_TIMES_KEY]
+    grid_latitude_matrix_deg_n = data_dict[neural_net.GRID_LATITUDE_MATRIX_KEY]
+    grid_longitude_matrix_deg_e = (
+        data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY]
+    )
 
     init_time_unix_sec = time_conversion.string_to_unix_sec(
         init_time_string, TIME_FORMAT
@@ -408,9 +421,12 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         actual_times_unix_sec=all_init_times_unix_sec,
         desired_times_unix_sec=numpy.array([init_time_unix_sec], dtype=int)
     )[0]
+
     predictor_matrices = [
         None if m is None else m[[time_index], ...] for m in predictor_matrices
     ]
+    grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[time_index, ...]
+    grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[time_index, ...]
 
     forecast_hours = numpy.linspace(
         0, SHIPS_MAX_FORECAST_HOUR,
@@ -431,7 +447,22 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
+    axes_object.set_ylabel('')
+    axes_object.set_yticks([], [])
     axes_object.set_title('GOES-based SHIPS predictors')
+
+    dummy_values = numpy.array([
+        ships_plotting.MIN_NORMALIZED_VALUE, ships_plotting.MAX_NORMALIZED_VALUE
+    ])
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
+        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+        min_value=ships_plotting.MIN_NORMALIZED_VALUE,
+        max_value=ships_plotting.MAX_NORMALIZED_VALUE,
+        orientation_string='vertical',
+        extend_min=True, extend_max=True,
+        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+    )
 
     panel_file_names = [
         '{0:s}/goes_based_predictors.jpg'.format(output_dir_name)
@@ -458,8 +489,62 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     axes_object = axes_objects[0]
     axes_object.set_title('Environmental and historical SHIPS predictors')
 
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
+        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+        min_value=ships_plotting.MIN_NORMALIZED_VALUE,
+        max_value=ships_plotting.MAX_NORMALIZED_VALUE,
+        orientation_string='vertical',
+        extend_min=True, extend_max=True,
+        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+    )
+
     panel_file_names.append(
         '{0:s}/enviro_and_hist_predictors.jpg'.format(output_dir_name)
+    )
+    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
+    figure_object.savefig(
+        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
+
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+
+    (
+        figure_objects, axes_objects, _
+    ) = predictor_plotting.plot_brightness_temp_one_example(
+        predictor_matrices_one_example=predictor_matrices,
+        model_metadata_dict=
+        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
+        cyclone_id_string=cyclone_id_string,
+        init_time_unix_sec=init_time_unix_sec,
+        normalization_table_xarray=normalization_table_xarray,
+        grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
+        grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        plot_time_diffs_at_lags=False
+    )
+
+    figure_object = figure_objects[0]
+    axes_object = axes_objects[0]
+    axes_object.set_title('CIRA IR image')
+
+    this_cmap_object, this_cnorm_object = (
+        satellite_plotting.get_colour_scheme()
+    )
+    gg_plotting_utils.plot_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
+        colour_map_object=this_cmap_object,
+        colour_norm_object=this_cnorm_object,
+        orientation_string='vertical',
+        extend_min=True, extend_max=True,
+        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+    )
+
+    panel_file_names.append(
+        '{0:s}/cira_ir_image.jpg'.format(output_dir_name)
     )
     print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
