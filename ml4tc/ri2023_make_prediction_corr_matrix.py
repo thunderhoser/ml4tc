@@ -111,7 +111,7 @@ def _match_examples(first_prediction_dict, second_prediction_dict):
                 )
             )
 
-            warnings.warn(warning_string)
+            # warnings.warn(warning_string)
             continue
 
         first_distances_deg = numpy.sqrt(
@@ -163,7 +163,7 @@ def _match_examples(first_prediction_dict, second_prediction_dict):
                 first_pos_longitudes_deg_e[this_first_index]
             )
 
-            warnings.warn(warning_string)
+            # warnings.warn(warning_string)
             continue
 
         second_to_first_indices[i] = js[numpy.argmin(these_distances_deg)]
@@ -290,14 +290,14 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
                     '{0:s}/real_time_testing_matched_with_ships/'
                     'isotonic_regression/cnn_predictions_cf_{1:s}.nc'
                 ).format(
-                    top_model_dir_names[i], model_description_strings[j]
+                    top_model_dir_names[j], model_description_strings[i]
                 )
 
                 prediction_file_name_j = (
                     '{0:s}/real_time_testing_matched_with_ships/'
                     'isotonic_regression/ships_predictions_{1:s}.nc'
                 ).format(
-                    top_model_dir_names[i], model_description_strings[j]
+                    top_model_dir_names[j], model_description_strings[i]
                 )
 
             print(i)
