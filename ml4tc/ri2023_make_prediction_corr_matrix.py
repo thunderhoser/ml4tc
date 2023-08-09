@@ -335,6 +335,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
 
     min_colour_value = numpy.min(correlation_matrix)
     max_colour_value = numpy.max(correlation_matrix)
+    median_colour_value = 0.5 * (min_colour_value + max_colour_value)
     axes_object.imshow(
         correlation_matrix, cmap=COLOUR_MAP_OBJECT, origin='lower',
         vmin=min_colour_value, vmax=max_colour_value
@@ -347,12 +348,28 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
     pyplot.xticks(tick_values, model_description_strings_fancy, rotation=90.)
     pyplot.yticks(tick_values, model_description_strings_fancy)
 
+    for i in range(num_models):
+        for j in range(num_models):
+            # if i == j:
+            #     continue
+
+            axes_object.text(
+                j, i, '{0:.2f}'.format(correlation_matrix[i, j])[1:],
+                fontsize=DEFAULT_FONT_SIZE,
+                color=(
+                    numpy.full(3, 0.)
+                    if correlation_matrix[i, j] > median_colour_value
+                    else numpy.full(3, 1.)
+                ),
+                horizontalalignment='center', verticalalignment='center'
+            )
+
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=correlation_matrix,
         colour_map_object=COLOUR_MAP_OBJECT,
         min_value=min_colour_value, max_value=max_colour_value,
         orientation_string='vertical', extend_min=False, extend_max=False,
-        fraction_of_axis_length=1., font_size=30
+        fraction_of_axis_length=0.8, font_size=30
     )
     
     output_file_name = '{0:s}/correlation_matrix.jpg'.format(output_dir_name)
