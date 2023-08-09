@@ -618,7 +618,7 @@ def write_file(
         error_checking.assert_is_numpy_array_without_nan(
             three_input_grad_matrices[i]
         )
-        if i == 0:
+        if num_examples == -1:
             num_examples = three_saliency_matrices[i].shape[0]
 
         expected_dim = numpy.array(
@@ -743,7 +743,7 @@ def write_file(
         })
 
     if three_saliency_matrices[2] is not None:
-        num_ships_channels = three_saliency_matrices[2].shape[2]
+        num_ships_channels = three_saliency_matrices[2].shape[1]
 
         metadata_dict.update({
             SHIPS_CHANNEL_KEY: numpy.linspace(

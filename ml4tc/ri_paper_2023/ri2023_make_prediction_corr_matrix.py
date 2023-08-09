@@ -7,14 +7,33 @@ baselines (SHIPS-RII, SHIPS consensus, and DTOPS).
 import argparse
 import warnings
 import numpy
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot
 from gewittergefahr.gg_utils import time_conversion
 from gewittergefahr.gg_utils import longitude_conversion as lng_conversion
+from gewittergefahr.gg_utils import file_system_utils
+from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 from ml4tc.io import prediction_io
 
 MAX_DISTANCE_DEG = 1.
 
-BASELINE_DESCRIPTION_STRINGS = ['basis', 'consensus', 'dtops']
+BASELINE_DESCRIPTION_STRINGS = ['basic', 'consensus', 'dtops']
 BASELINE_DESCRIPTION_STRINGS_FANCY = ['SHIPS-RII', 'SHIPS consensus', 'DTOPS']
+
+COLOUR_MAP_OBJECT = pyplot.get_cmap('plasma')
+FIGURE_WIDTH_INCHES = 15
+FIGURE_HEIGHT_INCHES = 15
+FIGURE_RESOLUTION_DPI = 300
+
+DEFAULT_FONT_SIZE = 20
+pyplot.rc('font', size=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
+pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('xtick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('ytick', labelsize=DEFAULT_FONT_SIZE)
+pyplot.rc('legend', fontsize=DEFAULT_FONT_SIZE)
+pyplot.rc('figure', titlesize=DEFAULT_FONT_SIZE)
 
 NN_MODEL_DIRS_ARG_NAME = 'input_nn_model_dir_names'
 NN_MODEL_DESCRIPTIONS_ARG_NAME = 'nn_model_description_strings'
@@ -103,7 +122,7 @@ def _match_examples(first_prediction_dict, second_prediction_dict):
                 )
             )
 
-            warnings.warn(warning_string)
+            # warnings.warn(warning_string)
             continue
 
         first_distances_deg = numpy.sqrt(
@@ -155,7 +174,7 @@ def _match_examples(first_prediction_dict, second_prediction_dict):
                 first_pos_longitudes_deg_e[this_first_index]
             )
 
-            warnings.warn(warning_string)
+            # warnings.warn(warning_string)
             continue
 
         second_to_first_indices[i] = js[numpy.argmin(these_distances_deg)]
@@ -217,6 +236,10 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
     :param output_dir_name: Same.
     """
 
+    file_system_utils.mkdir_recursive_if_necessary(
+        directory_name=output_dir_name
+    )
+
     num_nn_models = len(top_nn_model_dir_names)
     assert len(nn_model_description_strings) == num_nn_models
     nn_model_description_strings = [
@@ -238,11 +261,11 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
 
     for i in range(num_models):
         for j in range(num_models):
-            if j >= i:
+            if j > i:
                 continue
-            if i == j:
-                correlation_matrix[i, j] = 1.
-                continue
+            # if i == j:
+            #     correlation_matrix[i, j] = 1.
+            #     continue
 
             are_both_models_nn = not (
                 model_description_strings[i] in BASELINE_DESCRIPTION_STRINGS or
@@ -282,14 +305,14 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
                     '{0:s}/real_time_testing_matched_with_ships/'
                     'isotonic_regression/cnn_predictions_cf_{1:s}.nc'
                 ).format(
-                    top_model_dir_names[i], model_description_strings[j]
+                    top_model_dir_names[j], model_description_strings[i]
                 )
 
                 prediction_file_name_j = (
                     '{0:s}/real_time_testing_matched_with_ships/'
                     'isotonic_regression/ships_predictions_{1:s}.nc'
                 ).format(
-                    top_model_dir_names[i], model_description_strings[j]
+                    top_model_dir_names[j], model_description_strings[i]
                 )
 
             correlation_matrix[i, j] = _compute_one_correlation(
@@ -297,6 +320,59 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
                 second_prediction_file_name=prediction_file_name_j
             )
             correlation_matrix[j, i] = correlation_matrix[i, j] + 0.
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+    )
+
+    min_colour_value = numpy.min(correlation_matrix)
+    max_colour_value = numpy.max(correlation_matrix)
+    median_colour_value = 0.5 * (min_colour_value + max_colour_value)
+    axes_object.imshow(
+        correlation_matrix, cmap=COLOUR_MAP_OBJECT, origin='lower',
+        vmin=min_colour_value, vmax=max_colour_value
+    )
+
+    tick_values = numpy.linspace(
+        0, num_models - 1, num=num_models, dtype=float
+    )
+
+    pyplot.xticks(tick_values, model_description_strings_fancy, rotation=90.)
+    pyplot.yticks(tick_values, model_description_strings_fancy)
+
+    for i in range(num_models):
+        for j in range(num_models):
+            # if i == j:
+            #     continue
+
+            axes_object.text(
+                j, i,
+                '{0:.2f}'.format(correlation_matrix[i, j]).replace('0.', '.'),
+                fontsize=45,
+                color=(
+                    numpy.full(3, 0.)
+                    if correlation_matrix[i, j] > median_colour_value
+                    else numpy.full(3, 1.)
+                ),
+                horizontalalignment='center', verticalalignment='center'
+            )
+
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=correlation_matrix,
+        colour_map_object=COLOUR_MAP_OBJECT,
+        min_value=min_colour_value, max_value=max_colour_value,
+        orientation_string='vertical', extend_min=False, extend_max=False,
+        fraction_of_axis_length=0.8, font_size=30
+    )
+
+    output_file_name = '{0:s}/correlation_matrix.jpg'.format(output_dir_name)
+
+    print('Saving figure to: "{0:s}"...'.format(output_file_name))
+    figure_object.savefig(
+        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
 
 
 if __name__ == '__main__':
