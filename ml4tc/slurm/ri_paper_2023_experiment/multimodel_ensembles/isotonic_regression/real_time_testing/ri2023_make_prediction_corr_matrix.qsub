@@ -49,5 +49,5 @@ set output_dir_name="${TOP_MODEL_DIR_NAME}/real_time_testing/isotonic_regression
 
 python3 -u "${CODE_DIR_NAME}/ri2023_make_prediction_corr_matrix.py" \
 --input_nn_model_dir_names ${model_dir_names_string} \
---nn_model_description_strings "NN_without_CIRA_IR" "NN_without_SHIPS" "NN_with_everything"
+--nn_model_description_strings "NN_without_CIRA_IR" "NN_without_SHIPS" "NN_with_everything" \
 --output_dir_name="${output_dir_name}"
