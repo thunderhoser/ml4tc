@@ -31,9 +31,9 @@ BASELINE_MARKER_TYPE = 'o'
 BASELINE_MARKER_SIZE = 16
 
 VIOLIN_LINE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
+VIOLIN_FACE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
+VIOLIN_EDGE_COLOUR = numpy.full(3, 0.)
 VIOLIN_LINE_WIDTH = 2.
-VIOLIN_FACE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.4)
-VIOLIN_EDGE_COLOUR = matplotlib.colors.to_rgba(c=VIOLIN_LINE_COLOUR, alpha=0.4)
 VIOLIN_EDGE_WIDTH = 0.
 
 FIGURE_WIDTH_INCHES = 15
@@ -229,20 +229,20 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         showextrema=True
     )
 
-    # for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
-    #     try:
-    #         this_handle = violin_handles[part_name]
-    #     except:
-    #         continue
-    #
-    #     this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
-    #     this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
-    #
-    # for this_handle in violin_handles['bodies']:
-    #     this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
-    #     this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
-    #     this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
-    #     this_handle.set_alpha(1.)
+    for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
+        try:
+            this_handle = violin_handles[part_name]
+        except:
+            continue
+
+        this_handle.set_edgecolor(VIOLIN_LINE_COLOUR)
+        this_handle.set_linewidth(VIOLIN_LINE_WIDTH)
+
+    for this_handle in violin_handles['bodies']:
+        this_handle.set_facecolor(VIOLIN_FACE_COLOUR)
+        this_handle.set_edgecolor(VIOLIN_EDGE_COLOUR)
+        this_handle.set_linewidth(VIOLIN_EDGE_WIDTH)
+        this_handle.set_alpha(1.)
 
     for i in range(num_baseline_models):
         for this_x in x_tick_values:
