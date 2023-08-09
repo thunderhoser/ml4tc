@@ -354,8 +354,9 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
             #     continue
 
             axes_object.text(
-                j, i, '{0:.2f}'.format(correlation_matrix[i, j])[1:],
-                fontsize=DEFAULT_FONT_SIZE,
+                j, i,
+                '{0:.2f}'.format(correlation_matrix[i, j]).replace('0.', '.'),
+                fontsize=45,
                 color=(
                     numpy.full(3, 0.)
                     if correlation_matrix[i, j] > median_colour_value
