@@ -21,7 +21,7 @@ import prediction_io
 
 MAX_DISTANCE_DEG = 1.
 
-BASELINE_DESCRIPTION_STRINGS = ['basis', 'consensus', 'dtops']
+BASELINE_DESCRIPTION_STRINGS = ['basic', 'consensus', 'dtops']
 BASELINE_DESCRIPTION_STRINGS_FANCY = ['SHIPS-RII', 'SHIPS consensus', 'DTOPS']
 
 NN_MODEL_DIRS_ARG_NAME = 'input_nn_model_dir_names'
