@@ -205,7 +205,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
                     (num_nn_models, nn_ensemble_size), numpy.nan
                 )
 
-            nn_forecast_prob_matrix[:, i] = these_probs
+            nn_forecast_prob_matrix[i, :] = these_probs
 
         this_target_class = prediction_dict[prediction_io.TARGET_MATRIX_KEY][
             good_index, 0
