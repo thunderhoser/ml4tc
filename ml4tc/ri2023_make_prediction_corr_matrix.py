@@ -246,11 +246,11 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
 
     for i in range(num_models):
         for j in range(num_models):
-            if j >= i:
+            if j > i:
                 continue
-            if i == j:
-                correlation_matrix[i, j] = 1.
-                continue
+            # if i == j:
+            #     correlation_matrix[i, j] = 1.
+            #     continue
 
             are_both_models_nn = not (
                 model_description_strings[i] in BASELINE_DESCRIPTION_STRINGS or
@@ -299,6 +299,12 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, output_dir_name):
                 ).format(
                     top_model_dir_names[i], model_description_strings[j]
                 )
+
+            print(i)
+            print(j)
+            print(prediction_file_name_i)
+            print(prediction_file_name_j)
+            print('\n\n\n\n*****************\n\n\n\n')
 
             correlation_matrix[i, j] = _compute_one_correlation(
                 first_prediction_file_name=prediction_file_name_i,
