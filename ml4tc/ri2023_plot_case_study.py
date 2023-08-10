@@ -6,6 +6,7 @@ The three baselines are SHIPS-RII, SHIPS consensus, and DTOPS.
 import os
 import sys
 import argparse
+from PIL import Image
 import numpy
 import matplotlib
 matplotlib.use('agg')
@@ -98,7 +99,7 @@ FIGURE_RESOLUTION_DPI = 300
 PANEL_SIZE_PX = int(5e6)
 CONCAT_FIGURE_SIZE_PX = int(1e7)
 
-DEFAULT_FONT_SIZE = 30
+DEFAULT_FONT_SIZE = 36
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', labelsize=DEFAULT_FONT_SIZE)
@@ -187,12 +188,13 @@ INPUT_ARG_PARSER.add_argument(
 
 
 def _plot_forecast_probs(
-        top_model_dir_names, model_description_strings, cyclone_id_string,
-        init_time_unix_sec, output_file_name):
+        top_model_dir_names, model_description_strings, ships_dir_name,
+        cyclone_id_string, init_time_unix_sec, output_file_name):
     """Plots forecast probs from all models in one figure.
 
     :param top_model_dir_names: See documentation at top of file.
     :param model_description_strings: Same.
+    :param ships_dir_name: Same.
     :param cyclone_id_string: Same.
     :param init_time_unix_sec: Same.
     :param output_file_name: Path to output file.  Figure will be saved here.
@@ -256,6 +258,46 @@ def _plot_forecast_probs(
 
         assert target_class == this_target_class
 
+    ships_file_name = ships_io.find_file(
+        directory_name=ships_dir_name, cyclone_id_string=cyclone_id_string,
+        prefer_zipped=False, allow_other_format=True,
+        raise_error_if_missing=True
+    )
+
+    print('Reading data from: "{0:s}"...'.format(ships_file_name))
+    ships_table_xarray = ships_io.read_file(ships_file_name)
+    stx = ships_table_xarray
+
+    good_index = numpy.where(
+        stx[ships_io.VALID_TIME_KEY].values == init_time_unix_sec
+    )[0][0]
+    current_intensity_kt = (
+        METRES_PER_SECOND_TO_KT *
+        stx[ships_io.STORM_INTENSITY_KEY].values[good_index]
+    )
+
+    good_indices = numpy.where(numpy.logical_and(
+        stx[ships_io.VALID_TIME_KEY].values >= init_time_unix_sec,
+        stx[ships_io.VALID_TIME_KEY].values <=
+        init_time_unix_sec + 24 * HOURS_TO_SECONDS
+    ))[0]
+    future_intensity_kt = numpy.max(
+        METRES_PER_SECOND_TO_KT *
+        stx[ships_io.STORM_INTENSITY_KEY].values[good_indices]
+    )
+
+    title_string = 'RI probabilities for {0:s} at {1:s}\nCurrent $I$ = '.format(
+        cyclone_id_string,
+        time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
+    )
+    title_string += '{0:.0f} kt'.format(current_intensity_kt)
+    title_string += '; max next-24-hour $I$ = '
+    title_string += '{0:.0f} kt'.format(future_intensity_kt)
+    title_string += '; $y$ = '
+    title_string += 'YES' if target_class == 1 else 'NO'
+
+    print(title_string)
+
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
@@ -310,7 +352,7 @@ def _plot_forecast_probs(
     axes_object.set_ylabel('RI probability')
     axes_object.set_xticks(x_tick_values)
     axes_object.set_xticklabels(nn_model_description_strings, rotation=90)
-    axes_object.set_title('RI probabilities')
+    axes_object.set_title(title_string)
 
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(d)')
 
@@ -506,7 +548,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         max_value=ships_plotting.MAX_NORMALIZED_VALUE,
         orientation_string='vertical',
         extend_min=True, extend_max=True,
-        fraction_of_axis_length=0.5, font_size=DEFAULT_FONT_SIZE
+        fraction_of_axis_length=0.3, font_size=DEFAULT_FONT_SIZE
     )
 
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
@@ -534,7 +576,8 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
-    axes_object.set_title('Environmental & historical SHIPS predictors')
+    axes_object.tick_params(axis='x', labelsize=30)
+    axes_object.set_title('Environmental and historical SHIPS predictors')
 
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=dummy_values,
@@ -564,52 +607,36 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     _plot_forecast_probs(
         top_model_dir_names=top_model_dir_names,
         model_description_strings=model_description_strings,
+        ships_dir_name=ships_dir_name,
         cyclone_id_string=cyclone_id_string,
         init_time_unix_sec=init_time_unix_sec,
         output_file_name=panel_file_names[-1]
     )
 
-    ships_file_name = ships_io.find_file(
-        directory_name=ships_dir_name, cyclone_id_string=cyclone_id_string,
-        prefer_zipped=False, allow_other_format=True,
-        raise_error_if_missing=True
-    )
+    for i in range(len(panel_file_names)):
+        if i == 1:
+            continue
 
-    print('Reading data from: "{0:s}"...'.format(ships_file_name))
-    ships_table_xarray = ships_io.read_file(ships_file_name)
-    stx = ships_table_xarray
-
-    good_index = numpy.where(
-        stx[ships_io.VALID_TIME_KEY].values == init_time_unix_sec
-    )[0][0]
-    current_intensity_kt = (
-        METRES_PER_SECOND_TO_KT *
-        stx[ships_io.STORM_INTENSITY_KEY].values[good_index]
-    )
-
-    good_indices = numpy.where(numpy.logical_and(
-        stx[ships_io.VALID_TIME_KEY].values >= init_time_unix_sec,
-        stx[ships_io.VALID_TIME_KEY].values <=
-        init_time_unix_sec + 24 * HOURS_TO_SECONDS
-    ))[0]
-    future_intensity_kt = numpy.max(
-        METRES_PER_SECOND_TO_KT *
-        stx[ships_io.STORM_INTENSITY_KEY].values[good_indices]
-    )
-
-    print((
-        'Cyclone {0:s} ... intensity at {1:s} = {2:.0f} kt ... '
-        'max intensity over next 24 hours = {3:.0f} kt'
-    ).format(
-        cyclone_id_string, init_time_string, current_intensity_kt,
-        future_intensity_kt
-    ))
-
-    for this_file_name in panel_file_names:
         imagemagick_utils.resize_image(
-            input_file_name=this_file_name, output_file_name=this_file_name,
+            input_file_name=panel_file_names[i],
+            output_file_name=panel_file_names[i],
             output_size_pixels=PANEL_SIZE_PX
         )
+
+    image_matrix = Image.open(panel_file_names[3])
+    desired_width_px, _ = image_matrix.size
+
+    image_matrix = Image.open(panel_file_names[1])
+    current_width_px, current_height_px = image_matrix.size
+    desired_num_pixels = int(numpy.round(
+        current_height_px * float(desired_width_px) / current_width_px
+    ))
+
+    imagemagick_utils.resize_image(
+        input_file_name=panel_file_names[1],
+        output_file_name=panel_file_names[1],
+        output_size_pixels=desired_num_pixels
+    )
 
     concat_figure_file_name = '{0:s}/case_study.jpg'.format(output_dir_name)
     print('Concatenating panels to: "{0:s}"...'.format(concat_figure_file_name))
