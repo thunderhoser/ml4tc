@@ -484,43 +484,6 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     (
         figure_objects, axes_objects, _
-    ) = predictor_plotting.plot_forecast_ships_one_example(
-        predictor_matrices_one_example=predictor_matrices,
-        model_metadata_dict=
-        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
-        cyclone_id_string=cyclone_id_string,
-        forecast_hours=forecast_hours,
-        init_time_unix_sec=init_time_unix_sec
-    )
-
-    figure_object = figure_objects[0]
-    axes_object = axes_objects[0]
-    axes_object.set_title('Environmental & historical SHIPS predictors')
-
-    gg_plotting_utils.plot_linear_colour_bar(
-        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
-        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
-        min_value=ships_plotting.MIN_NORMALIZED_VALUE,
-        max_value=ships_plotting.MAX_NORMALIZED_VALUE,
-        orientation_string='vertical',
-        extend_min=True, extend_max=True,
-        fraction_of_axis_length=0.5, font_size=DEFAULT_FONT_SIZE
-    )
-
-    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
-
-    panel_file_names.append(
-        '{0:s}/enviro_and_hist_predictors.jpg'.format(output_dir_name)
-    )
-    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
-    figure_object.savefig(
-        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    (
-        figure_objects, axes_objects, _
     ) = predictor_plotting.plot_lagged_ships_one_example(
         predictor_matrices_one_example=predictor_matrices,
         model_metadata_dict=
@@ -546,10 +509,47 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         fraction_of_axis_length=0.5, font_size=DEFAULT_FONT_SIZE
     )
 
-    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
 
     panel_file_names.append(
         '{0:s}/goes_based_predictors.jpg'.format(output_dir_name)
+    )
+    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
+    figure_object.savefig(
+        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
+
+    (
+        figure_objects, axes_objects, _
+    ) = predictor_plotting.plot_forecast_ships_one_example(
+        predictor_matrices_one_example=predictor_matrices,
+        model_metadata_dict=
+        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
+        cyclone_id_string=cyclone_id_string,
+        forecast_hours=forecast_hours,
+        init_time_unix_sec=init_time_unix_sec
+    )
+
+    figure_object = figure_objects[0]
+    axes_object = axes_objects[0]
+    axes_object.set_title('Environmental & historical SHIPS predictors')
+
+    gg_plotting_utils.plot_linear_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
+        colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
+        min_value=ships_plotting.MIN_NORMALIZED_VALUE,
+        max_value=ships_plotting.MAX_NORMALIZED_VALUE,
+        orientation_string='vertical',
+        extend_min=True, extend_max=True,
+        fraction_of_axis_length=0.5, font_size=DEFAULT_FONT_SIZE
+    )
+
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
+
+    panel_file_names.append(
+        '{0:s}/enviro_and_hist_predictors.jpg'.format(output_dir_name)
     )
     print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
