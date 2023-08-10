@@ -20,6 +20,7 @@ sys.path.append(os.path.normpath(os.path.join(THIS_DIRECTORY_NAME, '..')))
 import time_conversion
 import file_system_utils
 import gg_plotting_utils
+import imagemagick_utils
 import prediction_io
 import example_io
 import ships_io
@@ -33,6 +34,10 @@ import ships_plotting
 import satellite_plotting
 
 TIME_FORMAT = '%Y-%m-%d-%H'
+
+KT_TO_METRES_PER_SECOND = 1.852 / 3.6
+METRES_PER_SECOND_TO_KT = 3.6 / 1.852
+HOURS_TO_SECONDS = 3600
 
 BASELINE_DESCRIPTION_STRINGS = ['basic', 'consensus', 'dtops']
 BASELINE_DESCRIPTION_STRINGS_FANCY = ['SHIPS-RII', 'SHIPS consensus', 'DTOPS']
@@ -73,8 +78,6 @@ SHIPS_FORECAST_PREDICTOR_NAMES = [
 ]
 
 SHIPS_MAX_FORECAST_HOUR = 24
-
-KT_TO_METRES_PER_SECOND = 1.852 / 3.6
 RAPID_INTENSIFN_CUTOFF_M_S01 = 30 * KT_TO_METRES_PER_SECOND
 
 BASELINE_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
@@ -92,6 +95,9 @@ FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
 FIGURE_RESOLUTION_DPI = 300
 
+PANEL_SIZE_PX = int(5e6)
+CONCAT_FIGURE_SIZE_PX = int(1e7)
+
 DEFAULT_FONT_SIZE = 30
 pyplot.rc('font', size=DEFAULT_FONT_SIZE)
 pyplot.rc('axes', titlesize=DEFAULT_FONT_SIZE)
@@ -105,6 +111,7 @@ NN_MODEL_DIRS_ARG_NAME = 'input_nn_model_dir_names'
 NN_MODEL_DESCRIPTIONS_ARG_NAME = 'nn_model_description_strings'
 NORM_EXAMPLE_DIR_ARG_NAME = 'input_norm_example_dir_name'
 NORMALIZATION_FILE_ARG_NAME = 'input_normalization_file_name'
+SHIPS_DIR_ARG_NAME = 'input_ships_dir_name'
 CYCLONE_ID_ARG_NAME = 'cyclone_id_string'
 INIT_TIME_ARG_NAME = 'init_time_string'
 OUTPUT_DIR_ARG_NAME = 'output_dir_name'
@@ -125,6 +132,10 @@ NORM_EXAMPLE_DIR_HELP_STRING = (
 NORMALIZATION_FILE_HELP_STRING = (
     'Path to normalization file.  This will be read by `example_io.read_file` '
     'and used to denormalize predictors.'
+)
+SHIPS_DIR_HELP_STRING = (
+    'Name of directory with processed SHIPS data.  Actual intensities will be '
+    'read from here.'
 )
 CYCLONE_ID_HELP_STRING = (
     'This script will plot the case study for one TC object, specified by this '
@@ -158,6 +169,10 @@ INPUT_ARG_PARSER.add_argument(
     help=NORMALIZATION_FILE_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
+    '--' + SHIPS_DIR_ARG_NAME, type=str, required=True,
+    help=SHIPS_DIR_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
     '--' + CYCLONE_ID_ARG_NAME, type=str, required=True,
     help=CYCLONE_ID_HELP_STRING
 )
@@ -187,10 +202,6 @@ def _plot_forecast_probs(
     num_baseline_models = len(BASELINE_DESCRIPTION_STRINGS)
     num_nn_models = num_models - num_baseline_models
     nn_model_description_strings = model_description_strings[:num_nn_models]
-
-    init_time_string = time_conversion.unix_sec_to_string(
-        init_time_unix_sec, TIME_FORMAT
-    )
 
     nn_forecast_prob_matrix = numpy.array([])
     baseline_forecast_probs = []
@@ -299,11 +310,9 @@ def _plot_forecast_probs(
     axes_object.set_ylabel('RI probability')
     axes_object.set_xticks(x_tick_values)
     axes_object.set_xticklabels(nn_model_description_strings, rotation=90)
+    axes_object.set_title('RI probabilities')
 
-    title_string = 'RI forecasts for {0:s}, init {1:s}'.format(
-        cyclone_id_string, init_time_string
-    )
-    axes_object.set_title(title_string)
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(d)')
 
     print('Saving figure to: "{0:s}"...'.format(output_file_name))
     figure_object.savefig(
@@ -314,8 +323,8 @@ def _plot_forecast_probs(
 
 
 def _run(top_nn_model_dir_names, nn_model_description_strings,
-         norm_example_dir_name, normalization_file_name, cyclone_id_string,
-         init_time_string, output_dir_name):
+         norm_example_dir_name, normalization_file_name, ships_dir_name,
+         cyclone_id_string, init_time_string, output_dir_name):
     """Plots case study with predictors, NN predictions, and baseline predictions.
 
     This is effectively the main method.
@@ -324,6 +333,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     :param nn_model_description_strings: Same.
     :param norm_example_dir_name: Same.
     :param normalization_file_name: Same.
+    :param ships_dir_name: Same.
     :param cyclone_id_string: Same.
     :param init_time_string: Same.
     :param output_dir_name: Same.
@@ -332,15 +342,11 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     init_time_unix_sec = time_conversion.string_to_unix_sec(
         init_time_string, TIME_FORMAT
     )
-
     file_system_utils.mkdir_recursive_if_necessary(
         directory_name=output_dir_name
     )
 
     num_nn_models = len(top_nn_model_dir_names)
-    num_baseline_models = len(BASELINE_DESCRIPTION_STRINGS)
-    num_models = num_nn_models + num_baseline_models
-
     assert len(nn_model_description_strings) == num_nn_models
     nn_model_description_strings = [
         s.replace('_', ' ') for s in nn_model_description_strings
@@ -349,19 +355,8 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     model_description_strings = (
         nn_model_description_strings + BASELINE_DESCRIPTION_STRINGS
     )
-    model_description_strings_fancy = (
-        nn_model_description_strings + BASELINE_DESCRIPTION_STRINGS_FANCY
-    )
     top_model_dir_names = (
         top_nn_model_dir_names + [''] * len(BASELINE_DESCRIPTION_STRINGS)
-    )
-
-    _plot_forecast_probs(
-        top_model_dir_names=top_model_dir_names,
-        model_description_strings=model_description_strings,
-        cyclone_id_string=cyclone_id_string,
-        init_time_unix_sec=init_time_unix_sec,
-        output_file_name='{0:s}/forecast_probs.jpg'.format(output_dir_name)
     )
 
     print('Reading data from: "{0:s}"...'.format(normalization_file_name))
@@ -414,9 +409,6 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         data_dict[neural_net.GRID_LONGITUDE_MATRIX_KEY]
     )
 
-    init_time_unix_sec = time_conversion.string_to_unix_sec(
-        init_time_string, TIME_FORMAT
-    )
     time_index = general_utils.find_exact_times(
         actual_times_unix_sec=all_init_times_unix_sec,
         desired_times_unix_sec=numpy.array([init_time_unix_sec], dtype=int)
@@ -427,6 +419,62 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     ]
     grid_latitude_matrix_deg_n = grid_latitude_matrix_deg_n[time_index, ...]
     grid_longitude_matrix_deg_e = grid_longitude_matrix_deg_e[time_index, ...]
+
+    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
+
+    (
+        figure_objects, axes_objects, _
+    ) = predictor_plotting.plot_brightness_temp_one_example(
+        predictor_matrices_one_example=predictor_matrices,
+        model_metadata_dict=
+        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
+        cyclone_id_string=cyclone_id_string,
+        init_time_unix_sec=init_time_unix_sec,
+        normalization_table_xarray=normalization_table_xarray,
+        grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
+        grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        plot_time_diffs_at_lags=False
+    )
+
+    figure_object = figure_objects[0]
+    axes_object = axes_objects[0]
+    axes_object.set_title('CIRA IR brightness temperature (K)')
+
+    dummy_values = numpy.array([
+        ships_plotting.MIN_NORMALIZED_VALUE,
+        ships_plotting.MAX_NORMALIZED_VALUE
+    ])
+
+    this_cmap_object, this_cnorm_object = (
+        satellite_plotting.get_colour_scheme()
+    )
+    colour_bar_object = gg_plotting_utils.plot_colour_bar(
+        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
+        colour_map_object=this_cmap_object,
+        colour_norm_object=this_cnorm_object,
+        orientation_string='vertical',
+        extend_min=True, extend_max=True,
+        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+    )
+
+    tick_values = numpy.linspace(190, 310, num=13, dtype=float)
+    tick_strings = ['{0:.0f}'.format(v) for v in tick_values]
+    colour_bar_object.set_ticks(tick_values)
+    colour_bar_object.set_ticklabels(tick_strings)
+
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(a)')
+
+    panel_file_names = [
+        '{0:s}/cira_ir_image.jpg'.format(output_dir_name)
+    ]
+    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
+    figure_object.savefig(
+        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
 
     forecast_hours = numpy.linspace(
         0, SHIPS_MAX_FORECAST_HOUR,
@@ -451,9 +499,6 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     axes_object.set_yticks([], [])
     axes_object.set_title('GOES-based SHIPS predictors')
 
-    dummy_values = numpy.array([
-        ships_plotting.MIN_NORMALIZED_VALUE, ships_plotting.MAX_NORMALIZED_VALUE
-    ])
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=dummy_values,
         colour_map_object=ships_plotting.COLOUR_MAP_OBJECT,
@@ -461,12 +506,14 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         max_value=ships_plotting.MAX_NORMALIZED_VALUE,
         orientation_string='vertical',
         extend_min=True, extend_max=True,
-        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+        fraction_of_axis_length=0.3, font_size=DEFAULT_FONT_SIZE
     )
 
-    panel_file_names = [
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
+
+    panel_file_names.append(
         '{0:s}/goes_based_predictors.jpg'.format(output_dir_name)
-    ]
+    )
     print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
         panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
@@ -496,8 +543,10 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
         max_value=ships_plotting.MAX_NORMALIZED_VALUE,
         orientation_string='vertical',
         extend_min=True, extend_max=True,
-        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+        fraction_of_axis_length=0.5, font_size=DEFAULT_FONT_SIZE
     )
+
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
 
     panel_file_names.append(
         '{0:s}/enviro_and_hist_predictors.jpg'.format(output_dir_name)
@@ -509,49 +558,76 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     )
     pyplot.close(figure_object)
 
-    border_latitudes_deg_n, border_longitudes_deg_e = border_io.read_file()
-
-    (
-        figure_objects, axes_objects, _
-    ) = predictor_plotting.plot_brightness_temp_one_example(
-        predictor_matrices_one_example=predictor_matrices,
-        model_metadata_dict=
-        {neural_net.VALIDATION_OPTIONS_KEY: generator_option_dict},
+    panel_file_names.append(
+        '{0:s}/forecast_probs.jpg'.format(output_dir_name)
+    )
+    _plot_forecast_probs(
+        top_model_dir_names=top_model_dir_names,
+        model_description_strings=model_description_strings,
         cyclone_id_string=cyclone_id_string,
         init_time_unix_sec=init_time_unix_sec,
-        normalization_table_xarray=normalization_table_xarray,
-        grid_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
-        grid_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
-        border_latitudes_deg_n=border_latitudes_deg_n,
-        border_longitudes_deg_e=border_longitudes_deg_e,
-        plot_time_diffs_at_lags=False
+        output_file_name=panel_file_names[-1]
     )
 
-    figure_object = figure_objects[0]
-    axes_object = axes_objects[0]
-    axes_object.set_title('CIRA IR image')
-
-    this_cmap_object, this_cnorm_object = (
-        satellite_plotting.get_colour_scheme()
-    )
-    gg_plotting_utils.plot_colour_bar(
-        axes_object_or_matrix=axes_object, data_matrix=dummy_values,
-        colour_map_object=this_cmap_object,
-        colour_norm_object=this_cnorm_object,
-        orientation_string='vertical',
-        extend_min=True, extend_max=True,
-        fraction_of_axis_length=1., font_size=DEFAULT_FONT_SIZE
+    ships_file_name = ships_io.find_file(
+        directory_name=ships_dir_name, cyclone_id_string=cyclone_id_string,
+        prefer_zipped=False, allow_other_format=True,
+        raise_error_if_missing=True
     )
 
-    panel_file_names.append(
-        '{0:s}/cira_ir_image.jpg'.format(output_dir_name)
+    print('Reading data from: "{0:s}"...'.format(ships_file_name))
+    ships_table_xarray = ships_io.read_file(ships_file_name)
+    stx = ships_table_xarray
+
+    good_index = numpy.where(
+        stx[ships_io.VALID_TIME_KEY].values == init_time_unix_sec
+    )[0][0]
+    current_intensity_kt = (
+        METRES_PER_SECOND_TO_KT *
+        stx[ships_io.STORM_INTENSITY_KEY].values[good_index]
     )
-    print('Saving figure to: "{0:s}"...'.format(panel_file_names[-1]))
-    figure_object.savefig(
-        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
+
+    good_indices = numpy.where(numpy.logical_and(
+        stx[ships_io.VALID_TIME_KEY].values >= init_time_unix_sec,
+        stx[ships_io.VALID_TIME_KEY].values <=
+        init_time_unix_sec + 24 * HOURS_TO_SECONDS
+    ))[0]
+    future_intensity_kt = numpy.max(
+        METRES_PER_SECOND_TO_KT *
+        stx[ships_io.STORM_INTENSITY_KEY].values[good_indices]
     )
-    pyplot.close(figure_object)
+
+    print((
+        'Cyclone {0:s} ... intensity at {1:s} = {2:.0f} kt ... '
+        'max intensity over next 24 hours = {3:.0f} kt'
+    ).format(
+        cyclone_id_string, init_time_string, current_intensity_kt,
+        future_intensity_kt
+    ))
+
+    for this_file_name in panel_file_names:
+        imagemagick_utils.resize_image(
+            input_file_name=this_file_name, output_file_name=this_file_name,
+            output_size_pixels=PANEL_SIZE_PX
+        )
+
+    concat_figure_file_name = '{0:s}/case_study.jpg'.format(output_dir_name)
+    print('Concatenating panels to: "{0:s}"...'.format(concat_figure_file_name))
+
+    imagemagick_utils.concatenate_images(
+        input_file_names=panel_file_names,
+        output_file_name=concat_figure_file_name,
+        num_panel_rows=2, num_panel_columns=2
+    )
+    imagemagick_utils.trim_whitespace(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name, border_width_pixels=10
+    )
+    imagemagick_utils.resize_image(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name,
+        output_size_pixels=CONCAT_FIGURE_SIZE_PX
+    )
 
 
 if __name__ == '__main__':
@@ -570,6 +646,7 @@ if __name__ == '__main__':
         normalization_file_name=getattr(
             INPUT_ARG_OBJECT, NORMALIZATION_FILE_ARG_NAME
         ),
+        ships_dir_name=getattr(INPUT_ARG_OBJECT, SHIPS_DIR_ARG_NAME),
         cyclone_id_string=getattr(INPUT_ARG_OBJECT, CYCLONE_ID_ARG_NAME),
         init_time_string=getattr(INPUT_ARG_OBJECT, INIT_TIME_ARG_NAME),
         output_dir_name=getattr(INPUT_ARG_OBJECT, OUTPUT_DIR_ARG_NAME)
