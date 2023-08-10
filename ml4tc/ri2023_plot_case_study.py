@@ -298,6 +298,17 @@ def _plot_forecast_probs(
 
     print(title_string)
 
+    mean_nn_forecast_probs = numpy.mean(nn_forecast_prob_matrix, axis=-1)
+    for i in range(num_nn_models):
+        print('Mean prob for {0:s} = {1:.4f}'.format(
+            nn_model_description_strings[i], mean_nn_forecast_probs[i]
+        ))
+
+    for i in range(num_baseline_models):
+        print('Mean prob for {0:s} = {1:.4f}'.format(
+            BASELINE_DESCRIPTION_STRINGS[i], baseline_forecast_probs[i]
+        ))
+
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
