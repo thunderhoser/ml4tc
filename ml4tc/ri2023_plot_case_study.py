@@ -539,6 +539,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     axes_object = axes_objects[0]
     axes_object.set_ylabel('')
     axes_object.set_yticks([], [])
+    axes_object.tick_params(axis='x', labelsize=30)
     axes_object.set_title('GOES-based SHIPS predictors')
 
     gg_plotting_utils.plot_linear_colour_bar(
