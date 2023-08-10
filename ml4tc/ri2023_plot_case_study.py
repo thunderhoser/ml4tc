@@ -628,9 +628,9 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     image_matrix = Image.open(panel_file_names[1])
     current_width_px, current_height_px = image_matrix.size
-    current_size_px = current_width_px * current_height_px
+    resize_factor = (float(desired_width_px) / current_width_px) ** 2
     desired_size_px = int(numpy.round(
-        current_size_px * float(desired_width_px) / current_width_px
+        current_width_px * current_height_px * resize_factor
     ))
 
     imagemagick_utils.resize_image(
