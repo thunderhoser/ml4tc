@@ -286,15 +286,15 @@ def _plot_forecast_probs(
         stx[ships_io.STORM_INTENSITY_KEY].values[good_indices]
     )
 
-    title_string = 'RI probabilities for {0:s} at {1:s}\nCurrent $I$ = '.format(
+    title_string = 'RI probs for {0:s} at {1:s}\nCurrent $I$ = '.format(
         cyclone_id_string,
         time_conversion.unix_sec_to_string(init_time_unix_sec, TIME_FORMAT)
     )
     title_string += '{0:.0f} kt'.format(current_intensity_kt)
-    title_string += '; max next-24-hour $I$ = '
-    title_string += '{0:.0f} kt'.format(future_intensity_kt)
-    title_string += '; $y$ = '
-    title_string += 'YES' if target_class == 1 else 'NO'
+    title_string += '; max future $I$ = '
+    title_string += '{0:.0f} kt; {1:s} RI'.format(
+        future_intensity_kt, 'yes' if target_class == 1 else 'no'
+    )
 
     print(title_string)
 
@@ -309,7 +309,7 @@ def _plot_forecast_probs(
         numpy.transpose(nn_forecast_prob_matrix),
         positions=x_tick_values,
         vert=True, widths=0.8, showmeans=True, showmedians=False,
-        showextrema=True
+        showextrema=False
     )
 
     for part_name in ['cbars', 'cmins', 'cmaxes', 'cmeans', 'cmedians']:
@@ -577,7 +577,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
     axes_object.tick_params(axis='x', labelsize=30)
-    axes_object.set_title('Environmental and historical SHIPS predictors')
+    axes_object.set_title('Enviro/hist SHIPS predictors')
 
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=dummy_values,
@@ -628,14 +628,15 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     image_matrix = Image.open(panel_file_names[1])
     current_width_px, current_height_px = image_matrix.size
-    desired_num_pixels = int(numpy.round(
-        current_height_px * float(desired_width_px) / current_width_px
+    current_size_px = current_width_px * current_height_px
+    desired_size_px = int(numpy.round(
+        current_size_px * float(desired_width_px) / current_width_px
     ))
 
     imagemagick_utils.resize_image(
         input_file_name=panel_file_names[1],
         output_file_name=panel_file_names[1],
-        output_size_pixels=desired_num_pixels
+        output_size_pixels=desired_size_px
     )
 
     concat_figure_file_name = '{0:s}/case_study.jpg'.format(output_dir_name)
