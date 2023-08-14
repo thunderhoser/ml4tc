@@ -70,6 +70,7 @@ DEFAULT_PREDICTOR_TICK_FONT_SIZE = 20
 MIN_NORMALIZED_VALUE = -3.
 MAX_NORMALIZED_VALUE = 3.
 COLOUR_MAP_OBJECT = pyplot.get_cmap('seismic')
+COLOUR_MAP_OBJECT.set_bad(numpy.full(3, 152. / 255))
 
 FIGURE_WIDTH_INCHES = 15
 FIGURE_HEIGHT_INCHES = 15
@@ -222,8 +223,26 @@ def plot_fcst_predictors_one_init_time(
         xt[example_utils.SHIPS_PREDICTORS_FORECAST_KEY].values[
             init_time_index, ...
         ][:, predictor_indices]
-    )
+    ) + 0.
     predictor_matrix = predictor_matrix.astype(float)
+
+    predictor_names = (
+        xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[
+            predictor_indices
+        ].tolist()
+    )
+
+    for i in range(len(forecast_times_hours)):
+        if forecast_times_hours[i] <= 0:
+            continue
+
+        for j in range(len(predictor_names)):
+            if predictor_names[j] not in [
+                    ships_io.INTENSITY_KEY, ships_io.INTENSITY_CHANGE_6HOURS_KEY
+            ]:
+                continue
+
+            predictor_matrix[i, j] = numpy.nan
 
     if figure_object is None or axes_object is None:
         figure_object, axes_object = pyplot.subplots(
@@ -252,15 +271,10 @@ def plot_fcst_predictors_one_init_time(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
         dtype=float
     )
-    x_tick_labels = (
-        xt.coords[example_utils.SHIPS_PREDICTOR_FORECAST_DIM].values[
-            predictor_indices
-        ].tolist()
-    )
     x_tick_labels = [
         s if s not in VARIABLE_ABBREV_TO_VERBOSE
         else VARIABLE_ABBREV_TO_VERBOSE[s]
-        for s in x_tick_labels
+        for s in predictor_names
     ]
     pyplot.xticks(
         x_tick_values, x_tick_labels, rotation=90.,
