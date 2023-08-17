@@ -10,12 +10,14 @@ from gewittergefahr.plotting import plotting_utils as gg_plotting_utils
 from gewittergefahr.plotting import imagemagick_utils
 from ml4tc.io import border_io
 from ml4tc.io import cira_satellite_io
+from ml4tc.utils import example_utils
 from ml4tc.utils import satellite_utils
 from ml4tc.plotting import plotting_utils
 from ml4tc.plotting import satellite_plotting
 
 NUM_CROPPED_ROWS = 380
 NUM_CROPPED_COLUMNS = 540
+CLIMO_MEAN_KELVINS = 269.80128466
 
 IMAGE_CENTER_MARKER = 's'
 IMAGE_CENTER_MARKER_COLOUR = numpy.array([228, 26, 28], dtype=float) / 255
@@ -121,7 +123,7 @@ def _run(raw_satellite_file_name, output_dir_name):
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE
+        font_size=FONT_SIZE, plot_motion_arrow=True
     )
     plotting_utils.plot_borders(
         border_latitudes_deg_n=border_latitudes_deg_n,
@@ -196,7 +198,7 @@ def _run(raw_satellite_file_name, output_dir_name):
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE
+        font_size=FONT_SIZE, plot_motion_arrow=True
     )
     plotting_utils.plot_borders(
         border_latitudes_deg_n=border_latitudes_deg_n,
@@ -214,6 +216,53 @@ def _run(raw_satellite_file_name, output_dir_name):
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
 
     panel_file_names.append('{0:s}/cropped.jpg'.format(output_dir_name))
+    print('Saving figure to file: "{0:s}"...'.format(panel_file_names[-1]))
+    figure_object.savefig(
+        panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
+        pad_inches=0, bbox_inches='tight'
+    )
+    pyplot.close(figure_object)
+
+    (
+        grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e
+    ) = example_utils.rotate_satellite_grid(
+        center_latitude_deg_n=st[satellite_utils.STORM_LATITUDE_KEY].values[0],
+        center_longitude_deg_e=
+        st[satellite_utils.STORM_LONGITUDE_KEY].values[0],
+        east_velocity_m_s01=st[satellite_utils.STORM_MOTION_U_KEY].values[0],
+        north_velocity_m_s01=st[satellite_utils.STORM_MOTION_V_KEY].values[0],
+        num_rows=len(grid_latitudes_deg_n),
+        num_columns=len(grid_longitudes_deg_e)
+    )
+
+    brightness_temp_matrix_kelvins = example_utils.rotate_satellite_image(
+        brightness_temp_matrix_kelvins=
+        brightness_temp_matrix_kelvins,
+        orig_latitudes_deg_n=grid_latitudes_deg_n,
+        orig_longitudes_deg_e=grid_longitudes_deg_e,
+        new_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
+        new_longitude_matrix_deg_e=grid_longitude_matrix_deg_e,
+        fill_value=CLIMO_MEAN_KELVINS
+    )
+
+    figure_object, axes_object = pyplot.subplots(
+        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
+    )
+    satellite_plotting.plot_2d_grid(
+        brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
+        axes_object=axes_object,
+        latitude_array_deg_n=grid_latitudes_deg_n,
+        longitude_array_deg_e=grid_longitudes_deg_e,
+        cbar_orientation_string='vertical',
+        font_size=FONT_SIZE
+    )
+    axes_object.set_xticks([], [])
+    axes_object.set_yticks([], [])
+
+    axes_object.set_title('Rotated image')
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
+
+    panel_file_names.append('{0:s}/rotated.jpg'.format(output_dir_name))
     print('Saving figure to file: "{0:s}"...'.format(panel_file_names[-1]))
     figure_object.savefig(
         panel_file_names[-1], dpi=FIGURE_RESOLUTION_DPI,
@@ -240,7 +289,7 @@ def _run(raw_satellite_file_name, output_dir_name):
     axes_object.set_title(
         'Flipped image\n(done only for southern-hemisphere TCs)'
     )
-    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
+    gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(d)')
 
     panel_file_names.append('{0:s}/flipped.jpg'.format(output_dir_name))
     print('Saving figure to file: "{0:s}"...'.format(panel_file_names[-1]))
