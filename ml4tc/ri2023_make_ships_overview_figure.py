@@ -115,8 +115,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
         neural_net.LEAD_TIMES_KEY: numpy.array([24], dtype=int),
         neural_net.SATELLITE_PREDICTORS_KEY: None,
         neural_net.SATELLITE_LAG_TIMES_KEY: numpy.array([0], dtype=int),
-        neural_net.SHIPS_GOES_LAG_TIMES_KEY:
-            numpy.array([0, 1.5, 3, numpy.inf, numpy.nan]),
+        neural_net.SHIPS_GOES_LAG_TIMES_KEY: numpy.array([0], dtype=int),
         neural_net.SHIPS_GOES_PREDICTORS_KEY: ships_lagged_predictor_names,
         neural_net.SHIPS_FORECAST_PREDICTORS_KEY:
             ships_forecast_predictor_names,
