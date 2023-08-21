@@ -29,13 +29,13 @@ CLIMO_MEAN_KELVINS = 269.80128466
 
 IMAGE_CENTER_MARKER = 's'
 IMAGE_CENTER_MARKER_COLOUR = numpy.array([228, 26, 28], dtype=float) / 255
-IMAGE_CENTER_MARKER_SIZE = 12
+IMAGE_CENTER_MARKER_SIZE = 14
 IMAGE_CENTER_MARKER_EDGE_WIDTH = 2
 IMAGE_CENTER_MARKER_EDGE_COLOUR = numpy.full(3, 0.)
 
 ACTUAL_CENTER_MARKER = '*'
 ACTUAL_CENTER_MARKER_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
-ACTUAL_CENTER_MARKER_SIZE = 16
+ACTUAL_CENTER_MARKER_SIZE = 24
 ACTUAL_CENTER_MARKER_EDGE_WIDTH = 2
 ACTUAL_CENTER_MARKER_EDGE_COLOUR = numpy.full(3, 0.)
 
@@ -131,7 +131,9 @@ def _run(raw_satellite_file_name, output_dir_name):
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE, plot_motion_arrow=True
+        font_size=FONT_SIZE, plot_motion_arrow=True,
+        u_motion_m_s01=st[satellite_utils.STORM_MOTION_U_KEY].values[0],
+        v_motion_m_s01=st[satellite_utils.STORM_MOTION_V_KEY].values[0]
     )
     plotting_utils.plot_borders(
         border_latitudes_deg_n=border_latitudes_deg_n,
@@ -206,7 +208,9 @@ def _run(raw_satellite_file_name, output_dir_name):
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE, plot_motion_arrow=True
+        font_size=FONT_SIZE, plot_motion_arrow=True,
+        u_motion_m_s01=st[satellite_utils.STORM_MOTION_U_KEY].values[0],
+        v_motion_m_s01=st[satellite_utils.STORM_MOTION_V_KEY].values[0]
     )
     plotting_utils.plot_borders(
         border_latitudes_deg_n=border_latitudes_deg_n,
@@ -231,6 +235,11 @@ def _run(raw_satellite_file_name, output_dir_name):
     )
     pyplot.close(figure_object)
 
+    print('u = {0:.2f} m/s ... v = {1:.2f} m/s'.format(
+        st[satellite_utils.STORM_MOTION_U_KEY].values[0],
+        st[satellite_utils.STORM_MOTION_V_KEY].values[0]
+    ))
+
     (
         grid_latitude_matrix_deg_n, grid_longitude_matrix_deg_e
     ) = example_utils.rotate_satellite_grid(
@@ -244,8 +253,7 @@ def _run(raw_satellite_file_name, output_dir_name):
     )
 
     brightness_temp_matrix_kelvins = example_utils.rotate_satellite_image(
-        brightness_temp_matrix_kelvins=
-        brightness_temp_matrix_kelvins,
+        brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         orig_latitudes_deg_n=grid_latitudes_deg_n,
         orig_longitudes_deg_e=grid_longitudes_deg_e,
         new_latitude_matrix_deg_n=grid_latitude_matrix_deg_n,
@@ -259,13 +267,27 @@ def _run(raw_satellite_file_name, output_dir_name):
     satellite_plotting.plot_2d_grid(
         brightness_temp_matrix_kelvins=brightness_temp_matrix_kelvins,
         axes_object=axes_object,
-        latitude_array_deg_n=grid_latitudes_deg_n,
-        longitude_array_deg_e=grid_longitudes_deg_e,
+        latitude_array_deg_n=grid_latitude_matrix_deg_n,
+        longitude_array_deg_e=grid_longitude_matrix_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE
+        font_size=FONT_SIZE, plot_motion_arrow=True
     )
-    axes_object.set_xticks([], [])
-    axes_object.set_yticks([], [])
+    plotting_utils.plot_borders(
+        border_latitudes_deg_n=border_latitudes_deg_n,
+        border_longitudes_deg_e=border_longitudes_deg_e,
+        axes_object=axes_object
+    )
+    plotting_utils.plot_grid_lines(
+        plot_latitudes_deg_n=numpy.ravel(grid_latitudes_deg_n),
+        plot_longitudes_deg_e=numpy.ravel(grid_longitudes_deg_e),
+        axes_object=axes_object, parallel_spacing_deg=2.,
+        meridian_spacing_deg=2., font_size=FONT_SIZE
+    )
+
+    x_min, x_max = axes_object.get_xlim()
+    axes_object.set_xlim(x_min - 4, x_max + 4)
+    y_min, y_max = axes_object.get_ylim()
+    axes_object.set_ylim(y_min - 5, y_max + 5)
 
     axes_object.set_title('Rotated image')
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(c)')
@@ -286,10 +308,10 @@ def _run(raw_satellite_file_name, output_dir_name):
             brightness_temp_matrix_kelvins, axis=0
         ),
         axes_object=axes_object,
-        latitude_array_deg_n=grid_latitudes_deg_n,
-        longitude_array_deg_e=grid_longitudes_deg_e,
+        latitude_array_deg_n=grid_latitude_matrix_deg_n,
+        longitude_array_deg_e=grid_longitude_matrix_deg_e,
         cbar_orientation_string='vertical',
-        font_size=FONT_SIZE
+        font_size=FONT_SIZE, plot_motion_arrow=False
     )
     axes_object.set_xticks([], [])
     axes_object.set_yticks([], [])
