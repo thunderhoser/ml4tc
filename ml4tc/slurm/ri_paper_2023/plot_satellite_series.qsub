@@ -30,5 +30,5 @@ python3 -u "${CODE_DIR_NAME}/ri2023_plot_satellite_series.py" \
 --cyclone_id_string="2010EP04" \
 --init_time_string="2010-06-26-00" \
 --lag_times_minutes 0 120 240 \
---plot_temporal_diffs=0 \
+--plot_temporal_diffs=1 \
 --output_figure_dir_name="${OUTPUT_DIR_NAME}"
