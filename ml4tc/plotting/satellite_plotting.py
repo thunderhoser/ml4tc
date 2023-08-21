@@ -175,8 +175,9 @@ def add_colour_bar(
 def plot_2d_grid(
         brightness_temp_matrix_kelvins, axes_object, latitude_array_deg_n,
         longitude_array_deg_e, cbar_orientation_string='vertical',
-        font_size=30., plot_motion_arrow=False, plotting_diffs=False,
-        colour_map_object=None, colour_norm_object=None):
+        font_size=30.,
+        plot_motion_arrow=False, u_motion_m_s01=None, v_motion_m_s01=None,
+        plotting_diffs=False, colour_map_object=None, colour_norm_object=None):
     """Plots brightness temperature on 2-D grid.
 
     M = number of rows in grid
@@ -197,6 +198,10 @@ def plot_2d_grid(
     :param font_size: Font size.
     :param plot_motion_arrow: Boolean flag.  If True, will plot arrow to
         indicate direction of storm motion.
+    :param u_motion_m_s01: Eastward storm motion in metres per second (used only
+        if plot_motion_arrow == True and coords are on regular grid).
+    :param v_motion_m_s01: Northward storm motion in metres per second (used
+        only if plot_motion_arrow == True and coords are on regular grid).
     :param plotting_diffs: Boolean flag.  If True (False), plotting differences
         (raw values).
     :return: colour_bar_object: Colour-bar handle (instance of
@@ -211,7 +216,9 @@ def plot_2d_grid(
     )
 
     regular_grid = len(latitude_array_deg_n.shape) == 1
-    plot_motion_arrow = plot_motion_arrow and not regular_grid
+    if regular_grid:
+        if u_motion_m_s01 is None or v_motion_m_s01 is None:
+            plot_motion_arrow = False
 
     if regular_grid:
         this_flag, latitudes_to_plot_deg_n, longitudes_to_plot_deg_e = (
@@ -309,26 +316,54 @@ def plot_2d_grid(
         )
 
     if plot_motion_arrow:
-        half_num_rows = int(numpy.round(
-            0.5 * (latitudes_to_plot_deg_n.shape[0] - 1)
-        ))
-        half_num_columns = int(numpy.round(
-            0.5 * (latitudes_to_plot_deg_n.shape[1] - 1)
-        ))
-        arrow_length_columns = int(numpy.round(half_num_columns * 0.15))
+        if regular_grid:
+            error_checking.assert_is_real_number(u_motion_m_s01)
+            error_checking.assert_is_real_number(v_motion_m_s01)
+            motion_heading_rad = numpy.arctan2(v_motion_m_s01, u_motion_m_s01)
 
-        start_latitude_deg_n = latitudes_to_plot_deg_n[
-            half_num_rows, half_num_columns
-        ]
-        start_longitude_deg_e = longitudes_to_plot_deg_e[
-            half_num_rows, half_num_columns
-        ]
-        end_latitude_deg_n = latitudes_to_plot_deg_n[
-            half_num_rows, half_num_columns + arrow_length_columns
-        ]
-        end_longitude_deg_e = longitudes_to_plot_deg_e[
-            half_num_rows, half_num_columns + arrow_length_columns
-        ]
+            half_num_rows = int(numpy.round(
+                0.5 * (len(latitudes_to_plot_deg_n) - 1)
+            ))
+            half_num_columns = int(numpy.round(
+                0.5 * (len(longitudes_to_plot_deg_e) - 1)
+            ))
+
+            arrow_length_columns = int(numpy.round(
+                half_num_columns * 0.15 * numpy.cos(motion_heading_rad)
+            ))
+            arrow_length_rows = int(numpy.round(
+                half_num_rows * 0.15 * numpy.sin(motion_heading_rad)
+            ))
+
+            start_latitude_deg_n = latitudes_to_plot_deg_n[half_num_rows]
+            start_longitude_deg_e = longitudes_to_plot_deg_e[half_num_columns]
+            end_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows + arrow_length_rows
+            ]
+            end_longitude_deg_e = longitudes_to_plot_deg_e[
+                half_num_columns + arrow_length_columns
+            ]
+        else:
+            half_num_rows = int(numpy.round(
+                0.5 * (latitudes_to_plot_deg_n.shape[0] - 1)
+            ))
+            half_num_columns = int(numpy.round(
+                0.5 * (latitudes_to_plot_deg_n.shape[1] - 1)
+            ))
+            arrow_length_columns = int(numpy.round(half_num_columns * 0.15))
+
+            start_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows, half_num_columns
+            ]
+            start_longitude_deg_e = longitudes_to_plot_deg_e[
+                half_num_rows, half_num_columns
+            ]
+            end_latitude_deg_n = latitudes_to_plot_deg_n[
+                half_num_rows, half_num_columns + arrow_length_columns
+            ]
+            end_longitude_deg_e = longitudes_to_plot_deg_e[
+                half_num_rows, half_num_columns + arrow_length_columns
+            ]
 
         axes_object.arrow(
             x=start_longitude_deg_e, y=start_latitude_deg_n,
