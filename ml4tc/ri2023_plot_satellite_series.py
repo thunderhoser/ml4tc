@@ -176,7 +176,7 @@ def _run(norm_example_dir_name, normalization_file_name, cyclone_id_string,
         neural_net.CLASS_CUTOFFS_KEY: RI_CUTOFFS_M_S01,
         neural_net.NUM_GRID_ROWS_KEY: None,
         neural_net.NUM_GRID_COLUMNS_KEY: None,
-        neural_net.USE_TIME_DIFFS_KEY: plot_temporal_diffs
+        neural_net.USE_TIME_DIFFS_KEY: False
     }
 
     data_dict = neural_net.create_inputs(option_dict)
