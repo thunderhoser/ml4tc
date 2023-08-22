@@ -451,7 +451,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     axes_object.set_xlabel('Mode')
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
-        'Eigenvalue spectrum\n(assuming effective sample size = sample size)'
+        'Eigenvalue spectrum\n(effective sample size = sample size)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=1.jpg'
@@ -485,7 +485,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
         'Eigenvalue spectrum\n'
-        '(assuming effective sample size = sample size / 4)'
+        '(effective sample size = sample size / 4)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=4.jpg'
@@ -501,7 +501,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     num_modes_to_plot = regressed_shapley_matrix.shape[0]
 
     for i in range(num_modes_to_plot):
-        if i in [1, 4, 5]:
+        if i in [0, 3, 4]:
             multiplier = -1
         else:
             multiplier = 1
