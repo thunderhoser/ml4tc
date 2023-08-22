@@ -312,11 +312,12 @@ def _plot_one_mode(
         min_abs_contour_value=shapley_min_colour_value,
         max_abs_contour_value=shapley_max_colour_value,
         half_num_contours=shapley_half_num_contours,
-        colour_map_object=shapley_colour_map_object
+        colour_map_object=shapley_colour_map_object,
+        line_width=4
     )
 
     title_string = (
-        r'$T_b$ and Shapley values regressed onto {0:d}th EOF'
+        r'$T_b$ and Shapley values regressed onto EOF {0:d}'
     ).format(mode_index + 1)
 
     title_string += '\n(explained variance = {0:.1f}%)'.format(
@@ -431,6 +432,9 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     )
     eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (1. * num_examples))
 
+    print('Eigenvalues:\n{0:s}'.format(str(eigenvalues)))
+    print('Eigenvalue errors:\n{0:s}'.format(str(eigenvalue_errors)))
+
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
@@ -441,13 +445,13 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     )
     axes_object.errorbar(
         x=x_coords, y=eigenvalues, yerr=eigenvalue_errors, linewidth=0,
-        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=6, capthick=3
+        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=12, capthick=3
     )
 
-    axes_object.set_xticks([], [])
+    axes_object.set_xlabel('Mode')
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
-        'Eigenvalue spectrum (assuming eff sample size = sample size)'
+        'Eigenvalue spectrum\n(assuming effective sample size = sample size)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=1.jpg'
@@ -461,6 +465,8 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     pyplot.close(figure_object)
 
     eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (0.25 * num_examples))
+    print('Eigenvalues:\n{0:s}'.format(str(eigenvalues)))
+    print('Eigenvalue errors:\n{0:s}'.format(str(eigenvalue_errors)))
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
@@ -472,13 +478,14 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     )
     axes_object.errorbar(
         x=x_coords, y=eigenvalues, yerr=eigenvalue_errors, linewidth=0,
-        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=6, capthick=3
+        ecolor=EIGENVALUE_COLOUR, elinewidth=2, capsize=12, capthick=3
     )
 
-    axes_object.set_xticks([], [])
+    axes_object.set_xlabel('Mode')
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
-        'Eigenvalue spectrum (assuming eff sample size = sample size / 4)'
+        'Eigenvalue spectrum\n'
+        '(assuming effective sample size = sample size / 4)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=4.jpg'
@@ -494,6 +501,11 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     num_modes_to_plot = regressed_shapley_matrix.shape[0]
 
     for i in range(num_modes_to_plot):
+        if i in [1, 4, 5]:
+            multiplier = -1
+        else:
+            multiplier = 1
+
         if shapley_smoothing_radius_px is not None:
             regressed_shapley_matrix[i, ...] = (
                 gg_general_utils.apply_gaussian_filter(
@@ -503,8 +515,10 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             )
 
         _plot_one_mode(
-            regressed_predictor_matrix=regressed_predictor_matrix[i, ...],
-            regressed_shapley_matrix=regressed_shapley_matrix[i, ...],
+            regressed_predictor_matrix=
+            multiplier * regressed_predictor_matrix[i, ...],
+            regressed_shapley_matrix=
+            multiplier * regressed_shapley_matrix[i, ...],
             mode_index=i,
             explained_variance_fraction=explained_variance_fractions[i],
             shapley_colour_map_object=shapley_colour_map_object,

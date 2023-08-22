@@ -45,7 +45,7 @@ set output_dir_name="${model_dir_name}/testing/by_confusion_matrix_extremes/shap
 
 python3 -u "${CODE_DIR_NAME}/plot_pca_or_mca_for_shapley_maps.py" \
 --input_file_name="${input_file_name}" \
---num_modes_to_plot=20 \
+--num_modes_to_plot=10 \
 --shapley_min_colour_percentile=0 \
 --shapley_max_colour_percentile=100 \
 --shapley_smoothing_radius_px=2 \
