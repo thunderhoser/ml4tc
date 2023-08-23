@@ -1,4 +1,4 @@
-"""Makes schematic to explain evaluation methods."""
+"""Makes simple schematic to explain evaluation methods."""
 
 import os
 import argparse
@@ -8,10 +8,8 @@ matplotlib.use('agg')
 from matplotlib import pyplot
 from gewittergefahr.gg_utils import file_system_utils
 from gewittergefahr.plotting import imagemagick_utils
-from gewittergefahr.gg_utils import model_evaluation as gg_model_eval
 from ml4tc.io import prediction_io
 from ml4tc.utils import uq_evaluation
-from ml4tc.plotting import evaluation_plotting as eval_plotting
 from ml4tc.plotting import uq_evaluation_plotting as uq_eval_plotting
 
 SAMPLE_SIZE = int(1e6)
@@ -105,9 +103,11 @@ def _create_data_good_model():
                 i, SAMPLE_SIZE
             ))
 
+        this_error = mean_probabilities[i] - target_classes[i]
+
         forecast_prob_matrix[i, :] = (
             mean_probabilities[i] +
-            numpy.random.normal(loc=0, scale=0.1, size=ENSEMBLE_SIZE)
+            numpy.random.uniform(low=-2 * this_error, high=0, size=ENSEMBLE_SIZE)
         )
 
     print('Have created ensemble for all {0:d} examples!'.format(SAMPLE_SIZE))
@@ -163,7 +163,8 @@ def _create_data_poor_model():
 
     forecast_prob_matrix = numpy.vstack([
         mp + numpy.random.normal(
-            loc=0., scale=max([2 * mp, 0.01]), size=ENSEMBLE_SIZE
+            loc=0., scale=max([numpy.absolute(0.5 - mp), 0.01]),
+            size=ENSEMBLE_SIZE
         )
         for mp in mean_probabilities
     ])
@@ -200,338 +201,6 @@ def _overlay_text(
         return
 
     raise ValueError(imagemagick_utils.ERROR_STRING)
-
-
-def _make_scatterplot_good_model(output_dir_name, panel_letter):
-    """Creates scatterplot for good model.
-
-    :param output_dir_name: Name of output directory.  Figure will be saved
-        here.
-    :param panel_letter: Letter used to label panel.
-    :return: output_file_name: Full path to image file where figure was saved.
-    """
-
-    target_classes, forecast_prob_matrix = _create_data_good_model()
-    mean_forecast_probs = numpy.mean(forecast_prob_matrix, axis=1)
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    legend_handles = [None] * 2
-
-    for j in range(0, ENSEMBLE_SIZE, 5):
-        legend_handles[1] = axes_object.plot(
-            forecast_prob_matrix[::10, j], target_classes[::10],
-            linestyle='None', marker='o', markersize=7.5, markeredgewidth=0,
-            markerfacecolor=SCATTERPLOT_MEMBER_COLOUR,
-            markeredgecolor=SCATTERPLOT_MEMBER_COLOUR
-        )[0]
-
-    dummy_target_classes = target_classes[::10] + 0.
-    dummy_target_classes[dummy_target_classes < 0.5] = -0.03
-    dummy_target_classes[dummy_target_classes > 0.5] = 1.03
-
-    legend_handles[0] = axes_object.plot(
-        mean_forecast_probs[::10], dummy_target_classes,
-        linestyle='None', marker='o', markersize=5, markeredgewidth=0,
-        markerfacecolor=SCATTERPLOT_MEAN_COLOUR,
-        markeredgecolor=SCATTERPLOT_MEAN_COLOUR
-    )[0]
-
-    axes_object.plot(
-        [MIN_PLOT_COORD, MAX_PLOT_COORD],
-        [MIN_PLOT_COORD, MAX_PLOT_COORD],
-        linestyle='dashed', color=REFERENCE_LINE_COLOUR, linewidth=4
-    )
-
-    legend_strings = ['Ensemble mean', 'Ensemble member']
-    the_one_legend_handle = axes_object.legend(
-        legend_handles, legend_strings, loc='center left',
-        bbox_to_anchor=(0, 0.5), fancybox=True, shadow=False,
-        facecolor='white', edgecolor='k', framealpha=1., ncol=1,
-        fontsize=36
-    )
-    the_one_legend_handle.legendHandles[0]._legmarker.set_markersize(12)
-    the_one_legend_handle.legendHandles[1]._legmarker.set_markersize(12)
-
-    axes_object.set_xlim(MIN_PLOT_COORD, MAX_PLOT_COORD)
-    axes_object.set_ylim(MIN_PLOT_COORD, MAX_PLOT_COORD)
-
-    axes_object.set_xlabel('RI probability')
-    axes_object.set_ylabel('True RI label')
-    axes_object.set_title('Scatterplot for Model A')
-
-    output_file_name = '{0:s}/scatterplot_good_model.jpg'.format(
-        output_dir_name
-    )
-    print('Saving figure to: "{0:s}"...'.format(output_file_name))
-    figure_object.savefig(
-        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name,
-        border_width_pixels=TITLE_FONT_SIZE + 75
-    )
-    _overlay_text(
-        image_file_name=output_file_name,
-        x_offset_from_left_px=TITLE_FONT_SIZE + 50,
-        y_offset_from_top_px=TITLE_FONT_SIZE + 200,
-        text_string='({0:s})'.format(panel_letter)
-    )
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name
-    )
-
-    return output_file_name
-
-
-def _make_scatterplot_poor_model(output_dir_name, panel_letter):
-    """Creates scatterplot for poor model.
-
-    :param output_dir_name: Name of output directory.  Figure will be saved
-        here.
-    :param panel_letter: Letter used to label panel.
-    :return: output_file_name: Full path to image file where figure was saved.
-    """
-
-    target_classes, forecast_prob_matrix = _create_data_poor_model()
-    mean_forecast_probs = numpy.mean(forecast_prob_matrix, axis=1)
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    legend_handles = [None] * 2
-
-    for j in range(0, ENSEMBLE_SIZE, 5):
-        legend_handles[1] = axes_object.plot(
-            forecast_prob_matrix[::10, j], target_classes[::10],
-            linestyle='None', marker='o', markersize=7.5, markeredgewidth=0,
-            markerfacecolor=SCATTERPLOT_MEMBER_COLOUR,
-            markeredgecolor=SCATTERPLOT_MEMBER_COLOUR
-        )[0]
-
-    dummy_target_classes = target_classes[::10] + 0.
-    dummy_target_classes[dummy_target_classes < 0.5] = -0.03
-    dummy_target_classes[dummy_target_classes > 0.5] = 1.03
-
-    legend_handles[0] = axes_object.plot(
-        mean_forecast_probs[::10], dummy_target_classes,
-        linestyle='None', marker='o', markersize=5, markeredgewidth=0,
-        markerfacecolor=SCATTERPLOT_MEAN_COLOUR,
-        markeredgecolor=SCATTERPLOT_MEAN_COLOUR
-    )[0]
-
-    axes_object.plot(
-        [MIN_PLOT_COORD, MAX_PLOT_COORD],
-        [MIN_PLOT_COORD, MAX_PLOT_COORD],
-        linestyle='dashed', color=REFERENCE_LINE_COLOUR, linewidth=4
-    )
-
-    legend_strings = ['Ensemble mean', 'Ensemble member']
-    the_one_legend_handle = axes_object.legend(
-        legend_handles, legend_strings, loc='center left',
-        bbox_to_anchor=(0, 0.5), fancybox=True, shadow=False,
-        facecolor='white', edgecolor='k', framealpha=1., ncol=1,
-        fontsize=36
-    )
-    the_one_legend_handle.legendHandles[0]._legmarker.set_markersize(12)
-    the_one_legend_handle.legendHandles[1]._legmarker.set_markersize(12)
-
-    axes_object.set_xlim(MIN_PLOT_COORD, MAX_PLOT_COORD)
-    axes_object.set_ylim(MIN_PLOT_COORD, MAX_PLOT_COORD)
-
-    axes_object.set_xlabel('RI probability')
-    axes_object.set_ylabel('True RI label')
-    axes_object.set_title('Scatterplot for Model B')
-
-    output_file_name = '{0:s}/scatterplot_poor_model.jpg'.format(
-        output_dir_name
-    )
-    print('Saving figure to: "{0:s}"...'.format(output_file_name))
-    figure_object.savefig(
-        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name,
-        border_width_pixels=TITLE_FONT_SIZE + 75
-    )
-    _overlay_text(
-        image_file_name=output_file_name,
-        x_offset_from_left_px=TITLE_FONT_SIZE + 50,
-        y_offset_from_top_px=TITLE_FONT_SIZE + 200,
-        text_string='({0:s})'.format(panel_letter)
-    )
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name
-    )
-
-    return output_file_name
-
-
-def _plot_attr_diag_poor_model(output_dir_name, panel_letter):
-    """Plots attributes diagram for poor model.
-
-    :param output_dir_name: Name of output directory.  Figure will be saved
-        here.
-    :param panel_letter: Letter used to label panel.
-    :return: output_file_name: Full path to image file where figure was saved.
-    """
-
-    target_classes, forecast_probs = _create_data_poor_model()
-    forecast_probs = numpy.mean(forecast_probs, axis=1)
-
-    (
-        mean_predictions, mean_observations, example_counts
-    ) = gg_model_eval.get_points_in_reliability_curve(
-        forecast_probabilities=forecast_probs,
-        observed_labels=target_classes,
-        num_forecast_bins=NUM_BINS_FOR_ATTR_DIAG
-    )
-
-    bss_dict = gg_model_eval.get_brier_skill_score(
-        mean_forecast_prob_by_bin=mean_predictions,
-        mean_observed_label_by_bin=mean_observations,
-        num_examples_by_bin=example_counts,
-        climatology=numpy.mean(target_classes)
-    )
-    brier_score = bss_dict[gg_model_eval.BRIER_SCORE_KEY]
-    brier_skill_score = bss_dict[gg_model_eval.BSS_KEY]
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    eval_plotting.plot_attributes_diagram(
-        figure_object=figure_object, axes_object=axes_object,
-        mean_prediction_matrix=numpy.expand_dims(mean_predictions, axis=0),
-        mean_observation_matrix=numpy.expand_dims(mean_observations, axis=0),
-        example_counts=example_counts,
-        mean_value_in_training=numpy.mean(target_classes),
-        min_value_to_plot=0., max_value_to_plot=1.
-    )
-
-    title_string = (
-        'Attributes diagram for Model B\nBS = {0:.2f}; BSS = {1:.2f}'
-    ).format(brier_score, brier_skill_score)
-
-    axes_object.set_xlabel('Mean RI probability')
-    axes_object.set_ylabel('Conditional RI frequency')
-    axes_object.set_title(title_string)
-
-    output_file_name = '{0:s}/attributes_diagram_poor_model.jpg'.format(
-        output_dir_name
-    )
-    print('Saving figure to: "{0:s}"...'.format(output_file_name))
-    figure_object.savefig(
-        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name,
-        border_width_pixels=TITLE_FONT_SIZE + 75
-    )
-    _overlay_text(
-        image_file_name=output_file_name,
-        x_offset_from_left_px=TITLE_FONT_SIZE + 50,
-        y_offset_from_top_px=TITLE_FONT_SIZE + 200,
-        text_string='({0:s})'.format(panel_letter)
-    )
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name
-    )
-
-    return output_file_name
-
-
-def _plot_attr_diag_good_model(output_dir_name, panel_letter):
-    """Plots attributes diagram for good model.
-
-    :param output_dir_name: Name of output directory.  Figure will be saved
-        here.
-    :param panel_letter: Letter used to label panel.
-    :return: output_file_name: Full path to image file where figure was saved.
-    """
-
-    target_classes, forecast_probs = _create_data_good_model()
-    forecast_probs = numpy.mean(forecast_probs, axis=1)
-
-    (
-        mean_predictions, mean_observations, example_counts
-    ) = gg_model_eval.get_points_in_reliability_curve(
-        forecast_probabilities=forecast_probs,
-        observed_labels=target_classes,
-        num_forecast_bins=NUM_BINS_FOR_ATTR_DIAG
-    )
-
-    bss_dict = gg_model_eval.get_brier_skill_score(
-        mean_forecast_prob_by_bin=mean_predictions,
-        mean_observed_label_by_bin=mean_observations,
-        num_examples_by_bin=example_counts,
-        climatology=numpy.mean(target_classes)
-    )
-    brier_score = bss_dict[gg_model_eval.BRIER_SCORE_KEY]
-    brier_skill_score = bss_dict[gg_model_eval.BSS_KEY]
-
-    figure_object, axes_object = pyplot.subplots(
-        1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
-    )
-    eval_plotting.plot_attributes_diagram(
-        figure_object=figure_object, axes_object=axes_object,
-        mean_prediction_matrix=numpy.expand_dims(mean_predictions, axis=0),
-        mean_observation_matrix=numpy.expand_dims(mean_observations, axis=0),
-        example_counts=example_counts,
-        mean_value_in_training=numpy.mean(target_classes),
-        min_value_to_plot=0., max_value_to_plot=1.
-    )
-
-    title_string = (
-        'Attributes diagram for Model B\nBS = {0:.2f}; BSS = {1:.2f}'
-    ).format(brier_score, brier_skill_score)
-
-    axes_object.set_xlabel('Mean RI probability')
-    axes_object.set_ylabel('Conditional RI frequency')
-    axes_object.set_title(title_string)
-
-    output_file_name = '{0:s}/attributes_diagram_good_model.jpg'.format(
-        output_dir_name
-    )
-    print('Saving figure to: "{0:s}"...'.format(output_file_name))
-    figure_object.savefig(
-        output_file_name, dpi=FIGURE_RESOLUTION_DPI,
-        pad_inches=0, bbox_inches='tight'
-    )
-    pyplot.close(figure_object)
-
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name,
-        border_width_pixels=TITLE_FONT_SIZE + 75
-    )
-    _overlay_text(
-        image_file_name=output_file_name,
-        x_offset_from_left_px=TITLE_FONT_SIZE + 50,
-        y_offset_from_top_px=TITLE_FONT_SIZE + 200,
-        text_string='({0:s})'.format(panel_letter)
-    )
-    imagemagick_utils.trim_whitespace(
-        input_file_name=output_file_name,
-        output_file_name=output_file_name
-    )
-
-    return output_file_name
 
 
 def _plot_spread_vs_skill_poor_model(output_dir_name, panel_letter):
@@ -825,7 +494,7 @@ def _plot_discard_test_good_model(output_dir_name, panel_letter):
 
 
 def _run(output_dir_name):
-    """Makes schematic to explain evaluation methods.
+    """Makes simple schematic to explain evaluation methods.
 
     This is effectively the main method.
 
@@ -837,29 +506,17 @@ def _run(output_dir_name):
     )
 
     panel_file_names = []
-    panel_file_names.append(_make_scatterplot_good_model(
+    panel_file_names.append(_plot_spread_vs_skill_good_model(
         output_dir_name=output_dir_name, panel_letter='a'
     ))
-    panel_file_names.append(_make_scatterplot_poor_model(
+    panel_file_names.append(_plot_spread_vs_skill_poor_model(
         output_dir_name=output_dir_name, panel_letter='b'
     ))
-    panel_file_names.append(_plot_attr_diag_good_model(
+    panel_file_names.append(_plot_discard_test_good_model(
         output_dir_name=output_dir_name, panel_letter='c'
     ))
-    panel_file_names.append(_plot_attr_diag_poor_model(
-        output_dir_name=output_dir_name, panel_letter='d'
-    ))
-    panel_file_names.append(_plot_spread_vs_skill_good_model(
-        output_dir_name=output_dir_name, panel_letter='e'
-    ))
-    panel_file_names.append(_plot_spread_vs_skill_poor_model(
-        output_dir_name=output_dir_name, panel_letter='f'
-    ))
-    panel_file_names.append(_plot_discard_test_good_model(
-        output_dir_name=output_dir_name, panel_letter='g'
-    ))
     panel_file_names.append(_plot_discard_test_poor_model(
-        output_dir_name=output_dir_name, panel_letter='h'
+        output_dir_name=output_dir_name, panel_letter='d'
     ))
 
     for this_file_name in panel_file_names:
@@ -876,12 +533,16 @@ def _run(output_dir_name):
     imagemagick_utils.concatenate_images(
         input_file_names=panel_file_names,
         output_file_name=concat_figure_file_name,
-        num_panel_rows=3, num_panel_columns=3
+        num_panel_rows=2, num_panel_columns=2
     )
     imagemagick_utils.resize_image(
         input_file_name=concat_figure_file_name,
         output_file_name=concat_figure_file_name,
         output_size_pixels=CONCAT_FIGURE_SIZE_PX
+    )
+    imagemagick_utils.trim_whitespace(
+        input_file_name=concat_figure_file_name,
+        output_file_name=concat_figure_file_name
     )
 
 
