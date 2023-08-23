@@ -409,7 +409,8 @@ def _get_csi_colour_scheme(use_grey_scheme):
 
 
 def confidence_interval_to_polygon(
-        x_value_matrix, y_value_matrix, confidence_level, same_order):
+        x_value_matrix, y_value_matrix, confidence_level, same_order,
+        for_reliability_curve):
     """Turns confidence interval into polygon.
 
     P = number of points
@@ -421,6 +422,7 @@ def confidence_interval_to_polygon(
     :param confidence_level: Confidence level (in range 0...1).
     :param same_order: Boolean flag.  If True (False), minimum x-values will be
         matched with minimum (maximum) y-values.
+    :param for_reliability_curve: Boolean flag.
     :return: polygon_coord_matrix: V-by-2 numpy array of coordinates
         (x-coordinates in first column, y-coords in second).
     """
@@ -439,16 +441,22 @@ def confidence_interval_to_polygon(
     error_checking.assert_is_geq(confidence_level, 0.9)
     error_checking.assert_is_leq(confidence_level, 1.)
     error_checking.assert_is_boolean(same_order)
+    error_checking.assert_is_boolean(for_reliability_curve)
 
     min_percentile = 50 * (1. - confidence_level)
     max_percentile = 50 * (1. + confidence_level)
 
-    x_values_bottom = numpy.nanpercentile(
-        x_value_matrix, min_percentile, axis=0, interpolation='nearest'
-    )
-    x_values_top = numpy.nanpercentile(
-        x_value_matrix, max_percentile, axis=0, interpolation='nearest'
-    )
+    if for_reliability_curve:
+        x_values_bottom = numpy.nanmean(x_value_matrix, axis=0)
+        x_values_top = numpy.nanmean(x_value_matrix, axis=0)
+    else:
+        x_values_bottom = numpy.nanpercentile(
+            x_value_matrix, min_percentile, axis=0, interpolation='nearest'
+        )
+        x_values_top = numpy.nanpercentile(
+            x_value_matrix, max_percentile, axis=0, interpolation='nearest'
+        )
+
     y_values_bottom = numpy.nanpercentile(
         y_value_matrix, min_percentile, axis=0, interpolation='nearest'
     )
@@ -564,7 +572,8 @@ def plot_reliability_curve(
         polygon_coord_matrix = confidence_interval_to_polygon(
             x_value_matrix=mean_prediction_matrix,
             y_value_matrix=mean_observation_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=True
         )
 
         polygon_colour = matplotlib.colors.to_rgba(line_colour, POLYGON_OPACITY)
@@ -665,7 +674,8 @@ def plot_roc_curve(
     if num_bootstrap_reps > 1:
         polygon_coord_matrix = confidence_interval_to_polygon(
             x_value_matrix=pofd_matrix, y_value_matrix=pod_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(line_colour, POLYGON_OPACITY)
@@ -792,7 +802,8 @@ def plot_performance_diagram(
     if num_bootstrap_reps > 1:
         polygon_coord_matrix = confidence_interval_to_polygon(
             x_value_matrix=success_ratio_matrix, y_value_matrix=pod_matrix,
-            confidence_level=confidence_level, same_order=True
+            confidence_level=confidence_level, same_order=True,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(line_colour, POLYGON_OPACITY)
