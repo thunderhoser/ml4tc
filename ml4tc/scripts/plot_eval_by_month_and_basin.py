@@ -135,7 +135,8 @@ def _plot_metrics(auc_matrix, aupd_matrix, bss_matrix, example_counts,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=auc_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(AUC_COLOUR, POLYGON_OPACITY)
@@ -162,7 +163,8 @@ def _plot_metrics(auc_matrix, aupd_matrix, bss_matrix, example_counts,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=aupd_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(AUPD_COLOUR, POLYGON_OPACITY)
@@ -189,7 +191,8 @@ def _plot_metrics(auc_matrix, aupd_matrix, bss_matrix, example_counts,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=bss_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(BSS_COLOUR, POLYGON_OPACITY)

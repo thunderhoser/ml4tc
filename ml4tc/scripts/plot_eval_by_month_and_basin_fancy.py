@@ -127,7 +127,8 @@ def _plot_auc_and_csi(auc_matrix, csi_matrix, example_counts, confidence_level,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=auc_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(AUC_COLOUR, POLYGON_OPACITY)
@@ -154,7 +155,8 @@ def _plot_auc_and_csi(auc_matrix, csi_matrix, example_counts, confidence_level,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=csi_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(CSI_COLOUR, POLYGON_OPACITY)
@@ -249,7 +251,8 @@ def _plot_pod_and_far(pod_matrix, far_matrix, positive_example_counts,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=pod_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(POD_COLOUR, POLYGON_OPACITY)
@@ -276,7 +279,8 @@ def _plot_pod_and_far(pod_matrix, far_matrix, positive_example_counts,
 
         polygon_coord_matrix = eval_plotting.confidence_interval_to_polygon(
             x_value_matrix=x_matrix, y_value_matrix=far_matrix,
-            confidence_level=confidence_level, same_order=False
+            confidence_level=confidence_level, same_order=False,
+            for_reliability_curve=False
         )
 
         polygon_colour = matplotlib.colors.to_rgba(FAR_COLOUR, POLYGON_OPACITY)
