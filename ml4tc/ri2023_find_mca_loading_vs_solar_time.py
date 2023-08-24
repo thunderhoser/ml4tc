@@ -150,6 +150,8 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
     print('Writing results to: "{0:s}"...'.format(output_file_name))
 
     pickle_file_handle = open(output_file_name, 'wb')
+    pickle.dump(cyclone_id_strings, pickle_file_handle)
+    pickle.dump(init_times_unix_sec, pickle_file_handle)
     pickle.dump(predictor_expansion_coeffs, pickle_file_handle)
     pickle.dump(solar_times_sec, pickle_file_handle)
     pickle_file_handle.close()
