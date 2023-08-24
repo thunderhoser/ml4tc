@@ -5,6 +5,7 @@ import sys
 import gzip
 import shutil
 import tempfile
+import calendar
 import numpy
 from scipy.ndimage import distance_transform_edt
 
@@ -23,6 +24,9 @@ GZIP_FILE_EXTENSION = '.gz'
 TIME_FORMAT_FOR_LOG = '%Y-%m-%d-%H%M%S'
 
 DEGREES_TO_RADIANS = numpy.pi / 180
+
+MINUTES_TO_SECONDS = 60
+DAYS_TO_SECONDS = 86400
 
 TIME_FORMAT_FOR_ALTITUDE_ANGLE = '%Y %m %d %H %M %S'
 BATCH_SIZE_FOR_ALTITUDE_ANGLE = 100
@@ -264,7 +268,7 @@ def get_solar_altitude_angles(
     :param valid_times_unix_sec: numpy array of valid times.
     :param latitudes_deg_n: numpy array of latitudes (deg north), with same
         shape as `valid_times_unix_sec`.
-    :param longitudes_deg_e: numpy array of longitudes (deg south), with same
+    :param longitudes_deg_e: numpy array of longitudes (deg east), with same
         shape as `valid_times_unix_sec`.
     :param temporary_dir_name: Name of directory for temporary text file.
     :param fortran_exe_name: Path to Fortran executable (pathless file name
@@ -362,3 +366,76 @@ def get_solar_altitude_angles(
 
     assert current_index == num_points
     return numpy.reshape(altitude_angles_deg_1d, orig_dimensions)
+
+
+def get_solar_times(valid_times_unix_sec, longitudes_deg_e):
+    """Returns local solar time (LST) for each point.
+
+    P = number of points
+
+    :param valid_times_unix_sec: length-P numpy array of valid times.
+    :param longitudes_deg_e: length-P numpy array of longitudes (deg east).
+    :return: solar_times_sec: length-P numpy array of solar times (seconds,
+        ranging from 0...86399).
+    """
+
+    # Check input args.
+    error_checking.assert_is_numpy_array(valid_times_unix_sec, num_dimensions=1)
+    error_checking.assert_is_integer_numpy_array(valid_times_unix_sec)
+
+    num_examples = len(valid_times_unix_sec)
+    expected_dim = numpy.array([num_examples], dtype=int)
+
+    longitudes_deg_e = lng_conversion.convert_lng_negative_in_west(
+        longitudes_deg_e, allow_nan=False
+    )
+    error_checking.assert_is_numpy_array(
+        longitudes_deg_e, exact_dimensions=expected_dim
+    )
+
+    # Do actual stuff.
+    solar_times_sec = numpy.full(num_examples, numpy.nan)
+
+    for i in range(num_examples):
+        this_time_string = time_conversion.unix_sec_to_string(
+            valid_times_unix_sec[i], '%Y-%j-%H-%M-%S'
+        )
+        this_julian_day = int(this_time_string.split('-')[1])
+
+        this_time_string = time_conversion.unix_sec_to_string(
+            valid_times_unix_sec[i], '%Y-%m-%d-%H-%M-%S'
+        )
+        this_year = int(this_time_string.split('-')[0])
+        this_hour = int(this_time_string.split('-')[3])
+        num_days_this_year = 365 + int(calendar.isleap(this_year))
+
+        this_year_angle = this_julian_day - 1 + float(this_hour - 12) / 24
+        this_gamma = 2 * (numpy.pi / num_days_this_year) * this_year_angle
+
+        this_equation_of_time = 229.18 * (
+            0.000075
+            + 0.001868 * numpy.cos(this_gamma)
+            - 0.032077 * numpy.sin(this_gamma)
+            - 0.014615 * numpy.cos(2 * this_gamma)
+            - 0.040849 * numpy.sin(2 * this_gamma)
+        )
+
+        # this_declination = (
+        #     0.006918
+        #     - 0.399912 * numpy.cos(this_gamma)
+        #     + 0.070257 * numpy.sin(this_gamma)
+        #     - 0.006758 * numpy.cos(2 * this_gamma)
+        #     + 0.000907 * numpy.sin(2 * this_gamma)
+        #     - 0.002697 * numpy.cos(3 * this_gamma)
+        #     + 0.001480 * numpy.sin(3 * this_gamma)
+        # )
+
+        this_time_offset_sec = MINUTES_TO_SECONDS * (
+            this_equation_of_time + 4 * longitudes_deg_e[i]
+        )
+        solar_times_sec[i] = numpy.mod(
+            valid_times_unix_sec[i] + this_time_offset_sec,
+            DAYS_TO_SECONDS
+        )
+
+    return solar_times_sec
