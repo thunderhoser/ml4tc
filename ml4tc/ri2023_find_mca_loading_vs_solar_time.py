@@ -120,7 +120,7 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
         ships_file_name = ships_io.find_file(
             directory_name=ships_dir_name,
             cyclone_id_string=unique_cyclone_id_string,
-            prefer_zipped=False, allow_other_format=False,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
 
