@@ -54,6 +54,4 @@ set mca_file_name="${model_dir_name}/testing/shapley_maps_mca.zarr"
 python3 -u "${CODE_DIR_NAME}/ri2023_find_mca_loading_vs_solar_time.py" \
 --input_shapley_file_names ${shapley_file_names_string} \
 --input_mca_file_name="${mca_file_name}" \
---input_ships_dir_name="${SHIPS_DIR_NAME}" \ 
---mode_num=4 \
---output_file_name="${model_dir_name}/testing/shapley_maps_mca_mode4_vs_solar_time.p"
+--input_ships_dir_name="${SHIPS_DIR_NAME}" --mode_num=4 --output_file_name="${model_dir_name}/testing/shapley_maps_mca_mode4_vs_solar_time.p"
