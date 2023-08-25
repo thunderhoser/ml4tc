@@ -281,7 +281,7 @@ def _plot_one_mode(
         axes_object=axes_object,
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
-        plot_motion_arrow=True,
+        plot_motion_arrow=True, u_motion_m_s01=1., v_motion_m_s01=0.,
         colour_map_object=predictor_colour_map_object,
         colour_norm_object=predictor_colour_norm_object,
         cbar_orientation_string=None
