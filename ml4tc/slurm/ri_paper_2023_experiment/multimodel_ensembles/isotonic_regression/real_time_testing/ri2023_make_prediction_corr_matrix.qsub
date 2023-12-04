@@ -3,7 +3,7 @@
 #SBATCH --job-name="ri2023_make_prediction_corr_matrix"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
-#SBATCH --qos="batch"
+#SBATCH --qos="gpu"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
