@@ -29,6 +29,8 @@ DEFAULT_MAX_TEMP_DIFF_KELVINS = 50.
 DEFAULT_CONTOUR_CMAP_OBJECT = pyplot.get_cmap('binary')
 DEFAULT_CONTOUR_WIDTH = 2
 
+MOTION_ARROW_COLOUR = numpy.array([27, 158, 119], dtype=float) / 255
+
 
 def _grid_points_to_edges(grid_point_coords):
     """Converts grid-point coordinates to grid-cell-edge coordinates.
@@ -379,8 +381,8 @@ def plot_2d_grid(
             dy=end_latitude_deg_n - start_latitude_deg_n,
             width=0.15, length_includes_head=False,
             head_width=0.75, head_length=0.75, shape='full', overhang=0.,
-            color=numpy.full(3, 0.), edgecolor=numpy.full(3, 0.),
-            facecolor=numpy.full(3, 0.)
+            color=MOTION_ARROW_COLOUR, edgecolor=MOTION_ARROW_COLOUR,
+            facecolor=MOTION_ARROW_COLOUR
         )
 
     if cbar_orientation_string is None:
