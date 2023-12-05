@@ -493,7 +493,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
 
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
-    axes_object.set_title('CIRA IR brightness temperature (K)')
+    axes_object.set_title('TC IR brightness temperature (K)')
 
     dummy_values = numpy.array([
         ships_plotting.MIN_NORMALIZED_VALUE,
@@ -551,7 +551,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     axes_object.set_ylabel('')
     axes_object.set_yticks([], [])
     axes_object.tick_params(axis='x', labelsize=30)
-    axes_object.set_title('GOES-based SHIPS predictors')
+    axes_object.set_title('Satellite-based SHIPS predictors')
 
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=dummy_values,
@@ -589,7 +589,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings,
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
     axes_object.tick_params(axis='x', labelsize=30)
-    axes_object.set_title('Enviro/hist SHIPS predictors')
+    axes_object.set_title('Enviro/storm-based SHIPS predictors')
 
     gg_plotting_utils.plot_linear_colour_bar(
         axes_object_or_matrix=axes_object, data_matrix=dummy_values,
