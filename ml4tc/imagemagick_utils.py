@@ -41,7 +41,7 @@ def trim_whitespace(
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
     error_checking.assert_is_integer(border_width_pixels)
     error_checking.assert_is_geq(border_width_pixels, 0)
-    error_checking.assert_file_exists(convert_exe_name)
+    # error_checking.assert_file_exists(convert_exe_name)
 
     command_string = (
         '"{0:s}" "{1:s}" -trim -bordercolor White -border {2:d} "{3:s}"'
@@ -95,7 +95,7 @@ def concatenate_images(
     error_checking.assert_is_integer(num_panel_columns)
     error_checking.assert_is_integer(border_width_pixels)
     error_checking.assert_is_geq(border_width_pixels, 0)
-    error_checking.assert_file_exists(montage_exe_name)
+    # error_checking.assert_file_exists(montage_exe_name)
 
     num_panels = num_panel_rows * num_panel_columns
     error_checking.assert_is_geq(num_panels, len(input_file_names))
@@ -132,7 +132,7 @@ def resize_image(input_file_name, output_file_name, output_size_pixels,
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
     error_checking.assert_is_integer(output_size_pixels)
     error_checking.assert_is_greater(output_size_pixels, 0)
-    error_checking.assert_file_exists(convert_exe_name)
+    # error_checking.assert_file_exists(convert_exe_name)
 
     command_string = '"{0:s}" "{1:s}" -resize {2:d}@ "{3:s}"'.format(
         convert_exe_name, input_file_name, output_size_pixels, output_file_name)
@@ -166,7 +166,7 @@ def create_gif(input_file_names, output_file_name, num_seconds_per_frame,
     )
 
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
-    error_checking.assert_file_exists(convert_exe_name)
+    # error_checking.assert_file_exists(convert_exe_name)
 
     error_checking.assert_is_greater(num_seconds_per_frame, 0.)
     error_checking.assert_is_leq(num_seconds_per_frame, 10.)
