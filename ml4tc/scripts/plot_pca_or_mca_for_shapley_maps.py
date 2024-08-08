@@ -274,7 +274,7 @@ def _plot_one_mode(
         axes_object=axes_object,
         latitude_array_deg_n=grid_latitudes_deg_n,
         longitude_array_deg_e=grid_longitudes_deg_e,
-        plot_motion_arrow=True,
+        plot_motion_arrow=True, u_motion_m_s01=1., v_motion_m_s01=0.,
         colour_map_object=predictor_colour_map_object,
         colour_norm_object=predictor_colour_norm_object,
         cbar_orientation_string=None
@@ -425,6 +425,9 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     )
     eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (1. * num_examples))
 
+    print('Eigenvalues:\n{0:s}'.format(str(eigenvalues)))
+    print('Eigenvalue errors:\n{0:s}'.format(str(eigenvalue_errors)))
+
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
     )
@@ -441,7 +444,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     axes_object.set_xlabel('Mode')
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
-        'Eigenvalue spectrum\n(assuming effective sample size = sample size)'
+        'Eigenvalue spectrum\n(effective sample size = sample size)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=1.jpg'
@@ -455,6 +458,8 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     pyplot.close(figure_object)
 
     eigenvalue_errors = eigenvalues * numpy.sqrt(2. / (0.25 * num_examples))
+    print('Eigenvalues:\n{0:s}'.format(str(eigenvalues)))
+    print('Eigenvalue errors:\n{0:s}'.format(str(eigenvalue_errors)))
 
     figure_object, axes_object = pyplot.subplots(
         1, 1, figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES)
@@ -473,7 +478,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     axes_object.set_ylabel('Eigenvalue')
     axes_object.set_title(
         'Eigenvalue spectrum\n'
-        '(assuming effective sample size = sample size / 4)'
+        '(effective sample size = sample size / 4)'
     )
     output_file_name = (
         '{0:s}/eigenvalue_spectrum_eff-sample-size-divisor=4.jpg'
@@ -489,7 +494,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
     num_modes_to_plot = regressed_shapley_matrix.shape[0]
 
     for i in range(num_modes_to_plot):
-        if i in [1, 4, 5]:
+        if i in [0, 3, 4]:
             multiplier = -1
         else:
             multiplier = 1
