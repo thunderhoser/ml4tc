@@ -317,8 +317,8 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, confidence_level,
     imagemagick_utils.concatenate_images(
         input_file_names=panel_file_names,
         output_file_name=concat_figure_file_name,
-        num_panel_rows=num_baseline_models,
-        num_panel_columns=1
+        num_panel_rows=2,
+        num_panel_columns=2
     )
     imagemagick_utils.resize_image(
         input_file_name=concat_figure_file_name,
