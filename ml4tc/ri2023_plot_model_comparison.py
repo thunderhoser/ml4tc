@@ -243,7 +243,7 @@ def _plot_comparison_1baseline(
         legend_handles, model_description_strings, loc='upper right'
     )
 
-    panel_letter = chr(ord('a' + baseline_index))
+    panel_letter = chr(ord('a') + baseline_index)
     gg_plotting_utils.label_axes(
         axes_object=axes_object,
         label_string='({0:s})'.format(panel_letter)
