@@ -285,7 +285,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, confidence_level,
     # NN models by simply adding colours as an input arg, rather than forcing
     # the use of `LINE_COLOURS_4MODELS`.
     num_nn_models = len(top_nn_model_dir_names)
-    assert num_nn_models == 4
+    assert num_nn_models == 3
 
     assert len(nn_model_description_strings) == num_nn_models
     nn_model_description_strings = [
