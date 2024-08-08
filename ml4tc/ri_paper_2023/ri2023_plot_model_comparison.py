@@ -30,8 +30,8 @@ ERROR_BAR_DICT = {
 LINE_COLOURS_4MODELS = [
     numpy.array([27, 158, 119], dtype=float) / 255,
     numpy.array([217, 95, 2], dtype=float) / 255,
-    numpy.full(3, 152. / 255),
-    numpy.full(3, 0.)
+    numpy.array([117, 112, 179], dtype=float) / 255,
+    numpy.full(3, 152. / 255)
 ]
 
 FIGURE_WIDTH_INCHES = 15
@@ -235,7 +235,7 @@ def _plot_comparison_1baseline(
         legend_handles, model_description_strings, loc='upper right'
     )
 
-    panel_letter = chr(ord('a' + baseline_index))
+    panel_letter = chr(ord('a') + baseline_index)
     gg_plotting_utils.label_axes(
         axes_object=axes_object,
         label_string='({0:s})'.format(panel_letter)
@@ -277,7 +277,7 @@ def _run(top_nn_model_dir_names, nn_model_description_strings, confidence_level,
     # NN models by simply adding colours as an input arg, rather than forcing
     # the use of `LINE_COLOURS_4MODELS`.
     num_nn_models = len(top_nn_model_dir_names)
-    assert num_nn_models == 4
+    assert num_nn_models == 3
 
     assert len(nn_model_description_strings) == num_nn_models
     nn_model_description_strings = [
