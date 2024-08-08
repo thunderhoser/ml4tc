@@ -16,8 +16,8 @@ ERROR_STRING = (
     '\nUnix command failed (log messages shown above should explain why).'
 )
 
-DEFAULT_CONVERT_EXE_NAME = '/usr/bin/convert'
-DEFAULT_MONTAGE_EXE_NAME = '/usr/bin/montage'
+DEFAULT_CONVERT_EXE_NAME = 'convert'
+DEFAULT_MONTAGE_EXE_NAME = 'montage'
 
 
 def trim_whitespace(
