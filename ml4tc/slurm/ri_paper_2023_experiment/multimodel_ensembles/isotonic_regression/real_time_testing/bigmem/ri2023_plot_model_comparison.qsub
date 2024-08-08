@@ -29,12 +29,12 @@ echo $PATH
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/multimodel_ensembles"
 
-set CIRA_IR_LAG_TIME_COUNTS=(   "0" "1" "1")
-set USE_SHIPS_ENVIRO_FLAGS=(    "1" "0" "1")
-set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1")
-set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1")
+set CIRA_IR_LAG_TIME_COUNTS=(   "1" "0" "1")
+set USE_SHIPS_ENVIRO_FLAGS=(    "1" "1" "0")
+set USE_SHIPS_HISTORICAL_FLAGS=("1" "1" "0")
+set USE_SHIPS_SATELLITE_FLAGS=( "1" "1" "0")
 set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0")
-set DROPOUT_RATES=(             "0.8" "0.7" "0.8")
+set DROPOUT_RATES=(             "0.8" "0.8" "0.7")
 
 set i=1
 set model_dir_names_string=""
@@ -56,6 +56,6 @@ set output_dir_name="${TOP_MODEL_DIR_NAME}/real_time_testing/isotonic_regression
 
 python3 -u "${CODE_DIR_NAME}/ri2023_plot_model_comparison.py" \
 --input_nn_model_dir_names ${model_dir_names_string} \
---nn_model_description_strings "NN_without_CIRA_IR" "NN_without_SHIPS" "NN_with_everything" \
+--nn_model_description_strings "NN_with_everything" "NN_without_CIRA_IR" "NN_without_SHIPS" \
 --confidence_level=0.95 \
 --output_dir_name="${output_dir_name}"

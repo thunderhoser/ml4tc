@@ -38,8 +38,8 @@ ERROR_BAR_DICT = {
 LINE_COLOURS_4MODELS = [
     numpy.array([27, 158, 119], dtype=float) / 255,
     numpy.array([217, 95, 2], dtype=float) / 255,
-    numpy.full(3, 152. / 255),
-    numpy.full(3, 0.)
+    numpy.array([117, 112, 179], dtype=float) / 255,
+    numpy.full(3, 152. / 255)
 ]
 
 FIGURE_WIDTH_INCHES = 15
