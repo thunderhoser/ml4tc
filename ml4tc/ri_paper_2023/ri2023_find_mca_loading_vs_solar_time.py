@@ -35,7 +35,7 @@ SHIPS_DIR_HELP_STRING = (
 )
 MODE_NUM_HELP_STRING = (
     'Will use loadings for the [k]th-leading mode of the MCA, where k = {0:s}.'
-    '  Use zero-based indexing, so the first mode is mode 0.'
+    '  Use one-based indexing, so the first mode is 1.'
 ).format(MODE_NUM_ARG_NAME)
 
 OUTPUT_FILE_HELP_STRING = (
@@ -78,7 +78,7 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
     :param output_file_name: Same.
     """
 
-    error_checking.assert_is_geq(mode_num, 0)
+    error_checking.assert_is_geq(mode_num, 1)
     file_system_utils.mkdir_recursive_if_necessary(file_name=output_file_name)
 
     cyclone_id_strings = numpy.array([])
@@ -101,7 +101,7 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
     mca_table_xarray = xarray.open_zarr(mca_file_name)
     predictor_expansion_coeffs = mca_table_xarray[
         run_mca.PREDICTOR_EXPANSION_COEFF_KEY
-    ].values[:, mode_num]
+    ].values[:, mode_num - 1]
 
     assert len(cyclone_id_strings) == len(predictor_expansion_coeffs)
 
@@ -112,7 +112,7 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
         ships_file_name = ships_io.find_file(
             directory_name=ships_dir_name,
             cyclone_id_string=unique_cyclone_id_string,
-            prefer_zipped=False, allow_other_format=False,
+            prefer_zipped=False, allow_other_format=True,
             raise_error_if_missing=True
         )
 
@@ -142,6 +142,8 @@ def _run(shapley_file_names, mca_file_name, ships_dir_name, mode_num,
     print('Writing results to: "{0:s}"...'.format(output_file_name))
 
     pickle_file_handle = open(output_file_name, 'wb')
+    pickle.dump(cyclone_id_strings, pickle_file_handle)
+    pickle.dump(init_times_unix_sec, pickle_file_handle)
     pickle.dump(predictor_expansion_coeffs, pickle_file_handle)
     pickle.dump(solar_times_sec, pickle_file_handle)
     pickle_file_handle.close()

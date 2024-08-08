@@ -2090,6 +2090,9 @@ def read_metafile(pickle_file_name):
     metadata_dict = pickle.load(pickle_file_handle)
     pickle_file_handle.close()
 
+    if BNN_ARCHITECTURE_KEY not in metadata_dict:
+        metadata_dict[BNN_ARCHITECTURE_KEY] = None
+
     missing_keys = list(set(METADATA_KEYS) - set(metadata_dict.keys()))
     if len(missing_keys) == 0:
         return metadata_dict
