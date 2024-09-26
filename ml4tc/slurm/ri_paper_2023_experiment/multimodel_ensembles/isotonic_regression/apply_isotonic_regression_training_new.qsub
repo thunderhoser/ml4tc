@@ -16,6 +16,17 @@
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
 #SBATCH --output=apply_isotonic_regression_training_%A_%a.out
 
+conda init
+conda activate base
+
+echo `which conda`
+echo `which python`
+echo `which python3`
+
+# PATH=/usr/local/cuda/bin:$PATH
+echo $PATH
+
+CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
 TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/multimodel_ensembles"
 
 CIRA_IR_LAG_TIME_COUNTS=(   "0" "1" "1")
@@ -34,5 +45,11 @@ dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
 
 model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}/full_ensemble"
 
-this_directory_name=`pwd`
-singularity exec --nv /scratch1/RDARCH/rda-ghpcs/Jebb.Q.Stewart/ml-ryan.simg /bin/sh -c "cd ${this_directory_name}; sh apply_isotonic_regression_training.sh ${model_dir_name}"
+model_file_name="${model_dir_name}/isotonic_regression_new/isotonic_regression.dill"
+input_prediction_file_name="${model_dir_name}/training/predictions.nc"
+output_prediction_file_name="${model_dir_name}/training/isotonic_regression_new/predictions.nc"
+
+python3 -u "${CODE_DIR_NAME}/apply_isotonic_regression.py" \
+--input_prediction_file_name="${input_prediction_file_name}" \
+--input_model_file_name="${model_file_name}" \
+--output_prediction_file_name="${output_prediction_file_name}"
