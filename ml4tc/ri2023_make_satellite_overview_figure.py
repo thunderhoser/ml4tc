@@ -224,7 +224,7 @@ def _run(raw_satellite_file_name, output_dir_name):
         meridian_spacing_deg=2., font_size=FONT_SIZE
     )
 
-    axes_object.set_title('Cropped image (exactly TC-centered)')
+    axes_object.set_title('Cropped image (TC-centered)')
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
 
     panel_file_names.append('{0:s}/cropped.jpg'.format(output_dir_name))

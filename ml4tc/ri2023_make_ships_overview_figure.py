@@ -180,7 +180,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
 
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
-    axes_object.set_title('GOES-based SHIPS predictors')
+    axes_object.set_title('Satellite-based SHIPS predictors')
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(a)')
 
     panel_file_names = [
@@ -212,7 +212,7 @@ def _run(norm_example_file_name, ships_forecast_predictor_names,
 
     figure_object = figure_objects[0]
     axes_object = axes_objects[0]
-    axes_object.set_title('Environmental and historical SHIPS predictors')
+    axes_object.set_title('Environmental and storm-based SHIPS predictors')
     gg_plotting_utils.label_axes(axes_object=axes_object, label_string='(b)')
 
     panel_file_names.append(

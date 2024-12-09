@@ -139,13 +139,16 @@ def plot_lagged_predictors_one_init_time(
         dtype=float
     )
     y_tick_labels = ['{0:.1f}'.format(t) for t in lag_times_hours]
-    y_tick_labels = [l.replace('inf', 'Climo') for l in y_tick_labels]
-    y_tick_labels = [l.replace('nan', 'Merged') for l in y_tick_labels]
+    y_tick_labels = [l.replace('inf', 'IRXX') for l in y_tick_labels]
+    y_tick_labels = [l.replace('nan', 'Best') for l in y_tick_labels]
+    y_tick_labels = [l.replace('0.0', 'IR00') for l in y_tick_labels]
+    y_tick_labels = [l.replace('1.5', 'IRM1') for l in y_tick_labels]
+    y_tick_labels = [l.replace('3.0', 'IRM3') for l in y_tick_labels]
 
     pyplot.yticks(
         y_tick_values, y_tick_labels, fontsize=lag_time_tick_font_size
     )
-    axes_object.set_ylabel('Lag time (hours)')
+    # axes_object.set_ylabel('Lag time (hours)')
 
     x_tick_values = numpy.linspace(
         0, predictor_matrix.shape[1] - 1, num=predictor_matrix.shape[1],
