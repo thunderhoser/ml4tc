@@ -234,17 +234,6 @@ def _plot_inset_histogram(
     inset_axes_object.set_xticklabels(
         x_tick_labels, fontsize=HISTOGRAM_FONT_SIZE, rotation=90.
     )
-
-    inset_axes_object.set_ylim(top=0.5)
-    y_tick_values = numpy.linspace(0, 0.5, num=6)
-    y_tick_labels = ['{0:.2f}'.format(v) for v in y_tick_values]
-
-    inset_axes_object.set_yticks(y_tick_values)
-    inset_axes_object.set_yticklabels(
-        y_tick_labels, fontsize=HISTOGRAM_FONT_SIZE
-    )
-
-    inset_axes_object.tick_params(axis='x', labelsize=HISTOGRAM_FONT_SIZE)
     inset_axes_object.tick_params(axis='y', labelsize=HISTOGRAM_FONT_SIZE)
 
     inset_axes_object.set_title(
