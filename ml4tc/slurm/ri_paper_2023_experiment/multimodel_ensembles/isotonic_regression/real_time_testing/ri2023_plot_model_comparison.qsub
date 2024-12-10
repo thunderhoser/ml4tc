@@ -56,6 +56,6 @@ set output_dir_name="${TOP_MODEL_DIR_NAME}/real_time_testing/isotonic_regression
 
 python3 -u "${CODE_DIR_NAME}/ri2023_plot_model_comparison.py" \
 --input_nn_model_dir_names ${model_dir_names_string} \
---nn_model_description_strings "NN_with_everything" "NN_without_CIRA_IR" "NN_without_SHIPS" \
+--nn_model_description_strings "NN_with_everything" "NN_without_TC_IR" "NN_without_SHIPS" \
 --confidence_level=0.95 \
 --output_dir_name="${output_dir_name}"
