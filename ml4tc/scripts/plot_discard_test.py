@@ -68,7 +68,7 @@ def _run(input_file_name, model_description_string, output_file_name):
         result_dict=result_dict
     )
 
-    title_string = 'Discard test{0:s}\nMF = {1:.2f}%'.format(
+    title_string = 'Discard test{0:s}\nMF = {1:.1f}%'.format(
         model_description_string,
         100 * result_dict[uq_evaluation.MONOTONICITY_FRACTION_KEY]
     )

@@ -7,10 +7,10 @@ from matplotlib import pyplot
 from ml4tc.utils import uq_evaluation
 
 REFERENCE_LINE_COLOUR = numpy.full(3, 152. / 255)
-REFERENCE_LINE_WIDTH = 2.
+REFERENCE_LINE_WIDTH = 3.
 
 DEFAULT_LINE_COLOUR = numpy.array([217, 95, 2], dtype=float) / 255
-DEFAULT_LINE_WIDTH = 3.
+DEFAULT_LINE_WIDTH = 6.66
 
 HISTOGRAM_FACE_COLOUR = numpy.full(3, 152. / 255)
 HISTOGRAM_EDGE_COLOUR = numpy.full(3, 0.)
