@@ -3,7 +3,7 @@
 #SBATCH --job-name="plot_spread_vs_skill"
 #SBATCH --partition="fge"
 #SBATCH --account="rda-ghpcs"
-#SBATCH --qos="batch"
+#SBATCH --qos="gpuwf"
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
@@ -29,7 +29,7 @@ set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1")
 set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1")
 set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0")
 set DROPOUT_RATES=(             "0.8" "0.7" "0.8")
-set MODEL_DESCRIPTION_STRINGS=("NN w/out CIRA IR" "NN w/out SHIPS" "NN w/ everything")
+set MODEL_DESCRIPTION_STRINGS=("NN w/out TC IR" "NN w/out SHIPS" "NN w/ everything")
 
 set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
 set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$SLURM_ARRAY_TASK_ID]}
