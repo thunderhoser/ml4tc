@@ -229,15 +229,23 @@ def _plot_inset_histogram(
 
     x_tick_values = fake_bin_centers[tick_indices]
     x_tick_labels = ['{0:.2g}'.format(b) for b in bin_centers[tick_indices]]
+
     inset_axes_object.set_xticks(x_tick_values)
-    inset_axes_object.set_xticklabels(x_tick_labels)
+    inset_axes_object.set_xticklabels(
+        x_tick_labels, fontsize=HISTOGRAM_FONT_SIZE, rotation=90.
+    )
 
-    for this_tick_object in inset_axes_object.xaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(HISTOGRAM_FONT_SIZE)
-        this_tick_object.label.set_rotation('vertical')
+    inset_axes_object.set_ylim(top=0.5)
+    y_tick_values = numpy.linspace(0, 0.5, num=6)
+    y_tick_labels = ['{0:.2f}'.format(v) for v in y_tick_values]
 
-    for this_tick_object in inset_axes_object.yaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(HISTOGRAM_FONT_SIZE)
+    inset_axes_object.set_yticks(y_tick_values)
+    inset_axes_object.set_yticklabels(
+        y_tick_labels, fontsize=HISTOGRAM_FONT_SIZE
+    )
+
+    inset_axes_object.tick_params(axis='x', labelsize=HISTOGRAM_FONT_SIZE)
+    inset_axes_object.tick_params(axis='y', labelsize=HISTOGRAM_FONT_SIZE)
 
     inset_axes_object.set_title(
         'Prediction frequency' if has_predictions else 'Observation frequency',
