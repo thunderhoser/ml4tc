@@ -744,11 +744,11 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
     for k in range(axis3_length):
         these_ships_predictor_types = []
         if SHIPS_ENVIRO_FLAGS_AXIS3[k]:
-            these_ships_predictor_types.append('environmental')
+            these_ships_predictor_types.append('enviro')
         if SHIPS_HISTORICAL_FLAGS_AXIS3[k]:
-            these_ships_predictor_types.append('historical')
+            these_ships_predictor_types.append('storm-based')
         if SHIPS_SATELLITE_FLAGS_AXIS3[k]:
-            these_ships_predictor_types.append('GOES')
+            these_ships_predictor_types.append('satellite')
 
         if len(these_ships_predictor_types) == 0:
             this_ships_predictor_type_string = 'none'
