@@ -90,12 +90,10 @@ def _plot_means_as_inset(
     inset_axes_object.set_ylim(0, y_max)
     inset_axes_object.set_xlim(left=0.)
 
-    for this_tick_object in inset_axes_object.xaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(INSET_FONT_SIZE)
-        this_tick_object.label.set_rotation('vertical')
-
-    for this_tick_object in inset_axes_object.yaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(INSET_FONT_SIZE)
+    inset_axes_object.tick_params(
+        axis='x', labelsize=INSET_FONT_SIZE, rotation=90.
+    )
+    inset_axes_object.tick_params(axis='y', labelsize=INSET_FONT_SIZE)
 
     inset_axes_object.legend(
         [target_handle, prediction_handle],

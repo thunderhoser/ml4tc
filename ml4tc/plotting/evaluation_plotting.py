@@ -221,15 +221,12 @@ def _plot_inset_histogram(
 
     x_tick_values = fake_bin_centers[tick_indices]
     x_tick_labels = ['{0:.2g}'.format(b) for b in bin_centers[tick_indices]]
+
     inset_axes_object.set_xticks(x_tick_values)
-    inset_axes_object.set_xticklabels(x_tick_labels)
-
-    for this_tick_object in inset_axes_object.xaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(HISTOGRAM_FONT_SIZE)
-        this_tick_object.label.set_rotation('vertical')
-
-    for this_tick_object in inset_axes_object.yaxis.get_major_ticks():
-        this_tick_object.label.set_fontsize(HISTOGRAM_FONT_SIZE)
+    inset_axes_object.set_xticklabels(
+        x_tick_labels, fontsize=HISTOGRAM_FONT_SIZE, rotation=90.
+    )
+    inset_axes_object.tick_params(axis='y', labelsize=HISTOGRAM_FONT_SIZE)
 
     inset_axes_object.set_title(
         'Prediction frequency' if has_predictions else 'Observation frequency',
@@ -554,7 +551,7 @@ def plot_reliability_curve(
         main_line_handle = axes_object.plot(
             mean_predictions[real_indices], mean_observations[real_indices],
             color=line_colour, linestyle=line_style, linewidth=line_width,
-            marker='o', markersize=12, markeredgewidth=0,
+            marker='o', markersize=20, markeredgewidth=0,
             markerfacecolor=line_colour, markeredgecolor=line_colour
         )[0]
 
