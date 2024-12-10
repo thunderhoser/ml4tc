@@ -192,7 +192,7 @@ def plot_spread_vs_skill(
         mean_prediction_stdevs[real_indices],
         rmse_values[real_indices],
         color=line_colour, linestyle=line_style, linewidth=line_width,
-        marker='o', markersize=12, markeredgewidth=0,
+        marker='o', markersize=20, markeredgewidth=0,
         markerfacecolor=line_colour, markeredgecolor=line_colour
     )
 
@@ -276,7 +276,7 @@ def plot_discard_test(
     axes_object.plot(
         discard_fractions, error_values,
         color=line_colour, linestyle=line_style, linewidth=line_width,
-        marker='o', markersize=12, markeredgewidth=0,
+        marker='o', markersize=20, markeredgewidth=0,
         markerfacecolor=line_colour, markeredgecolor=line_colour
     )
 
