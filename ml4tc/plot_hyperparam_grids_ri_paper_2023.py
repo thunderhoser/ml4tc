@@ -195,7 +195,7 @@ def _print_ranking_one_score(score_matrix, score_name):
     """Prints ranking for one score.
 
     D = number of dropout rates
-    L = number of CIRA IR lag-time setups
+    L = number of TC IR lag-time setups
     S = number of SHIPS-predictor combinations
 
     :param score_matrix: D-by-L-by-S numpy array of scores.
@@ -232,7 +232,7 @@ def _print_ranking_one_score(score_matrix, score_name):
 
         print((
             '{0:d}th-highest {1:s} = {2:.4g} ... dropout rate = {3:.1f} ... '
-            'num CIRA IR lag times = {4:d} ... CIRA IR temporal diffs = {5:s} '
+            'num TC IR lag times = {4:d} ... TC IR temporal diffs = {5:s} '
             '... SHIPS predictors = {6:s}'
         ).format(
             a + 1, score_name, score_matrix[i, j, k],
@@ -252,7 +252,7 @@ def _print_ranking_all_scores(
     """Prints ranking for all scores.
 
     D = number of dropout rates
-    L = number of CIRA IR lag-time setups
+    L = number of TC IR lag-time setups
     S = number of SHIPS-predictor combinations
 
     :param auc_matrix: D-by-L-by-S numpy array with AUC (area under ROC curve).
@@ -362,7 +362,7 @@ def _print_ranking_all_scores(
 
         print((
             '{0:d}th-best model ... dropout rate = {1:.1f} ... '
-            'num CIRA IR lag times = {2:d} ... use CIRA IR temporal diffs = '
+            'num TC IR lag times = {2:d} ... use TC IR temporal diffs = '
             '{3:s} ... SHIPS predictors = {4:s} ... '
             'AUC rank = {5:.1f} ... AUPD rank = {6:.1f} ... '
             'BSS rank = {7:.1f} ... CSI rank = {8:.1f} ... '
@@ -425,7 +425,7 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
     x_tick_labels = [a + b for a, b in zip(x_tick_labels, extra_strings)]
 
     y_axis_label = 'Dropout rate'
-    x_axis_label = 'Number of CIRA IR lag times (* = with diffs)'
+    x_axis_label = 'Number of TC IR lag times (* = with diffs)'
 
     for i in range(axis1_length):
         for j in range(axis2_length):
@@ -562,7 +562,7 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
         )[0, 1]
     ))
-    print('Correlation between AUC and num CIRA IR lag times = {0:.4f}'.format(
+    print('Correlation between AUC and num TC IR lag times = {0:.4f}'.format(
         numpy.corrcoef(
             numpy.ravel(auc_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))],
             numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(auc_matrix))]
@@ -587,7 +587,7 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
         )[0, 1]
     ))
-    print('Correlation between AUPD and num CIRA IR lag times = {0:.4f}'.format(
+    print('Correlation between AUPD and num TC IR lag times = {0:.4f}'.format(
         numpy.corrcoef(
             numpy.ravel(aupd_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))],
             numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(aupd_matrix))]
@@ -612,7 +612,7 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
         )[0, 1]
     ))
-    print('Correlation between SSREL and num CIRA IR lag times = {0:.4f}'.format(
+    print('Correlation between SSREL and num TC IR lag times = {0:.4f}'.format(
         numpy.corrcoef(
             numpy.ravel(ssrel_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))],
             numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(ssrel_matrix))]
@@ -637,7 +637,7 @@ def _run(experiment_dir_name, use_isotonic_regression, top_output_dir_name):
             numpy.ravel(dropout_rate_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
         )[0, 1]
     ))
-    print('Correlation between MF and num CIRA IR lag times = {0:.4f}'.format(
+    print('Correlation between MF and num TC IR lag times = {0:.4f}'.format(
         numpy.corrcoef(
             numpy.ravel(monotonicity_fraction_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))],
             numpy.ravel(cira_ir_lag_time_count_matrix)[numpy.isfinite(numpy.ravel(monotonicity_fraction_matrix))]
