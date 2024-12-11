@@ -1,0 +1,49 @@
+#!/bin/tcsh
+
+#SBATCH --job-name="plot_eval_by_month_and_basin"
+#SBATCH --partition="fge"
+#SBATCH --account="rda-ghpcs"
+#SBATCH --qos="gpuwf"
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=03:00:00
+#SBATCH --array=1-3
+#SBATCH --exclude=h28n12
+##SBATCH --exclude=h31n03,h28n12
+##SBATCH --exclude=h29n01,h26n05,h28n06,h29n07,h30n03,h30n15
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=ryan.lagerquist@noaa.gov
+#SBATCH --output=plot_eval_by_month_and_basin_%A_%a.out
+
+module load imagemagick/7.1.1-11
+conda init
+conda activate base
+
+set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
+set TOP_MODEL_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_models/ri_paper_2023_experiment/multimodel_ensembles"
+
+set CIRA_IR_LAG_TIME_COUNTS=(   "0" "1" "1")
+set USE_SHIPS_ENVIRO_FLAGS=(    "1" "0" "1")
+set USE_SHIPS_HISTORICAL_FLAGS=("1" "0" "1")
+set USE_SHIPS_SATELLITE_FLAGS=( "1" "0" "1")
+set USE_TEMPORAL_DIFF_FLAGS=(   "0" "0" "0")
+set DROPOUT_RATES=(             "0.8" "0.7" "0.8")
+set MODEL_DESCRIPTION_STRINGS=("NN w/out TC IR" "NN w/out SHIPS" "NN w/ everything")
+
+set num_cira_ir_lag_times=${CIRA_IR_LAG_TIME_COUNTS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_enviro=${USE_SHIPS_ENVIRO_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_historical=${USE_SHIPS_HISTORICAL_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_ships_satellite=${USE_SHIPS_SATELLITE_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set use_temporal_diffs=${USE_TEMPORAL_DIFF_FLAGS[$SLURM_ARRAY_TASK_ID]}
+set dropout_rate=${DROPOUT_RATES[$SLURM_ARRAY_TASK_ID]}
+
+set model_dir_name="${TOP_MODEL_DIR_NAME}/num-cira-ir-lag-times=${num_cira_ir_lag_times}_use-ships-enviro=${use_ships_enviro}_use-ships-historical=${use_ships_historical}_use-ships-satellite=${use_ships_satellite}_use-temporal-diffs=${use_temporal_diffs}_dense-dropout-rate=${dropout_rate}/full_ensemble"
+set input_dir_name="${model_dir_name}/real_time_testing"
+set output_dir_name="${input_dir_name}/eval_by_month_and_basin"
+
+python3 -u "${CODE_DIR_NAME}/plot_eval_by_month_and_basin.py" \
+--input_evaluation_dir_name="${input_dir_name}" \
+--model_description_string="${MODEL_DESCRIPTION_STRINGS[$SLURM_ARRAY_TASK_ID]}" \
+--confidence_level=0.95 \
+--output_dir_name="${output_dir_name}"
