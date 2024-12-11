@@ -1,4 +1,4 @@
-#!/bin/tcsh
+#!/bin/bash
 
 #SBATCH --job-name="plot_mca_for_shapley_maps"
 #SBATCH --partition="fge"
@@ -16,8 +16,8 @@
 #SBATCH --mail-user=ryan.lagerquist@noaa.gov
 #SBATCH --output=plot_mca_for_shapley_maps_%A_%a.out
 
-module load cuda/10.1
-source /scratch2/BMC/gsd-hpcs/Jebb.Q.Stewart/conda3.7/etc/profile.d/conda.csh
+module load imagemagick/7.1.1-11
+conda init
 conda activate base
 
 set CODE_DIR_NAME="/scratch1/RDARCH/rda-ghpcs/Ryan.Lagerquist/ml4tc_standalone/ml4tc"
