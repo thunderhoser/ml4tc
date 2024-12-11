@@ -32,6 +32,7 @@ FIGURE_RESOLUTION_DPI = 300
 
 INPUT_FILE_ARG_NAME = 'input_file_name'
 NUM_MODES_ARG_NAME = 'num_modes_to_plot'
+PLOT_COMBINED_MODES_ARG_NAME = 'plot_combined_modes'
 SHAPLEY_COLOUR_MAP_ARG_NAME = 'shapley_colour_map_name'
 SHAPLEY_NUM_CONTOURS_ARG_NAME = 'shapley_half_num_contours'
 SHAPLEY_MIN_PERCENTILE_ARG_NAME = 'shapley_min_colour_percentile'
@@ -50,8 +51,13 @@ NUM_MODES_HELP_STRING = (
     'Will plot the top K modes, where K = {0:s}.  For each mode, will plot '
     'both Shapley values and predictor values regressed onto the singular '
     'vector for said mode.'
-).format(NUM_MODES_ARG_NAME)
-
+).format(
+    NUM_MODES_ARG_NAME
+)
+PLOT_COMBINED_MODES_HELP_STRING = (
+    'Boolean flag.  If 1, will plot combined modes suggested by reviewer for '
+    'WAF paper.'
+)
 SHAPLEY_COLOUR_MAP_HELP_STRING = (
     'Name of colour scheme for Shapley values.  Must be accepted by '
     '`matplotlib.pyplot.get_cmap`.'
@@ -98,6 +104,10 @@ INPUT_ARG_PARSER.add_argument(
 INPUT_ARG_PARSER.add_argument(
     '--' + NUM_MODES_ARG_NAME, type=int, required=True,
     help=NUM_MODES_HELP_STRING
+)
+INPUT_ARG_PARSER.add_argument(
+    '--' + PLOT_COMBINED_MODES_ARG_NAME, type=int, required=False, default=0,
+    help=PLOT_COMBINED_MODES_HELP_STRING
 )
 INPUT_ARG_PARSER.add_argument(
     '--' + SHAPLEY_COLOUR_MAP_ARG_NAME, type=str, required=False,
@@ -309,13 +319,19 @@ def _plot_one_mode(
         line_width=4
     )
 
-    title_string = (
-        r'$T_b$ and Shapley values regressed onto EOF {0:d}'
-    ).format(mode_index + 1)
+    if mode_index == -1:
+        title_string = 'Unweighted combination of EOFs 1-3'
+    elif mode_index == -2:
+        title_string = 'Weighted combination of EOFs 1-3'
+    else:
+        title_string = (
+            r'$T_b$ and Shapley values regressed onto EOF {0:d}'
+        ).format(mode_index + 1)
 
-    title_string += '\n(explained variance = {0:.1f}%)'.format(
-        100 * explained_variance_fraction
-    )
+        title_string += '\n(explained variance = {0:.1f}%)'.format(
+            100 * explained_variance_fraction
+        )
+
     axes_object.set_title(title_string)
 
     print('Saving figure to file: "{0:s}"...'.format(output_file_name))
@@ -344,9 +360,10 @@ def _plot_one_mode(
     )
 
 
-def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
-         shapley_half_num_contours, shapley_min_colour_percentile,
-         shapley_max_colour_percentile, shapley_smoothing_radius_px,
+def _run(input_file_name, num_modes_to_plot, plot_combined_modes,
+         shapley_colour_map_name, shapley_half_num_contours,
+         shapley_min_colour_percentile, shapley_max_colour_percentile,
+         shapley_smoothing_radius_px,
          predictor_colour_map_name, predictor_min_colour_percentile,
          predictor_max_colour_percentile, output_dir_name):
     """Plots PCA or MCA for gridded Shapley values.
@@ -355,6 +372,7 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
 
     :param input_file_name: See documentation at top of file.
     :param num_modes_to_plot: Same.
+    :param plot_combined_modes: Same.
     :param shapley_colour_map_name: Same.
     :param shapley_half_num_contours: Same.
     :param shapley_min_colour_percentile: Same.
@@ -495,9 +513,12 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
 
     for i in range(num_modes_to_plot):
         if i in [0, 3, 4]:
-            multiplier = -1
-        else:
-            multiplier = 1
+            regressed_predictor_matrix[i, ...] = (
+                -1 * regressed_predictor_matrix[i, ...]
+            )
+            regressed_shapley_matrix[i, ...] = (
+                -1 * regressed_shapley_matrix[i, ...]
+            )
 
         if shapley_smoothing_radius_px is not None:
             regressed_shapley_matrix[i, ...] = (
@@ -508,10 +529,8 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             )
 
         _plot_one_mode(
-            regressed_predictor_matrix=
-            multiplier * regressed_predictor_matrix[i, ...],
-            regressed_shapley_matrix=
-            multiplier * regressed_shapley_matrix[i, ...],
+            regressed_predictor_matrix=regressed_predictor_matrix[i, ...],
+            regressed_shapley_matrix=regressed_shapley_matrix[i, ...],
             mode_index=i,
             explained_variance_fraction=explained_variance_fractions[i],
             shapley_colour_map_object=shapley_colour_map_object,
@@ -527,6 +546,63 @@ def _run(input_file_name, num_modes_to_plot, shapley_colour_map_name,
             )
         )
 
+    if not plot_combined_modes:
+        return
+
+    combo_regressed_predictor_matrix = numpy.mean(
+        regressed_predictor_matrix[:3, ...], axis=0
+    )
+    combo_regressed_shapley_matrix = numpy.mean(
+        regressed_shapley_matrix[:3, ...], axis=0
+    )
+
+    _plot_one_mode(
+        regressed_predictor_matrix=combo_regressed_predictor_matrix,
+        regressed_shapley_matrix=combo_regressed_shapley_matrix,
+        mode_index=-1,
+        explained_variance_fraction=numpy.nan,
+        shapley_colour_map_object=shapley_colour_map_object,
+        shapley_half_num_contours=shapley_half_num_contours,
+        shapley_min_colour_percentile=shapley_min_colour_percentile,
+        shapley_max_colour_percentile=shapley_max_colour_percentile,
+        predictor_colour_map_object=predictor_colour_map_object,
+        predictor_min_colour_percentile=predictor_min_colour_percentile,
+        predictor_max_colour_percentile=predictor_max_colour_percentile,
+        output_file_name=
+        '{0:s}/regressed_shapley_and_predictors_combo_unweighted.jpg'.format(
+            output_dir_name
+        )
+    )
+
+    weights = (
+        explained_variance_fractions[:3] /
+        numpy.sum(explained_variance_fractions[:3])
+    )
+    combo_regressed_predictor_matrix = numpy.average(
+        regressed_predictor_matrix[:3, ...], axis=0, weights=weights
+    )
+    combo_regressed_shapley_matrix = numpy.average(
+        regressed_shapley_matrix[:3, ...], axis=0, weights=weights
+    )
+
+    _plot_one_mode(
+        regressed_predictor_matrix=combo_regressed_predictor_matrix,
+        regressed_shapley_matrix=combo_regressed_shapley_matrix,
+        mode_index=-2,
+        explained_variance_fraction=numpy.nan,
+        shapley_colour_map_object=shapley_colour_map_object,
+        shapley_half_num_contours=shapley_half_num_contours,
+        shapley_min_colour_percentile=shapley_min_colour_percentile,
+        shapley_max_colour_percentile=shapley_max_colour_percentile,
+        predictor_colour_map_object=predictor_colour_map_object,
+        predictor_min_colour_percentile=predictor_min_colour_percentile,
+        predictor_max_colour_percentile=predictor_max_colour_percentile,
+        output_file_name=
+        '{0:s}/regressed_shapley_and_predictors_combo_weighted.jpg'.format(
+            output_dir_name
+        )
+    )
+
 
 if __name__ == '__main__':
     INPUT_ARG_OBJECT = INPUT_ARG_PARSER.parse_args()
@@ -534,6 +610,9 @@ if __name__ == '__main__':
     _run(
         input_file_name=getattr(INPUT_ARG_OBJECT, INPUT_FILE_ARG_NAME),
         num_modes_to_plot=getattr(INPUT_ARG_OBJECT, NUM_MODES_ARG_NAME),
+        plot_combined_modes=bool(
+            getattr(INPUT_ARG_OBJECT, PLOT_COMBINED_MODES_ARG_NAME)
+        ),
         shapley_colour_map_name=getattr(
             INPUT_ARG_OBJECT, SHAPLEY_COLOUR_MAP_ARG_NAME
         ),
