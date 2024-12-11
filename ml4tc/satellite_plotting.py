@@ -270,11 +270,12 @@ def plot_2d_grid(
             longitudes_to_plot_deg_e
         )
 
-        temp_matrix_to_plot_kelvins = grids.latlng_field_grid_points_to_edges(
-            field_matrix=brightness_temp_matrix_kelvins,
-            min_latitude_deg=1., min_longitude_deg=1.,
-            lat_spacing_deg=1e-6, lng_spacing_deg=1e-6
-        )[0]
+        # temp_matrix_to_plot_kelvins = grids.latlng_field_grid_points_to_edges(
+        #     field_matrix=brightness_temp_matrix_kelvins,
+        #     min_latitude_deg=1., min_longitude_deg=1.,
+        #     lat_spacing_deg=1e-6, lng_spacing_deg=1e-6
+        # )[0]
+        temp_matrix_to_plot_kelvins = brightness_temp_matrix_kelvins + 0.
     else:
         # TODO(thunderhoser): For an irregular grid I should also supply edge
         # coordinates to the plotting method (pcolor), but CBF right now.
