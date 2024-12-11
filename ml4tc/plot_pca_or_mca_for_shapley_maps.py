@@ -175,7 +175,10 @@ def _read_pca_or_mca_results(result_file_name):
         result_file_name = '{0:s}.nc'.format(result_file_name[:-5])
 
     if result_file_name.endswith('.zarr'):
-        return xarray.open_zarr(result_file_name)
+        return xarray.open_zarr(
+            result_file_name,
+            drop_variables=[run_mca.SHAPLEY_EXPANSION_COEFF_KEY, run_mca.PREDICTOR_EXPANSION_COEFF_KEY]
+        )
 
     if not result_file_name.endswith('.nc'):
         return None
