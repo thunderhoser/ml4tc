@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/tcsh
 
 #SBATCH --job-name="plot_mca_for_shapley_maps"
 #SBATCH --partition="fge"
