@@ -323,7 +323,7 @@ def plot_2d_grid(
             longitudes_to_plot_deg_e, latitudes_to_plot_deg_n,
             temp_matrix_to_plot_kelvins,
             cmap=colour_map_object, norm=colour_norm_object,
-            vmin=min_colour_value, vmax=max_colour_value,
+            # vmin=min_colour_value, vmax=max_colour_value,
             edgecolors='None', zorder=-1e11
         )
 
